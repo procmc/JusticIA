@@ -2,22 +2,16 @@ import classNames from "classnames";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Image from "next/image";
-import React, { useEffect, useState, useMemo } from "react";
-import { FiChevronLeft, FiChevronDown, FiChevronUp, FiChevronRight} from "react-icons/fi";
+import React, { useEffect, useState } from "react";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { LogoutIcon } from "../icons";
 import { menuItems } from "../../data/menuitems";
 import { useSession } from "next-auth/react";
 
 const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
-  const [expandedItems, setExpandedItems] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const { data: session, status } = useSession();
   const router = useRouter();
-
-  useEffect(() => {
-    if (status === "authenticated") {
-    }
-  }, [status, session]);
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -38,118 +32,14 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
     }
   }, []);
 
-  const handleExpand = (id) => {
-    setExpandedItems((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const checkSubItemsActive = (subItems) => {
-    return subItems.some((item) => {
-      if (item.subItems) {
-        return checkSubItemsActive(item.subItems);
-      }
-
-      if (item.link.includes("[estado]")) {
-        const dynamicLink = item.link.replace("[estado]", router.query.estado || "");
-        return router.asPath === dynamicLink;
-      }
-
-      return router.asPath === item.link;
-    });
-  };
-
-  const getNavItemClasses = (menu) => {
-    let isActive = false;
-    
-    if (menu.subItems) {
-      isActive = checkSubItemsActive(menu.subItems);
-    } else if (menu.link) {
-      // Para la ruta raíz, hacer comparación exacta
-      if (menu.link === "/") {
-        isActive = router.pathname === "/";
-      } else {
-        // Para otras rutas, usar startsWith
-        isActive = router.pathname.startsWith(menu.link);
-      }
-    }
+  const getNavItemClasses = (link) => {
+    const isActive = router.pathname === link;
     
     return classNames(
-      "flex items-center cursor-pointer hover:bg-gray-200 rounded w-full overflow-hidden whitespace-nowrap mb-1",
+      "flex items-center cursor-pointer hover:bg-gray-200 rounded w-full overflow-hidden whitespace-nowrap mb-1 py-3 px-3",
       {
         "bg-gray-200": isActive,
       }
-    );
-  };
-
-  const renderSubItems = (items, level = 1, parentId = "") => {
-    return (
-      <ul
-        className={classNames(
-          "ml-8 list-disc",
-          {
-            "text-gray-700": level === 2,
-            "text-gray-600": level === 1,
-          }
-        )}
-      >
-        {items.map((item, index) => {
-          const itemId = `${parentId}-${index}`;
-          const hasSubItems = item.subItems && item.subItems.length > 0;
-
-          return (
-            <li key={index} className="py-1">
-              {hasSubItems ? (
-                <>
-                  <div
-                    className="flex items-center cursor-pointer justify-between"
-                    onClick={() => handleExpand(itemId)}
-                  >
-                    <span
-                      className={classNames(
-                        "font-medium",
-                        {
-                          "text-sm": level === 1,
-                          "text-xs": level === 2,
-                        },
-                        {
-                          "text-primario font-bold": level === 1 && checkSubItemsActive(item.subItems),
-                          "text-azulOscuro font-bold": level === 2 && checkSubItemsActive(item.subItems),
-                        }
-                      )}
-                    >
-                      {item.label}
-                    </span>
-                    {expandedItems.includes(itemId) ? (
-                      <FiChevronUp className="w-4 h-4 text-gray-500" />
-                    ) : (
-                      <FiChevronDown className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
-                  {expandedItems.includes(itemId) && renderSubItems(item.subItems, level + 1, itemId)}
-                </>
-              ) : (
-                <Link
-                  href={item.link}
-                  className={classNames(
-                    "block font-medium",
-                    {
-                      "text-sm": level === 1,
-                      "text-xs": level === 2,
-                    },
-                    {
-                      "text-primario font-bold": level === 1 && router.asPath === item.link,
-                      "text-azulOscuro font-bold": level === 2 && router.asPath === item.link,
-                    }
-                  )}
-                >
-                  {item.label}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
     );
   };
 
@@ -219,48 +109,25 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
               </div>
             </div>
           ) : (
-            menuItems.map(({ id, icon: Icon, subItems, link, ...menu }) => {
-              const hasSubItems = subItems && subItems.length > 0;
-
-              return (
-                <div key={id} className="w-full">
-                  <div
-                    className={classNames(
-                      getNavItemClasses({ subItems, link }),
-                      "flex py-3 px-3 items-center justify-between"
-                    )}
-                    onClick={() => {
-                      if (!hasSubItems && link) {
-                        router.push(link);
-                      } else {
-                        handleExpand(id);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center">
-                      <div style={{ width: "2.5rem" }}>
-                        <Icon className="w-6 h-6 text-gray-500" />
-                      </div>
-                      {!toggleCollapse && (
-                        <span className="text-sm font-medium text-gray-700">
-                          {menu.label}
-                        </span>
-                      )}
+            menuItems.map(({ id, icon: Icon, link, label }) => (
+              <div key={id} className="w-full">
+                <Link
+                  href={link}
+                  className={getNavItemClasses(link)}
+                >
+                  <div className="flex items-center">
+                    <div style={{ width: "2.5rem" }}>
+                      <Icon className="w-6 h-6 text-gray-500" />
                     </div>
-                    {!toggleCollapse && hasSubItems && (
-                      expandedItems.includes(id) ? (
-                        <FiChevronUp className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <FiChevronDown className="w-4 h-4 text-gray-500" />
-                      )
+                    {!toggleCollapse && (
+                      <span className="text-sm font-medium text-gray-700">
+                        {label}
+                      </span>
                     )}
                   </div>
-                  {!toggleCollapse && expandedItems.includes(id) && hasSubItems && (
-                    renderSubItems(subItems, 1, id.toString())
-                  )}
-                </div>
-              );
-            })
+                </Link>
+              </div>
+            ))
           )}
         </div>
         {/* Botón cerrar sesión */}
