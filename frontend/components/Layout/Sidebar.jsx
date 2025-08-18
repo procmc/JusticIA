@@ -59,7 +59,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
       <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
         {/* Encabezado del Sidebar */}
         <div className="flex items-center justify-between relative hidden md:flex">
-          <div className="flex items-center pl-1 gap-4">
+          <div className="flex items-center gap-4">
             {toggleCollapse ? (
               <div
                 onClick={() => setToggleCollapse(false)}
