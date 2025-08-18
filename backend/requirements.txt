@@ -1,0 +1,16 @@
+fastapi==0.116.1
+uvicorn[standard]==0.30.6
+
+# LangChain (núcleo + integraciones)
+langchain==0.3.27
+langchain-milvus==0.2.1
+langchain-ollama>=0.1.0
+
+# Ollama integration
+httpx>=0.24.0
+
+# Milvus SDK (2.5.x o superior)
+protobuf>=5.27.2,<6.0.0
+pymilvus>=2.5.14,<2.7
+
+python-dotenv==1.0.1
