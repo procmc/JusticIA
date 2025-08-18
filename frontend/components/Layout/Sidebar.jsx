@@ -158,7 +158,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
       className={classNames(
         "h-screen px-4 pt-8 pb-4 bg-white flex flex-col justify-between shadow-xl z-50 transform transition-transform duration-300", // Animación para móviles
         {
-          "w-60": !toggleCollapse, // Ancho completo cuando está expandido
+          "w-60": !toggleCollapse,
           "w-20 md:w-20": toggleCollapse, // Colapsado en pantallas grandes
           "-translate-x-full md:translate-x-0": toggleCollapse && isMobile, // Oculto en móviles cuando está colapsado
           "fixed md:relative": true, // Drawer en móviles, relativo en pantallas grandes
