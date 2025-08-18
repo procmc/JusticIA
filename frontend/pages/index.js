@@ -13,7 +13,7 @@ export default function Home() {
         }}
       >
         <h1 className="text-2xl md:text-3xl font-extrabold text-azulOscuro text-center drop-shadow-lg tracking-tight animate-fade-in-scale">
-          ¡Holaaaaa buenaas!
+          ¡Holaaaaa buenaas tardes!
         </h1>
       </div>
     </div>
