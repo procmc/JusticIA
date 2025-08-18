@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
+import { MdOutlineKeyboardDoubleArrowRight, MdOutlineKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { LogoutIcon } from "../icons";
 import { menuItems } from "../../data/menuitems";
@@ -46,7 +47,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   return (
     <div
       className={classNames(
-        "h-screen px-4 pt-8 pb-4 bg-white flex flex-col justify-between shadow-xl z-50 transform transition-transform duration-300", // Animación para móviles
+        "h-screen px-4 pt-8 pb-4 bg-white flex flex-col justify-between shadow-xl z-50 transform transition-all duration-500 ease-in-out", // Animación mejorada
         {
           "w-60": !toggleCollapse,
           "w-20 md:w-20": toggleCollapse, // Colapsado en pantallas grandes
@@ -54,7 +55,10 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
           "fixed md:relative": true, // Drawer en móviles, relativo en pantallas grandes
         }
       )}
-      style={{ transition: "width 500ms cubic-bezier(0.2, 0, 1) 0s" }}
+      style={{ 
+        transition: "width 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 400ms ease-in-out",
+        willChange: "width, transform"
+      }}
     >
       <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
         {/* Encabezado del Sidebar */}
@@ -65,7 +69,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                 onClick={() => setToggleCollapse(false)}
                 className="flex-shrink-0 cursor-pointer flex items-center justify-center w-12 h-12 hover:bg-gray-100 rounded"
               >
-                <FiChevronRight className="w-6 h-6 text-gray-500" />
+                <MdOutlineKeyboardDoubleArrowRight className="w-6 h-6 text-gray-500" />
               </div>
             ) : (
               <div className="flex-shrink-0">
@@ -79,7 +83,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
               </div>
             )}
             {!toggleCollapse && (
-              <span className="mt-2 text-2xl text-azulOscuro font-bold">MiLoker</span>
+              <span className="mt-2 text-2xl text-azulOscuro font-bold">JusticIA</span>
             )}
           </div>
           {!toggleCollapse && (
@@ -87,7 +91,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
               onClick={() => setToggleCollapse(true)}
               className="p-2 cursor-pointer rounded hover:bg-gray-100 flex items-center justify-center"
             >
-              <FiChevronLeft className="w-6 h-6 text-gray-500" />
+              <MdOutlineKeyboardDoubleArrowLeft className="w-6 h-6 text-gray-500" />
             </div>
           )}
         </div>
