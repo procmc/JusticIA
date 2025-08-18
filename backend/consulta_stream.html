@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba Streaming Ollama</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    #respuesta { background: #f4f4f4; padding: 1em; border-radius: 5px; min-height: 100px; white-space: pre-wrap; }
+    button { padding: 0.5em 1em; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h2>Consulta Streaming a Ollama</h2>
+  <input id="pregunta" type="text" value="¿Qué es la justicia?" style="width: 300px;" />
+  <button id="consultar">Consultar</button>
+  <pre id="respuesta"></pre>
+  <script>
+    document.getElementById("consultar").onclick = async () => {
+      const pregunta = document.getElementById("pregunta").value;
+      const respuesta = document.getElementById("respuesta");
+      respuesta.textContent = "";
+      const response = await fetch("http://localhost:8000/llm/consulta-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta })
+      });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        respuesta.textContent += decoder.decode(value);
+      }
+    };
+  </script>
+</body>
+</html>
