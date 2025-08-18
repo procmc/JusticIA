@@ -1,0 +1,109 @@
+/* Animaciones para el componente Login */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+}
+
+/* Clases de animación */
+.animate-fadeInDown {
+  animation: fadeInDown 0.4s ease-out forwards;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Delays para efectos escalonados */
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-700 {
+  animation-delay: 0.7s;
+}
+
+.animation-delay-900 {
+  animation-delay: 0.9s;
+}
+
+/* Estilos específicos para el candado */
+.lock-icon {
+  transition: all 0.7s ease-in-out;
+}
+
+.lock-icon-closed {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.lock-icon-closing {
+  opacity: 1;
+  transform: scale(1.05) rotate(0deg);
+}
+
+.lock-icon-opening {
+  opacity: 0;
+  transform: scale(0.9) rotate(6deg);
+}
+
+.lock-icon-open {
+  opacity: 1;
+  transform: scale(1.1) rotate(3deg);
+}
+
+.lock-icon-open-closing {
+  opacity: 0;
+  transform: scale(0.9) rotate(-6deg);
+}
+
+/* Estilos para los fondos animados */
+.animated-background {
+  transition: all 0.6s ease-in-out;
+}
+
+.animated-background-visible {
+  opacity: 1;
+}
+
+.animated-background-hidden {
+  opacity: 0;
+}
+
+/* Delays adicionales para efectos más suaves */
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
