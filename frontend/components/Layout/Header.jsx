@@ -16,14 +16,14 @@ const Header = ({ toggleCollapse, setToggleCollapse }) => {
         </button>
         <div className="flex items-center">
           <Image
-            src="/logo.png"
-            alt="logo"
+            src="/image.png"
+            alt="imagen"
             width={40}
             height={40}
             className="w-10 h-10"
           />
           <span className="text-2xl font-bold text-azulOscuro ml-2">
-            MiLoker
+            JusticIA
           </span>
         </div>
       </div>
