@@ -71,19 +71,29 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
               >
                 <MdOutlineKeyboardDoubleArrowRight className="w-6 h-6 text-gray-500" />
               </div>
-            ) : (
-              <div className="flex-shrink-0">
-                <Image
-                  src="/Logo.png"
-                  alt="Logo"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10"
-                />
-              </div>
-            )}
+            ) : null}
             {!toggleCollapse && (
-              <span className="mt-2 text-2xl text-azulOscuro font-bold">JusticIA</span>
+              <span
+                className="mb-3 ml-4 text-2xl font-extrabold select-none flex items-center gap-2 relative group"
+                style={{letterSpacing: '1px'}}>
+                {/* Logo con J grande y subrayado animado */}
+                <span className="relative cursor-pointer">
+                  <span
+                    className="text-3xl font-extrabold bg-clip-text text-transparent drop-shadow-md"
+                    style={{
+                      background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      fontWeight: 900,
+                      letterSpacing: '1px',
+                    }}
+                  >JusticIA</span>
+                  <span
+                    className="block h-1 w-full rounded-full transition-transform duration-300 origin-left mt-1"
+                    style={{background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)', transform: 'scaleX(1)'}}
+                  ></span>
+                </span>
+              </span>
             )}
           </div>
           {!toggleCollapse && (
