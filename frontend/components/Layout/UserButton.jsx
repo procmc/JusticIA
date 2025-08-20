@@ -109,8 +109,8 @@ export function UserButton() {
                                     src="/usuario.png"
                                     alt="User Avatar"
                                     className="rounded-full"
-                                    width={32}
-                                    height={32}
+                                    width={50}
+                                    height={50}
                                 />
                             </div>
                         </DropdownTrigger>
@@ -127,8 +127,8 @@ export function UserButton() {
                                             src="/usuario.png"
                                             alt="User Avatar"
                                             className="rounded-full"
-                                            width={32}
-                                            height={32}
+                                            width={50}
+                                            height={50}
                                         />
                                     </div>
                                     <div className="flex flex-col">
