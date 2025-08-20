@@ -15,15 +15,25 @@ const Header = ({ toggleCollapse, setToggleCollapse }) => {
           <FiMenu className="w-6 h-6" />
         </button>
         <div className="flex items-center">
-          <Image
-            src="/image.png"
-            alt="imagen"
-            width={40}
-            height={40}
-            className="w-10 h-10"
-          />
-          <span className="text-2xl font-bold text-azulOscuro ml-2">
-            JusticIA
+          <span
+            className="mb-3 ml-4 text-2xl font-extrabold select-none flex items-center gap-2 relative group cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
+            style={{ letterSpacing: '1px' }}>
+            <span className="relative cursor-pointer transition-all duration-200 group-hover:drop-shadow-lg">
+              <span
+                className="text-3xl font-extrabold bg-clip-text text-transparent drop-shadow-md"
+                style={{
+                  background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 900,
+                  letterSpacing: '1px',
+                }}
+              >JusticIA</span>
+              <span
+                className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-blue-400/50"
+                style={{ background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)', transform: 'scaleX(1)' }}
+              ></span>
+            </span>
           </span>
         </div>
       </div>
