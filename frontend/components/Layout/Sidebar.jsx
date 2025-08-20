@@ -230,7 +230,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
               <LogoutIcon className="w-4 h-6 text-red-400" />
             </div>
             {!toggleCollapse && (
-              <span className="text-sm font-medium text-red-600">Cerrar sesión</span>
+              <span className="text-sm font-medium text-white">Cerrar sesión</span>
             )}
           </div>
         </Tooltip>
