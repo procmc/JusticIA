@@ -6,7 +6,7 @@ import {
     verificarCodigoRecuperacionService,
     cambiarContraseñaRecuperacionService
 } from "../../../services/authService";
-import { Toast } from "../../CustomAlert";
+import { Toast } from "../../ui/CustomAlert";
 import Step1Email from "./steps/Step1Email";
 import Step2Code from "./steps/Step2Code";
 import Step3Password from "./steps/Step3Password";
