@@ -59,9 +59,9 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
     }
     
     return classNames(
-      "flex items-center cursor-pointer hover:bg-gray-200 rounded w-full overflow-hidden whitespace-nowrap mb-1 py-2 px-3",
+      "flex items-center cursor-pointer hover:bg-gray-100 hover:bg-opacity-20 rounded w-full overflow-hidden whitespace-nowrap mb-1 py-2 px-3",
       {
-        "bg-gray-200": isActive,
+        "bg-gray-100 bg-opacity-20": isActive,
       }
     );
   };
@@ -69,7 +69,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   return (
     <div
       className={classNames(
-        "h-screen px-4 pt-8 pb-4 bg-white flex flex-col justify-between shadow-xl z-50 transform transition-all duration-500 ease-in-out",
+        "h-screen px-4 pt-8 pb-4 bg-azulOscuro flex flex-col justify-between shadow-xl z-50 transform transition-all duration-500 ease-in-out",
         {
           "w-64": !toggleCollapse,
           "w-20 md:w-20": toggleCollapse,
@@ -88,9 +88,9 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
             {toggleCollapse ? (
               <div
                 onClick={() => setToggleCollapse(false)}
-                className="flex-shrink-0 cursor-pointer flex items-center justify-center w-12 h-12 hover:bg-gray-100 rounded"
+                className="flex-shrink-0 cursor-pointer flex items-center justify-center w-12 h-12 hover:bg-gray-100 hover:bg-opacity-20 rounded"
               >
-                <MdOutlineKeyboardDoubleArrowRight className="w-5 h-5 text-gray-500" />
+                <MdOutlineKeyboardDoubleArrowRight className="w-5 h-5 text-white" />
               </div>
             ) : null}
             {!toggleCollapse && (
@@ -102,7 +102,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                     <span
                       className="text-3xl font-extrabold bg-clip-text text-transparent drop-shadow-md"
                       style={{
-                        background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)',
+                        background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 900,
@@ -110,8 +110,8 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                       }}
                     >JusticIA</span>
                     <span
-                      className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-blue-400/50"
-                      style={{background: 'linear-gradient(90deg, #1a357a 0%, #4f8cff 60%, #1a357a 100%)', transform: 'scaleX(1)'}}
+                      className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-cyan-400/50"
+                      style={{background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)', transform: 'scaleX(1)'}}
                     ></span>
                   </span>
                 </span>
@@ -121,9 +121,9 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
           {!toggleCollapse && (
             <div
               onClick={() => setToggleCollapse(true)}
-              className="p-2 cursor-pointer rounded hover:bg-gray-100 flex items-center justify-center"
+              className="p-2 cursor-pointer rounded hover:bg-gray-100 hover:bg-opacity-20 flex items-center justify-center"
             >
-              <MdOutlineKeyboardDoubleArrowLeft className="w-5 h-5 text-gray-500" />
+              <MdOutlineKeyboardDoubleArrowLeft className="w-5 h-5 text-white" />
             </div>
           )}
         </div>
@@ -145,10 +145,10 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center flex-1 mr-2">
                               <div style={{ width: "2.5rem" }}>
-                                <Icon className="w-5 h-5 text-gray-500" />
+                                <Icon className="w-5 h-5 text-white" />
                               </div>
                               {!toggleCollapse && (
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-white">
                                   {label}
                                 </span>
                               )}
@@ -156,9 +156,9 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                             {!toggleCollapse && (
                               <div className="flex-shrink-0">
                                 {expandedItems.includes(id) ? (
-                                  <FiChevronUp className="w-4 h-4 text-gray-600" />
+                                  <FiChevronUp className="w-4 h-4 text-white" />
                                 ) : (
-                                  <FiChevronDown className="w-4 h-4 text-gray-600" />
+                                  <FiChevronDown className="w-4 h-4 text-white" />
                                 )}
                               </div>
                             )}
@@ -172,18 +172,18 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                               <Link
                                 href={subItem.link}
                                 className={classNames(
-                                  "flex items-center cursor-pointer hover:bg-gray-100 rounded w-full py-1.5 px-4 mb-1 whitespace-nowrap overflow-hidden",
+                                  "flex items-center cursor-pointer hover:bg-gray-100 hover:bg-opacity-20 rounded w-full py-1.5 px-4 mb-1 whitespace-nowrap overflow-hidden",
                                   {
-                                    "bg-gray-100 border-l-4 border-blue-500": router.pathname === subItem.link,
+                                    "bg-gray-100 bg-opacity-20 border-l-4 border-blue-400": router.pathname === subItem.link,
                                   }
                                 )}
                               >
                                 {subItem.icon && (
                                   <div className="flex-shrink-0 mr-2">
-                                    <subItem.icon className="w-4 h-4 text-gray-500" />
+                                    <subItem.icon className="w-4 h-4 text-white" />
                                   </div>
                                 )}
-                                <span className="text-sm text-gray-600 truncate">
+                                <span className="text-sm text-white truncate">
                                   {subItem.label}
                                 </span>
                               </Link>
@@ -200,10 +200,10 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                       >
                         <div className="flex items-center">
                           <div style={{ width: "2.5rem" }}>
-                            <Icon className="w-5 h-5 text-gray-500" />
+                            <Icon className="w-5 h-5 text-white" />
                           </div>
                           {!toggleCollapse && (
-                            <span className="text-sm font-medium text-gray-700">
+                            <span className="text-sm font-medium text-white">
                               {label}
                             </span>
                           )}
@@ -219,7 +219,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
         <Tooltip content="Cerrar sesión" placement="right" isDisabled={!toggleCollapse}>
           <div
             className={classNames(
-              "flex items-center px-3 py-2 cursor-pointer hover:bg-gray-300 rounded mt-auto",
+              "flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100 hover:bg-opacity-20 rounded mt-auto",
               {
                 "justify-center": toggleCollapse,
                 "justify-start": !toggleCollapse,
@@ -227,10 +227,10 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
             )}
           >
             <div style={{ width: "2.5rem" }} className="flex justify-center">
-              <LogoutIcon className="w-4 h-6 text-red-500" />
+              <LogoutIcon className="w-4 h-6 text-red-400" />
             </div>
             {!toggleCollapse && (
-              <span className="text-sm font-medium text-red-500">Cerrar sesión</span>
+              <span className="text-sm font-medium text-white">Cerrar sesión</span>
             )}
           </div>
         </Tooltip>
