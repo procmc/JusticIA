@@ -16,6 +16,7 @@ module.exports = {
         cabecera: "#398cebff",
         fondoLogin: "#fcfbfb",
         celeste: "#38b6ff",
+        tituloSeccion: "#1e3a8a", // Color estándar para títulos de secciones
       },
     },
   },
