@@ -72,22 +72,18 @@ const ConfirmModal = ({
     onClose();
   };
 
-  // Componente para el ícono
-  const IconSection = () => (
-    showIcon && (
-      <div className="flex justify-center mb-6">
-        <div className={`${currentTheme.iconBg} ${currentTheme.iconColor} p-4 rounded-full shadow-lg ring-4 ring-white/50 animate-pulse-slow`}>
+  // Componente para el ícono y título juntos
+  const IconTitleSection = () => (
+    <div className="flex items-center space-x-3">
+      {showIcon && (
+        <div className={`${currentTheme.iconBg} ${currentTheme.iconColor} p-3 rounded-full shadow-lg ring-2 ring-white/50`}>
           {modalIcon}
         </div>
-      </div>
-    )
-  );
-
-  // Componente para el título
-  const TitleSection = () => (
-    <h3 className={`text-xl font-bold ${centered ? 'text-center' : 'text-left'} ${currentTheme.titleColor} leading-tight mb-2`}>
-      {title}
-    </h3>
+      )}
+      <h3 className={`text-xl font-bold ${currentTheme.titleColor} leading-tight flex-1`}>
+        {title}
+      </h3>
+    </div>
   );
 
   // Componente para el contenido
@@ -172,8 +168,7 @@ const ConfirmModal = ({
     >
       <ModalContent className="bg-white/95 backdrop-blur-md shadow-2xl border border-white/20">
         <ModalHeader className="flex flex-col gap-1 px-6 pt-6 pb-2 border-b-0">
-          <IconSection />
-          <TitleSection />
+          <IconTitleSection />
         </ModalHeader>
         
         <ModalBody className={centered ? 'text-center' : ''}>
