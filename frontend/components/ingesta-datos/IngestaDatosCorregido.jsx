@@ -14,8 +14,9 @@ import {
   FiLoader
 } from 'react-icons/fi';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import { validarFormatoExpediente, formatearTamano } from './funciones';
 
-const IngestaDatos = () => {
+const IngestaDatosCorregido = () => {
   const [files, setFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -34,14 +35,6 @@ const IngestaDatos = () => {
     if (allowedTypes.documents.includes(extension)) return 'document';
     if (allowedTypes.audio.includes(extension)) return 'audio';
     return 'unknown';
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleDrag = (e) => {
@@ -96,14 +89,7 @@ const IngestaDatos = () => {
     ));
   };
 
-  // Validación del formato de expediente
-  const validateExpedienteFormat = (expediente) => {
-    // Formato: año,98-003287-0166-La (4 dígitos año, 98-, 6 dígitos consecutivo, -, 4 dígitos oficina, -, 2 caracteres materia)
-    const regex = /^\d{4},98-\d{6}-\d{4}-[A-Za-z]{2}$/;
-    return regex.test(expediente.trim());
-  };
-
-  const isExpedienteValid = validateExpedienteFormat(expedienteNumero);
+  const isExpedienteValid = validarFormatoExpediente(expedienteNumero);
 
   const handleSaveClick = () => {
     setShowConfirmModal(true);
@@ -138,12 +124,6 @@ const IngestaDatos = () => {
           ));
         }
 
-        // Aquí iría la llamada real al backend con el número de expediente
-        // const formData = new FormData();
-        // formData.append('file', file.file);
-        // formData.append('expediente', file.expediente);
-        // await fetch('/api/upload', { method: 'POST', body: formData });
-
         // Marcar como exitoso
         setFiles(prev => prev.map(f => 
           f.id === file.id ? { ...f, status: 'success', progress: 100 } : f
@@ -162,7 +142,7 @@ const IngestaDatos = () => {
     setTimeout(() => {
       setFiles([]);
       setExpedienteNumero('');
-    }, 2000); // Esperar 2 segundos para que el usuario vea los resultados
+    }, 2000);
   };
 
   const getFileIcon = (type) => {
@@ -441,7 +421,7 @@ const IngestaDatos = () => {
                         </div>
                         <div className="flex items-center space-x-4 mt-2">
                           <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
+                            {formatearTamano(file.size)}
                           </p>
                           {file.status === 'pending' && (
                             <div className="flex items-center space-x-2">
@@ -586,7 +566,7 @@ const IngestaDatos = () => {
                           </p>
                           <div className="flex items-center space-x-4 mt-1">
                             <span className="text-xs text-gray-500">
-                              {formatFileSize(file.size)}
+                              {formatearTamano(file.size)}
                             </span>
                             <div className="flex items-center space-x-1">
                               <FiFolder className="w-3 h-3 text-gray-400" />
@@ -624,4 +604,4 @@ const IngestaDatos = () => {
   );
 };
 
-export default IngestaDatos;
+export default IngestaDatosCorregido;
