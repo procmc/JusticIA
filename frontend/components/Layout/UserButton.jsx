@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useCallback, useState, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
-import DrawerGeneral from "../DrawerGeneral";
+import DrawerGeneral from "../ui/DrawerGeneral";
 import CambiarContraseña from "@/components/auth/cambioContraseña/CambiarContraseña";
 
 export function UserButton() {

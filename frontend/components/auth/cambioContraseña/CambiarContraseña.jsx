@@ -1,7 +1,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react";
 import { Form, Input, Button } from "@heroui/react";
 import { cambiarContraseñaService } from "../../../services/authService";
-import { Toast } from "../../CustomAlert";
+import { Toast } from "../../ui/CustomAlert";
 import { EyeFilledIcon } from "../../icons/EyeFilledIcon";
 import { EyeSlashFilledIcon } from "../../icons/EyeSlashFilledIcon";
 import { signOut } from "next-auth/react";
