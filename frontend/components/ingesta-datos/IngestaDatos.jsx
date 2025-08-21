@@ -13,7 +13,7 @@ import {
   FiSave,
   FiLoader
 } from 'react-icons/fi';
-import ConfirmModal from '../ConfirmModal';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 const IngestaDatos = () => {
   const [files, setFiles] = useState([]);
