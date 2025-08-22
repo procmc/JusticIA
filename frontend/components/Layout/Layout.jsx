@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { UserButton } from "./UserButton"; // Importa el UserButton
+import { UserButton } from "./UserButton";
+import DynamicBreadcrumbs from "./DynamicBreadcrumbs";
 
 const Layout = ({ children }) => {
   const [toggleCollapse, setToggleCollapse] = useState(false);
@@ -21,16 +22,20 @@ const Layout = ({ children }) => {
       />
 
       {/* Botón de usuario (visible en todas las pantallas) */}
-      <div className="absolute top-0 right-0 z-50 hidden md:block">
+      <div className="absolute -top-2 right-0 z-50 hidden md:block">
         <UserButton />
       </div>
 
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 p-4 mt-16 overflow-auto">
+        {/* Breadcrumbs */}
+        <DynamicBreadcrumbs />
+        
+        <div className="flex-1 p-4 overflow-auto">
           {children}
         </div>
       </div>
+      
     </div>
   );
 };
