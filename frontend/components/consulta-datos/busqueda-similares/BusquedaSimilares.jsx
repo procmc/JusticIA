@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useDisclosure } from '@heroui/react';
-import SearchFilters from './SearchFilters';
+import SearchFilters from './search-filters/SearchFilters';
 import LoadingResults from './LoadingResults';
 import ResultsHeader from './ResultsHeader';
-import NoResults from './NoResults';
+import NoResults from './results-grid/NoResults';
 import ResultsGrid from './results-grid/ResultsGrid';
-import CaseDetailsModal from './CaseDetailsModal';
+import CaseDetailsModal from './results-grid/CaseDetailsModal';
 import useSimilarityUtils from '@/hooks/busqueda-similares/useSimilarityUtils';
 
 const BusquedaSimilares = () => {
@@ -67,6 +67,7 @@ const BusquedaSimilares = () => {
           setExpedientNumber={setExpedientNumber}
           onSearch={handleSearch}
           isSearching={isSearching}
+          hasSearched={hasSearched}
         />
 
         {/* Estado de Carga */}
