@@ -6,6 +6,9 @@ const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
+  
+  // Estados para el alcance de búsqueda
+  const [searchScope, setSearchScope] = useState('general');
 
   const simulateStreamingResponse = (fullText, messageIndex) => {
     let currentText = '';
@@ -58,14 +61,15 @@ const ConsultaChat = () => {
   };
 
   const handleSendMessage = async (text) => {
-    // Crear mensaje del usuario
+    // Crear mensaje del usuario con información del alcance
     const userMessage = {
       text,
       isUser: true,
       timestamp: new Date().toLocaleTimeString('es-ES', { 
         hour: '2-digit', 
         minute: '2-digit' 
-      })
+      }),
+      scope: searchScope
     };
 
     // Agregar mensaje del usuario
@@ -92,8 +96,16 @@ const ConsultaChat = () => {
         const messageIndex = newMessages.length - 1;
         setStreamingMessageIndex(messageIndex);
         
+        // Respuesta contextualizada según el alcance
+        let contextInfo = '';
+        if (searchScope === 'expediente') {
+          contextInfo = `\n\n🔍 *Búsqueda realizada por expediente específico*`;
+        } else {
+          contextInfo = `\n\n🔍 *Búsqueda realizada en toda la base de datos*`;
+        }
+        
         // Texto completo de respuesta
-        const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente jurídico de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico costarricense.
+        const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente jurídico de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico costarricense.${contextInfo}
 
 Según mi análisis de los expedientes y la jurisprudencia disponible, puedo proporcionarte los siguientes puntos clave:
 
@@ -123,9 +135,12 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
           isTyping={isTyping}
           streamingMessageIndex={streamingMessageIndex}
         />
+        
         <ChatInput 
           onSendMessage={handleSendMessage} 
           isDisabled={isTyping || streamingMessageIndex !== null}
+          searchScope={searchScope}
+          setSearchScope={setSearchScope}
         />
       </div>
     </div>
