@@ -73,9 +73,9 @@ const CustomTextarea = ({
   return (
     <div className="flex items-end gap-3">
       {/* Card para el textarea */}
-      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
         {/* Efecto de gradiente sutil en el borde superior */}
-        <div className="h-1 bg-gradient-to-r from-primario/30 via-primario to-primario/70 rounded-t-2xl"></div>
+        <div className="h-1 bg-gradient-to-r from-blue-700/60 via-blue-600 via-blue-700 to-blue-700/60"></div>
         
         {/* Contenedor del textarea con scroll */}
         <div className="relative">
