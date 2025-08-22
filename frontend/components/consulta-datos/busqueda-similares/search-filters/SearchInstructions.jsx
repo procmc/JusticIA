@@ -61,16 +61,16 @@ const SearchInstructions = ({ hasSearched = false }) => {
             </div>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
             <div className="flex items-center gap-2 text-amber-800">
               <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center">
                 <span className="text-white text-xs font-bold">!</span>
               </div>
               <span className="font-medium text-xs">Consejo:</span>
+              <span className="text-amber-700 text-xs">
+                Sé específico en tu descripción. Incluye detalles como el tipo de caso, las circunstancias y los elementos legales relevantes.
+              </span>
             </div>
-            <p className="text-amber-700 text-xs mt-1">
-              Sé específico en tu descripción. Incluye detalles como el tipo de caso, las circunstancias y los elementos legales relevantes.
-            </p>
           </div>
         </div>
       </CardBody>

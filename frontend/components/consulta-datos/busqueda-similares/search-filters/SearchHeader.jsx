@@ -47,34 +47,35 @@ const SearchHeader = ({
           {/* Header con título elegante */}
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg">
-              <IoSparkles className="w-6 h-6 text-white" />
+              <IoSparkles className="w-4 h-4 text-white" />
             </div>
-            <div>
+            <div >
               <h2 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
                 Búsqueda Inteligente
               </h2>
               <p className="text-gray-500 text-xs">
-                Encuentra casos similares usando IA semántica
+                Encuentra casos similares usando IA
               </p>
             </div>
           </div>
 
-          {/* Layout horizontal compacto */}
-          <div className="flex items-center gap-4 mb-3">
+          {/* Layout responsive - vertical en móvil, horizontal en desktop */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
             {/* Tabs compactos */}
-            <Tabs
-              selectedKey={searchMode}
-              onSelectionChange={setSearchMode}
-              color="primary"
-              variant="solid"
-              size="sm"
-              classNames={{
-                tabList: "grid grid-cols-2 gap-1 p-0.5 bg-gray-100 rounded-lg w-48",
-                cursor: "w-full rounded-md shadow-sm",
-                tab: "w-full h-7 rounded-md",
-                tabContent: "group-data-[selected=true]:text-white text-gray-600 font-medium text-xs"
-              }}
-            >
+            <div className="w-full sm:w-auto">
+              <Tabs
+                selectedKey={searchMode}
+                onSelectionChange={setSearchMode}
+                color="primary"
+                variant="solid"
+                size="sm"
+                classNames={{
+                  tabList: "grid grid-cols-2 gap-1 p-0.5 bg-gray-100 rounded-lg w-full sm:w-48",
+                  cursor: "w-full rounded-md shadow-sm",
+                  tab: "w-full h-7 rounded-md",
+                  tabContent: "group-data-[selected=true]:text-white text-gray-600 font-medium text-xs"
+                }}
+              >
               <Tab
                 key="description"
                 title={
@@ -94,9 +95,10 @@ const SearchHeader = ({
                 }
               />
             </Tabs>
+            </div>
 
             {/* Botones de acción */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 onPress={onSearch}
                 color="primary"
@@ -104,7 +106,7 @@ const SearchHeader = ({
                 startContent={<IoSearch className="w-3 h-3" />}
                 isLoading={isSearching}
                 isDisabled={isButtonDisabled}
-                className={`px-4 font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
+                className={`flex-1 sm:flex-none px-4 font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
                   }`}
@@ -173,7 +175,7 @@ const SearchHeader = ({
 
             {searchMode === 'expedient' && (
               <div className="space-y-3">
-                <div className="max-w-sm">
+                <div className="w-full sm:max-w-sm">
                   <Input
                     label="Número de expediente"
                     labelPlacement='outside'
