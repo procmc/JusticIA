@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import CustomTextarea from './CustomTextarea';
 
-const ChatInput = ({ onSendMessage, isDisabled = false }) => {
+const ChatInput = ({ 
+  onSendMessage, 
+  isDisabled = false,
+  searchScope = 'general',
+  setSearchScope
+}) => {
   const [inputValue, setInputValue] = useState('');
 
   const handleSubmit = () => {
@@ -25,13 +30,12 @@ const ChatInput = ({ onSendMessage, isDisabled = false }) => {
           placeholder="Send a message..."
           disabled={isDisabled}
           maxRows={6}
+          searchScope={searchScope}
+          setSearchScope={setSearchScope}
         />
-        <div className="flex items-center justify-between mt-2 px-2">
+        <div className="flex items-center justify-start mt-2 px-2">
           <p className="text-xs text-gray-400">
             JusticIA puede cometer errores. Considera verificar información importante.
-          </p>
-          <p className="text-xs text-gray-400">
-            {inputValue.length > 0 && `${inputValue.length} caracteres`}
           </p>
         </div>
       </div>
