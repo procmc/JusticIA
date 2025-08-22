@@ -1,10 +1,10 @@
 import React from 'react';
-import IngestaDatos from '../../components/ingesta-datos/IngestaDatos';
+import IngestaDatosCorregido from '../../components/ingesta-datos/IngestaDatosCorregido';
 
 const IngestaDatosPage = () => {
   return (
     <>
-      <IngestaDatos />
+      <IngestaDatosCorregido />
     </>
   );
 };
