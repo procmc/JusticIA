@@ -5,9 +5,10 @@ const TypingIndicator = () => {
   return (
     <div className="flex gap-4 mb-6 max-w-4xl mx-auto px-4">
       <Avatar
-        size="sm"
+        size="md"
+        src="/bot.png"
         name="J"
-        className="flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
+        className="flex-shrink-0"
         showFallback
       />
       

@@ -32,7 +32,7 @@ body {
 /* Scroll personalizado azul para lista de archivos */
 .custom-blue-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #f1f5f9;
+  scrollbar-color: #0b72eb #f1f5f9;
 }
 
 .custom-blue-scroll::-webkit-scrollbar {
@@ -45,12 +45,72 @@ body {
 }
 
 .custom-blue-scroll::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: #0b72eb;
   border-radius: 3px;
 }
 
 .custom-blue-scroll::-webkit-scrollbar-thumb:hover {
+  background: #0D3858;
+}
+
+.custom-blue-scroll::-webkit-scrollbar-thumb:hover {
   background: #2563eb;
+}
+
+/* Scroll discreto para el chat - pegado a la esquina */
+.custom-chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.custom-chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 2px;
+}
+
+.custom-chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.6);
+}
+
+/* Ocultar completamente el scroll */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+/* Scroll discreto para toda la página - esquina derecha */
+.custom-page-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+
+.custom-page-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-page-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-page-scroll::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 3px;
+}
+
+.custom-page-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
 }
 
 .custom-dot-list-style {
@@ -77,6 +137,11 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
 .animate-reverse {
