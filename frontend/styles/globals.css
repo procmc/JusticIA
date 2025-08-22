@@ -144,6 +144,13 @@ body {
   51%, 100% { opacity: 0; }
 }
 
+/* Utility class for word wrapping */
+.word-wrap {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
 .animate-reverse {
   animation: reverse 2s linear infinite;
 }

@@ -16,13 +16,13 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         showFallback
       />
       
-      <div className={`flex-1 min-w-0 max-w-[75%] ${isUser ? 'text-right' : 'text-left'}`}>
-        <div className={`inline-block max-w-full ${
+      <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'}`}>
+        <div className={`inline-block max-w-[calc(100%-10rem)] break-words ${
           isUser 
             ? 'bg-blue-600 text-white rounded-2xl rounded-tr-md px-4 py-3' 
             : 'bg-transparent text-gray-800'
         }`}>
-          <div className={`text-sm leading-relaxed whitespace-pre-wrap ${
+          <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words word-wrap ${
             isUser ? 'text-white' : 'text-gray-800'
           }`}>
             {message.text}
