@@ -9,11 +9,11 @@ const ConsultaChat = () => {
 
   const simulateStreamingResponse = (fullText, messageIndex) => {
     let currentText = '';
-    const words = fullText.split(' ');
+    let currentIndex = 0;
     
-    const streamWords = (index) => {
-      if (index < words.length) {
-        currentText += (index > 0 ? ' ' : '') + words[index];
+    const addNextCharacter = () => {
+      if (currentIndex < fullText.length) {
+        currentText += fullText[currentIndex];
         
         setMessages(prev => {
           const newMessages = [...prev];
@@ -24,13 +24,37 @@ const ConsultaChat = () => {
           return newMessages;
         });
 
-        setTimeout(() => streamWords(index + 1), 50 + Math.random() * 100);
+        currentIndex++;
+        
+        // Velocidad más lenta y variada para efecto más natural
+        let delay = 80; // Velocidad base más lenta
+        const char = fullText[currentIndex - 1];
+        
+        if (char === ' ') {
+          delay = 60; // Espacios moderadamente rápidos
+        } else if (char === '.' || char === '\n') {
+          delay = 400; // Pausa larga en puntos y saltos de línea
+        } else if (char === ',') {
+          delay = 250; // Pausa media en comas
+        } else if (char === '?' || char === '!') {
+          delay = 500; // Pausa muy larga en signos
+        } else if (char === ':' || char === ';') {
+          delay = 300; // Pausa en dos puntos
+        }
+        
+        // Variación aleatoria más amplia para mayor naturalidad
+        delay += Math.random() * 40 - 20; // ±20ms de variación
+        
+        // Asegurar que el delay no sea negativo
+        delay = Math.max(delay, 30);
+        
+        setTimeout(addNextCharacter, delay);
       } else {
         setStreamingMessageIndex(null);
       }
     };
 
-    streamWords(0);
+    addNextCharacter();
   };
 
   const handleSendMessage = async (text) => {
@@ -69,11 +93,11 @@ const ConsultaChat = () => {
         setStreamingMessageIndex(messageIndex);
         
         // Texto completo de respuesta
-        const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente legal de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico colombiano.
+        const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente jurídico de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico costarricense.
 
 Según mi análisis de los expedientes y la jurisprudencia disponible, puedo proporcionarte los siguientes puntos clave:
 
-• Marco legal aplicable
+• Marco jurídico aplicable
 • Precedentes jurisprudenciales relevantes  
 • Procedimientos recomendados
 • Posibles alternativas de solución
@@ -91,7 +115,7 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white overflow-y-auto custom-page-scroll">
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
         <MessageList 
