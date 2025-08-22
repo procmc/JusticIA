@@ -4,6 +4,7 @@ import { HeroUIProvider, ToastProvider } from "@heroui/react";
 import Layout from "@/components/Layout/Layout";
 import { useRouter } from "next/router";
 import { SessionProvider} from "next-auth/react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Componente que maneja el contenido de la aplicación
 function AppContent({ Component, pageProps }) {
@@ -13,16 +14,18 @@ function AppContent({ Component, pageProps }) {
   const noLayoutPages = ["/auth/login", "/auth/recuperar-contrasenna"];
 
   return (
-    <HeroUIProvider locale="es-ES">
-      <ToastProvider placement={"top-right"} toastOffset={60} />
-      {noLayoutPages.includes(router.pathname) ? (
-        <Component {...pageProps} />
-      ) : (
-        <Layout>
+    <ThemeProvider>
+      <HeroUIProvider locale="es-ES">
+        <ToastProvider placement={"top-right"} toastOffset={60} />
+        {noLayoutPages.includes(router.pathname) ? (
           <Component {...pageProps} />
-        </Layout>
-      )}
-    </HeroUIProvider>
+        ) : (
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        )}
+      </HeroUIProvider>
+    </ThemeProvider>
   );
 }
 
