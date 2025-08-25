@@ -125,7 +125,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
             variant="light"
             onPress={() => onVerDetalle(registro)}
           >
-            <EyeIcon className="h-4 w-4" />
+            <EyeIcon className="h-4 w-4 text-default-400" />
           </Button>
         );
       default:
@@ -135,7 +135,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
 
   return (
     <Card>
-      <CardHeader className="flex justify-between items-center">
+      <CardHeader className="flex justify-between items-center px-6 pt-6 pb-4">
         <div className="flex flex-col">
           <h3 className="text-lg font-semibold">Registros de Bitácora</h3>
         </div>
@@ -143,57 +143,80 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
           {registros.length} registro{registros.length !== 1 ? 's' : ''} encontrado{registros.length !== 1 ? 's' : ''}
         </div>
       </CardHeader>
-      <CardBody className="p-0">
+      <CardBody className="px-0 py-0">
         {registros.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8">
-            <div className="text-default-400 text-large mb-2">No se encontraron registros</div>
-            <div className="text-default-300 text-small">Intenta ajustar los filtros de búsqueda</div>
+          <div className="flex flex-col items-center justify-center p-12">
+            <div className="bg-gray-100 rounded-full p-6 mb-4">
+              <svg
+                className="w-14 h-14 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No se encontraron registros</h3>
+            <p className="text-sm text-gray-500 text-center max-w-sm">
+              Intenta ajustar los filtros de búsqueda para encontrar los registros que necesitas.
+            </p>
           </div>
         ) : (
-          <>
+          <div className="px-6">
             <Table 
               aria-label="Tabla de registros de bitácora"
               removeWrapper
+              isStriped
               classNames={{
-                th: "bg-default-100",
+                th: "bg-primary text-white first:rounded-l-lg last:rounded-r-lg",
+                tbody: "divide-y divide-gray-200",
+                tr: "hover:bg-gray-50 transition-colors duration-200",
               }}
             >
               <TableHeader columns={columns}>
                 {(column) => (
-                  <TableColumn key={column.key} className="text-start">
+                  <TableColumn key={column.key} className="text-start font-semibold">
                     {column.label}
                   </TableColumn>
                 )}
               </TableHeader>
               <TableBody items={registrosPagina}>
                 {(registro) => (
-                  <TableRow key={registro.id} className="hover:bg-default-50">
+                  <TableRow key={registro.id}>
                     {(columnKey) => (
-                      <TableCell>{renderCell(registro, columnKey)}</TableCell>
+                      <TableCell className="py-4">{renderCell(registro, columnKey)}</TableCell>
                     )}
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-            
-            {/* Paginación */}
-            {totalPaginas > 1 && (
-              <div className="flex justify-between items-center px-4 py-4">
-                <div className="text-small text-default-500">
-                  Mostrando {indiceInicio + 1} a {Math.min(indiceFin, registros.length)} de {registros.length} resultados
-                </div>
-                <Pagination
-                  total={totalPaginas}
-                  page={paginaActual}
-                  onChange={setPaginaActual}
-                  showControls
-                  size="sm"
-                />
-              </div>
-            )}
-          </>
+          </div>
         )}
       </CardBody>
+      
+      {/* Paginación mejorada */}
+      {registros.length > 0 && totalPaginas > 1 && (
+        <div className="flex w-full justify-between items-center px-6 py-4 border-t border-gray-200">
+          <div className="text-small text-default-500">
+            Mostrando {indiceInicio + 1} a {Math.min(indiceFin, registros.length)} de {registros.length} resultados
+          </div>
+          <Pagination
+            isCompact
+            showControls
+            showShadow
+            color="primary"
+            page={paginaActual}
+            total={totalPaginas}
+            onChange={setPaginaActual}
+            initialPage={1}
+          />
+        </div>
+      )}
     </Card>
   );
 };
