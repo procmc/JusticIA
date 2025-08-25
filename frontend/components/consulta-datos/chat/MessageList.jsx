@@ -26,8 +26,8 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
   }, [isTyping]);
 
   return (
-    <div className="flex-1 mx-12">
-      <div className="min-h-full py-8">
+    <div className="flex-1 md:mr-28 mx-12">
+      <div className="min-h-full py-20">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-lg mx-auto px-4">
