@@ -136,7 +136,7 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
   };
 
   return (
-    <div className="h-full flex flex-col bg-white overflow-y-auto custom-page-scroll">
+    <div className="h-full flex flex-col bg-white">
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
         <MessageList 
