@@ -33,11 +33,6 @@ const ChatInput = ({
           searchScope={searchScope}
           setSearchScope={setSearchScope}
         />
-        <div className="flex items-center justify-start mt-2 px-2">
-          <p className="text-xs text-gray-400">
-            JusticIA puede cometer errores. Considera verificar información importante.
-          </p>
-        </div>
       </div>
     </div>
   );
