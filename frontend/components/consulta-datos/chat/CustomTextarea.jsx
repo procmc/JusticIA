@@ -168,8 +168,8 @@ const CustomTextarea = ({
             }}
           >
             <div className="flex items-center gap-2">
-              <IoDocument className="w-4 h-4 text-orange-600" />
-              <span>Busqueda por expediente específico</span>
+              <IoDocument className="w-4 h-4 text-primario" />
+              <span>Por expediente específico</span>
             </div>
           </Checkbox>
         </div>
