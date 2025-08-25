@@ -14,6 +14,7 @@ const SearchHeader = ({
   onSearch,
   isSearching
 }) => {
+  
   // Validación: verificar si hay contenido para buscar
   const canSearch = () => {
     if (searchMode === 'description') {
@@ -143,7 +144,7 @@ const SearchHeader = ({
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     rows={3}
-                    className="w-full resize-none text-gray-700 text-sm pb-4"
+                    className="w-full resize-none text-gray-700 text-sm pb-4 custom-scrollbar"
                   />
                   <div className="absolute bottom-2 right-3 text-xs text-gray-400 bg-white/80 px-1 rounded">
                     {searchText.length}/2000
