@@ -7,7 +7,7 @@ const ConsultaChat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
   const [stopStreamingRef, setStopStreamingRef] = useState({ current: false });
-  
+
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
 
@@ -15,11 +15,11 @@ const ConsultaChat = () => {
     let currentText = '';
     let currentIndex = 0;
     stopStreamingRef.current = false;
-    
+
     const addNextCharacter = () => {
       if (currentIndex < fullText.length && !stopStreamingRef.current) {
         currentText += fullText[currentIndex];
-        
+
         setMessages(prev => {
           const newMessages = [...prev];
           newMessages[messageIndex] = {
@@ -30,11 +30,11 @@ const ConsultaChat = () => {
         });
 
         currentIndex++;
-        
+
         // Velocidad más lenta y variada para efecto más natural
         let delay = 80; // Velocidad base más lenta
         const char = fullText[currentIndex - 1];
-        
+
         if (char === ' ') {
           delay = 60; // Espacios moderadamente rápidos
         } else if (char === '.' || char === '\n') {
@@ -46,13 +46,13 @@ const ConsultaChat = () => {
         } else if (char === ':' || char === ';') {
           delay = 300; // Pausa en dos puntos
         }
-        
+
         // Variación aleatoria más amplia para mayor naturalidad
         delay += Math.random() * 40 - 20; // ±20ms de variación
-        
+
         // Asegurar que el delay no sea negativo
         delay = Math.max(delay, 30);
-        
+
         setTimeout(addNextCharacter, delay);
       } else {
         setStreamingMessageIndex(null);
@@ -74,9 +74,9 @@ const ConsultaChat = () => {
     const userMessage = {
       text,
       isUser: true,
-      timestamp: new Date().toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      timestamp: new Date().toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
       }),
       scope: searchScope
     };
@@ -88,14 +88,14 @@ const ConsultaChat = () => {
     // Simular delay de respuesta
     setTimeout(() => {
       setIsTyping(false);
-      
+
       // Crear mensaje del asistente vacío
       const assistantMessage = {
         text: '',
         isUser: false,
-        timestamp: new Date().toLocaleTimeString('es-ES', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        timestamp: new Date().toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit'
         })
       };
 
@@ -104,7 +104,7 @@ const ConsultaChat = () => {
         const newMessages = [...prev, assistantMessage];
         const messageIndex = newMessages.length - 1;
         setStreamingMessageIndex(messageIndex);
-        
+
         // Respuesta contextualizada según el alcance
         let contextInfo = '';
         if (searchScope === 'expediente') {
@@ -112,7 +112,7 @@ const ConsultaChat = () => {
         } else {
           contextInfo = `\n\n🔍 *Búsqueda realizada en toda la base de datos*`;
         }
-        
+
         // Texto completo de respuesta
         const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente jurídico de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico costarricense.${contextInfo}
 
@@ -129,7 +129,7 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
         setTimeout(() => {
           simulateStreamingResponse(fullResponse, messageIndex);
         }, 500);
-        
+
         return newMessages;
       });
     }, 1000);
@@ -139,14 +139,14 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
     <div className="h-full flex flex-col bg-white">
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
-        <MessageList 
-          messages={messages} 
+        <MessageList
+          messages={messages}
           isTyping={isTyping}
           streamingMessageIndex={streamingMessageIndex}
         />
-        
-        <ChatInput 
-          onSendMessage={handleSendMessage} 
+
+        <ChatInput
+          onSendMessage={handleSendMessage}
           onStopGeneration={handleStopGeneration}
           isDisabled={false} // El chat siempre está disponible
           isLoading={isTyping || streamingMessageIndex !== null}

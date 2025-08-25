@@ -20,8 +20,14 @@ const CustomTextarea = ({
   // Auto-resize function like multimodal-input
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
+      // Resetear altura primero para obtener el scrollHeight correcto
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      textareaRef.current.style.height = "20px"; // Altura mínima
+      
+      // Calcular nueva altura basada en contenido
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const newHeight = Math.max(20, scrollHeight); // Mínimo 20px
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   }, []);
 
@@ -29,7 +35,7 @@ const CustomTextarea = ({
     if (textareaRef.current) {
       adjustHeight();
     }
-  }, [adjustHeight]);
+  }, [adjustHeight, value]); // Agregar 'value' como dependencia
 
   const handleInput = (event) => {
     onChange(event);
@@ -60,9 +66,11 @@ const CustomTextarea = ({
     if (!value.trim()) return '52px'; // Altura fija cuando está vacío (incluye padding)
     
     if (textareaRef.current) {
+      // Forzar recálculo del scrollHeight
+      textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
       const maxHeight = 20 * maxRows; // Usando lineHeight de 20px
-      const calculatedHeight = Math.min(scrollHeight + 32, maxHeight + 32);
+      const calculatedHeight = Math.min(Math.max(scrollHeight, 20) + 32, maxHeight + 32);
       return `${calculatedHeight}px`;
     }
     return '52px';
