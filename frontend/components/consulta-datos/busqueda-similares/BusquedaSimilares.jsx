@@ -54,8 +54,8 @@ const BusquedaSimilares = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full">
+      <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Filtros de Búsqueda */}
         <SearchFilters
@@ -75,7 +75,7 @@ const BusquedaSimilares = () => {
 
         {/* Resultados */}
         {hasSearched && !isSearching && (
-          <div>
+          <div className="space-y-4">
             {/* Header de Resultados con Filtro */}
             <ResultsHeader
               resultsCount={filteredResults.length}
