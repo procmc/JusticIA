@@ -24,7 +24,7 @@ const ChatInput = ({
 
   return (
     <div className="bg-white/80 backdrop-blur-sm border-t border-gray-100">
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4">
         <CustomTextarea
           value={inputValue}
           onChange={handleChange}
