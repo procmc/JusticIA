@@ -3,7 +3,9 @@ import CustomTextarea from './CustomTextarea';
 
 const ChatInput = ({ 
   onSendMessage, 
+  onStopGeneration,
   isDisabled = false,
+  isLoading = false,
   searchScope = 'general',
   setSearchScope
 }) => {
@@ -27,8 +29,10 @@ const ChatInput = ({
           value={inputValue}
           onChange={handleChange}
           onSubmit={handleSubmit}
+          onStop={onStopGeneration}
           placeholder="Send a message..."
           disabled={isDisabled}
+          isLoading={isLoading}
           maxRows={6}
           searchScope={searchScope}
           setSearchScope={setSearchScope}
