@@ -8,10 +8,10 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         size="md"
         src={isUser ? "/usuario.png" : "/bot.png"}
         name={isUser ? "U" : "J"}
-        className={`flex-shrink-0 ${
+        className={`flex-shrink-0 border-0 ring-0 outline-0 ${
           isUser 
-            ? 'bg-blue-600 text-white' 
-            : ''
+            ? 'bg-white text-white' 
+            : 'bg-blue-900 text-white'
         }`}
         showFallback
       />
@@ -19,11 +19,11 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'}`}>
         <div className={`inline-block max-w-[calc(100%-10rem)] break-words ${
           isUser 
-            ? 'bg-blue-600 text-white rounded-2xl rounded-tr-md px-4 py-3' 
+            ? 'bg-gray-100 text-gray-800 rounded-2xl rounded-tr-md px-4 py-3 text-left' 
             : 'bg-transparent text-gray-800'
         }`}>
           <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words word-wrap ${
-            isUser ? 'text-white' : 'text-gray-800'
+            isUser ? 'text-gray-800' : 'text-gray-800'
           }`}>
             {message.text}
             {isStreaming && (

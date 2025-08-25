@@ -1,13 +1,15 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { Button, Input, Checkbox } from '@heroui/react';
-import { IoSend, IoDocument, IoGlobe } from 'react-icons/io5';
+import { IoSend, IoDocument, IoGlobe, IoStop } from 'react-icons/io5';
 
 const CustomTextarea = ({ 
   value, 
   onChange, 
   onSubmit, 
+  onStop,
   placeholder = "Escribe tu mensaje...", 
   disabled = false,
+  isLoading = false,
   maxRows = 10,
   // Props para alcance de búsqueda
   searchScope = 'general',
@@ -37,14 +39,18 @@ const CustomTextarea = ({
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (value.trim() && !disabled) {
+      if (isLoading && onStop) {
+        onStop();
+      } else if (value.trim() && !disabled) {
         onSubmit();
       }
     }
   };
 
   const handleSubmit = () => {
-    if (value.trim() && !disabled) {
+    if (isLoading && onStop) {
+      onStop();
+    } else if (value.trim() && !disabled) {
       onSubmit();
     }
   };
@@ -93,7 +99,7 @@ const CustomTextarea = ({
               value={value}
               onChange={handleInput}
               rows={1}
-              disabled={disabled}
+              disabled={disabled} // Solo disabled por la prop, no por isLoading
               onKeyDown={handleKeyDown}
               className="w-full resize-none border-none bg-transparent text-base text-gray-800 placeholder:text-gray-400 focus:outline-none flex items-center"
               style={{
@@ -122,18 +128,24 @@ const CustomTextarea = ({
       <div className="flex-shrink-0 mb-2">
         <Button
           onPress={handleSubmit}
-          isDisabled={!value.trim() || disabled}
+          isDisabled={(!value.trim() && !isLoading) || disabled}
           size="lg"
           isIconOnly
           className={`w-12 h-12 rounded-xl transition-all duration-300 ${
-            value.trim() && !disabled
+            isLoading
+              ? 'bg-gradient-to-r from-primario to-azulOscuro hover:from-primario/90 hover:to-azulOscuro/90 text-white shadow-lg hover:shadow-xl hover:scale-105'
+              : value.trim() && !disabled
               ? 'bg-gradient-to-r from-primario to-azulOscuro hover:from-primario/90 hover:to-azulOscuro/90 text-white shadow-lg hover:shadow-xl hover:scale-105'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-sm'
           }`}
         >
-          <IoSend className={`w-5 h-5 transition-transform duration-200 ${
-            value.trim() && !disabled ? 'translate-x-0.5' : ''
-          }`} />
+          {isLoading ? (
+            <IoStop className="w-5 h-5" />
+          ) : (
+            <IoSend className={`w-5 h-5 transition-transform duration-200 ${
+              value.trim() && !disabled ? 'translate-x-0.5' : ''
+            }`} />
+          )}
         </Button>
       </div>
       </div>

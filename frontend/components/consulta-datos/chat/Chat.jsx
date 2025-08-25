@@ -6,6 +6,7 @@ const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
+  const [stopStreamingRef, setStopStreamingRef] = useState({ current: false });
   
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
@@ -13,9 +14,10 @@ const ConsultaChat = () => {
   const simulateStreamingResponse = (fullText, messageIndex) => {
     let currentText = '';
     let currentIndex = 0;
+    stopStreamingRef.current = false;
     
     const addNextCharacter = () => {
-      if (currentIndex < fullText.length) {
+      if (currentIndex < fullText.length && !stopStreamingRef.current) {
         currentText += fullText[currentIndex];
         
         setMessages(prev => {
@@ -58,6 +60,13 @@ const ConsultaChat = () => {
     };
 
     addNextCharacter();
+  };
+
+  const handleStopGeneration = () => {
+    stopStreamingRef.current = true;
+    setIsTyping(false);
+    setStreamingMessageIndex(null);
+    // El chat queda inmediatamente disponible para nuevos mensajes
   };
 
   const handleSendMessage = async (text) => {
@@ -138,7 +147,9 @@ Según mi análisis de los expedientes y la jurisprudencia disponible, puedo pro
         
         <ChatInput 
           onSendMessage={handleSendMessage} 
-          isDisabled={isTyping || streamingMessageIndex !== null}
+          onStopGeneration={handleStopGeneration}
+          isDisabled={false} // El chat siempre está disponible
+          isLoading={isTyping || streamingMessageIndex !== null}
           searchScope={searchScope}
           setSearchScope={setSearchScope}
         />
