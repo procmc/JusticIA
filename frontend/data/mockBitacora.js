@@ -198,6 +198,21 @@ export const registrosBitacora = [
     ip: '192.168.1.45',
     navegador: 'Firefox',
     duracion: 4200
+  },
+  {
+    id: 11,
+    fechaHora: new Date('2024-08-22T11:30:45'),
+    texto: 'Búsqueda de casos similares para expediente 2024-000010-1239-LA',
+    informacionAdicional: '15 casos similares encontrados. Threshold: 0.82',
+    expediente: '2024-000010-1239-LA',
+    tipoAccion: 'Búsqueda similares',
+    usuario: 'Carlos Rodríguez',
+    correoUsuario: 'carlos.rodriguez@justicia.gov',
+    rolUsuario: 'Usuario Judicial',
+    estado: 'Procesado',
+    ip: '192.168.1.45',
+    navegador: 'Firefox',
+    duracion: 4200
   }
 ];
 
