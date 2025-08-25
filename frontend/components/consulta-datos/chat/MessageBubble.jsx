@@ -3,21 +3,24 @@ import { Avatar } from '@heroui/react';
 
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   return (
-    <div className={`flex gap-4 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'} max-w-4xl mx-auto px-4`}>
+    <div className={`flex gap-2 sm:gap-4 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
       <Avatar
-        size="md"
+        size="sm"
+        className="sm:w-10 sm:h-10"
         src={isUser ? "/usuario.png" : "/bot.png"}
         name={isUser ? "U" : "J"}
-        className={`flex-shrink-0 border-0 ring-0 outline-0 ${
-          isUser 
-            ? 'bg-white text-white' 
-            : 'bg-blue-900 text-white'
-        }`}
+        classNames={{
+          base: `flex-shrink-0 border-0 ring-0 outline-0 ${
+            isUser 
+              ? 'bg-white text-white' 
+              : 'bg-blue-900 text-white'
+          }`
+        }}
         showFallback
       />
       
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'}`}>
-        <div className={`inline-block max-w-[calc(100%-10rem)] break-words ${
+        <div className={`inline-block max-w-[calc(100%-5rem)] sm:max-w-[calc(100%-10rem)] break-words ${
           isUser 
             ? 'bg-gray-100 text-gray-800 rounded-2xl rounded-tr-md px-4 py-3 text-left' 
             : 'bg-transparent text-gray-800'

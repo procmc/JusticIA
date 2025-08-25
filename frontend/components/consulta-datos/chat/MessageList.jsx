@@ -26,27 +26,27 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
   }, [isTyping]);
 
   return (
-    <div className="flex-1 md:mr-28 mx-12">
-      <div className="min-h-full py-20">
+    <div className="flex-1 mx-2 sm:mx-12 md:mr-28">
+      <div className="min-h-full py-8 sm:py-20">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-lg mx-auto px-4">
+            <div className="text-center max-w-full sm:max-w-lg mx-auto px-2 sm:px-4">
               {/* Imagen del bot de inicio */}
               <div className="mb-6 flex justify-center">
                 <img 
                   src="/botInicio.png" 
                   alt="JusticIA Bot" 
-                  className="w-48 h-48 object-contain"
+                  className="w-32 h-32 sm:w-48 sm:h-48 object-contain"
                 />
               </div>
               
               {/* Título */}
-              <h1 className="text-3xl font-bold text-tituloSeccion mb-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-tituloSeccion mb-3">
                 ¡Hola! Soy JusticBot
               </h1>
               
               {/* Descripción simple */}
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6">
                 Tu asistente jurídico inteligente especializado en el marco jurídico costarricense.
               </p>
               

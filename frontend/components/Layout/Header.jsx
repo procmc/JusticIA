@@ -17,23 +17,20 @@ const Header = ({ toggleCollapse, setToggleCollapse }) => {
         <div className="flex items-center">
           <Link href="/" className="block">
             <span
-              className="mb-3 ml-4 text-2xl font-extrabold select-none flex items-center gap-2 relative group cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
+              className="ml-4 text-2xl font-extrabold select-none flex items-center gap-2 relative group cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
               style={{ letterSpacing: '1px' }}>
               <span className="relative cursor-pointer transition-all duration-200 group-hover:drop-shadow-lg">
                 <span
                   className="text-3xl font-extrabold bg-clip-text text-transparent drop-shadow-md"
                   style={{
-                    background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)',
+                    background: 'linear-gradient(90deg, #0e4269ff 0%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     fontWeight: 900,
                     letterSpacing: '1px',
                   }}
                 >JusticIA</span>
-                <span
-                  className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-cyan-400/50"
-                  style={{ background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)', transform: 'scaleX(1)' }}
-                ></span>
+               
               </span>
             </span>
           </Link>

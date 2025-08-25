@@ -102,7 +102,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                     <span
                       className="text-3xl font-extrabold bg-clip-text text-transparent drop-shadow-md"
                       style={{
-                        background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)',
+                        background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #ffffffff 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 900,
@@ -111,7 +111,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                     >JusticIA</span>
                     <span
                       className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-cyan-400/50"
-                      style={{background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #38b6ff 100%)', transform: 'scaleX(1)'}}
+                      style={{background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #ffffffff 100%)', transform: 'scaleX(1)'}}
                     ></span>
                   </span>
                 </span>
