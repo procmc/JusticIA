@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
       />
 
       {/* Botón de usuario (visible en todas las pantallas) */}
-      <div className="absolute -top-2 right-0 z-50 hidden md:block">
+      <div className="absolute -top-1 right-0 z-50 hidden md:block">
         <UserButton />
       </div>
 

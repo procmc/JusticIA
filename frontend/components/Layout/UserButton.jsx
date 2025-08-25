@@ -99,7 +99,7 @@ export function UserButton() {
     }
 
     return (
-        <div className="absolute top-0 right-0 mr-2">
+        <div className="absolute -top-1.5 right-0 mr-2">
             <div className="flex py-4 px-3 items-center w-full h-full">
                 <div style={{ width: "2.5rem" }}>
                     <Dropdown placement="bottom-end">
