@@ -5,7 +5,7 @@ import LoadingResults from './LoadingResults';
 import ResultsHeader from './ResultsHeader';
 import NoResults from './results-grid/NoResults';
 import ResultsGrid from './results-grid/ResultsGrid';
-import CaseDetailsModal from './results-grid/details-modal/CaseDetailsModal';
+import CaseDetailsModal from './results-grid/details-drawer/CaseDetailsDrawer';
 import useSimilarityUtils from '@/hooks/busqueda-similares/useSimilarityUtils';
 
 const BusquedaSimilares = () => {
