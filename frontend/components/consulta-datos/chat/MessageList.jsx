@@ -59,7 +59,7 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
               
               {/* Mensaje de advertencia discreto */}
               <p className="text-xs text-gray-400 mt-4 italic">
-                JusticIA puede cometer errores. Considera verificar información importante.
+                JusticBot puede cometer errores. Considera verificar información importante.
               </p>
             </div>
           </div>
