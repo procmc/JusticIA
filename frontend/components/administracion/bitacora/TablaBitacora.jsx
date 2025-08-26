@@ -15,6 +15,7 @@ import {
 } from '@heroui/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { IoList, IoDocumentText } from 'react-icons/io5';
 import { EyeIcon } from '../../icons';
 
 const TablaBitacora = ({ registros, onVerDetalle }) => {
@@ -125,7 +126,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
             variant="light"
             onPress={() => onVerDetalle(registro)}
           >
-            <EyeIcon className="h-4 w-4 text-default-400" />
+            <EyeIcon className="h-6 w-6 text-default-400" />
           </Button>
         );
       default:
@@ -135,12 +136,27 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
 
   return (
     <Card>
-      <CardHeader className="flex justify-between items-center px-6 pt-6 pb-4">
-        <div className="flex flex-col">
-          <h3 className="text-lg font-semibold">Registros de Bitácora</h3>
-        </div>
-        <div className="text-small text-default-500">
-          {registros.length} registro{registros.length !== 1 ? 's' : ''} encontrado{registros.length !== 1 ? 's' : ''}
+      <CardHeader className="bg-white px-8 pt-6 pb-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
+              <IoList className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Registros de Bitácora</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Historial completo de actividades del sistema
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200/60">
+              <IoDocumentText className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {registros.length} registro{registros.length !== 1 ? 's' : ''} encontrado{registros.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardBody className="px-0 py-0">
