@@ -47,11 +47,11 @@ const SearchHeader = ({
         <CardBody className="p-6">
           {/* Header con título elegante */}
           <div className="flex items-center gap-2 mb-8">
-            <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg">
+            <div className="p-2 bg-primary rounded-lg shadow-lg">
               <IoSparkles className="w-4 h-4 text-white" />
             </div>
             <div >
-              <h2 className="text-lg font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
+              <h2 className="text-lg font-bold bg-primary bg-clip-text text-transparent">
                 Búsqueda Inteligente
               </h2>
               <p className="text-gray-500 text-xs">

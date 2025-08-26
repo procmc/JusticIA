@@ -32,8 +32,8 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
             <CardHeader className="bg-white px-8 pt-6 pb-3">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-md">
-                            <IoFunnel className="w-5 h-5 text-white" />
+                        <div className="p-3 bg-primary rounded-xl flex items-center justify-center shadow-md">
+                            <IoFunnel className="w-6 h-6 text-white" />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Filtros de Búsqueda</h2>
@@ -75,7 +75,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Usuario"
                                 labelPlacement='outside'
                                 placeholder="Nombre del usuario"
-                                color="primary"
+                                color="secondary"
                                 value={filtros.usuario}
                                 onChange={(e) => handleInputChange('usuario', e.target.value)}
                                 variant="bordered"
@@ -90,7 +90,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Expediente"
                                 labelPlacement='outside'
                                 placeholder="Número de expediente"
-                                color='primary'
+                                color='secondary'
                                 value={filtros.expediente}
                                 onChange={(e) => handleInputChange('expediente', e.target.value)}
                                 variant="bordered"
@@ -105,7 +105,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Tipo de Acción"
                                 labelPlacement='outside'
                                 placeholder="Selecciona un tipo"
-                                color='primary'
+                                color='secondary'
                                 selectedKeys={filtros.tipoAccion ? [filtros.tipoAccion.toLowerCase().replace(' ', '-')] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
@@ -130,7 +130,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Estado"
                                 labelPlacement='outside'
                                 placeholder="Selecciona un estado"
-                                color='primary'
+                                color='secondary'
                                 selectedKeys={filtros.estado ? [filtros.estado.toLowerCase()] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
@@ -157,7 +157,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 value={filtros.fechaInicio ? parseDate(filtros.fechaInicio) : null}
                                 onChange={(date) => handleDateChange('fechaInicio', date)}
                                 variant="bordered"
-                                color='primary'
+                                color='secondary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 className="w-full"
@@ -172,7 +172,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 value={filtros.fechaFin ? parseDate(filtros.fechaFin) : null}
                                 onChange={(date) => handleDateChange('fechaFin', date)}
                                 variant="bordered"
-                                color='primary'
+                                color='secondary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 className="w-full"

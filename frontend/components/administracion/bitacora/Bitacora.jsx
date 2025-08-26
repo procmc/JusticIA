@@ -90,7 +90,7 @@ const Bitacora = () => {
           }}
         >
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+            <div className="p-3 bg-primary rounded-xl flex items-center justify-center shadow-sm">
               <IoShield className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -115,9 +115,9 @@ const Bitacora = () => {
             }}
             classNames={{
               tabList: "gap-6 w-full relative rounded-none p-0 border-b border-gray-200",
-              cursor: "w-full bg-blue-600 h-0.5",
+              cursor: "w-full bg-secondary h-0.5",
               tab: "max-w-fit px-0 h-10",
-              tabContent: "group-data-[selected=true]:text-blue-600 text-gray-600 font-medium"
+              tabContent: "group-data-[selected=true]:text-secondary text-gray-600 font-medium"
             }}
           >
             <Tab
