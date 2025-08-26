@@ -94,17 +94,17 @@ const IngestaDatosModular = () => {
           <div className="space-y-4">
             <Input
               label="Número de Expediente"
-              placeholder="Ej: 2024,98-123456-7890-AB"
+              placeholder="Ej: 98-003287-0166-LA"
               value={numeroExpediente}
               onChange={manejarCambioExpediente}
               color={numeroExpediente ? (expedienteValido ? 'success' : 'danger') : 'default'}
-              description="Formato: AAAA,98-XXXXXX-XXXX-XX (Año, código fijo, número, dígitos verificadores y letras)"
+              description="Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)"
               className="max-w-md"
             />
             
             {numeroExpediente && !expedienteValido && (
               <p className="text-sm text-red-600">
-                ⚠️ Formato incorrecto. Use: AAAA,98-XXXXXX-XXXX-XX
+                ⚠️ Formato incorrecto. Use: AA-NNNNNN-OOOO-MM
               </p>
             )}
             
