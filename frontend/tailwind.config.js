@@ -9,7 +9,7 @@ module.exports = {
   ],
   important: true,
   theme: {},
-  darkMode: "class", // 👈 mejor usar 'class' para poder alternar manualmente
+  darkMode: "class", // usa 'class' si quieres alternar manualmente
   plugins: [
     heroui({
       themes: {
@@ -26,7 +26,7 @@ module.exports = {
               700: "#8a8a8c",
               800: "#656567",
               900: "#404041",
-              foreground: "#000",
+              foreground: "#000000",
               DEFAULT: "#d4d4d8",
             },
             primary: {
@@ -41,7 +41,7 @@ module.exports = {
               800: "#000c2d",
               900: "#000720",
               DEFAULT: "#001a4f",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
             secondary: {
               50: "#eaf4ff",
@@ -55,7 +55,7 @@ module.exports = {
               800: "#1a4f97",
               900: "#143a73",
               DEFAULT: "#4d9eff",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
             success: {
               50: "#e2f8ec",
@@ -69,7 +69,7 @@ module.exports = {
               800: "#0b5f30",
               900: "#073c1e",
               DEFAULT: "#17c964",
-              foreground: "#000",
+              foreground: "#000000",
             },
             warning: {
               50: "#fef4e4",
@@ -83,7 +83,7 @@ module.exports = {
               800: "#744e11",
               900: "#4a320b",
               DEFAULT: "#f5a524",
-              foreground: "#000",
+              foreground: "#000000",
             },
             danger: {
               50: "#fdebec",
@@ -97,12 +97,24 @@ module.exports = {
               800: "#630910",
               900: "#45060b",
               DEFAULT: "#c1121f",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
+
+            // capas y básicos
             background: "#ffffff",
             foreground: "#000000",
+            content1: { DEFAULT: "#ffffff", foreground: "#000000" },
+            content2: { DEFAULT: "#f4f4f5", foreground: "#000000" },
+            content3: { DEFAULT: "#e4e4e7", foreground: "#000000" },
+            content4: { DEFAULT: "#d4d4d8", foreground: "#000000" },
+            focus: "#001A4F",
+            overlay: "#000000",
+          },
+          layout: {
+            disabledOpacity: "0.5",
           },
         },
+
         dark: {
           colors: {
             default: {
@@ -116,7 +128,7 @@ module.exports = {
               700: "#b2b2b5",
               800: "#d9d9da",
               900: "#ffffff",
-              foreground: "#fff",
+              foreground: "#ffffff",
               DEFAULT: "#3f3f46",
             },
             primary: {
@@ -131,7 +143,7 @@ module.exports = {
               800: "#d6e0ff",
               900: "#eaf0ff",
               DEFAULT: "#001a4f",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
             secondary: {
               50: "#143a73",
@@ -145,7 +157,7 @@ module.exports = {
               800: "#d5eaff",
               900: "#eaf4ff",
               DEFAULT: "#4d9eff",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
             success: {
               50: "#073c1e",
@@ -159,7 +171,7 @@ module.exports = {
               800: "#b9efd1",
               900: "#e2f8ec",
               DEFAULT: "#17c964",
-              foreground: "#000",
+              foreground: "#000000",
             },
             warning: {
               50: "#4a320b",
@@ -173,7 +185,7 @@ module.exports = {
               800: "#fce4bd",
               900: "#fef4e4",
               DEFAULT: "#f5a524",
-              foreground: "#000",
+              foreground: "#000000",
             },
             danger: {
               50: "#45060b",
@@ -187,10 +199,20 @@ module.exports = {
               800: "#f9d3d6",
               900: "#fdebec",
               DEFAULT: "#c1121f",
-              foreground: "#fff",
+              foreground: "#ffffff",
             },
+            // capas y básicos
             background: "#0b0f1a",
             foreground: "#ffffff",
+            content1: { DEFAULT: "#161b26", foreground: "#ffffff" },
+            content2: { DEFAULT: "#1f2633", foreground: "#ffffff" },
+            content3: { DEFAULT: "#2a3345", foreground: "#ffffff" },
+            content4: { DEFAULT: "#36425a", foreground: "#ffffff" },
+            focus: "#001A4F",
+            overlay: "#ffffff",
+          },
+          layout: {
+            disabledOpacity: "0.5",
           },
         },
       },
