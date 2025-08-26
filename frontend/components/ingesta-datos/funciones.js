@@ -23,7 +23,7 @@ export const formatearTamano = (bytes) => {
 
 // Validación del formato de expediente
 export const validarFormatoExpediente = (expediente) => {
-  // Formato: año,98-003287-0166-La (4 dígitos año, 98-, 6 dígitos consecutivo, -, 4 dígitos oficina, -, 2 caracteres materia)
-  const regex = /^\d{4},98-\d{6}-\d{4}-[A-Za-z]{2}$/;
+  // Formato: 98-003287-0166-LA (año 2 dígitos, -, 6 dígitos consecutivo, -, 4 dígitos oficina, -, 2 caracteres materia)
+  const regex = /^\d{2}-\d{6}-\d{4}-[A-Za-z]{2}$/;
   return regex.test(expediente.trim());
 };
