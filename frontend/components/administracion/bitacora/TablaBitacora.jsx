@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  Table, 
-  TableHeader, 
-  TableColumn, 
-  TableBody, 
-  TableRow, 
-  TableCell, 
-  Button, 
-  Chip, 
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Button,
+  Chip,
   Pagination,
   Card,
   CardBody,
@@ -72,7 +72,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
             <p className="font-medium text-small">
               {format(registro.fechaHora, 'dd/MM/yyyy', { locale: es })}
             </p>
-            <p className="text-tiny text-default-400">
+            <p className="text-tiny text-default-700">
               {format(registro.fechaHora, 'HH:mm:ss')}
             </p>
           </div>
@@ -81,12 +81,12 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
         return (
           <div className="flex flex-col">
             <p className="font-medium text-small">{registro.usuario}</p>
-            <p className="text-tiny text-default-400">{registro.rolUsuario}</p>
+            <p className="text-tiny text-default-700">{registro.rolUsuario}</p>
           </div>
         );
       case "accion":
         return (
-          <Chip 
+          <Chip
             color={obtenerColorTipoAccion(registro.tipoAccion)}
             size="sm"
             variant="flat"
@@ -102,7 +102,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
         );
       case "estado":
         return (
-          <Chip 
+          <Chip
             color={obtenerColorEstado(registro.estado)}
             size="sm"
             variant="flat"
@@ -112,22 +112,24 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
         );
       case "descripcion":
         return (
-          <div className="max-w-xs">
-            <p className="text-small truncate" title={registro.texto}>
+          <div className="max-w-xl">
+            <p className="text-small" title={registro.texto}>
               {registro.texto}
             </p>
           </div>
         );
       case "acciones":
         return (
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={() => onVerDetalle(registro)}
-          >
-            <EyeIcon className="h-6 w-6 text-default-400" />
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              onPress={() => onVerDetalle(registro)}
+            >
+              <EyeIcon className="h-6 w-6 text-default-600" />
+            </Button>
+          </div>
         );
       default:
         return null;
@@ -184,7 +186,7 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
           </div>
         ) : (
           <div className="px-6">
-            <Table 
+            <Table
               aria-label="Tabla de registros de bitácora"
               removeWrapper
               isStriped
@@ -196,7 +198,10 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
             >
               <TableHeader columns={columns}>
                 {(column) => (
-                  <TableColumn key={column.key} className="text-start font-semibold">
+                  <TableColumn
+                    key={column.key}
+                    className={`font-semibold ${column.key === 'acciones' ? 'text-center' : 'text-start'}`}
+                  >
                     {column.label}
                   </TableColumn>
                 )}
@@ -214,23 +219,36 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
           </div>
         )}
       </CardBody>
-      
-      {/* Paginación mejorada */}
+
+      {/* Paginación mejorada y responsive */}
       {registros.length > 0 && totalPaginas > 1 && (
-        <div className="flex w-full justify-between items-center px-6 py-4 border-t border-gray-200">
-          <div className="text-small text-default-500">
+        <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4 px-4 sm:px-6 py-4 border-t border-gray-200">
+          {/* Información de resultados - Oculta en móvil, visible en tablet+ */}
+          <div className="hidden sm:block text-small text-default-700">
             Mostrando {indiceInicio + 1} a {Math.min(indiceFin, registros.length)} de {registros.length} resultados
           </div>
-          <Pagination
-            isCompact
-            showControls
-            showShadow
-            color="primary"
-            page={paginaActual}
-            total={totalPaginas}
-            onChange={setPaginaActual}
-            initialPage={1}
-          />
+          
+          {/* Información compacta para móvil */}
+          <div className="block sm:hidden text-tiny text-default-700 text-center">
+            {indiceInicio + 1}-{Math.min(indiceFin, registros.length)} de {registros.length}
+          </div>
+          
+          {/* Paginación adaptativa */}
+          <div className="flex justify-center w-full sm:w-auto">
+            <Pagination
+              isCompact
+              showControls={totalPaginas > 3} // Solo mostrar controles si hay muchas páginas
+              showShadow
+              color="primary"
+              page={paginaActual}
+              total={totalPaginas}
+              onChange={setPaginaActual}
+              initialPage={1}
+              size="sm" // Tamaño pequeño para mejor responsive
+              siblings={1} // Menos números de página en móvil
+              boundaries={1}
+            />
+          </div>
         </div>
       )}
     </Card>
