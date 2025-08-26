@@ -15,6 +15,7 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { format, eachDayOfInterval, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { IoTrendingUp, IoStatsChart, IoPeople, IoTime, IoDocumentText, IoPersonAdd, IoFolderOpen, IoToday } from 'react-icons/io5';
 
 ChartJS.register(
   CategoryScale,
@@ -38,9 +39,12 @@ const DashboardEstadisticas = ({ estadisticas, registros }) => {
 
     const datos = ultimosDias.map(dia => {
       const diaStr = format(dia, 'yyyy-MM-dd');
-      const count = registros.filter(r => 
-        format(r.fechaHora, 'yyyy-MM-dd') === diaStr
-      ).length;
+      const count = registros.filter(r => {
+        const fechaRegistro = new Date(r.fechaHora);
+        const fechaRegistroStr = format(fechaRegistro, 'yyyy-MM-dd');
+        return fechaRegistroStr === diaStr;
+      }).length;
+      
       return {
         fecha: format(dia, 'dd/MM', { locale: es }),
         cantidad: count
@@ -168,68 +172,87 @@ const DashboardEstadisticas = ({ estadisticas, registros }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Tarjetas de Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-medium mr-4">
-                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-default-900">{estadisticas.totalRegistros.toLocaleString()}</h3>
-                <p className="text-small text-default-600">Total Registros</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-medium mr-4">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-default-900">{estadisticas.usuariosUnicos}</h3>
-                <p className="text-small text-default-600">Usuarios Únicos</p>
+    <div 
+      className="space-y-6" 
+      style={{
+        transform: 'none',
+        transition: 'none',
+        position: 'static',
+        willChange: 'auto'
+      }}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <IoDocumentText className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-blue-900 mb-1">
+                    {estadisticas.totalRegistros.toLocaleString()}
+                  </h3>
+                  <p className="text-sm font-medium text-blue-700">Registros Históricos</p>
+                  <p className="text-xs text-blue-600 mt-1">Desde el inicio del sistema</p>
+                </div>
               </div>
             </div>
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-medium mr-4">
-                <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-default-900">{estadisticas.expedientesUnicos}</h3>
-                <p className="text-small text-default-600">Expedientes Únicos</p>
+        <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <IoPersonAdd className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-green-900 mb-1">
+                    {estadisticas.usuariosUnicos}
+                  </h3>
+                  <p className="text-sm font-medium text-green-700">Usuarios Diferentes</p>
+                  <p className="text-xs text-green-600 mt-1">Personas que han usado el sistema</p>
+                </div>
               </div>
             </div>
           </CardBody>
         </Card>
 
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-medium mr-4">
-                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+        <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <IoFolderOpen className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-purple-900 mb-1">
+                    {estadisticas.expedientesUnicos}
+                  </h3>
+                  <p className="text-sm font-medium text-purple-700">Expedientes Consultados</p>
+                  <p className="text-xs text-purple-600 mt-1">Casos que han tenido actividad</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-2xl font-bold text-default-900">{estadisticas.registrosHoy}</h3>
-                <p className="text-small text-default-600">Registros Hoy</p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <IoToday className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-orange-900 mb-1">
+                    {estadisticas.registrosHoy}
+                  </h3>
+                  <p className="text-sm font-medium text-orange-700">Acciones de Hoy</p>
+                  <p className="text-xs text-orange-600 mt-1">Actividad en las últimas 24 horas</p>
+                </div>
               </div>
             </div>
           </CardBody>
@@ -237,159 +260,97 @@ const DashboardEstadisticas = ({ estadisticas, registros }) => {
       </div>
 
       {/* Gráficos Principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div 
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        style={{
+          transform: 'none',
+          transition: 'none',
+          position: 'static',
+          willChange: 'auto',
+          backfaceVisibility: 'hidden',
+          perspective: 'none'
+        }}
+      >
         {/* Línea de Tiempo de Actividad */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Actividad de los Últimos 14 Días</h3>
+        <Card style={{ transform: 'none', transition: 'none', willChange: 'auto' }}>
+          <CardHeader className="bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <IoTrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Actividad de los Últimos 14 Días</h3>
+                <p className="text-sm text-gray-600">Tendencia de actividad diaria</p>
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
-            <div className="h-64">
+            <div className="h-64" style={{ transform: 'none', position: 'relative' }}>
               <Line data={prepararDatosLineaTiempo()} options={opcionesGraficos} />
             </div>
           </CardBody>
         </Card>
 
         {/* Acciones por Tipo */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Distribución por Tipo de Acción</h3>
+        <Card style={{ transform: 'none', transition: 'none', willChange: 'auto' }}>
+          <CardHeader className="bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                <IoStatsChart className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Distribución por Tipo de Acción</h3>
+                <p className="text-sm text-gray-600">Análisis de tipos de operaciones</p>
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
-            <div className="h-64">
+            <div className="h-64" style={{ transform: 'none', position: 'relative' }}>
               <Bar data={prepararDatosAcciones()} options={opcionesGraficos} />
             </div>
           </CardBody>
         </Card>
 
         {/* Distribución por Usuarios */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Top 5 Usuarios Más Activos</h3>
+        <Card style={{ transform: 'none', transition: 'none', willChange: 'auto' }}>
+          <CardHeader className="bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow-md">
+                <IoPeople className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Top 5 Usuarios Más Activos</h3>
+                <p className="text-sm text-gray-600">Distribución de actividad por usuario</p>
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
-            <div className="h-64">
+            <div className="h-64" style={{ transform: 'none', position: 'relative' }}>
               <Doughnut data={prepararDatosUsuarios()} options={opcionesCircular} />
             </div>
           </CardBody>
         </Card>
 
         {/* Horarios Pico */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Horarios Pico de Uso (8:00 - 18:00)</h3>
+        <Card style={{ transform: 'none', transition: 'none', willChange: 'auto' }}>
+          <CardHeader className="bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-md">
+                <IoTime className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Horarios Pico de Uso (8:00 - 18:00)</h3>
+                <p className="text-sm text-gray-600">Patrón de uso durante horas laborales</p>
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
-            <div className="h-64">
+            <div className="h-64" style={{ transform: 'none', position: 'relative' }}>
               <Bar data={prepararDatosHoras()} options={opcionesGraficos} />
             </div>
           </CardBody>
         </Card>
       </div>
-
-      {/* Tablas de Reportes Específicos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Usuarios Más Activos */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Top 10 Usuarios Más Activos</h3>
-          </CardHeader>
-          <CardBody className="p-0">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-default-100">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-default-600 uppercase">#</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-default-600 uppercase">Usuario</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-default-600 uppercase">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-default-200">
-                  {estadisticas.usuariosActivos.slice(0, 10).map((usuario, index) => (
-                    <tr key={usuario.nombre} className="hover:bg-default-50">
-                      <td className="px-4 py-2 text-sm font-medium text-default-900">{index + 1}</td>
-                      <td className="px-4 py-2 text-sm text-default-900">{usuario.nombre}</td>
-                      <td className="px-4 py-2 text-sm text-default-900 text-right">{usuario.cantidad}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Top Expedientes */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Expedientes con Mayor Actividad</h3>
-          </CardHeader>
-          <CardBody className="p-0">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-default-100">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-default-600 uppercase">#</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-default-600 uppercase">Expediente</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-default-600 uppercase">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-default-200">
-                  {estadisticas.expedientesActivos.slice(0, 10).map((expediente, index) => (
-                    <tr key={expediente.expediente} className="hover:bg-default-50">
-                      <td className="px-4 py-2 text-sm font-medium text-default-900">{index + 1}</td>
-                      <td className="px-4 py-2 text-sm font-mono text-default-900">{expediente.expediente}</td>
-                      <td className="px-4 py-2 text-sm text-default-900 text-right">{expediente.cantidad}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Análisis de Errores */}
-      {estadisticas.erroresRecientes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Análisis de Errores Recientes</h3>
-          </CardHeader>
-          <CardBody className="p-0">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-danger-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-danger-600 uppercase">Fecha</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-danger-600 uppercase">Usuario</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-danger-600 uppercase">Acción</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-danger-600 uppercase">Expediente</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-danger-600 uppercase">Descripción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-default-200">
-                  {estadisticas.erroresRecientes.map((error) => (
-                    <tr key={error.id} className="hover:bg-default-50">
-                      <td className="px-4 py-2 text-sm text-default-900">
-                        {format(error.fechaHora, 'dd/MM/yyyy HH:mm')}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-default-900">{error.usuario}</td>
-                      <td className="px-4 py-2 text-sm">
-                        <Chip color="danger" size="sm" variant="flat">
-                          {error.tipoAccion}
-                        </Chip>
-                      </td>
-                      <td className="px-4 py-2 text-sm font-mono text-default-900">{error.expediente}</td>
-                      <td className="px-4 py-2 text-sm text-default-900 max-w-xs truncate" title={error.texto}>
-                        {error.texto}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
-        </Card>
-      )}
     </div>
   );
 };

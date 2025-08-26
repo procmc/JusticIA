@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Card, CardBody } from '@heroui/react';
+import { Button, Card, CardBody, Tabs, Tab } from '@heroui/react';
+import { IoDocumentText, IoStatsChart, IoCalendar, IoShield } from 'react-icons/io5';
 import FiltrosBitacora from './FiltrosBitacora';
 import TablaBitacora from './TablaBitacora';
 import DetalleEvento from './DetalleEvento';
@@ -60,44 +61,86 @@ const Bitacora = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <Card>
-        <CardBody>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div 
+      className="p-6 space-y-6"
+      style={{
+        transform: 'none',
+        transition: 'none',
+        position: 'static',
+        willChange: 'auto'
+      }}
+    >
+      {/* Header simplificado y elegante */}
+      <div 
+        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
+        style={{
+          transform: 'none',
+          transition: 'none',
+          position: 'static',
+          willChange: 'auto',
+          backfaceVisibility: 'hidden'
+        }}
+      >
+        <div 
+          className="p-6"
+          style={{
+            transform: 'none',
+            transition: 'none',
+            position: 'static'
+          }}
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+              <IoShield className="w-6 h-6 text-white" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-default-900">
+              <h1 className="text-2xl font-bold text-gray-900">
                 Bitácora del Sistema
               </h1>
-              <p className="text-default-600 mt-1">
+              <p className="text-gray-600">
                 Registro completo de actividades y auditoría del sistema
               </p>
             </div>
-
-            {/* Navegación entre vistas */}
-            <div className="flex bg-default-100 rounded-large p-1">
-              <Button
-                size="sm"
-                variant={vistaActual === 'registros' ? 'solid' : 'light'}
-                color={vistaActual === 'registros' ? 'primary' : 'default'}
-                onPress={() => setVistaActual('registros')}
-                className="px-4"
-              >
-                📋 Registros
-              </Button>
-              <Button
-                size="sm"
-                variant={vistaActual === 'estadisticas' ? 'solid' : 'light'}
-                color={vistaActual === 'estadisticas' ? 'primary' : 'default'}
-                onPress={() => setVistaActual('estadisticas')}
-                className="px-4"
-              >
-                📊 Estadísticas
-              </Button>
-            </div>
           </div>
-        </CardBody>
-      </Card>
+
+          {/* Tabs simplificados */}
+          <Tabs
+            selectedKey={vistaActual}
+            onSelectionChange={setVistaActual}
+            variant="underlined"
+            style={{
+              transform: 'none',
+              transition: 'none',
+              willChange: 'auto'
+            }}
+            classNames={{
+              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-gray-200",
+              cursor: "w-full bg-blue-600 h-0.5",
+              tab: "max-w-fit px-0 h-10",
+              tabContent: "group-data-[selected=true]:text-blue-600 text-gray-600 font-medium"
+            }}
+          >
+            <Tab
+              key="registros"
+              title={
+                <div className="flex items-center gap-3">
+                  <IoDocumentText className="w-5 h-5" />
+                  <span>Registros ({registrosBitacora.length})</span>
+                </div>
+              }
+            />
+            <Tab
+              key="estadisticas"
+              title={
+                <div className="flex items-center gap-3">
+                  <IoStatsChart className="w-5 h-5" />
+                  <span>Estadísticas</span>
+                </div>
+              }
+            />
+          </Tabs>
+        </div>
+      </div>
 
       {/* Contenido según la vista seleccionada */}
       {vistaActual === 'registros' ? (
