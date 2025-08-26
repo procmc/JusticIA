@@ -1,6 +1,7 @@
 import React from 'react';
-import { Input, Select, SelectItem, Button, Card, CardBody, Form, DatePicker } from '@heroui/react';
+import { Input, Select, SelectItem, Button, Card, CardBody, DatePicker, CardHeader } from '@heroui/react';
 import { parseDate } from '@internationalized/date';
+import { IoFunnel, IoSearch } from 'react-icons/io5';
 import { SearchIcon } from '../../icons';
 
 const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }) => {
@@ -26,19 +27,48 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
         onFiltroChange({ ...filtros, [campo]: dateString });
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onBuscar();
-    };
-
     return (
         <Card className="mb-8">
+            <CardHeader className="bg-white px-8 pt-6 pb-3">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-md">
+                            <IoFunnel className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">Filtros de Búsqueda</h2>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Personaliza tu búsqueda para encontrar registros específicos
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {/* Botones de acción en el header */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+                        <Button
+                            type="button"
+                            color="default"
+                            variant="bordered"
+                            onPress={onLimpiarFiltros}
+                            size="md"
+                            className="w-full sm:w-auto px-4 sm:px-6 font-medium"
+                        >
+                            Limpiar Filtros
+                        </Button>
+                        <Button
+                            onPress={onBuscar}
+                            color="primary"
+                            startContent={<SearchIcon className="h-4 w-4" />}
+                            size="md"
+                            className="w-full sm:w-auto px-4 sm:px-6 font-medium"
+                        >
+                            Buscar
+                        </Button>
+                    </div>
+                </div>
+            </CardHeader>
             <CardBody className="p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">Filtros de Búsqueda</h2>
-
-                <Form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Grid responsive que se adapta automáticamente */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4 items-end w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4 items-end w-full">
                         {/* Filtro por Usuario */}
                         <div className="w-full xl:col-span-1 2xl:col-span-1">
                             <Input
@@ -149,31 +179,6 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                             />
                         </div>
                     </div>
-
-                    {/* Botones de Acción */}
-                    <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
-                        <Button
-                            type="submit"
-                            color="primary"
-                            startContent={<SearchIcon className="h-4 w-4" />}
-                            size="lg"
-                            className="min-w-40 px-6"
-                        >
-                            Buscar
-                        </Button>
-
-                        <Button
-                            type="button"
-                            color="default"
-                            variant="bordered"
-                            onClick={onLimpiarFiltros}
-                            size="lg"
-                            className="min-w-40 px-6"
-                        >
-                            Limpiar Filtros
-                        </Button>
-                    </div>
-                </Form>
             </CardBody>
         </Card>
     );
