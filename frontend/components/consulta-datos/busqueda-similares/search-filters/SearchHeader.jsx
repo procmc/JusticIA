@@ -43,10 +43,10 @@ const SearchHeader = ({
       {/* Gradiente de fondo sutil */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-white to-secondary-50/20 rounded-2xl -z-10"></div>
 
-      <Card className="mb-6 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-        <CardBody className="p-4">
+      <Card className="mb-6 border border-gray-200 shadow-lg bg-white/80 backdrop-blur-sm">
+        <CardBody className="p-10">
           {/* Header con título elegante */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-8">
             <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg">
               <IoSparkles className="w-4 h-4 text-white" />
             </div>
@@ -138,38 +138,44 @@ const SearchHeader = ({
           <div className="mt-2">
             {searchMode === 'description' && (
               <div className="space-y-2">
-                <div className="relative">
+                <div className="relative mb-4">
                   <Textarea
                     placeholder="Describe tu caso legal... Ej: 'Despido injustificado de trabajador...'"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    rows={3}
-                    className="w-full resize-none text-gray-700 text-sm pb-4 custom-scrollbar"
+                    rows={6}
+                    className="w-full resize-none text-gray-700 text-sm custom-scrollbar"
                   />
-                  <div className="absolute bottom-2 right-3 text-xs text-gray-400 bg-white/80 px-1 rounded">
+                </div>
+                
+                {/* Contador y ejemplos alineados */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  {/* Ejemplos */}
+                  <div className="flex flex-wrap gap-1 items-center">
+                    <span className="text-xs text-gray-500">Ejemplos:</span>
+                    {[
+                      "Despido laboral",
+                      "Accidente tránsito",
+                      "Divorcio",
+                      "Resp. civil"
+                    ].map((suggestion) => (
+                      <Chip
+                        key={suggestion}
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        className="cursor-pointer hover:bg-primary-100 transition-colors text-xs px-2 py-0"
+                        onClick={() => setSearchText(suggestion)}
+                      >
+                        {suggestion}
+                      </Chip>
+                    ))}
+                  </div>
+                  
+                  {/* Contador */}
+                  <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded flex-shrink-0">
                     {searchText.length}/2000
                   </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1 pt-2">
-                  <span className="text-xs text-gray-500">Ejemplos:</span>
-                  {[
-                    "Despido laboral",
-                    "Accidente tránsito",
-                    "Divorcio",
-                    "Resp. civil"
-                  ].map((suggestion) => (
-                    <Chip
-                      key={suggestion}
-                      size="sm"
-                      variant="flat"
-                      color="primary"
-                      className="cursor-pointer hover:bg-primary-100 transition-colors text-xs px-2 py-0"
-                      onClick={() => setSearchText(suggestion)}
-                    >
-                      {suggestion}
-                    </Chip>
-                  ))}
                 </div>
               </div>
             )}
