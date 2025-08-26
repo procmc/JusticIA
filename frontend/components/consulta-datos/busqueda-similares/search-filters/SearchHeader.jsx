@@ -44,7 +44,7 @@ const SearchHeader = ({
       <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-white to-secondary-50/20 rounded-2xl -z-10"></div>
 
       <Card className="mb-6 border border-gray-200 shadow-lg bg-white/80 backdrop-blur-sm">
-        <CardBody className="p-10">
+        <CardBody className="p-6">
           {/* Header con título elegante */}
           <div className="flex items-center gap-2 mb-8">
             <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg">
