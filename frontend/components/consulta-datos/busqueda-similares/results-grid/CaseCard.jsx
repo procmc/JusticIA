@@ -14,8 +14,8 @@ const CaseCard = ({
 
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-      <CardBody className="p-4">
-        <div className="space-y-3">
+      <CardBody className="p-8">
+        <div className="space-y-6">
           {/* Header con número de expediente y año/oficina */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
