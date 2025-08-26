@@ -168,7 +168,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                       {!toggleCollapse && expandedItems.includes(id) && (
                         <div className="ml-4 mt-2 mb-2">
                           {subItems.map((subItem, index) => (
-                            <Tooltip key={index} content={subItem.label} placement="right">
+                            <Tooltip key={index} content={subItem.label} placement="right" isDisabled={!toggleCollapse}>
                               <Link
                                 href={subItem.link}
                                 className={classNames(
