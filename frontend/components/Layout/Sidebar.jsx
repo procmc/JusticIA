@@ -69,7 +69,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   return (
     <div
       className={classNames(
-        "h-screen px-4 pt-8 pb-4 bg-azulOscuro flex flex-col justify-between shadow-xl z-50 transform transition-all duration-500 ease-in-out",
+        "h-screen px-4 pt-8 pb-4 bg-primary flex flex-col justify-between shadow-xl z-50 transform transition-all duration-500 ease-in-out",
         {
           "w-64": !toggleCollapse,
           "w-20 md:w-20": toggleCollapse,
