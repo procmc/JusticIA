@@ -225,7 +225,7 @@ const IngestaDatosCorregido = () => {
               <Input
                 label="Num. Expediente"
                 labelPlacement='outside'
-                placeholder="2024,98-003287-0166-La"
+                placeholder="98-003287-0166-LA"
                 value={expedienteNumero}
                 onChange={(e) => setExpedienteNumero(e.target.value)}
                 startContent={<FiFolder className="text-xl text-default-400 pointer-events-none shrink-0" />}
@@ -233,7 +233,7 @@ const IngestaDatosCorregido = () => {
                 variant="bordered"
                 radius="md"
                 color='primary'
-                description="Formato: Año,98-Consecutivo-Oficina-Materia"
+                description="Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)"
                 isRequired
                 classNames={{
                   input: "placeholder:text-gray-400",
