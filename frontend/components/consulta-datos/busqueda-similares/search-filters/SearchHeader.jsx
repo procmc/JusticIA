@@ -186,7 +186,7 @@ const SearchHeader = ({
                   <Input
                     label="Número de expediente"
                     labelPlacement='outside'
-                    placeholder="2024-001-01-CI"
+                    placeholder="98-003287-0166-LA"
                     value={expedientNumber}
                     onChange={(e) => setExpedientNumber(e.target.value)}
                     variant="bordered"
@@ -198,7 +198,7 @@ const SearchHeader = ({
                     className="w-full"
                   />
                   <p className="text-gray-500 text-xs mt-3">
-                    Formato: AAAA-NNN-NN-XX
+                    Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)
                   </p>
                 </div>
               </div>
