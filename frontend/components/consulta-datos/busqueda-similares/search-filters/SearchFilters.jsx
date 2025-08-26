@@ -14,7 +14,7 @@ const SearchFilters = ({
   hasSearched = false
 }) => {
   return (
-    <div>
+    <div className="space-y-10">
       <SearchHeader
         searchMode={searchMode}
         setSearchMode={setSearchMode}
