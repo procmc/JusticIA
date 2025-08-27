@@ -43,7 +43,7 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
                 </div>
 
                 {/* Título */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-tituloSeccion mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-3">
                   ¡Hola! Soy JusticBot
                 </h1>
 
@@ -51,13 +51,6 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
                 <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6">
                   Tu asistente jurídico inteligente especializado en el marco jurídico costarricense.
                 </p>
-
-                {/* Call to action simple */}
-                <div className="bg-gray-50 p-4 rounded-xl border">
-                  <p className="text-gray-700 text-sm">
-                    💬 Escribe tu consulta jurídica para comenzar
-                  </p>
-                </div>
 
                 {/* Mensaje de advertencia discreto */}
                 <p className="text-xs text-gray-400 mt-4 italic">
