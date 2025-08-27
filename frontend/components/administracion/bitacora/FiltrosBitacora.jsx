@@ -2,6 +2,7 @@ import React from 'react';
 import { Input, Select, SelectItem, Button, Card, CardBody, DatePicker, CardHeader } from '@heroui/react';
 import { parseDate } from '@internationalized/date';
 import { IoFunnel, IoSearch } from 'react-icons/io5';
+import { PiBroomLight } from 'react-icons/pi';
 import { SearchIcon } from '../../icons';
 
 const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }) => {
@@ -27,6 +28,18 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
         onFiltroChange({ ...filtros, [campo]: dateString });
     };
 
+    // Verificar si hay contenido en los filtros
+    const hasContent = () => {
+        return Object.values(filtros).some(valor => valor !== '');
+    };
+
+    // Verificar si se puede buscar (al menos un filtro activo)
+    const canSearch = () => {
+        return hasContent();
+    };
+
+    const isButtonDisabled = !canSearch();
+
     return (
         <Card className="mb-8">
             <CardHeader className="bg-white px-8 pt-6 pb-3">
@@ -46,24 +59,31 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                     {/* Botones de acción en el header */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
                         <Button
-                            type="button"
-                            color="default"
-                            variant="bordered"
-                            onPress={onLimpiarFiltros}
-                            size="md"
-                            className="w-full sm:w-auto px-4 sm:px-6 font-medium"
-                        >
-                            Limpiar Filtros
-                        </Button>
-                        <Button
                             onPress={onBuscar}
                             color="primary"
-                            startContent={<SearchIcon className="h-4 w-4" />}
                             size="md"
-                            className="w-full sm:w-auto px-4 sm:px-6 font-medium"
+                            startContent={<IoSearch className="w-4 h-4" />}
+                            isDisabled={isButtonDisabled}
+                            className={`flex-1 sm:flex-none px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
+                              }`}
+                            radius="md"
                         >
                             Buscar
                         </Button>
+
+                        <Button
+                            onPress={onLimpiarFiltros}
+                            color="default"
+                            variant="flat"
+                            size="md"
+                            startContent={<PiBroomLight className="w-4 h-4" />}
+                            isDisabled={!hasContent()}
+                            className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm"
+                            radius="md"
+                        >
+                        </Button>            
                     </div>
                 </div>
             </CardHeader>
