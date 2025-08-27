@@ -2,12 +2,12 @@ import React from 'react';
 import { Card, CardBody, Chip, Progress, Button } from '@heroui/react';
 import { IoCalendar, IoScale, IoDocument, IoEye } from 'react-icons/io5';
 
-const CaseCard = ({ 
-  caseData, 
-  parseExpedientNumber, 
-  getMatterDescription, 
+const CaseCard = ({
+  caseData,
+  parseExpedientNumber,
+  getMatterDescription,
   getSimilarityColor,
-  onViewDetails 
+  onViewDetails
 }) => {
   const expedientData = parseExpedientNumber(caseData.expedient);
   const matterDescription = getMatterDescription(expedientData.matter);
@@ -20,10 +20,10 @@ const CaseCard = ({
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 mb-2">
-                <div className="p-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-sm">
-                  <IoDocument className="w-3 h-3 text-white" />
+                <div className="p-2.5 bg-primary-100 rounded-xl">
+                  <IoDocument className="w-5 h-5 text-primary-600" />
                 </div>
-                <h3 className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent text-sm tracking-wide">
+                <h3 className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent text-md tracking-wide">
                   {caseData.expedient}
                 </h3>
               </div>
@@ -57,16 +57,16 @@ const CaseCard = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 font-medium">Similitud</span>
-              <span className="font-bold text-xl text-gray-900">{caseData.similarity}%</span>
+              <span className="font-bold text-xl text-primary">{caseData.similarity}%</span>
             </div>
             <Progress
               value={caseData.similarity}
               color={getSimilarityColor(caseData.similarity)}
-              size="md"
-              className="w-full"
+              size="sm"
+              className="w-full h-2"
               classNames={{
-                track: "drop-shadow-sm border border-default",
-                indicator: "bg-gradient-to-r from-green-400 to-green-600",
+                track: "drop-shadow-sm border border-default h-2.5",
+                indicator: "bg-gradient-to-r from-primary-400 to-primary-600 h-2.5",
                 label: "tracking-wider font-medium text-default-600",
                 value: "text-foreground/60"
               }}
@@ -86,11 +86,12 @@ const CaseCard = ({
             </div>
             <Button
               size="sm"
-              color="primary"
-              variant="ghost"
-              startContent={<IoEye className="w-4 h-4" />}
+              color="default"
+              variant="solid"
+              startContent={<IoEye className="w-4 h-4 text-primary" />}
+
               onPress={() => onViewDetails(caseData)}
-              className="text-xs px-3"
+              className="text-xs px-3 bg-gray-100 hover:bg-gray-300 text-primary"
             >
               Ver Detalles
             </Button>

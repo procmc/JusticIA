@@ -11,7 +11,7 @@ const ResultsHeader = ({
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Card principal con información de resultados */}
-        <Card className="lg:col-span-2 border-l-4 border-l-primary-400">
+        <Card className="lg:col-span-2 border-l-4 border-l-primary-500">
           <CardBody className="p-6">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-primary-100 rounded-xl">
@@ -50,7 +50,7 @@ const ResultsHeader = ({
         </Card>
 
         {/* Card de filtro de similitud */}
-        <Card className="border-l-4 border-l-primary-400">
+        <Card className="border-l-4 border-l-primary-500">
           <CardBody className="p-6">
             <div className="flex items-center justify-between mb-4">
               <label className="text-sm font-medium text-gray-700">

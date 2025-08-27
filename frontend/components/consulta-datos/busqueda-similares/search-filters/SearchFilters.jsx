@@ -11,7 +11,8 @@ const SearchFilters = ({
   setExpedientNumber,
   onSearch,
   isSearching,
-  hasSearched = false
+  hasSearched = false,
+  onClearResults
 }) => {
   return (
     <div className="space-y-4">
@@ -24,10 +25,7 @@ const SearchFilters = ({
         setExpedientNumber={setExpedientNumber}
         onSearch={onSearch}
         isSearching={isSearching}
-      />
-      
-      <SearchInstructions
-        hasSearched={hasSearched}
+        onClearResults={onClearResults}
       />
     </div>
   );
