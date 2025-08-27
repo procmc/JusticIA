@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDisclosure } from '@heroui/react';
+import HeaderBusquedaSimilares from './HeaderBusquedaSimilares';
 import SearchFilters from './search-filters/SearchFilters';
 import LoadingResults from './LoadingResults';
 import ResultsHeader from './ResultsHeader';
@@ -53,9 +54,34 @@ const BusquedaSimilares = () => {
     setSimilarityThreshold([60]);
   };
 
+  // Función para limpiar inputs
+  const clearInputs = () => {
+    setSearchText('');
+    setExpedientNumber('');
+    setHasSearched(false);
+    setSearchResults([]);
+  };
+
+  // Verificar si hay contenido para limpiar
+  const hasContent = () => {
+    return searchText.trim().length > 0 || expedientNumber.trim().length > 0;
+  };
+
   return (
     <div className="w-full py-9">
       <div className="max-w-7xl mx-auto space-y-12 px-8">
+
+        {/* Header estandarizado */}
+        <HeaderBusquedaSimilares 
+          searchMode={searchMode}
+          setSearchMode={setSearchMode}
+          onClearInputs={clearInputs}
+          hasContent={hasContent()}
+          hasSearched={hasSearched}
+          searchResults={searchResults}
+          similarityThreshold={similarityThreshold}
+          isSearching={isSearching}
+        />
 
         {/* Filtros de Búsqueda */}
         <SearchFilters
