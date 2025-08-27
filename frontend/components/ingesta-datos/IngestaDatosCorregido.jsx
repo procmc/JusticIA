@@ -19,6 +19,7 @@ import {
   IoCheckmarkCircle,
   IoWarning
 } from 'react-icons/io5';
+import { PiBroomLight } from 'react-icons/pi';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { validarFormatoExpediente, formatearTamano } from './funciones';
 
@@ -197,42 +198,47 @@ const IngestaDatosCorregido = () => {
   const isButtonDisabled = uploading || pendingFiles === 0 || filesWithoutExpediente > 0 || !expedienteNumero.trim() || !isExpedienteValid;
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header estandarizado */}
+    <div className="p-6 space-y-6  mx-auto">
+      {/* Header estandarizado con estadísticas siempre visibles */}
       <Card className="bg-primary text-white shadow-lg border-none">
-        <CardBody className="p-6 lg:p-8">
+        <CardBody className="p-4 sm:p-6 lg:p-8">
           <div className="space-y-6">
-            {/* Fila superior: Título */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
-              {/* Título y descripción */}
-              <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                <div className="p-3 bg-white/15 rounded-xl border border-white/20 flex-shrink-0">
-                  <IoCloudUpload className="text-3xl lg:text-4xl text-white" />
+            {/* Fila superior: Título y estado del expediente */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-white/15 rounded-xl border border-white/20 flex-shrink-0">
+                  <IoCloudUpload className="text-2xl sm:text-3xl lg:text-4xl text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2 truncate">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1 sm:mb-2 truncate">
                     Ingesta de Datos
                   </h1>
-                  <p className="text-white/80 text-base">
+                  <p className="text-white/80 text-sm sm:text-base">
                     Carga y procesamiento de documentos jurídicos
                   </p>
                 </div>
               </div>
 
-              {/* Indicadores de estado */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              {/* Indicadores de estado en la esquina superior derecha */}
+              <div className="flex items-center gap-3">
                 {/* Estado del expediente */}
                 {expedienteNumero && (
-                  <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20 h-12">
+                  <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
                     {isExpedienteValid ? (
                       <>
-                        <IoCheckmarkCircle className="text-emerald-400 text-lg" />
-                        <span className="text-white/90 text-sm font-medium">Expediente Válido</span>
+                        <IoCheckmarkCircle className="text-emerald-400 text-sm" />
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white/90 font-semibold text-sm">Expediente</span>
+                          <span className="text-white/70 text-xs font-medium uppercase">Válido</span>
+                        </div>
                       </>
                     ) : (
                       <>
-                        <IoWarning className="text-yellow-400 text-lg" />
-                        <span className="text-white/90 text-sm font-medium">Expediente Inválido</span>
+                        <IoWarning className="text-yellow-400 text-sm" />
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white/90 font-semibold text-sm">Expediente</span>
+                          <span className="text-white/70 text-xs font-medium uppercase">Inválido</span>
+                        </div>
                       </>
                     )}
                   </div>
@@ -240,83 +246,78 @@ const IngestaDatosCorregido = () => {
 
                 {/* Indicador de proceso de subida */}
                 {uploading && (
-                  <Chip
-                    className="bg-blue-500/20 text-blue-200 border border-blue-400/30 animate-pulse"
-                    size="lg"
-                  >
-                    Procesando archivos...
-                  </Chip>
+                  <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
+                    <FiLoader className="text-white/90 text-sm animate-spin" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white/90 font-semibold text-sm">Procesando</span>
+                      <span className="text-white/70 text-xs font-medium uppercase">Archivos</span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Estadísticas de archivos - Solo mostrar si hay archivos */}
-            {files.length > 0 && (
-              <div className="pt-2">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  {/* Total de archivos */}
-                  <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-12">
-                    <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-white/90 font-semibold text-sm">{files.length}</span>
-                      <span className="text-white/70 text-xs font-medium uppercase">Archivos</span>
-                    </div>
+            {/* Estadísticas siempre visibles */}
+            <div className="pt-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* Total de archivos */}
+                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">{files.length}</span>
+                    <span className="text-white/70 text-xs font-medium uppercase">Archivos</span>
                   </div>
+                </div>
 
-                  {/* Archivos pendientes */}
-                  {pendingFiles > 0 && (
-                    <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-12">
-                      <div className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0"></div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-white/90 font-semibold text-sm">{pendingFiles}</span>
-                        <span className="text-white/70 text-xs font-medium uppercase">Pendientes</span>
-                      </div>
-                    </div>
-                  )}
+                {/* Archivos pendientes */}
+                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">{pendingFiles}</span>
+                    <span className="text-white/70 text-xs font-medium uppercase">Pendientes</span>
+                  </div>
+                </div>
 
-                  {/* Archivos completados */}
-                  {successFiles > 0 && (
-                    <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-12">
-                      <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0"></div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-white/90 font-semibold text-sm">{successFiles}</span>
-                        <span className="text-white/70 text-xs font-medium uppercase">Completados</span>
-                      </div>
-                      <div className="px-1.5 py-0.5 bg-emerald-500/20 rounded-full border border-emerald-400/30 flex-shrink-0">
-                        <span className="text-emerald-200 text-xs font-bold">{Math.round((successFiles / files.length) * 100)}%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Archivos con error */}
-                  {errorFiles > 0 && (
-                    <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-12">
-                      <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-white/90 font-semibold text-sm">{errorFiles}</span>
-                        <span className="text-white/70 text-xs font-medium uppercase">Errores</span>
-                      </div>
-                      <div className="px-1.5 py-0.5 bg-red-500/20 rounded-full border border-red-400/30 flex-shrink-0">
-                        <span className="text-red-200 text-xs font-bold">{Math.round((errorFiles / files.length) * 100)}%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tamaño total */}
+                {/* Archivos completados */}
+                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">{successFiles}</span>
+                    <span className="text-white/70 text-xs font-medium uppercase">Completados</span>
+                  </div>
                   {files.length > 0 && (
-                    <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-12">
-                      <IoDocument className="text-white/90 text-sm" />
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-white/90 font-semibold text-sm">
-                          {formatearTamano(files.reduce((total, archivo) => total + (archivo.size || 0), 0))}
-                        </span>
-                        <span className="text-white/70 text-xs font-medium uppercase">Total</span>
-                      </div>
+                    <div className="px-1.5 py-0.5 bg-emerald-500/20 rounded-full border border-emerald-400/30 flex-shrink-0">
+                      <span className="text-emerald-200 text-xs font-bold">{Math.round((successFiles / files.length) * 100)}%</span>
                     </div>
                   )}
                 </div>
+
+                {/* Archivos con error */}
+                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">{errorFiles}</span>
+                    <span className="text-white/70 text-xs font-medium uppercase">Errores</span>
+                  </div>
+                  {files.length > 0 && (
+                    <div className="px-1.5 py-0.5 bg-red-500/20 rounded-full border border-red-400/30 flex-shrink-0">
+                      <span className="text-red-200 text-xs font-bold">{Math.round((errorFiles / files.length) * 100)}%</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tamaño total */}
+                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-purple-400 flex-shrink-0"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">
+                      {files.length > 0 ? formatearTamano(files.reduce((total, archivo) => total + (archivo.size || 0), 0)) : '0 B'}
+                    </span>
+                    <span className="text-white/70 text-xs font-medium uppercase">Tamaño Total</span>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </CardBody>
       </Card>
@@ -324,8 +325,8 @@ const IngestaDatosCorregido = () => {
       {/* Área de carga principal */}
       <Card className="shadow-lg border border-gray-200">
         <CardBody className="p-6 lg:p-8">
-          {/* Input de expediente y botón guardar */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6 sm:items-end">
+          {/* Input de expediente y botón guardar alineados con estilos de búsqueda similares */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 sm:items-start">
             <div className="flex-1 max-w-sm">
               <Input
                 label="Número de Expediente"
@@ -333,33 +334,33 @@ const IngestaDatosCorregido = () => {
                 placeholder="98-003287-0166-LA"
                 value={expedienteNumero}
                 onChange={(e) => setExpedienteNumero(e.target.value)}
-                startContent={<FiFolder className="text-xl text-default-400 pointer-events-none shrink-0" />}
-                size="lg"
+                startContent={<FiFolder className="w-4 h-4 text-gray-400" />}
+                size="md"
                 variant="bordered"
-                radius="lg"
+                radius="md"
                 color='primary'
                 description="Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)"
                 isRequired
-                classNames={{
-                  input: "placeholder:text-gray-400",
-                  inputWrapper: "border-2"
-                }}
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="flex gap-2 mt-6">
               <Button
                 color="primary"
                 onPress={handleSaveClick}
                 disabled={isButtonDisabled}
                 isLoading={uploading}
-                size="lg"
-                radius="lg"
-                className={`min-w-[140px] font-medium transition-all duration-200 ${
+                size="md"
+                radius="md"
+                className={`px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${
                   isButtonDisabled 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-0.5'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
                 }`}
-                startContent={!uploading && <FiSave className="w-5 h-5" />}
+                startContent={!uploading && <FiSave className="w-4 h-4" />}
+                spinner={
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                }
               >
                 {uploading 
                   ? 'Guardando...' 
@@ -368,8 +369,122 @@ const IngestaDatosCorregido = () => {
                     : 'Guardar'
                 }
               </Button>
+              
+              {files.length > 0 && (
+                <Button
+                  onPress={() => setFiles([])}
+                  color="default"
+                  variant="flat"
+                  size="sm"
+                  startContent={<PiBroomLight className="w-4 h-4" />}
+                  disabled={uploading}
+                  className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm h-10.5"
+                  radius="lg"
+                >
+                </Button>
+              )}
             </div>
           </div>
+
+          {/* Lista de archivos cargados - Posicionada arriba del área de carga */}
+          {files.length > 0 && (
+            <div className="mb-6">
+              <Card className="shadow-lg border border-gray-200">
+                <CardHeader className="flex justify-between items-center p-6 bg-gray-50">
+                  <h3 className="text-lg font-semibold text-gray-800">Archivos Seleccionados</h3>
+                </CardHeader>
+                <Divider />
+                <CardBody className="p-0">
+                  <div className="space-y-0">
+                    <AnimatePresence>
+                      {files.map((file) => (
+                        <motion.div
+                          key={file.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className={`flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                            file.status === 'pending' && (!file.expediente || file.expediente.trim() === '') 
+                              ? 'bg-orange-50 border-orange-200' 
+                              : ''
+                          }`}
+                        >
+                          <div className="flex items-center space-x-4 flex-1">
+                            {getFileIcon(file.type)}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {file.name}
+                                </p>
+                                <Chip
+                                  color={getStatusColor(file.status)}
+                                  size="sm"
+                                  variant="flat"
+                                >
+                                  {file.status === 'pending' && 'Pendiente'}
+                                  {file.status === 'uploading' && 'Guardando...'}
+                                  {file.status === 'success' && 'Completado'}
+                                  {file.status === 'error' && 'Error'}
+                                </Chip>
+                              </div>
+                              <div className="flex items-center space-x-4 mt-2">
+                                <p className="text-xs text-gray-500">
+                                  {formatearTamano(file.size)}
+                                </p>
+                                {file.status === 'pending' && (
+                                  <div className="flex items-center space-x-2">
+                                    <Input
+                                      size="sm"
+                                      placeholder="Núm. expediente"
+                                      value={file.expediente || ''}
+                                      onChange={(e) => updateFileExpediente(file.id, e.target.value)}
+                                      className="w-48"
+                                      startContent={<FiFolder className="text-gray-400 w-3 h-3" />}
+                                      classNames={{
+                                        input: "text-xs",
+                                        inputWrapper: "h-8 min-h-8"
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                {file.status === 'success' && file.expediente && (
+                                  <Chip color="primary" size="sm" variant="flat">
+                                    {file.expediente}
+                                  </Chip>
+                                )}
+                                {file.status === 'uploading' && (
+                                  <div className="flex-1 max-w-xs">
+                                    <Progress 
+                                      value={file.progress} 
+                                      size="sm" 
+                                      color="primary"
+                                      className="max-w-md"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {getStatusIcon(file.status)}
+                            {file.status === 'pending' && (
+                              <button
+                                onClick={() => removeFile(file.id)}
+                                className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                              >
+                                <FiX className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          )}
 
           {/* Zona de arrastre mejorada */}
           <div
@@ -426,6 +541,17 @@ const IngestaDatosCorregido = () => {
                     examina tu dispositivo
                   </button>
                 </p>
+                {files.length > 0 && (
+                  <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <div className="flex items-center justify-center gap-2">
+                      <IoCheckmarkCircle className="w-5 h-5 text-emerald-600" />
+                      <span className="text-emerald-800 font-medium">
+                        ¡{files.length} archivo{files.length !== 1 ? 's' : ''} {files.length !== 1 ? 'agregados' : 'agregado'}! 
+                        {pendingFiles > 0 && ` ${pendingFiles} listo${pendingFiles !== 1 ? 's' : ''} para guardar`}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 justify-center">
@@ -448,176 +574,6 @@ const IngestaDatosCorregido = () => {
               accept={[...allowedTypes.documents, ...allowedTypes.audio].join(',')}
               className="hidden"
             />
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Resumen de archivos */}
-      {files.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="shadow-lg border border-gray-200">
-            <CardBody className="text-center p-4">
-              <div className="text-2xl font-bold text-blue-600">{pendingFiles}</div>
-              <div className="text-sm text-gray-600">Pendientes</div>
-            </CardBody>
-          </Card>
-          <Card className="shadow-lg border border-gray-200">
-            <CardBody className="text-center p-4">
-              <div className="text-2xl font-bold text-green-600">{successFiles}</div>
-              <div className="text-sm text-gray-600">Completados</div>
-            </CardBody>
-          </Card>
-          <Card className="shadow-lg border border-gray-200">
-            <CardBody className="text-center p-4">
-              <div className="text-2xl font-bold text-red-600">{errorFiles}</div>
-              <div className="text-sm text-gray-600">Con error</div>
-            </CardBody>
-          </Card>
-        </div>
-      )}
-
-      {/* Lista de archivos */}
-      {files.length > 0 && (
-        <Card className="shadow-lg border border-gray-200">
-          <CardHeader className="flex justify-between items-center p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800">Archivos Seleccionados</h3>
-            <div className="flex gap-2">
-              <Button
-                color="danger"
-                variant="flat"
-                size="md"
-                onClick={() => setFiles([])}
-                disabled={uploading}
-                radius="lg"
-              >
-                Limpiar Todo
-              </Button>
-            </div>
-          </CardHeader>
-          <Divider />
-          <CardBody className="p-0">
-            <div className="space-y-0">
-              <AnimatePresence>
-                {files.map((file) => (
-                  <motion.div
-                    key={file.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className={`flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                      file.status === 'pending' && (!file.expediente || file.expediente.trim() === '') 
-                        ? 'bg-orange-50 border-orange-200' 
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-center space-x-4 flex-1">
-                      {getFileIcon(file.type)}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name}
-                          </p>
-                          <Chip
-                            color={getStatusColor(file.status)}
-                            size="sm"
-                            variant="flat"
-                          >
-                            {file.status === 'pending' && 'Pendiente'}
-                            {file.status === 'uploading' && 'Guardando...'}
-                            {file.status === 'success' && 'Completado'}
-                            {file.status === 'error' && 'Error'}
-                          </Chip>
-                        </div>
-                        <div className="flex items-center space-x-4 mt-2">
-                          <p className="text-xs text-gray-500">
-                            {formatearTamano(file.size)}
-                          </p>
-                          {file.status === 'pending' && (
-                            <div className="flex items-center space-x-2">
-                              <Input
-                                size="sm"
-                                placeholder="Núm. expediente"
-                                value={file.expediente || ''}
-                                onChange={(e) => updateFileExpediente(file.id, e.target.value)}
-                                className="w-48"
-                                startContent={<FiFolder className="text-gray-400 w-3 h-3" />}
-                                classNames={{
-                                  input: "text-xs",
-                                  inputWrapper: "h-8 min-h-8"
-                                }}
-                              />
-                            </div>
-                          )}
-                          {file.status === 'success' && file.expediente && (
-                            <Chip color="primary" size="sm" variant="flat">
-                              {file.expediente}
-                            </Chip>
-                          )}
-                          {file.status === 'uploading' && (
-                            <div className="flex-1 max-w-xs">
-                              <Progress 
-                                value={file.progress} 
-                                size="sm" 
-                                color="primary"
-                                className="max-w-md"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(file.status)}
-                      {file.status === 'pending' && (
-                        <button
-                          onClick={() => removeFile(file.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Información adicional */}
-      <Card className="shadow-lg border border-gray-200">
-        <CardBody className="p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center space-x-2 text-gray-800">
-            <FiDownload className="w-5 h-5" />
-            <span>Tipos de archivo soportados</span>
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-3 flex items-center space-x-2">
-                <FiFile className="w-4 h-4 text-blue-500" />
-                <span>Documentos</span>
-              </h4>
-              <ul className="text-sm text-gray-600 space-y-2">
-                <li>• PDF - Documentos legales, sentencias, resoluciones</li>
-                <li>• DOC/DOCX - Documentos de texto</li>
-                <li>• RTF - Formato de texto enriquecido</li>
-                <li>• TXT - Archivos de texto plano</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-3 flex items-center space-x-2">
-                <FiMusic className="w-4 h-4 text-purple-500" />
-                <span>Audio</span>
-              </h4>
-              <ul className="text-sm text-gray-600 space-y-2">
-                <li>• MP3 - Audiencias, declaraciones</li>
-                <li>• WAV - Grabaciones de alta calidad</li>
-                <li>• M4A - Formato de audio comprimido</li>
-                <li>• OGG - Formato de audio libre</li>
-              </ul>
-            </div>
           </div>
         </CardBody>
       </Card>
