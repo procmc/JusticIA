@@ -1,38 +1,23 @@
 import React from 'react';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Divider
+  Chip
 } from '@heroui/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { 
   IoPerson, 
   IoMail, 
-  IoCall, 
-  IoCard, 
-  IoBriefcase, 
   IoCalendar, 
   IoTime, 
-  IoShield,
-  IoPencil,
-  IoCheckmark,
-  IoClose
+  IoShield
 } from 'react-icons/io5';
+import DrawerGeneral from '../../ui/DrawerGeneral';
 
 const DetalleUsuario = ({ 
   usuario, 
   isOpen, 
   onClose, 
-  onEditar, 
-  onCambiarEstado 
+  onEditar
 }) => {
   if (!usuario) return null;
 
@@ -53,232 +38,134 @@ const DetalleUsuario = ({
     return rol === 'Administrador' ? 'warning' : 'primary';
   };
 
-  const obtenerIconoRol = (rol) => {
-    return rol === 'Administrador' ? <IoShield className="text-lg" /> : <IoPerson className="text-lg" />;
-  };
-
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose}
-      size="2xl"
-      scrollBehavior="inside"
-      placement="center"
+    <DrawerGeneral
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      titulo="Detalles del Usuario"
+      size="xl"
+      botonCerrar={{
+        mostrar: true,
+        texto: "Cerrar"
+      }}
+      botonAccion={{
+        texto: "Editar Usuario",
+        onPress: () => {
+          onEditar(usuario);
+          onClose();
+        },
+        color: "primary"
+      }}
     >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            {obtenerIconoRol(usuario.rolNombre)}
-            <span>Detalles del Usuario</span>
-          </div>
-          <p className="text-sm text-gray-500 font-normal">
+      <div className="space-y-8">
+        <div className="border-l-4 border-gray-300 dark:border-gray-600 pl-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Información completa del usuario seleccionado
           </p>
-        </ModalHeader>
-        
-        <ModalBody>
-          <div className="space-y-6">
-            {/* Información Personal */}
-            <Card>
-              <CardBody className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <IoPerson className="text-primary" />
-                  Información Personal
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      Nombre Completo
-                    </label>
-                    <p className="text-gray-900 dark:text-white font-medium">
-                      {usuario.nombre}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      Nombre de Usuario
-                    </label>
-                    <p className="text-gray-900 dark:text-white font-mono">
-                      @{usuario.nombreUsuario}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                      <IoMail className="text-sm" />
-                      Correo Electrónico
-                    </label>
-                    <p className="text-gray-900 dark:text-white">
-                      {usuario.correo}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                      <IoCall className="text-sm" />
-                      Teléfono
-                    </label>
-                    <p className="text-gray-900 dark:text-white">
-                      {usuario.telefono}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                      <IoCard className="text-sm" />
-                      Cédula
-                    </label>
-                    <p className="text-gray-900 dark:text-white">
-                      {usuario.cedula}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                      <IoBriefcase className="text-sm" />
-                      Cargo
-                    </label>
-                    <p className="text-gray-900 dark:text-white">
-                      {usuario.cargo}
-                    </p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+        </div>
 
-            {/* Estado y Rol */}
-            <Card>
-              <CardBody className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <IoShield className="text-primary" />
-                  Rol y Estado
-                </h4>
-                
-                <div className="flex flex-wrap gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      Rol Asignado
-                    </label>
-                    <div>
-                      <Chip
-                        color={obtenerColorRol(usuario.rolNombre)}
-                        variant="flat"
-                        startContent={obtenerIconoRol(usuario.rolNombre)}
-                        size="md"
-                      >
-                        {usuario.rolNombre}
-                      </Chip>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      Estado Actual
-                    </label>
-                    <div>
-                      <Chip
-                        color={obtenerColorEstado(usuario.estadoNombre)}
-                        variant="flat"
-                        size="md"
-                      >
-                        {usuario.estadoNombre}
-                      </Chip>
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Fechas de Actividad */}
-            <Card>
-              <CardBody className="space-y-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <IoTime className="text-primary" />
-                  Actividad del Usuario
-                </h4>
-                
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <IoCalendar className="text-green-500 mt-1" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        Fecha de Creación
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {formatearFecha(usuario.fechaCreacion)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Divider />
-                  
-                  <div className="flex items-start gap-3">
-                    <IoTime className="text-blue-500 mt-1" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        Último Acceso
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {formatearFecha(usuario.ultimoAcceso)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+        {/* Información de Acceso */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Información de Acceso
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Nombre de Usuario
+              </label>
+              <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded border">
+                {usuario.CT_Nombre_usuario || usuario.nombreUsuario}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Correo Electrónico
+              </label>
+              <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded border">
+                {usuario.CT_Correo || usuario.correo}
+              </p>
+            </div>
           </div>
-        </ModalBody>
-        
-        <ModalFooter>
-          <Button
-            color="danger"
-            variant="flat"
-            onPress={onClose}
-          >
-            Cerrar
-          </Button>
+        </div>
+
+        {/* Rol y Estado */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Permisos y Estado
+          </h3>
           
-          <Button
-            color="primary"
-            startContent={<IoPencil className="text-lg" />}
-            onPress={() => {
-              onEditar(usuario);
-              onClose();
-            }}
-          >
-            Editar Usuario
-          </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Rol Asignado
+              </label>
+              <div>
+                <Chip
+                  color={obtenerColorRol(usuario.rolNombre)}
+                  variant="flat"
+                  size="md"
+                  className="font-medium"
+                >
+                  {usuario.rolNombre}
+                </Chip>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Estado Actual
+              </label>
+              <div>
+                <Chip
+                  color={obtenerColorEstado(usuario.estadoNombre)}
+                  variant="flat"
+                  size="md"
+                  className="font-medium"
+                >
+                  {usuario.estadoNombre}
+                </Chip>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Actividad del Usuario */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Historial de Actividad
+          </h3>
           
-          {usuario.estadoNombre === 'Activo' ? (
-            <Button
-              color="warning"
-              variant="flat"
-              startContent={<IoClose className="text-lg" />}
-              onPress={() => {
-                onCambiarEstado(usuario, 'Inactivo');
-                onClose();
-              }}
-            >
-              Desactivar
-            </Button>
-          ) : (
-            <Button
-              color="success"
-              variant="flat"
-              startContent={<IoCheckmark className="text-lg" />}
-              onPress={() => {
-                onCambiarEstado(usuario, 'Activo');
-                onClose();
-              }}
-            >
-              Activar
-            </Button>
-          )}
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+          <div className="space-y-4">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded border">
+              <div className="flex items-center gap-3 mb-2">
+                <IoCalendar className="text-gray-500" />
+                <p className="font-medium text-gray-900 dark:text-white">
+                  Fecha de Creación
+                </p>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 ml-6">
+                {formatearFecha(usuario.fechaCreacion)}
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded border">
+              <div className="flex items-center gap-3 mb-2">
+                <IoTime className="text-gray-500" />
+                <p className="font-medium text-gray-900 dark:text-white">
+                  Último Acceso
+                </p>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 ml-6">
+                {formatearFecha(usuario.ultimoAcceso)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DrawerGeneral>
   );
 };
 
