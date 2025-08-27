@@ -488,7 +488,7 @@ const IngestaDatosCorregido = () => {
 
           {/* Zona de arrastre mejorada */}
           <div
-            className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
+            className={`relative border-2 border-dashed rounded-2xl p-12 min-h-[300px] text-center transition-all duration-300 ${
               !isExpedienteValid
                 ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
                 : dragActive 
@@ -500,6 +500,7 @@ const IngestaDatosCorregido = () => {
             onDragOver={isExpedienteValid ? handleDrag : undefined}
             onDrop={isExpedienteValid ? handleDrop : undefined}
           >
+
             {!isExpedienteValid && (
               <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 rounded-2xl z-10">
                 <div className="text-center">
@@ -554,15 +555,9 @@ const IngestaDatosCorregido = () => {
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Chip color="primary" variant="flat" size="md">PDF</Chip>
-                <Chip color="primary" variant="flat" size="md">DOC/DOCX</Chip>
-                <Chip color="primary" variant="flat" size="md">RTF</Chip>
-                <Chip color="primary" variant="flat" size="md">TXT</Chip>
-                <Chip color="secondary" variant="flat" size="md">MP3</Chip>
-                <Chip color="secondary" variant="flat" size="md">WAV</Chip>
-                <Chip color="secondary" variant="flat" size="md">M4A</Chip>
-                <Chip color="secondary" variant="flat" size="md">OGG</Chip>
+              {/* Formatos soportados - simple */}
+              <div className="mt-6 text-xs text-gray-500 text-center">
+                Formatos soportados: PDF, DOC, DOCX, RTF, TXT, MP3, WAV, M4A, OGG
               </div>
             </motion.div>
 
