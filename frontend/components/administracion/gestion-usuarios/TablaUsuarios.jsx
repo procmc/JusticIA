@@ -125,6 +125,7 @@ const TablaUsuarios = ({
               classNames={{
                 wrapper: "rounded-none shadow-none",
               }}
+              color='primary'
             >
               <TableHeader>
                 <TableColumn>USUARIO</TableColumn>
@@ -198,7 +199,7 @@ const TablaUsuarios = ({
                             variant="light"
                             onPress={() => handleAccionUsuario('ver', usuario)}
                           >
-                            <IoEye className="h-6 w-6 text-default-400" />
+                            <IoEye className="h-6 w-6 text-default-700" />
                           </Button>
                         </Tooltip>
                         
@@ -209,7 +210,7 @@ const TablaUsuarios = ({
                               size="sm"
                               variant="light"
                             >
-                              <IoEllipsisVertical className="h-6 w-6 text-default-400" />
+                              <IoEllipsisVertical className="h-6 w-6 text-default-700" />
                             </Button>
                           </DropdownTrigger>
                           
