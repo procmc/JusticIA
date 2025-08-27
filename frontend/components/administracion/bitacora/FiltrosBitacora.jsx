@@ -75,7 +75,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Usuario"
                                 labelPlacement='outside'
                                 placeholder="Nombre del usuario"
-                                color="secondary"
+                                color="primary"
                                 value={filtros.usuario}
                                 onChange={(e) => handleInputChange('usuario', e.target.value)}
                                 variant="bordered"
@@ -90,7 +90,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Expediente"
                                 labelPlacement='outside'
                                 placeholder="Número de expediente"
-                                color='secondary'
+                                color='primary'
                                 value={filtros.expediente}
                                 onChange={(e) => handleInputChange('expediente', e.target.value)}
                                 variant="bordered"
@@ -105,7 +105,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Tipo de Acción"
                                 labelPlacement='outside'
                                 placeholder="Selecciona un tipo"
-                                color='secondary'
+                                color='primary'
                                 selectedKeys={filtros.tipoAccion ? [filtros.tipoAccion.toLowerCase().replace(' ', '-')] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
@@ -130,7 +130,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 label="Estado"
                                 labelPlacement='outside'
                                 placeholder="Selecciona un estado"
-                                color='secondary'
+                                color='primary'
                                 selectedKeys={filtros.estado ? [filtros.estado.toLowerCase()] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
@@ -157,7 +157,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 value={filtros.fechaInicio ? parseDate(filtros.fechaInicio) : null}
                                 onChange={(date) => handleDateChange('fechaInicio', date)}
                                 variant="bordered"
-                                color='secondary'
+                                color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 className="w-full"
@@ -172,7 +172,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 value={filtros.fechaFin ? parseDate(filtros.fechaFin) : null}
                                 onChange={(date) => handleDateChange('fechaFin', date)}
                                 variant="bordered"
-                                color='secondary'
+                                color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 className="w-full"
