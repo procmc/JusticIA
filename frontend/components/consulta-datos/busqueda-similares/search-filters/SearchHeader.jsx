@@ -1,8 +1,9 @@
 import React from 'react';
-import { Card, CardBody, Tab, Tabs, Button, Chip, Input } from '@heroui/react';
+import { Card, CardBody, Tab, Tabs, Button, Chip, Input, CardHeader, CardFooter } from '@heroui/react';
 import { IoSparkles, IoText, IoDocument, IoSearch } from 'react-icons/io5';
 import { PiBroomLight } from 'react-icons/pi';
 import { Textarea } from '@/components/ui/Textarea';
+import SearchInstructions from './SearchInstructions';
 
 const SearchHeader = ({
   searchMode,
@@ -12,9 +13,10 @@ const SearchHeader = ({
   expedientNumber,
   setExpedientNumber,
   onSearch,
-  isSearching
+  isSearching,
+  onClearResults
 }) => {
-  
+
   // Validación: verificar si hay contenido para buscar
   const canSearch = () => {
     if (searchMode === 'description') {
@@ -27,15 +29,27 @@ const SearchHeader = ({
 
   const isButtonDisabled = !canSearch() || isSearching;
 
-  // Función para limpiar los inputs
+  // Función para limpiar los inputs y resultados
   const clearInputs = () => {
     setSearchText('');
     setExpedientNumber('');
+    // Limpiar también los resultados de búsqueda si existe la función
+    if (onClearResults) {
+      onClearResults();
+    }
   };
 
   // Verificar si hay contenido para limpiar
   const hasContent = () => {
     return searchText.trim().length > 0 || expedientNumber.trim().length > 0;
+  };
+
+  // Manejar tecla Enter para enviar búsqueda
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey && canSearch() && !isSearching) {
+      event.preventDefault();
+      onSearch();
+    }
   };
 
   return (
@@ -45,75 +59,60 @@ const SearchHeader = ({
 
       <Card className="mb-6 border border-gray-200 shadow-lg bg-white/80 backdrop-blur-sm">
         <CardBody className="p-6">
-          {/* Header con título elegante */}
-          <div className="flex items-center gap-2 mb-8">
-            <div className="p-2 bg-primary rounded-lg shadow-lg">
-              <IoSparkles className="w-4 h-4 text-white" />
-            </div>
-            <div >
-              <h2 className="text-lg font-bold bg-primary bg-clip-text text-transparent">
-                Búsqueda Inteligente
-              </h2>
-              <p className="text-gray-500 text-xs">
-                Encuentra casos similares usando IA
-              </p>
-            </div>
-          </div>
-
-          {/* Layout responsive - vertical en móvil, horizontal en desktop */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
-            {/* Tabs compactos */}
+          {/* Layout responsive - tabs izquierda, acciones derecha */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3">
+            {/* Tabs compactos - izquierda */}
             <div className="w-full sm:w-auto">
               <Tabs
                 selectedKey={searchMode}
                 onSelectionChange={setSearchMode}
                 color="primary"
                 variant="solid"
-                size="sm"
+                size="md"
                 classNames={{
                   tabList: "grid grid-cols-2 gap-1 p-0.5 bg-gray-100 rounded-lg w-full sm:w-48",
                   cursor: "w-full rounded-md shadow-sm",
-                  tab: "w-full h-7 rounded-md",
+                  tab: "w-full h-9 rounded-md",
                   tabContent: "group-data-[selected=true]:text-white text-gray-600 font-medium text-xs"
                 }}
               >
-              <Tab
-                key="description"
-                title={
-                  <div className="flex items-center justify-center space-x-1">
-                    <IoText className="w-3 h-3" />
-                    <span>Descripción</span>
-                  </div>
-                }
-              />
-              <Tab
-                key="expedient"
-                title={
-                  <div className="flex items-center justify-center space-x-1">
-                    <IoDocument className="w-3 h-3" />
-                    <span>Expediente</span>
-                  </div>
-                }
-              />
-            </Tabs>
+                <Tab
+                  key="description"
+                  title={
+                    <div className="flex items-center justify-center space-x-1">
+                      <IoText className="w-3 h-3" />
+                      <span>Descripción</span>
+                    </div>
+                  }
+                />
+                <Tab
+                  key="expedient"
+                  title={
+                    <div className="flex items-center justify-center space-x-1">
+                      <IoDocument className="w-3 h-3" />
+                      <span>Expediente</span>
+                    </div>
+                  }
+                />
+              </Tabs>
             </div>
 
-            {/* Botones de acción */}
-            <div className="flex gap-2 w-full sm:w-auto">
+            {/* Botones de acción - derecha */}
+            <div className="flex gap-2 w-full sm:w-auto sm:flex-shrink-0">
               <Button
                 onPress={onSearch}
                 color="primary"
-                size="sm"
-                startContent={<IoSearch className="w-3 h-3" />}
+                size="md"
+                startContent={<IoSearch className="w-4 h-4" />}
                 isLoading={isSearching}
                 isDisabled={isButtonDisabled}
-                className={`flex-1 sm:flex-none px-4 font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
+                className={`flex-1 sm:flex-none px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
                   }`}
-                radius="full"
+                radius="md"
                 spinner={
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 }
               >
                 {isSearching ? 'Analizando...' : 'Buscar Casos'}
@@ -124,12 +123,11 @@ const SearchHeader = ({
                 color="default"
                 variant="flat"
                 size="sm"
-                startContent={<PiBroomLight className="w-3 h-3" />}
+                startContent={<PiBroomLight className="w-4 h-4" />}
                 isDisabled={!hasContent() || isSearching}
-                className="px-3 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm"
-                radius="full"
+                className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm h-10.5"
+                radius="lg"
               >
-                Limpiar
               </Button>
             </div>
           </div>
@@ -143,11 +141,12 @@ const SearchHeader = ({
                     placeholder="Describe tu caso legal... Ej: 'Despido injustificado de trabajador...'"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     rows={6}
                     className="w-full resize-none text-gray-700 text-sm custom-scrollbar"
                   />
                 </div>
-                
+
                 {/* Contador y ejemplos alineados */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   {/* Ejemplos */}
@@ -171,7 +170,7 @@ const SearchHeader = ({
                       </Chip>
                     ))}
                   </div>
-                  
+
                   {/* Contador */}
                   <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded flex-shrink-0">
                     {searchText.length}/2000
@@ -189,6 +188,7 @@ const SearchHeader = ({
                     placeholder="98-003287-0166-LA"
                     value={expedientNumber}
                     onChange={(e) => setExpedientNumber(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     variant="bordered"
                     color='primary'
                     size="md"
@@ -204,6 +204,7 @@ const SearchHeader = ({
               </div>
             )}
           </div>
+          <SearchInstructions />
         </CardBody>
       </Card>
     </div>

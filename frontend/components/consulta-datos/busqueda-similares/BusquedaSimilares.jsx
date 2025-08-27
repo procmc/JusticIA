@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDisclosure } from '@heroui/react';
 import HeaderBusquedaSimilares from './HeaderBusquedaSimilares';
 import SearchFilters from './search-filters/SearchFilters';
@@ -20,6 +20,9 @@ const BusquedaSimilares = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
   
+  // Ref para hacer scroll a los resultados
+  const resultsRef = useRef(null);
+  
   // Modal
   const { isOpen, onOpen, onClose } = useDisclosure();
   
@@ -31,10 +34,21 @@ const BusquedaSimilares = () => {
     result => result.similarity >= similarityThreshold[0]
   );
 
-  // Función de búsqueda
+  // Función de búsqueda con scroll automático
   const handleSearch = async () => {
     setIsSearching(true);
     setHasSearched(true);
+    
+    // Hacer scroll inmediatamente cuando comience la búsqueda (para mostrar "Analizando...")
+    setTimeout(() => {
+      if (resultsRef.current) {
+        resultsRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100); // Scroll inmediato para mostrar el loading
     
     // Simular delay de búsqueda
     setTimeout(() => {
@@ -68,8 +82,16 @@ const BusquedaSimilares = () => {
   };
 
   return (
-    <div className="w-full py-9">
-      <div className="max-w-7xl mx-auto space-y-12 px-8">
+    <div 
+      className="p-6 space-y-6"
+      style={{
+        transform: 'none',
+        transition: 'none',
+        position: 'static',
+        willChange: 'auto'
+      }}
+    >
+      <div className="space-y-6">
 
         {/* Header estandarizado */}
         <HeaderBusquedaSimilares 
@@ -94,32 +116,38 @@ const BusquedaSimilares = () => {
           onSearch={handleSearch}
           isSearching={isSearching}
           hasSearched={hasSearched}
+          onClearResults={clearInputs}
         />
 
-        {/* Estado de Carga */}
-        {isSearching && <LoadingResults />}
+        {/* Estado de Carga y Resultados */}
+        {(isSearching || (hasSearched && !isSearching)) && (
+          <div ref={resultsRef} className="space-y-6">
+            {/* Estado de Carga */}
+            {isSearching && <LoadingResults />}
 
-        {/* Resultados */}
-        {hasSearched && !isSearching && (
-          <div className="space-y-10">
-            {/* Header de Resultados con Filtro */}
-            <ResultsHeader
-              resultsCount={filteredResults.length}
-              similarityThreshold={similarityThreshold}
-              setSimilarityThreshold={setSimilarityThreshold}
-            />
+            {/* Resultados */}
+            {hasSearched && !isSearching && (
+              <>
+                {/* Header de Resultados con Filtro */}
+                <ResultsHeader
+                  resultsCount={filteredResults.length}
+                  similarityThreshold={similarityThreshold}
+                  setSimilarityThreshold={setSimilarityThreshold}
+                />
 
-            {/* Contenido de Resultados */}
-            {filteredResults.length === 0 ? (
-              <NoResults onReduceSimilarity={handleReduceSimilarity} />
-            ) : (
-              <ResultsGrid
-                results={filteredResults}
-                parseExpedientNumber={parseExpedientNumber}
-                getMatterDescription={getMatterDescription}
-                getSimilarityColor={getSimilarityColor}
-                onViewDetails={handleViewDetails}
-              />
+                {/* Contenido de Resultados */}
+                {filteredResults.length === 0 ? (
+                  <NoResults onReduceSimilarity={handleReduceSimilarity} />
+                ) : (
+                  <ResultsGrid
+                    results={filteredResults}
+                    parseExpedientNumber={parseExpedientNumber}
+                    getMatterDescription={getMatterDescription}
+                    getSimilarityColor={getSimilarityColor}
+                    onViewDetails={handleViewDetails}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
