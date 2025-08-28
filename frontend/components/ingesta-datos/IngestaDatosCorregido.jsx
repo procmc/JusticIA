@@ -30,6 +30,7 @@ const IngestaDatosCorregido = () => {
   const [expedienteNumero, setExpedienteNumero] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const fileInputRef = useRef(null);
+  const dragZoneRef = useRef(null);
 
   // Tipos de archivos permitidos
   const allowedTypes = {
@@ -84,6 +85,16 @@ const IngestaDatosCorregido = () => {
     }));
 
     setFiles(prev => [...prev, ...newFiles]);
+    
+    // Redirigir automáticamente a la zona de arrastre después de cargar archivos
+    setTimeout(() => {
+      if (dragZoneRef.current) {
+        dragZoneRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 100);
   };
 
   const removeFile = (id) => {
@@ -339,7 +350,7 @@ const IngestaDatosCorregido = () => {
                 variant="bordered"
                 radius="md"
                 color='primary'
-                description="Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)"
+                description="Formato:(Año-Consecutivo-Oficina-Materia)"
                 isRequired
                 className="w-full"
               />
@@ -488,6 +499,7 @@ const IngestaDatosCorregido = () => {
 
           {/* Zona de arrastre mejorada */}
           <div
+            ref={dragZoneRef}
             className={`relative border-2 border-dashed rounded-2xl p-12 min-h-[300px] text-center transition-all duration-300 ${
               !isExpedienteValid
                 ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
