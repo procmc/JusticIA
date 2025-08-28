@@ -37,7 +37,7 @@ const LoginForm = ({ isVisible, toggleVisibility, handleLogin, loading, errorMes
 
     return (
         <div className="w-full flex flex-col justify-start pt-24 md:pt-28 lg:pt-32 p-8 md:p-16 lg:p-20 pb-8 md:pb-16 lg:pb-20">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-10 lg:mb-12 text-azulOscuro text-center drop-shadow-lg shadow-gray-400/50">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-10 lg:mb-12 text-primary text-center drop-shadow-lg shadow-gray-400/50">
                 Inicio de sesión
             </h2>
 
@@ -101,7 +101,7 @@ const LoginForm = ({ isVisible, toggleVisibility, handleLogin, loading, errorMes
                 {/* Botón de envío */}
                 <div className="w-full md:w-3/4 flex justify-end">
                     <Button
-                        className="bg-gradient-to-r from-primario to-blue-600 text-white w-[120px] md:w-[140px] lg:w-[160px] h-8 md:h-10 text-base md:text-lg lg:text-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 hover:from-blue-600 hover:to-primario transition-all duration-300 ease-in-out transform active:scale-95"
+                        className="bg-gradient-to-r from-primary to-blue-600 text-white w-[120px] md:w-[140px] lg:w-[160px] h-8 md:h-10 text-base md:text-lg lg:text-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 hover:from-blue-600 hover:to-primary transition-all duration-300 ease-in-out transform active:scale-95"
                         type="submit"
                         isLoading={loading}
                         disabled={loading}

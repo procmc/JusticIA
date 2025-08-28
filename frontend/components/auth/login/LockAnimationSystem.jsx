@@ -1,14 +1,22 @@
 import React from 'react';
+import Image from 'next/image';
 import { LockClosedIcon, LockOpenIcon } from '../../icons/LockIcons';
 
 const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] bg-primario flex items-center justify-center py-8 md:py-0 relative overflow-hidden">
-      {/* Ondas de fondo animadas */}
-      <div className={`absolute inset-0 animated-background ${showSuccess ? 'animated-background-visible' : 'animated-background-hidden'}`}>
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-green-400/20 to-blue-500/20 animate-pulse"></div>
-        <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-yellow-300/10 rounded-full animate-bounce"></div>
-        <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-purple-300/10 rounded-full animate-pulse"></div>
+    <div className="w-full md:w-[380px] lg:w-[420px] bg-primary border shadow-lg flex items-center justify-center py-8 md:py-0 relative overflow-hidden">
+      {/* Animación de fondo simple */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/90 to-primary opacity-60"></div>
+      
+      {/* Título de bienvenida */}
+      <div className="absolute top-6 md:top-16 left-1/2 transform -translate-x-1/2 text-center z-20">
+        <h2 className="text-white text-sm md:text-base font-light mb-1 tracking-wide opacity-90">
+          Bienvenido a
+        </h2>
+        <h1 className="text-white text-2xl md:text-3xl lg:text-4xl font-bold tracking-wider">
+          JusticIA
+        </h1>
+        <div className="w-16 h-0.5 bg-white/40 mx-auto mt-2 rounded-full"></div>
       </div>
       
       <div className="relative z-10">
@@ -18,6 +26,12 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
             isUnlocked && !isClosing ? 'lock-icon-opening' : 'lock-icon-closed'
           } ${isClosing ? 'lock-icon-closing' : ''}`}
         />
+        
+        {/* Animación circular dentro del candado */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/3">
+          <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-white/30 rounded-full animate-pulse"></div>
+          <div className="absolute top-1 left-1 w-6 h-6 md:w-8 md:h-8 border-2 border-blue-300/50 rounded-full animate-pulse"></div>
+        </div>
         
         {/* Candado abierto */}
         <LockOpenIcon 
@@ -46,6 +60,26 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
           <ClosingMessage />
         )}
       </div>
+      
+      {/* Logos institucionales en la parte inferior */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3 opacity-70">
+        <div className="relative w-16 h-10">
+          <Image 
+            src="/logoPj.png" 
+            alt="Logo Poder Judicial" 
+            fill 
+            className="object-contain filter brightness-0 invert" 
+          />
+        </div>
+        <div className="relative w-14 h-8">
+          <Image 
+            src="/InteligenciaInformacion.png" 
+            alt="Inteligencia Información" 
+            fill 
+            className="object-contain filter brightness-0 invert" 
+          />
+        </div>
+      </div>
     </div>
   );
 };
@@ -57,51 +91,69 @@ const SuccessMessage = () => (
       <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
       </svg>
-      <span className="text-sm font-medium">¡Acceso concedido!</span>
+      <span className="text-sm font-medium">¡Acceso autorizado!</span>
     </div>
   </div>
 );
 
-// Componente para las partículas de apertura
+// Componente para las partículas cuando se abre
 const OpenParticles = () => (
-  <div className="absolute inset-0 flex items-center justify-center">
-    <div className="w-3 h-3 bg-yellow-300 rounded-full animate-ping"></div>
-    <div className="absolute w-2 h-2 bg-green-300 rounded-full animate-pulse top-1/4 left-1/4 animation-delay-300"></div>
-    <div className="absolute w-2 h-2 bg-blue-300 rounded-full animate-bounce top-3/4 right-1/4 animation-delay-500"></div>
-    <div className="absolute w-1 h-1 bg-purple-300 rounded-full animate-ping top-1/2 left-1/3 animation-delay-700"></div>
-    <div className="absolute w-2 h-2 bg-pink-300 rounded-full animate-pulse bottom-1/3 left-2/3 animation-delay-900"></div>
+  <div className="absolute inset-0 pointer-events-none">
+    {/* Partículas flotantes simples */}
+    <div className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-bounce top-1/3 left-1/4 animation-delay-100"></div>
+    <div className="absolute w-3 h-3 bg-green-300 rounded-full animate-pulse top-1/2 right-1/3 animation-delay-200"></div>
+    <div className="absolute w-2 h-2 bg-blue-300 rounded-full animate-ping top-2/3 left-1/3 animation-delay-300"></div>
+    <div className="absolute w-2 h-2 bg-purple-300 rounded-full animate-bounce bottom-1/3 right-1/4 animation-delay-400"></div>
   </div>
 );
 
 // Componente para los efectos de cierre
 const ClosingEffects = () => (
   <div className="absolute inset-0 flex items-center justify-center">
-    {/* Círculos concéntricos que se contraen */}
-    <div className="absolute w-32 h-32 border-2 border-white/30 rounded-full animate-ping"></div>
-    <div className="absolute w-24 h-24 border-2 border-blue-300/50 rounded-full animate-pulse"></div>
-    <div className="absolute w-16 h-16 border-2 border-green-300/70 rounded-full animate-spin"></div>
-    
-    {/* Partículas que se mueven hacia el centro */}
-    <div className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-bounce top-0 left-1/2 transform -translate-x-1/2"></div>
-    <div className="absolute w-2 h-2 bg-blue-400 rounded-full animate-bounce bottom-0 left-1/2 transform -translate-x-1/2"></div>
-    <div className="absolute w-2 h-2 bg-green-400 rounded-full animate-bounce left-0 top-1/2 transform -translate-y-1/2"></div>
-    <div className="absolute w-2 h-2 bg-purple-400 rounded-full animate-bounce right-0 top-1/2 transform -translate-y-1/2"></div>
-    
-    {/* Ondas de energía */}
-    <div className="absolute w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full opacity-60 animate-ping animation-delay-200"></div>
-    <div className="absolute w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full opacity-80 animate-pulse animation-delay-400"></div>
+    {/* Sin efectos adicionales - solo los círculos del candado */}
   </div>
 );
 
 // Componente para el mensaje de cierre
 const ClosingMessage = () => (
-  <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 animate-fadeInUp">
-    <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2 whitespace-nowrap">
-      <svg className="w-5 h-5 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <span className="text-sm font-medium">Asegurando acceso...</span>
+  <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2">
+    <div className="text-center">
+      {/* Texto con efecto de carga en las letras */}
+      <div className="text-white">
+        <p className="text-sm font-medium tracking-wide">
+          <span className="animate-pulse animation-delay-0">V</span>
+          <span className="animate-pulse animation-delay-100">e</span>
+          <span className="animate-pulse animation-delay-200">r</span>
+          <span className="animate-pulse animation-delay-300">i</span>
+          <span className="animate-pulse animation-delay-400">f</span>
+          <span className="animate-pulse animation-delay-500">i</span>
+          <span className="animate-pulse animation-delay-600">c</span>
+          <span className="animate-pulse animation-delay-700">a</span>
+          <span className="animate-pulse animation-delay-800">n</span>
+          <span className="animate-pulse animation-delay-900">d</span>
+          <span className="animate-pulse animation-delay-1000">o</span>
+          <span className="mx-1"></span>
+          <span className="animate-pulse animation-delay-1100">c</span>
+          <span className="animate-pulse animation-delay-1200">r</span>
+          <span className="animate-pulse animation-delay-1300">e</span>
+          <span className="animate-pulse animation-delay-1400">d</span>
+          <span className="animate-pulse animation-delay-1500">e</span>
+          <span className="animate-pulse animation-delay-1600">n</span>
+          <span className="animate-pulse animation-delay-1700">c</span>
+          <span className="animate-pulse animation-delay-1800">i</span>
+          <span className="animate-pulse animation-delay-1900">a</span>
+          <span className="animate-pulse animation-delay-2000">l</span>
+          <span className="animate-pulse animation-delay-2100">e</span>
+          <span className="animate-pulse animation-delay-2200">s</span>
+        </p>
+        
+        {/* Puntos de progreso debajo */}
+        <div className="flex items-center justify-center gap-1 mt-2">
+          <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse"></div>
+          <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse animation-delay-300"></div>
+          <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse animation-delay-600"></div>
+        </div>
+      </div>
     </div>
   </div>
 );
