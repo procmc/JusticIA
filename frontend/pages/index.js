@@ -18,7 +18,7 @@ export default function Home() {
 
           {/* Main Title */}
           <h1 className="text-4xl md:text-4xl lg:text-7xl font-extrabold mb-3 leading-tight">
-            <span className="text-tituloSeccion">
+            <span className="text-primary">
               JusticIA
             </span>
             <br />
@@ -89,7 +89,7 @@ export default function Home() {
 
           {/* Info Section */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-12 mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-tituloSeccion mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-primary mb-6">
               Plataforma Confiable
             </h2>
             <p className="text-lg text-gray-600 text-center max-w-3xl mx-auto">
