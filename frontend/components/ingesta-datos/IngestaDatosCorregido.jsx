@@ -276,8 +276,8 @@ const IngestaDatosCorregido = () => {
             <div className="pt-2">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* Total de archivos */}
-                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></div>
+                <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-10 sm:h-12">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-blue-400 flex-shrink-0"></div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/90 font-semibold text-sm">{files.length}</span>
                     <span className="text-white/70 text-xs font-medium uppercase">Archivos</span>
@@ -285,8 +285,8 @@ const IngestaDatosCorregido = () => {
                 </div>
 
                 {/* Archivos pendientes */}
-                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-10 sm:h-12">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-400 flex-shrink-0"></div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/90 font-semibold text-sm">{pendingFiles}</span>
                     <span className="text-white/70 text-xs font-medium uppercase">Pendientes</span>
@@ -294,8 +294,8 @@ const IngestaDatosCorregido = () => {
                 </div>
 
                 {/* Archivos completados */}
-                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0"></div>
+                <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-10 sm:h-12">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-emerald-400 flex-shrink-0"></div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/90 font-semibold text-sm">{successFiles}</span>
                     <span className="text-white/70 text-xs font-medium uppercase">Completados</span>
@@ -308,8 +308,8 @@ const IngestaDatosCorregido = () => {
                 </div>
 
                 {/* Archivos con error */}
-                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></div>
+                <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-10 sm:h-12">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-400 flex-shrink-0"></div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/90 font-semibold text-sm">{errorFiles}</span>
                     <span className="text-white/70 text-xs font-medium uppercase">Errores</span>
@@ -322,8 +322,8 @@ const IngestaDatosCorregido = () => {
                 </div>
 
                 {/* Tamaño total */}
-                <div className="flex items-center gap-2 bg-white/8 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/10 hover:border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-purple-400 flex-shrink-0"></div>
+                <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-lg border border-white/20 h-10 sm:h-12">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-purple-400 flex-shrink-0"></div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/90 font-semibold text-sm">
                       {files.length > 0 ? formatearTamano(files.reduce((total, archivo) => total + (archivo.size || 0), 0)) : '0 B'}
