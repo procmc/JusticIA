@@ -86,13 +86,17 @@ const IngestaDatosCorregido = () => {
 
     setFiles(prev => [...prev, ...newFiles]);
     
-    // Redirigir automáticamente a la zona de arrastre después de cargar archivos
+    // Scroll automático a la lista de archivos después de cargar archivos
     setTimeout(() => {
-      if (dragZoneRef.current) {
-        dragZoneRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
+      // Si hay archivos, hacer scroll a la lista de archivos
+      if (newFiles.length > 0) {
+        const fileListElement = document.querySelector('[data-files-list]');
+        if (fileListElement) {
+          fileListElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
       }
     }, 100);
   };
@@ -419,7 +423,7 @@ const IngestaDatosCorregido = () => {
 
           {/* Lista de archivos cargados - Posicionada arriba del área de carga */}
           {files.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-6" data-files-list>
               <Card className="shadow-lg border border-gray-200">
                 <CardHeader className="flex justify-between items-center p-6 bg-gray-50">
                   <h3 className="text-lg font-semibold text-gray-800">Archivos Seleccionados</h3>
@@ -518,6 +522,7 @@ const IngestaDatosCorregido = () => {
 
           {/* Zona de arrastre mejorada */}
           <div
+            ref={dragZoneRef}
             className={`relative border-2 border-dashed rounded-2xl p-12 min-h-[300px] text-center transition-all duration-300 ${
               !isExpedienteValid
                 ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
