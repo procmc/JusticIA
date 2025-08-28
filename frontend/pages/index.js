@@ -18,7 +18,7 @@ export default function Home() {
 
           {/* Main Title */}
           <h1 className="text-4xl md:text-4xl lg:text-7xl font-extrabold mb-3 leading-tight">
-            <span className="text-primary">
+            <span className="text-secondary-900">
               JusticIA
             </span>
             <br />
