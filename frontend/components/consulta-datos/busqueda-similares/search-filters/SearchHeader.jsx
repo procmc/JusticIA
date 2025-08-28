@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardBody, Tab, Tabs, Button, Chip, Input, CardHeader, CardFooter } from '@heroui/react';
 import { IoSparkles, IoText, IoDocument, IoSearch } from 'react-icons/io5';
+import { FiAlertCircle, FiFolder } from 'react-icons/fi';
 import { PiBroomLight } from 'react-icons/pi';
 import { Textarea } from '@/components/ui/Textarea';
 import SearchInstructions from './SearchInstructions';
@@ -137,6 +138,9 @@ const SearchHeader = ({
             {searchMode === 'description' && (
               <div className="space-y-2">
                 <div className="relative mb-4">
+                  <label className="block text-sm font-medium text-primary pb-1.5">
+                    Descripción del caso<span className="text-danger">*</span>
+                  </label>
                   <Textarea
                     placeholder="Describe tu caso legal... Ej: 'Despido injustificado de trabajador...'"
                     value={searchText}
@@ -181,6 +185,7 @@ const SearchHeader = ({
 
             {searchMode === 'expedient' && (
               <div className="space-y-3">
+
                 <div className="w-full sm:max-w-sm">
                   <Input
                     label="Número de expediente"
@@ -192,14 +197,32 @@ const SearchHeader = ({
                     variant="bordered"
                     color='primary'
                     size="md"
+                    isRequired
                     startContent={
                       <IoDocument className="w-4 h-4 text-gray-400" />
                     }
                     className="w-full"
                   />
-                  <p className="text-gray-500 text-xs mt-3">
-                    Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)
-                  </p>
+                </div>
+                
+                {/* Instrucción simple y elegante - Responsive */}
+                <div className="mb-10">
+                  <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <div className="flex items-center">
+                        <FiAlertCircle className="w-4 h-4 text-primary-600 mr-2 flex-shrink-0" />
+                        <span className="text-sm text-gray-700">Formato requerido:</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:ml-1 gap-1 sm:gap-2">
+                        <code className="px-2 py-1 bg-white rounded text-primary-600 font-mono text-xs border inline-block">
+                          AA-NNNNNN-OOOO-MM
+                        </code>
+                        <span className="text-xs text-gray-600 sm:text-sm">
+                          (Año-Consecutivo-Oficina-Materia)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
