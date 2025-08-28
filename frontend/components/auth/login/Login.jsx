@@ -44,8 +44,8 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-fondoLogin px-4 md:px-6">
-      <Card className="flex flex-col md:flex-row w-full max-w-lg md:max-w-4xl lg:max-w-5xl h-auto md:min-h-[600px] shadow-lg pb-8 md:pb-0" shadow="lg" radius="lg">
+    <div className="flex justify-center items-center min-h-screen bg-primary/95 px-4 md:px-6">
+      <Card className="flex flex-col md:flex-row w-full max-w-lg md:max-w-4xl lg:max-w-5xl h-auto md:min-h-[600px] shadow-2xl pb-8 md:pb-0" shadow="lg" radius="lg">
         {/* Sección izquierda con animaciones del candado */}
         <LockAnimationSystem 
           isUnlocked={true}
