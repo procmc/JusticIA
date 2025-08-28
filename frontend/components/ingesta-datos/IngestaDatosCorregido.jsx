@@ -1,21 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardBody, CardHeader, Button, Progress, Chip, Divider, Input } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiUploadCloud, 
-  FiFile, 
-  FiMusic, 
-  FiX, 
-  FiCheck, 
+import {
+  FiUploadCloud,
+  FiFile,
+  FiMusic,
+  FiX,
+  FiCheck,
   FiAlertCircle,
   FiDownload,
   FiFolder,
   FiSave,
   FiLoader
 } from 'react-icons/fi';
-import { 
-  IoCloudUpload, 
-  IoDocument, 
+import {
+  IoCloudUpload,
+  IoDocument,
   IoCheckmarkCircle,
   IoWarning
 } from 'react-icons/io5';
@@ -59,7 +59,7 @@ const IngestaDatosCorregido = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFiles(e.dataTransfer.files);
     }
@@ -86,13 +86,17 @@ const IngestaDatosCorregido = () => {
 
     setFiles(prev => [...prev, ...newFiles]);
     
-    // Redirigir automáticamente a la zona de arrastre después de cargar archivos
+    // Scroll automático a la lista de archivos después de cargar archivos
     setTimeout(() => {
-      if (dragZoneRef.current) {
-        dragZoneRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
+      // Si hay archivos, hacer scroll a la lista de archivos
+      if (newFiles.length > 0) {
+        const fileListElement = document.querySelector('[data-files-list]');
+        if (fileListElement) {
+          fileListElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
       }
     }, 100);
   };
@@ -102,7 +106,7 @@ const IngestaDatosCorregido = () => {
   };
 
   const updateFileExpediente = (id, newExpediente) => {
-    setFiles(prev => prev.map(f => 
+    setFiles(prev => prev.map(f =>
       f.id === id ? { ...f, expediente: newExpediente } : f
     ));
   };
@@ -115,21 +119,21 @@ const IngestaDatosCorregido = () => {
 
   const uploadFiles = async () => {
     setUploading(true);
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.status !== 'pending') continue;
 
       // Validar que tenga número de expediente
       if (!file.expediente || file.expediente.trim() === '') {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === file.id ? { ...f, status: 'error', progress: 0 } : f
         ));
         continue;
       }
 
       // Actualizar estado a uploading
-      setFiles(prev => prev.map(f => 
+      setFiles(prev => prev.map(f =>
         f.id === file.id ? { ...f, status: 'uploading', progress: 0 } : f
       ));
 
@@ -137,25 +141,25 @@ const IngestaDatosCorregido = () => {
         // Simular progreso de carga
         for (let progress = 0; progress <= 100; progress += 10) {
           await new Promise(resolve => setTimeout(resolve, 100));
-          setFiles(prev => prev.map(f => 
+          setFiles(prev => prev.map(f =>
             f.id === file.id ? { ...f, progress } : f
           ));
         }
 
         // Marcar como exitoso
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === file.id ? { ...f, status: 'success', progress: 100 } : f
         ));
 
       } catch (error) {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === file.id ? { ...f, status: 'error', progress: 0 } : f
         ));
       }
     }
 
     setUploading(false);
-    
+
     // Reiniciar el formulario después de completar todas las subidas
     setTimeout(() => {
       setFiles([]);
@@ -337,8 +341,29 @@ const IngestaDatosCorregido = () => {
       <Card className="shadow-lg border border-gray-200">
         <CardBody className="p-6 lg:p-8">
           {/* Input de expediente y botón guardar alineados con estilos de búsqueda similares */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6 sm:items-start">
-            <div className="flex-1 max-w-sm">
+          
+          {/* Instrucción simple y elegante - Responsive */}
+          <div className="mb-4">
+            <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <div className="flex items-center">
+                  <FiAlertCircle className="w-4 h-4 text-primary-600 mr-2 flex-shrink-0" />
+                  <span className="text-sm text-gray-700">Formato requerido:</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:ml-1 gap-1 sm:gap-2">
+                  <code className="px-2 py-1 bg-white rounded text-primary-600 font-mono text-xs border inline-block">
+                    AA-NNNNNN-OOOO-MM
+                  </code>
+                  <span className="text-xs text-gray-600 sm:text-sm">
+                    (Año-Consecutivo-Oficina-Materia)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[320px_1fr] gap-4 sm:gap-3 mb-6 sm:items-end">
+            <div>
               <Input
                 label="Número de Expediente"
                 labelPlacement='outside'
@@ -350,56 +375,55 @@ const IngestaDatosCorregido = () => {
                 variant="bordered"
                 radius="md"
                 color='primary'
-                description="Formato:(Año-Consecutivo-Oficina-Materia)"
                 isRequired
                 className="w-full"
               />
             </div>
-            <div className="flex gap-2 mt-6">
+            
+            <div className="flex gap-2">
               <Button
                 color="primary"
-                onPress={handleSaveClick}
-                disabled={isButtonDisabled}
-                isLoading={uploading}
-                size="md"
-                radius="md"
-                className={`px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${
-                  isButtonDisabled 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
+              onPress={handleSaveClick}
+              disabled={isButtonDisabled}
+              isLoading={uploading}
+              size="md"
+              radius="md"
+              className={`px-4 sm:px-6 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
                 }`}
-                startContent={!uploading && <FiSave className="w-4 h-4" />}
-                spinner={
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                }
+              startContent={!uploading && <FiSave className="w-4 h-4" />}
+              spinner={
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              }
+            >
+              {uploading
+                ? 'Guardando...'
+                : pendingFiles > 0
+                  ? `Guardar ${pendingFiles}`
+                  : 'Guardar'
+              }
+            </Button>
+
+            {files.length > 0 && (
+              <Button
+                onPress={() => setFiles([])}
+                color="default"
+                variant="flat"
+                size="sn"
+                startContent={<PiBroomLight className="w-4 h-4" />}
+                disabled={uploading}
+                className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm"
+                radius="md"
               >
-                {uploading 
-                  ? 'Guardando...' 
-                  : pendingFiles > 0
-                    ? `Guardar ${pendingFiles}`
-                    : 'Guardar'
-                }
               </Button>
-              
-              {files.length > 0 && (
-                <Button
-                  onPress={() => setFiles([])}
-                  color="default"
-                  variant="flat"
-                  size="sm"
-                  startContent={<PiBroomLight className="w-4 h-4" />}
-                  disabled={uploading}
-                  className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm h-10.5"
-                  radius="lg"
-                >
-                </Button>
-              )}
+            )}
             </div>
           </div>
 
           {/* Lista de archivos cargados - Posicionada arriba del área de carga */}
           {files.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-6" data-files-list>
               <Card className="shadow-lg border border-gray-200">
                 <CardHeader className="flex justify-between items-center p-6 bg-gray-50">
                   <h3 className="text-lg font-semibold text-gray-800">Archivos Seleccionados</h3>
@@ -414,11 +438,10 @@ const IngestaDatosCorregido = () => {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
-                          className={`flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                            file.status === 'pending' && (!file.expediente || file.expediente.trim() === '') 
-                              ? 'bg-orange-50 border-orange-200' 
-                              : ''
-                          }`}
+                          className={`flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${file.status === 'pending' && (!file.expediente || file.expediente.trim() === '')
+                            ? 'bg-orange-50 border-orange-200'
+                            : ''
+                            }`}
                         >
                           <div className="flex items-center space-x-4 flex-1">
                             {getFileIcon(file.type)}
@@ -465,9 +488,9 @@ const IngestaDatosCorregido = () => {
                                 )}
                                 {file.status === 'uploading' && (
                                   <div className="flex-1 max-w-xs">
-                                    <Progress 
-                                      value={file.progress} 
-                                      size="sm" 
+                                    <Progress
+                                      value={file.progress}
+                                      size="sm"
                                       color="primary"
                                       className="max-w-md"
                                     />
@@ -526,7 +549,7 @@ const IngestaDatosCorregido = () => {
                 </div>
               </div>
             )}
-            
+
             <motion.div
               animate={{ scale: dragActive ? 1.02 : 1 }}
               transition={{ duration: 0.2 }}
@@ -535,7 +558,7 @@ const IngestaDatosCorregido = () => {
               <div className={`p-4 rounded-full ${dragActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
                 <FiUploadCloud className={`w-12 h-12 ${dragActive ? 'text-blue-600' : 'text-gray-400'}`} />
               </div>
-              
+
               <div className="space-y-2">
                 <h3 className="text-xl font-semibold text-gray-700">
                   {dragActive ? '¡Suelta los archivos aquí!' : 'Selecciona tus archivos'}
@@ -544,11 +567,10 @@ const IngestaDatosCorregido = () => {
                   Arrastra y suelta archivos aquí o{' '}
                   <button
                     onClick={() => isExpedienteValid && fileInputRef.current?.click()}
-                    className={`font-medium underline ${
-                      isExpedienteValid 
-                        ? 'text-blue-600 hover:text-blue-700 cursor-pointer' 
-                        : 'text-gray-400 cursor-not-allowed'
-                    }`}
+                    className={`font-medium underline ${isExpedienteValid
+                      ? 'text-blue-600 hover:text-blue-700 cursor-pointer'
+                      : 'text-gray-400 cursor-not-allowed'
+                      }`}
                     disabled={!isExpedienteValid}
                   >
                     examina tu dispositivo
@@ -559,7 +581,7 @@ const IngestaDatosCorregido = () => {
                     <div className="flex items-center justify-center gap-2">
                       <IoCheckmarkCircle className="w-5 h-5 text-emerald-600" />
                       <span className="text-emerald-800 font-medium">
-                        ¡{files.length} archivo{files.length !== 1 ? 's' : ''} {files.length !== 1 ? 'agregados' : 'agregado'}! 
+                        ¡{files.length} archivo{files.length !== 1 ? 's' : ''} {files.length !== 1 ? 'agregados' : 'agregado'}!
                         {pendingFiles > 0 && ` ${pendingFiles} listo${pendingFiles !== 1 ? 's' : ''} para guardar`}
                       </span>
                     </div>
@@ -615,18 +637,18 @@ const IngestaDatosCorregido = () => {
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-medium text-gray-800 mb-3 flex items-center space-x-2">
                 <FiFile className="w-4 h-4" />
                 <span>Archivos a procesar:</span>
               </h4>
-              
+
               <div className="max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
                 {files
                   .filter(f => f.status === 'pending')
                   .map((file) => (
-                    <div 
+                    <div
                       key={file.id}
                       className="flex items-center justify-between p-3 bg-white rounded border border-gray-100 hover:border-gray-200 transition-colors"
                     >
@@ -649,9 +671,9 @@ const IngestaDatosCorregido = () => {
                           </div>
                         </div>
                       </div>
-                      <Chip 
-                        color={file.type === 'document' ? 'primary' : 'secondary'} 
-                        size="sm" 
+                      <Chip
+                        color={file.type === 'document' ? 'primary' : 'secondary'}
+                        size="sm"
                         variant="flat"
                       >
                         {file.type === 'document' ? 'DOC' : 'AUDIO'}
