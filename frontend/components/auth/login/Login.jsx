@@ -45,16 +45,18 @@ const Login = () => {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-primary/95 px-4 md:px-6">
-      <Card className="flex flex-col md:flex-row w-full max-w-lg md:max-w-4xl lg:max-w-5xl h-auto md:min-h-[600px] shadow-2xl pb-8 md:pb-0" shadow="lg" radius="lg">
+      <Card className="flex flex-col md:flex-row w-full max-w-sm sm:max-w-md md:max-w-4xl lg:max-w-5xl h-auto min-h-[700px] md:min-h-[600px] shadow-2xl pb-6 md:pb-0" shadow="lg" radius="lg">
         {/* Sección izquierda con animaciones del candado */}
-        <LockAnimationSystem 
-          isUnlocked={true}
-          showSuccess={false}
-          isClosing={true}
-        />
+        <div className="w-full md:w-[380px] lg:w-[420px] h-80 md:h-auto">
+          <LockAnimationSystem 
+            isUnlocked={true}
+            showSuccess={false}
+            isClosing={true}
+          />
+        </div>
 
         {/* Sección derecha con el formulario */}
-        <CardBody className="w-full md:w-1/2 p-0">
+        <CardBody className="w-full md:w-1/2 p-4 md:p-0 flex-1">
           <LoginForm 
             isVisible={isVisible}
             toggleVisibility={toggleVisibility}
