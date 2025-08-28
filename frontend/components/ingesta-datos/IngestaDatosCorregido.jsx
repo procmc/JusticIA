@@ -371,7 +371,6 @@ const IngestaDatosCorregido = () => {
                 variant="bordered"
                 radius="md"
                 color='primary'
-                description="Formato: AA-NNNNNN-OOOO-MM (Año-Consecutivo-Oficina-Materia)"
                 isRequired
                 className="w-full"
               />
