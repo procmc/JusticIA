@@ -4,38 +4,38 @@ import { LockClosedIcon, LockOpenIcon } from '../../icons/LockIcons';
 
 const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] bg-primary border shadow-lg flex items-center justify-center py-8 md:py-0 relative overflow-hidden">
+    <div className="w-full h-full bg-primary border shadow-lg flex items-center justify-center py-4 md:py-8 relative overflow-hidden">
       {/* Animación de fondo simple */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/90 to-primary opacity-60"></div>
       
       {/* Título de bienvenida */}
-      <div className="absolute top-6 md:top-16 left-1/2 transform -translate-x-1/2 text-center z-20">
+      <div className="absolute top-4 md:top-16 left-1/2 transform -translate-x-1/2 text-center z-20">
         <h2 className="text-white text-sm md:text-base font-light mb-1 tracking-wide opacity-90">
           Bienvenido a
         </h2>
-        <h1 className="text-white text-2xl md:text-3xl lg:text-4xl font-bold tracking-wider">
+        <h1 className="text-white text-xl md:text-3xl lg:text-4xl font-bold tracking-wider">
           JusticIA
         </h1>
-        <div className="w-16 h-0.5 bg-white/40 mx-auto mt-2 rounded-full"></div>
+        <div className="w-12 md:w-16 h-0.5 bg-white/40 mx-auto mt-2 rounded-full"></div>
       </div>
       
       <div className="relative z-10">
         {/* Candado cerrado */}
         <LockClosedIcon 
-          className={`w-[140px] h-[140px] md:w-[200px] md:h-[200px] lg:w-[220px] lg:h-[220px] text-white lock-icon ${
+          className={`w-[100px] h-[100px] md:w-[200px] md:h-[200px] lg:w-[220px] lg:h-[220px] text-white lock-icon ${
             isUnlocked && !isClosing ? 'lock-icon-opening' : 'lock-icon-closed'
           } ${isClosing ? 'lock-icon-closing' : ''}`}
         />
         
         {/* Animación circular dentro del candado */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/3">
-          <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-white/30 rounded-full animate-pulse"></div>
-          <div className="absolute top-1 left-1 w-6 h-6 md:w-8 md:h-8 border-2 border-blue-300/50 rounded-full animate-pulse"></div>
+          <div className="w-5 h-5 md:w-10 md:h-10 border-2 border-white/30 rounded-full animate-pulse"></div>
+          <div className="absolute top-0.5 left-0.5 md:top-1 md:left-1 w-4 h-4 md:w-8 md:h-8 border-2 border-blue-300/50 rounded-full animate-pulse"></div>
         </div>
         
         {/* Candado abierto */}
         <LockOpenIcon 
-          className={`absolute top-0 left-0 w-[140px] h-[140px] md:w-[200px] md:h-[200px] lg:w-[220px] lg:h-[220px] text-white lock-icon ${
+          className={`absolute top-0 left-0 w-[100px] h-[100px] md:w-[200px] md:h-[200px] lg:w-[220px] lg:h-[220px] text-white lock-icon ${
             isUnlocked && !isClosing ? 'lock-icon-open' : 'opacity-0 scale-90 rotate-0'
           } ${isClosing ? 'lock-icon-open-closing' : ''}`}
         />
@@ -62,8 +62,8 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
       </div>
       
       {/* Logos institucionales en la parte inferior */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3 opacity-70">
-        <div className="relative w-16 h-10">
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-2 md:gap-3 opacity-70">
+        <div className="relative w-12 h-7 md:w-16 md:h-10">
           <Image 
             src="/logoPj.png" 
             alt="Logo Poder Judicial" 
@@ -71,7 +71,7 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
             className="object-contain filter brightness-0 invert" 
           />
         </div>
-        <div className="relative w-14 h-8">
+        <div className="relative w-10 h-6 md:w-14 md:h-8">
           <Image 
             src="/InteligenciaInformacion.png" 
             alt="Inteligencia Información" 
