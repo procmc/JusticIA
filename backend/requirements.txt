@@ -1,6 +1,18 @@
 fastapi==0.116.1
 uvicorn[standard]==0.30.6
 
+# SQLAlchemy y SQL Server
+sqlalchemy>=2.0.0
+pyodbc>=4.0.0  # Driver ODBC para SQL Server
+
+alembic>=1.12.0  # Para migraciones
+
+# Autenticación JWT
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.0
+python-multipart>=0.0.6
+email-validator>=2.0.0
+
 # LangChain (núcleo + integraciones)
 langchain==0.3.27
 langchain-milvus==0.2.1
