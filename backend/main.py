@@ -4,23 +4,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.vectorstore.vectorstore import get_vectorstore
 from app.routes import ingesta, consulta, health, llm
+from app.db import database
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 	await get_vectorstore()
 	yield
 
-app = FastAPI(title="Demo Ingesta & Consulta - JusticIA", lifespan=lifespan)
+app = FastAPI(title="JusticIA API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite cualquier origen. Puedes poner ["http://localhost"] si quieres restringir.
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(ingesta.router)
-app.include_router(consulta.router)
-app.include_router(health.router)
-app.include_router(llm.router)
+app.include_router(ingesta.router, prefix="/ingesta", tags=["ingesta"])
+app.include_router(consulta.router, prefix="/consulta", tags=["consulta"])
+app.include_router(health.router, prefix="/health", tags=["health"])
+app.include_router(llm.router, prefix="/llm", tags=["llm"])
+
+@app.get("/")
+async def root():
+    return {"message": "JusticIA API está funcionando", "version": "1.0.0"}
