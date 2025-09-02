@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config.config import DATABASE_URL
@@ -20,7 +20,7 @@ try:
     
     # Probar conexión al inicializar
     with engine.connect() as conn:
-        conn.execute("SELECT 1")
+        conn.execute(text("SELECT 1"))
     
     print("CONEXIÓN A SQL SERVER EXITOSA")
     logger.info("Conexión a SQL Server exitosa")
