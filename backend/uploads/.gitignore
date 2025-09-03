@@ -1,0 +1,5 @@
+# Ignorar todos los archivos subidos
+*
+# Pero mantener este archivo para preservar la estructura
+!.gitkeep
+!.gitignore

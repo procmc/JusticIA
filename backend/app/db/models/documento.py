@@ -11,6 +11,7 @@ class T_Documento(Base):
     CN_Id_documento: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     CT_Nombre_archivo: Mapped[str] = mapped_column(String(255), nullable=False)
     CT_Tipo_archivo: Mapped[str] = mapped_column(String(50), nullable=False)
+    CT_Ruta_archivo: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     CF_Fecha_carga: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # M:N con Expediente (Contiene)

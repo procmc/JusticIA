@@ -1,40 +1,39 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List
-from app.schemas.schemas import (
-    IngestaItem, 
-    IngestaBatch, 
-    FileProcessingStatus
+from sqlalchemy.orm import Session
+from app.schemas.ingesta_schemas import (
+    IngestaArchivosRequest,
+    IngestaArchivosResponse
 )
-from app.services.file_processing_service import process_uploaded_files
+from app.services.file_processing_service import process_uploaded_files, generar_respuesta_simplificada
+from app.db.database import get_db
 
 router = APIRouter()
 
-# Ruta dinámica para ingesta de archivos (uno o múltiples)
-@router.post("/archivos", response_model=FileProcessingStatus)
+@router.post("/archivos", response_model=IngestaArchivosResponse)
 async def ingestar_archivos(
-    expediente: str = Form(..., description="Número de expediente (requerido)"),
-    files: List[UploadFile] = File(..., description="Uno o más archivos a procesar")
+    CT_Num_expediente: str = Form(..., description="Número de expediente"),
+    files: List[UploadFile] = File(..., description="Archivos a procesar"),
+    db: Session = Depends(get_db)
 ):
     """
-    Ingesta dinámica de archivos para un expediente específico.
-    
-    - Puede recibir uno o múltiples archivos
-    - Formatos soportados: PDF, DOC, DOCX, RTF, TXT, MP3
-    - Cada archivo se procesa individualmente
-    - Retorna status detallado de cada archivo
+    Ingesta de archivos para un expediente específico.
+    Crea/busca expediente en BD y almacena documentos.
     """
-    if not expediente.strip():
-        raise HTTPException(
-            status_code=400, 
-            detail="El número de expediente es obligatorio"
-        )
+    # Validar expediente
+    try:
+        request_validado = IngestaArchivosRequest(CT_Num_expediente=CT_Num_expediente)
+        CT_Num_expediente = request_validado.CT_Num_expediente
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     if not files:
-        raise HTTPException(
-            status_code=400, 
-            detail="Debe proporcionar al menos un archivo"
-        )
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un archivo")
     
-    # Procesar archivos dinámicamente
-    result = await process_uploaded_files(files, expediente)
-    return result
+    # Procesar archivos con conexión a BD
+    resultado_completo = await process_uploaded_files(files, CT_Num_expediente, db)
+    
+    # Generar respuesta simplificada
+    respuesta_simplificada = generar_respuesta_simplificada(resultado_completo, CT_Num_expediente)
+    
+    return respuesta_simplificada
