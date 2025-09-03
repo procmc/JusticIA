@@ -38,23 +38,18 @@ Este CRUD contiene las funciones básicas para manejar usuarios en el sistema Ju
 
 ### 4. Editar Usuario
 - **Ruta:** `PUT /usuarios/{usuario_id}`
-- **Descripción:** Edita los datos básicos de un usuario
+- **Descripción:** Edita los datos de un usuario incluyendo rol y estado
 - **Parámetros:** `usuario_id` (entero)
 - **Body:** 
   ```json
   {
     "nombre_usuario": "string",
     "correo": "string", 
-    "id_rol": integer
+    "id_rol": integer,
+    "id_estado": integer
   }
   ```
 - **Respuesta:** Usuario actualizado o error 404 si no existe
-
-### 5. Deshabilitar Usuario
-- **Ruta:** `PATCH /usuarios/{usuario_id}/deshabilitar`
-- **Descripción:** Deshabilita un usuario cambiando su estado a "Inactivo"
-- **Parámetros:** `usuario_id` (entero)
-- **Respuesta:** Mensaje de confirmación o error 404 si no existe
 
 ## Estructura de Datos
 
@@ -78,6 +73,7 @@ Este CRUD contiene las funciones básicas para manejar usuarios en el sistema Ju
 ```
 
 ## Notas Importantes
-- En lugar de eliminar usuarios, se cambia su estado a "Inactivo"
+- **Editar usuario:** Ahora permite cambiar tanto el rol como el estado del usuario
+- **Sin función deshabilitar:** Se eliminó la función específica de deshabilitar, ahora se usa la función editar para cambiar el estado
 - Los usuarios están relacionados con las tablas Estado y Rol
 - Todos los endpoints requieren conexión a la base de datos SQL Server

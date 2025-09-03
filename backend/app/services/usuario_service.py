@@ -46,13 +46,9 @@ class UsuarioService:
         usuario = self.repository.crear_usuario(db, nombre_usuario, correo, contrasenna, id_rol)
         return self._mapear_usuario_respuesta(usuario)
     
-    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int) -> Optional[UsuarioRespuesta]:
-        """Edita un usuario"""
-        usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, correo, id_rol)
+    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
+        """Edita un usuario incluyendo rol y estado"""
+        usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, correo, id_rol, id_estado)
         if usuario:
             return self._mapear_usuario_respuesta(usuario)
         return None
-    
-    def deshabilitar_usuario(self, db: Session, usuario_id: int) -> bool:
-        """Deshabilita un usuario"""
-        return self.repository.deshabilitar_usuario(db, usuario_id)
