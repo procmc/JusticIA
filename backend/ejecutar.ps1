@@ -1,17 +1,19 @@
-# 1) Crear y activar venv (opcional pero recomendado)
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/Mac:
-#source .venv/bin/activate
+# Verificar e instalar dependencias
+if (!(Get-Command java -ErrorAction SilentlyContinue)) {
+    Write-Host "Instalando Java..."
+    winget install Microsoft.OpenJDK.17
+}
 
-# 2) Instalar dependencias
+if (!(Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+    Write-Host "Instalando FFmpeg..."
+    winget install "FFmpeg (Essentials Build)"
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
+# Configurar entorno Python
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 
-# 3) (Opcional) Exportar variables si no usaste .env
-# set MILVUS_URI=...
-# set MILVUS_TOKEN=...
-# etc.
-
-# 4) Correr FastAPI
+# Ejecutar servidor
 uvicorn main:app --reload
