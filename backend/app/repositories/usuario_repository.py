@@ -32,8 +32,8 @@ class UsuarioRepository:
             .first()
         )
     
-    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int) -> Optional[T_Usuario]:
-        """Edita los datos básicos de un usuario"""
+    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
+        """Edita los datos de un usuario incluyendo rol y estado"""
         usuario = self.obtener_usuario_por_id(db, usuario_id)
         if not usuario:
             return None
@@ -41,25 +41,11 @@ class UsuarioRepository:
         usuario.CT_Nombre_usuario = nombre_usuario
         usuario.CT_Correo = correo
         usuario.CN_Id_rol = id_rol
+        usuario.CN_Id_estado = id_estado
         
         db.commit()
         db.refresh(usuario)
         return usuario
-    
-    def deshabilitar_usuario(self, db: Session, usuario_id: int) -> bool:
-        """Deshabilita un usuario cambiando su estado a inactivo"""
-        usuario = self.obtener_usuario_por_id(db, usuario_id)
-        if not usuario:
-            return False
-        
-        # Buscar el estado "Inactivo" (asumiendo que tiene ID 2)
-        estado_inactivo = db.query(T_Estado).filter(T_Estado.CT_Nombre_estado == "Inactivo").first()
-        if estado_inactivo:
-            usuario.CN_Id_estado = estado_inactivo.CN_Id_estado
-            db.commit()
-            return True
-        
-        return False
     
     def crear_usuario(self, db: Session, nombre_usuario: str, correo: str, contrasenna: str, id_rol: int) -> T_Usuario:
         """Crea un nuevo usuario"""
