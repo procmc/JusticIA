@@ -15,6 +15,9 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 
+# Configuración Whisper para transcripción de audio
+WHISPER_MODEL = os.getenv("WHISPER_MODEL")  # Default: base
+
 # Configuración SQL Server
 SQL_SERVER_HOST = os.getenv("SQL_SERVER_HOST")
 SQL_SERVER_PORT = os.getenv("SQL_SERVER_PORT", "1433")
