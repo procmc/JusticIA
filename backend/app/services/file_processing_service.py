@@ -11,21 +11,8 @@ from app.schemas.schemas import (
     FileValidationError, 
     FileProcessingStatus
 )
-from app.vectorstore.vectorstore import get_vectorstore
-
-# Configuración de archivos permitidos
-ALLOWED_FILE_TYPES = {
-    'application/pdf': ['.pdf'],
-    'application/msword': ['.doc'],
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    'application/rtf': ['.rtf'],
-    'text/plain': ['.txt'],
-    'audio/mpeg': ['.mp3'],
-    'audio/mp3': ['.mp3']
-}
-
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.mp3']
+from app.config.file_config import ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
+from app.vectorstore.milvus_storage import store_in_vectorstore
 
 async def process_uploaded_files(files: List[UploadFile], expediente: str) -> FileProcessingStatus:
     """
@@ -243,51 +230,3 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
         raise ValueError("OpenAI Whisper no está disponible. Instalar con 'pip install openai-whisper'")
     except Exception as e:
         raise ValueError(f"Error transcribiendo audio {filename}: {str(e)}")
-
-async def store_in_vectorstore(texto: str, metadatos: dict, expediente: str):
-    """
-    Almacena el texto extraído en Milvus.
-    """
-    from app.embeddings.embeddings import get_embeddings
-    from app.config.config import COLLECTION_NAME
-    import uuid
-    from datetime import datetime
-    import time
-    
-    # Obtener cliente Milvus
-    client = await get_vectorstore()
-    
-    # Generar embedding del texto
-    embeddings_model = await get_embeddings()
-    embedding = await embeddings_model.aembed_query(texto)
-    
-    # Preparar datos según el schema de Milvus
-    timestamp_ms = int(time.time() * 1000)  # timestamp en milisegundos
-    
-    data = [{
-        "id_chunk": str(uuid.uuid4()),  # Primary key según schema
-        "id_expediente": hash(expediente) % (2**31),  # Convertir expediente a INT64
-        "numero_expediente": expediente,
-        "fecha_expediente_creacion": timestamp_ms,
-        "id_documento": hash(metadatos["file_id"]) % (2**31),  # Convertir a INT64
-        "nombre_archivo": metadatos["nombre_archivo"],
-        "tipo_archivo": 1,  # 1 = TXT, ajustar según necesidad
-        "fecha_carga": timestamp_ms,
-        "texto": texto[:8192],  # Truncar si es muy largo
-        "embedding": embedding,
-        "indice_chunk": 0,  # Primer chunk
-        "pagina_inicio": 1,
-        "pagina_fin": 1,
-        "tipo_documento": "documento",
-        "fecha_vectorizacion": timestamp_ms,
-        "meta": metadatos  # Metadatos adicionales como JSON
-    }]
-    
-    # Insertar en Milvus
-    result = client.insert(
-        collection_name=COLLECTION_NAME,
-        data=data
-    )
-    
-    print(f"✔ Documento insertado en Milvus: {metadatos['nombre_archivo']}")
-    return result
