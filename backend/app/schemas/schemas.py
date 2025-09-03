@@ -27,6 +27,14 @@ class FileUploadResponse(BaseModel):
     metadatos: Optional[dict] = None
     error_detalle: Optional[str] = None
 
+# Esquema simplificado para respuesta de archivo procesado
+class ArchivoSimplificado(BaseModel):
+    status: str
+    nombre_archivo: str
+    documento_id: Optional[int] = None
+    mensaje: Optional[str] = None
+    error: Optional[str] = None
+
 class FileValidationError(BaseModel):
     error: str
     archivo: str
