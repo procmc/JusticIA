@@ -23,6 +23,7 @@ class UsuarioEditar(BaseModel):
     nombre_usuario: str
     correo: str
     id_rol: int
+    id_estado: int
 
 
 class UsuarioRespuesta(BaseModel):
