@@ -6,7 +6,7 @@ from app.config.file_config import FILE_TYPE_CODES
 from app.vectorstore.vectorstore import get_vectorstore
 from pathlib import Path
 
-async def store_in_vectorstore(texto: str, metadatos: dict, expediente: str):
+async def store_in_vectorstore(texto: str, metadatos: dict,  CT_Num_expediente: str):
     """
     Almacena el texto extraído en Milvus.
     """
@@ -26,8 +26,8 @@ async def store_in_vectorstore(texto: str, metadatos: dict, expediente: str):
     
     data = [{
         "id_chunk": str(uuid.uuid4()),  # Primary key según schema
-        "id_expediente": hash(expediente) % (2**31),  # Convertir expediente a INT64
-        "numero_expediente": expediente,
+        "id_expediente": hash(CT_Num_expediente) % (2**31),  # Convertir expediente a INT64
+        "numero_expediente": CT_Num_expediente,
         "fecha_expediente_creacion": timestamp_ms,
         "id_documento": hash(metadatos["file_id"]) % (2**31),  # Convertir a INT64
         "nombre_archivo": metadatos["nombre_archivo"],
