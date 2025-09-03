@@ -41,18 +41,11 @@ def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db)):
 
 @router.put("/{usuario_id}", response_model=UsuarioRespuesta)
 def editar_usuario(usuario_id: int, usuario_data: UsuarioEditar, db: Session = Depends(get_db)):
-    """Edita un usuario"""
+    """Edita un usuario incluyendo rol y estado"""
     usuario = usuario_service.editar_usuario(
-        db, usuario_id, usuario_data.nombre_usuario, usuario_data.correo, usuario_data.id_rol
+        db, usuario_id, usuario_data.nombre_usuario, usuario_data.correo, 
+        usuario_data.id_rol, usuario_data.id_estado
     )
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
-
-@router.patch("/{usuario_id}/deshabilitar", response_model=MensajeRespuesta)
-def deshabilitar_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    """Deshabilita un usuario cambiando su estado"""
-    resultado = usuario_service.deshabilitar_usuario(db, usuario_id)
-    if not resultado:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado o no se pudo deshabilitar")
-    return MensajeRespuesta(mensaje="Usuario deshabilitado correctamente")
