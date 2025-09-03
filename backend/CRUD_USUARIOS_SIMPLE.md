@@ -1,7 +1,13 @@
-# CRUD de Usuarios Simplificado
+# CRUD de Usuarios
 
 ## Descripción
 Este CRUD contiene las funciones básicas para manejar usuarios en el sistema JusticIA.
+
+## Archivos del Sistema
+- **Repository:** `usuario_repository.py` - Operaciones de base de datos
+- **Service:** `usuario_service.py` - Lógica de negocio  
+- **Schemas:** `usuario_schemas.py` - Validación de datos
+- **Routes:** `usuarios.py` - Endpoints de la API
 
 ## Funciones Disponibles
 
@@ -52,14 +58,22 @@ Este CRUD contiene las funciones básicas para manejar usuarios en el sistema Ju
 
 ## Estructura de Datos
 
-### Usuario
+### Usuario (Respuesta)
 ```json
 {
   "CN_Id_usuario": integer,
   "CT_Nombre_usuario": "string",
   "CT_Correo": "string",
   "CN_Id_rol": integer,
-  "CN_Id_estado": integer
+  "CN_Id_estado": integer,
+  "rol": {
+    "id": integer,
+    "nombre": "string"
+  },
+  "estado": {
+    "id": integer,
+    "nombre": "string"
+  }
 }
 ```
 
