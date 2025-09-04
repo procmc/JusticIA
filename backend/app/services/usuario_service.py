@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.repositories.usuario_repository import UsuarioRepository
 from app.db.models.usuario import T_Usuario
 from app.schemas.usuario_schemas import UsuarioRespuesta, RolInfo, EstadoInfo
-from app.services.email_service import EmailService, get_email_config_from_env
+from app.email import EmailService, get_email_config_from_env
 import os
 
 

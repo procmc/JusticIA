@@ -6,7 +6,7 @@ Funciones para probar y gestionar envío de correos
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from app.services.email_service import EmailService, get_email_config_from_env
+from app.email import EmailService, get_email_config_from_env
 
 # Cargar variables de entorno (como en Node.js)
 load_dotenv()
