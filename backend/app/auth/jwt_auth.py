@@ -3,7 +3,6 @@ Sistema de autenticación simple para JusticIA
 """
 
 import jwt
-import os
 from functools import wraps
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Request
@@ -11,30 +10,25 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models.rol import T_Rol
+from app.config.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS
 
 
-# Configuración básica
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "justiceia-super-secret-key-2025")
-ALGORITHM = "HS256"
-EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
-
-
-def create_token(user_id: int, role: str, username: str = None) -> str:
+def create_token(user_id: int, role: str, username: Optional[str] = None) -> str:
     """Crea un token JWT simple"""
     payload = {
         "user_id": user_id,
         "role": role,
         "username": username,
-        "exp": datetime.utcnow() + timedelta(hours=EXPIRE_HOURS),
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
         "iat": datetime.utcnow()
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def verify_token(token: str) -> Optional[Dict[str, Any]]:
     """Verifica un token JWT"""
     try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
     except:
         return None
 

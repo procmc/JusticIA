@@ -4,7 +4,7 @@ Soporta Gmail, Outlook, y otros proveedores SMTP
 Similar a Nodemailer en Node.js
 """
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import Optional
 import os
 

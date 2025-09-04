@@ -36,7 +36,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if e
 # Dependency para obtener la sesión de base de datos
 def get_db():
     """Dependency que proporciona una sesión de base de datos."""
-    if not engine:
+    if not engine or not SessionLocal:
         raise Exception("Base de datos no disponible. Revisa la configuración.")
     
     db = SessionLocal()
