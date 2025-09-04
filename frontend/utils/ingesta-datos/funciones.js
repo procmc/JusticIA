@@ -1,10 +1,15 @@
-// Tipos de archivos permitidos
+/**
+ * Funciones de utilidad consolidadas para ingesta de datos
+ * Versión unificada sin duplicaciones
+ */
+
+// Tipos de archivos permitidos (centralizados)
 export const tiposArchivo = {
   documentos: ['.pdf', '.doc', '.docx', '.rtf', '.txt'],
   audio: ['.mp3', '.wav', '.m4a', '.ogg']
 };
 
-// Obtener tipo de archivo basado en la extensión
+// Obtener tipo de archivo basado en la extensión (unificado)
 export const obtenerTipoArchivo = (nombreArchivo) => {
   const extension = '.' + nombreArchivo.split('.').pop().toLowerCase();
   if (tiposArchivo.documentos.includes(extension)) return 'document';
@@ -23,7 +28,17 @@ export const formatearTamano = (bytes) => {
 
 // Validación del formato de expediente
 export const validarFormatoExpediente = (expediente) => {
+  // Verificar que expediente no sea null, undefined o vacío
+  if (!expediente || typeof expediente !== 'string') {
+    return false;
+  }
+  
   // Formato: 98-003287-0166-LA (año 2 dígitos, -, 6 dígitos consecutivo, -, 4 dígitos oficina, -, 2 caracteres materia)
   const regex = /^\d{2}-\d{6}-\d{4}-[A-Za-z]{2}$/;
   return regex.test(expediente.trim());
+};
+
+// Obtener todos los tipos de archivos como array (para input accept)
+export const getAllowedFileExtensions = () => {
+  return [...tiposArchivo.documentos, ...tiposArchivo.audio];
 };
