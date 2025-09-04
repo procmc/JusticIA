@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 from fastapi import UploadFile, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ from app.services.file_storage_service import FileStorageService
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
 
-async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Session = None) -> FileProcessingStatus:
+async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None) -> FileProcessingStatus:
     """
     Procesa una lista de archivos subidos para un expediente específico.
     Solo almacena en vectorstore si se puede crear registro en BD (transaccional).
@@ -39,7 +39,8 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     # 1. Buscar o crear expediente en BD (requerido para almacenamiento)
     if db:
         try:
-            expediente = await ExpedienteService.buscar_o_crear_expediente(db, CT_Num_expediente)
+            expediente_service = ExpedienteService()
+            expediente = await expediente_service.buscar_o_crear_expediente(db, CT_Num_expediente)
             print(f"Expediente obtenido/creado: {expediente.CT_Num_expediente}")
         except Exception as e:
             print(f"Error BD - procesamiento sin almacenamiento: {str(e)}")
@@ -172,7 +173,7 @@ def validate_file(file: UploadFile) -> FileValidationError | None:
     
     return None
 
-async def process_single_file(file: UploadFile, CT_Num_expediente: str, expediente=None, db: Session = None) -> FileUploadResponse:
+async def process_single_file(file: UploadFile, CT_Num_expediente: str, expediente=None, db: Optional[Session] = None) -> FileUploadResponse:
     """
     Procesa un solo archivo usando transacciones atómicas con TransactionManager.
     Garantiza consistencia entre BD, almacenamiento físico y vectorstore.
@@ -180,12 +181,16 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
     file_id = str(uuid.uuid4())
     
     try:
+        # Validar nombre de archivo primero
+        if not file.filename:
+            raise ValueError("El archivo debe tener un nombre")
+        
         # Leer contenido del archivo
         content = await file.read()
         
         # Detectar tipo de archivo usando filetype
         detected_type = filetype.guess(content)
-        tipo_archivo = detected_type.mime if detected_type else file.content_type
+        tipo_archivo = detected_type.mime if detected_type else file.content_type or "application/octet-stream"
         
         # Extraer texto según el tipo
         texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo)
@@ -207,28 +212,34 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
         # ============ PROCESAMIENTO CON BD (TRANSACCIONAL) ============
         if expediente and db:
             documento_creado = None
+            expediente_service = ExpedienteService()
             
             try:
                 # 1. Crear documento en BD con estado "Pendiente" (sin commit)
                 extension = Path(file.filename).suffix.lower()
-                documento_creado = await ExpedienteService.crear_documento(
+                documento_creado = await expediente_service.crear_documento(
                     db=db,
                     expediente=expediente,
                     nombre_archivo=file.filename,
                     tipo_archivo=extension,
-                    ruta_archivo=None,  # Se actualiza después
+                    ruta_archivo="",  # Se actualiza después
                     auto_commit=False  # No hacer commit automático
                 )
                 print(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
                 
                 # 2. Guardar archivo físicamente
-                ruta_archivo = await FileStorageService.guardar_archivo(file, CT_Num_expediente)
+                storage = FileStorageService()
+                ruta_archivo = await storage.guardar_archivo(file, CT_Num_expediente)
                 print(f"Archivo guardado físicamente: {ruta_archivo}")
                 
                 # 3. Actualizar la ruta en el documento
-                documento_creado.CT_Ruta_archivo = ruta_archivo
-                db.add(documento_creado)
-                db.flush()  # Flush para obtener el ID antes del commit
+                await expediente_service.actualizar_ruta_documento(
+                    db=db,
+                    documento=documento_creado,
+                    ruta_archivo=ruta_archivo,
+                    auto_commit=False
+                )
+                print(f"Ruta actualizada en documento")
                 
                 # 4. Actualizar metadatos con info de BD
                 metadatos.update({
@@ -241,7 +252,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                 print(f"Almacenado en vectorstore exitosamente")
                 
                 # 6. Actualizar estado a "Procesado" si todo salió bien
-                await ExpedienteService.actualizar_estado_documento(
+                await expediente_service.actualizar_estado_documento(
                     db=db,
                     documento=documento_creado,
                     nuevo_estado="Procesado",
@@ -260,7 +271,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                 try:
                     # Si tenemos el documento creado, actualizar su estado a "Error"
                     if documento_creado:
-                        await ExpedienteService.actualizar_estado_documento(
+                        await expediente_service.actualizar_estado_documento(
                             db=db,
                             documento=documento_creado,
                             nuevo_estado="Error",
@@ -336,8 +347,11 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
         # Tika procesa automáticamente cualquier formato soportado
         parsed = parser.from_buffer(content)
         
-        # Extraer el texto
-        texto = parsed.get('content', '')
+        # Extraer el texto - Tika devuelve un dict
+        if not isinstance(parsed, dict):
+            raise ValueError("Respuesta inesperada de Tika")
+            
+        texto = parsed.get('content', '') or ''
         
         if not texto or not texto.strip():
             raise ValueError("No se pudo extraer texto del archivo")
@@ -375,7 +389,15 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
             # Transcribir
             result = model.transcribe(temp_file_path)
             
-            texto = result["text"].strip()
+            # Whisper devuelve un dict con "text"
+            if not isinstance(result, dict) or "text" not in result:
+                raise ValueError("Respuesta inesperada de Whisper")
+                
+            texto = result["text"]
+            if not isinstance(texto, str):
+                raise ValueError("Texto de Whisper no es string")
+                
+            texto = texto.strip()
             
             if not texto:
                 raise ValueError("No se pudo transcribir el audio")

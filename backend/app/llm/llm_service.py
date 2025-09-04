@@ -41,6 +41,6 @@ async def consulta_streaming(pregunta: str):
 
     async def event_generator():
         async for chunk in llm.astream(pregunta):
-            yield chunk.content
+            yield str(chunk.content)
 
     return StreamingResponse(event_generator(), media_type="text/plain")
