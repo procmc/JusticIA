@@ -8,15 +8,14 @@ import uuid
 class FileStorageService:
     """Servicio para manejo de archivos en el servidor"""
     
-    BASE_UPLOAD_DIR = Path("uploads")
+    def __init__(self):
+        self.BASE_UPLOAD_DIR = Path("uploads")
     
-    @classmethod
-    def _ensure_directory_exists(cls, directory: Path) -> None:
+    def _ensure_directory_exists(self, directory: Path) -> None:
         """Crea el directorio si no existe"""
         directory.mkdir(parents=True, exist_ok=True)
     
-    @classmethod
-    def _get_unique_filename(cls, directory: Path, filename: str) -> str:
+    def _get_unique_filename(self, directory: Path, filename: str) -> str:
         """Genera un nombre único para el archivo si ya existe"""
         filepath = directory / filename
         
@@ -34,8 +33,7 @@ class FileStorageService:
         
         return filepath.name
     
-    @classmethod
-    async def guardar_archivo(cls, file: UploadFile, expediente_numero: str) -> str:
+    async def guardar_archivo(self, file: UploadFile, expediente_numero: str) -> str:
         """
         Guarda un archivo en el servidor.
         
@@ -51,14 +49,18 @@ class FileStorageService:
         """
         try:
             # Crear directorio base
-            cls._ensure_directory_exists(cls.BASE_UPLOAD_DIR)
+            self._ensure_directory_exists(self.BASE_UPLOAD_DIR)
             
             # Crear directorio del expediente
-            expediente_dir = cls.BASE_UPLOAD_DIR / expediente_numero
-            cls._ensure_directory_exists(expediente_dir)
+            expediente_dir = self.BASE_UPLOAD_DIR / expediente_numero
+            self._ensure_directory_exists(expediente_dir)
+            
+            # Validar filename
+            if not file.filename:
+                raise HTTPException(status_code=400, detail="Nombre de archivo requerido")
             
             # Obtener nombre único
-            unique_filename = cls._get_unique_filename(expediente_dir, file.filename)
+            unique_filename = self._get_unique_filename(expediente_dir, file.filename)
             filepath = expediente_dir / unique_filename
             
             # Leer y guardar archivo
@@ -78,8 +80,7 @@ class FileStorageService:
                 detail=f"Error guardando archivo: {str(e)}"
             )
     
-    @classmethod
-    def obtener_ruta_archivo(cls, expediente_numero: str, filename: str) -> Optional[Path]:
+    def obtener_ruta_archivo(self, expediente_numero: str, filename: str) -> Optional[Path]:
         """
         Obtiene la ruta completa de un archivo.
         
@@ -90,11 +91,10 @@ class FileStorageService:
         Returns:
             Path: Ruta completa del archivo si existe, None si no existe
         """
-        filepath = cls.BASE_UPLOAD_DIR / expediente_numero / filename
+        filepath = self.BASE_UPLOAD_DIR / expediente_numero / filename
         return filepath if filepath.exists() else None
     
-    @classmethod
-    def listar_archivos_expediente(cls, expediente_numero: str) -> List[dict]:
+    def listar_archivos_expediente(self, expediente_numero: str) -> List[dict]:
         """
         Lista todos los archivos de un expediente.
         
@@ -104,7 +104,7 @@ class FileStorageService:
         Returns:
             List[dict]: Lista de archivos con información básica
         """
-        expediente_dir = cls.BASE_UPLOAD_DIR / expediente_numero
+        expediente_dir = self.BASE_UPLOAD_DIR / expediente_numero
         
         if not expediente_dir.exists():
             return []

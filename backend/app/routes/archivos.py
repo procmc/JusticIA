@@ -28,7 +28,8 @@ async def listar_archivos_expediente(
         )
     
     try:
-        archivos = FileStorageService.listar_archivos_expediente(expediente_numero)
+        storage_service = FileStorageService()
+        archivos = storage_service.listar_archivos_expediente(expediente_numero)
         return {
             "expediente": expediente_numero,
             "total_archivos": len(archivos),
@@ -57,7 +58,8 @@ async def descargar_archivo(
         )
     
     try:
-        ruta_archivo = FileStorageService.obtener_ruta_archivo(expediente_numero, nombre_archivo)
+        storage_service = FileStorageService()
+        ruta_archivo = storage_service.obtener_ruta_archivo(expediente_numero, nombre_archivo)
         
         if not ruta_archivo:
             raise HTTPException(

@@ -1,17 +1,27 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from app.vectorstore.vectorstore import get_vectorstore
-from app.routes import ingesta, consulta, health, llm, usuarios, archivos, email
+from app.routes import ingesta, health, llm, usuarios, archivos, email
 from app.db import database
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-	await get_vectorstore()
-	yield
+# Crear app sin lifespan primero
+app = FastAPI(title="JusticIA API")
 
-app = FastAPI(title="JusticIA API", lifespan=lifespan)
+# Inicializar vectorstore en el evento startup
+@app.on_event("startup")
+async def startup_event():
+    """Inicializar recursos al arranque"""
+    try:
+        await get_vectorstore()
+        print("Milvus inicializado correctamente")
+    except Exception as e:
+        print(f"Error inicializando Milvus: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Limpiar recursos al apagado"""
+    print("Aplicación cerrando...")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,7 +32,6 @@ app.add_middleware(
 )
 
 app.include_router(ingesta.router, prefix="/ingesta", tags=["ingesta"])
-app.include_router(consulta.router, prefix="/consulta", tags=["consulta"])
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(llm.router, prefix="/llm", tags=["llm"])
 app.include_router(usuarios.router, prefix="/usuarios", tags=["usuarios"])
