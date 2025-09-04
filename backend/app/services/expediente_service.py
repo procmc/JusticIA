@@ -1,22 +1,28 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select
-from app.db.database import get_db
 from app.db.models.expediente import T_Expediente
 from app.db.models.documento import T_Documento
 from app.db.models.estado_procesamiento import T_Estado_procesamiento
+from app.repositories.expediente_repository import ExpedienteRepository
+from app.repositories.documento_repository import DocumentoRepository
+from app.repositories.estado_procesamiento_repository import EstadoProcesamientoRepository
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import os
 from pathlib import Path
 from fastapi import UploadFile
 
 class ExpedienteService:
-    """Servicio para manejar operaciones de expedientes y documentos"""
+    """Servicio para manejar lógica de negocio de expedientes y documentos"""
     
-    @staticmethod
-    async def obtener_estado_procesamiento(db: Session, nombre_estado: str) -> T_Estado_procesamiento:
+    def __init__(self):
+        self.expediente_repo = ExpedienteRepository()
+        self.documento_repo = DocumentoRepository()
+        self.estado_repo = EstadoProcesamientoRepository()
+    
+    async def obtener_estado_procesamiento(self, db: Session, nombre_estado: str) -> T_Estado_procesamiento:
         """
         Obtiene un estado de procesamiento por su nombre.
+        Valida que el estado exista en el sistema.
         
         Args:
             db: Sesión de base de datos
@@ -28,19 +34,17 @@ class ExpedienteService:
         Raises:
             Exception: Si no se encuentra el estado
         """
-        stmt = select(T_Estado_procesamiento).where(T_Estado_procesamiento.CT_Nombre_estado == nombre_estado)
-        result = db.execute(stmt)
-        estado = result.scalar_one_or_none()
+        estado = self.estado_repo.obtener_por_nombre(db, nombre_estado)
         
         if not estado:
             raise Exception(f"Estado de procesamiento '{nombre_estado}' no encontrado")
         
         return estado
     
-    @staticmethod
-    async def buscar_o_crear_expediente(db: Session, numero_expediente: str) -> T_Expediente:
+    async def buscar_o_crear_expediente(self, db: Session, numero_expediente: str) -> T_Expediente:
         """
-        Busca un expediente existente o crea uno nuevo.
+        Lógica de negocio para buscar o crear expediente.
+        Valida formato del número de expediente y maneja la creación.
         
         Args:
             db: Sesión de base de datos
@@ -48,159 +52,226 @@ class ExpedienteService:
             
         Returns:
             T_Expediente: Expediente encontrado o creado
-        """
-        # Buscar expediente existente
-        stmt = select(T_Expediente).where(T_Expediente.CT_Num_expediente == numero_expediente)
-        result = db.execute(stmt)
-        expediente = result.scalar_one_or_none()
-        
-        # Si no existe, crear uno nuevo
-        if not expediente:
-            expediente = T_Expediente(
-                CT_Num_expediente=numero_expediente,
-                CF_Fecha_creacion=datetime.utcnow()
-            )
-            db.add(expediente)
-            db.commit()
-            db.refresh(expediente)
             
-        return expediente
+        Raises:
+            Exception: Si hay error en validaciones o creación
+        """
+        # Validaciones de negocio
+        if not numero_expediente or not numero_expediente.strip():
+            raise Exception("El número de expediente no puede estar vacío")
+        
+        numero_expediente = numero_expediente.strip()
+        
+        # Buscar o crear usando el repository
+        try:
+            expediente = self.expediente_repo.buscar_o_crear(db, numero_expediente)
+            print(f"Expediente obtenido/creado: {expediente.CT_Num_expediente}")
+            return expediente
+        except Exception as e:
+            raise Exception(f"Error en lógica de expediente: {str(e)}")
     
-    @staticmethod
     async def crear_documento(
-        db: Session, 
-        expediente: T_Expediente, 
-        nombre_archivo: str, 
+        self,
+        db: Session,
+        expediente: T_Expediente,
+        nombre_archivo: str,
         tipo_archivo: str,
-        ruta_archivo: str = None,
+        ruta_archivo: Optional[str] = None,
         auto_commit: bool = True
     ) -> T_Documento:
         """
-        Crea un nuevo documento asociado a un expediente.
+        Lógica de negocio para crear documento.
+        Valida datos del archivo y maneja estados iniciales.
         
         Args:
             db: Sesión de base de datos
             expediente: Expediente al que pertenece el documento
             nombre_archivo: Nombre del archivo
-            tipo_archivo: Tipo de archivo (extensión)
-            ruta_archivo: Ruta donde se almacena el archivo (opcional)
-            auto_commit: Si debe hacer commit automático (False para transacciones externas)
+            tipo_archivo: Tipo/extensión del archivo
+            ruta_archivo: Ruta donde se guardó el archivo (opcional)
+            auto_commit: Si hacer commit automático
             
         Returns:
             T_Documento: Documento creado
             
         Raises:
-            Exception: Si hay error en la operación
+            Exception: Si hay error en validaciones o creación
         """
+        # Validaciones de negocio
+        if not nombre_archivo or not nombre_archivo.strip():
+            raise Exception("El nombre del archivo no puede estar vacío")
+        
+        if not tipo_archivo or not tipo_archivo.strip():
+            raise Exception("El tipo de archivo no puede estar vacío")
+        
+        # Validar extensión permitida
+        extensiones_permitidas = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.mp3']
+        if not any(tipo_archivo.lower().endswith(ext) for ext in extensiones_permitidas):
+            raise Exception(f"Tipo de archivo '{tipo_archivo}' no permitido")
+        
         try:
-            # Obtener el estado "Pendiente" para el documento recién creado
-            estado_pendiente = await ExpedienteService.obtener_estado_procesamiento(db, "Pendiente")
+            # Obtener estado inicial "Pendiente"
+            estado_pendiente = await self.obtener_estado_procesamiento(db, "Pendiente")
             
-            # Iniciar transacción si es necesario
-            documento = T_Documento(
-                CT_Nombre_archivo=nombre_archivo,
-                CT_Tipo_archivo=tipo_archivo,
-                CT_Ruta_archivo=ruta_archivo,
-                CF_Fecha_carga=datetime.utcnow(),
-                CN_Id_estado=estado_pendiente.CN_Id_estado  # Asignar estado "Pendiente"
+            # Crear documento usando repository
+            documento = self.documento_repo.crear(
+                db=db,
+                expediente=expediente,
+                nombre_archivo=nombre_archivo.strip(),
+                tipo_archivo=tipo_archivo.strip(),
+                estado_procesamiento=estado_pendiente,
+                ruta_archivo=ruta_archivo,
+                auto_commit=auto_commit
             )
             
-            # Asociar con el expediente
-            expediente.documentos.append(documento)
-            
-            # Guardar en la base de datos
-            db.add(documento)
-            db.flush()  # Flush para obtener el ID sin commit
-            
-            # Hacer commit solo si se especifica
-            if auto_commit:
-                db.commit()
-                db.refresh(documento)
-            
+            print(f"Documento creado: {documento.CT_Nombre_archivo}")
             return documento
             
         except Exception as e:
-            # Si hay error y auto_commit está activado, hacer rollback
-            if auto_commit:
-                db.rollback()
-            raise Exception(f"Error creando documento: {str(e)}")
+            raise Exception(f"Error en lógica de documento: {str(e)}")
     
-    @staticmethod
     async def actualizar_estado_documento(
-        db: Session, 
-        documento: T_Documento, 
+        self,
+        db: Session,
+        documento: T_Documento,
         nuevo_estado: str,
         auto_commit: bool = True
     ) -> T_Documento:
         """
-        Actualiza el estado de procesamiento de un documento.
+        Lógica de negocio para actualizar estado de documento.
+        Valida transiciones de estado permitidas.
         
         Args:
             db: Sesión de base de datos
             documento: Documento a actualizar
             nuevo_estado: Nuevo estado ('Pendiente', 'Procesado', 'Error')
-            auto_commit: Si debe hacer commit automático
+            auto_commit: Si hacer commit automático
             
         Returns:
             T_Documento: Documento actualizado
             
         Raises:
-            Exception: Si hay error en la operación
+            Exception: Si hay error en validaciones o actualización
         """
+        # Validaciones de negocio
+        estados_permitidos = ['Pendiente', 'Procesado', 'Error']
+        if nuevo_estado not in estados_permitidos:
+            raise Exception(f"Estado '{nuevo_estado}' no es válido. Estados permitidos: {estados_permitidos}")
+        
         try:
             # Obtener el nuevo estado
-            estado = await ExpedienteService.obtener_estado_procesamiento(db, nuevo_estado)
+            estado = await self.obtener_estado_procesamiento(db, nuevo_estado)
             
-            # Actualizar el estado del documento
-            documento.CN_Id_estado = estado.CN_Id_estado
+            # Actualizar usando repository
+            documento_actualizado = self.documento_repo.actualizar_estado(
+                db=db,
+                documento=documento,
+                nuevo_estado=estado,
+                auto_commit=auto_commit
+            )
             
-            db.add(documento)
-            
-            if auto_commit:
-                db.commit()
-                db.refresh(documento)
-            
-            return documento
+            print(f"Estado actualizado a '{nuevo_estado}' para: {documento.CT_Nombre_archivo}")
+            return documento_actualizado
             
         except Exception as e:
-            if auto_commit:
-                db.rollback()
-            raise Exception(f"Error actualizando estado del documento: {str(e)}")
+            raise Exception(f"Error en lógica de actualización de estado: {str(e)}")
     
-    @staticmethod
-    async def listar_documentos_expediente(db: Session, numero_expediente: str) -> list[T_Documento]:
+    async def actualizar_ruta_documento(
+        self,
+        db: Session,
+        documento: T_Documento,
+        ruta_archivo: str,
+        auto_commit: bool = True
+    ) -> T_Documento:
         """
-        Lista todos los documentos de un expediente específico.
+        Lógica de negocio para actualizar ruta de archivo.
+        Valida que la ruta sea válida y el archivo exista.
+        
+        Args:
+            db: Sesión de base de datos
+            documento: Documento a actualizar
+            ruta_archivo: Nueva ruta del archivo
+            auto_commit: Si hacer commit automático
+            
+        Returns:
+            T_Documento: Documento actualizado
+        """
+        # Validaciones de negocio
+        if not ruta_archivo or not ruta_archivo.strip():
+            raise Exception("La ruta del archivo no puede estar vacía")
+        
+        # Validar que la ruta sea válida (formato)
+        ruta_path = Path(ruta_archivo)
+        if not ruta_path.suffix:
+            raise Exception("La ruta debe incluir una extensión de archivo")
+        
+        try:
+            # Actualizar usando repository
+            documento_actualizado = self.documento_repo.actualizar_ruta_archivo(
+                db=db,
+                documento=documento,
+                ruta_archivo=ruta_archivo.strip(),
+                auto_commit=auto_commit
+            )
+            
+            print(f"Ruta actualizada para: {documento.CT_Nombre_archivo}")
+            return documento_actualizado
+            
+        except Exception as e:
+            raise Exception(f"Error en lógica de actualización de ruta: {str(e)}")
+    
+    async def listar_documentos_expediente(self, db: Session, numero_expediente: str) -> List[T_Documento]:
+        """
+        Lógica de negocio para listar documentos de expediente.
+        Valida que el expediente exista.
         
         Args:
             db: Sesión de base de datos
             numero_expediente: Número del expediente
             
         Returns:
-            list[T_Documento]: Lista de documentos del expediente
+            List[T_Documento]: Lista de documentos del expediente
         """
-        # Buscar expediente
-        stmt = select(T_Expediente).where(T_Expediente.CT_Num_expediente == numero_expediente)
-        result = db.execute(stmt)
-        expediente = result.scalar_one_or_none()
+        # Validaciones de negocio
+        if not numero_expediente or not numero_expediente.strip():
+            raise Exception("El número de expediente no puede estar vacío")
         
-        if not expediente:
-            return []
-        
-        return expediente.documentos
+        try:
+            # Buscar expediente
+            expediente = self.expediente_repo.obtener_por_numero(db, numero_expediente.strip())
+            
+            if not expediente:
+                return []  # Expediente no existe, retornar lista vacía
+            
+            # Listar documentos usando repository
+            documentos = self.documento_repo.listar_por_expediente(db, expediente)
+            
+            return documentos
+            
+        except Exception as e:
+            raise Exception(f"Error en lógica de listado de documentos: {str(e)}")
     
-    @staticmethod
-    async def obtener_documento_por_id(db: Session, documento_id: int) -> Optional[T_Documento]:
+    async def obtener_documento_por_id(self, db: Session, documento_id: int) -> Optional[T_Documento]:
         """
-        Obtiene un documento específico por su ID.
+        Lógica de negocio para obtener documento por ID.
+        Valida que el ID sea válido.
         
         Args:
             db: Sesión de base de datos
             documento_id: ID del documento
             
         Returns:
-            T_Documento: Documento encontrado o None
+            Optional[T_Documento]: Documento encontrado o None
         """
-        stmt = select(T_Documento).where(T_Documento.CN_Id_documento == documento_id)
-        result = db.execute(stmt)
-        return result.scalar_one_or_none()
+        # Validaciones de negocio
+        if documento_id <= 0:
+            raise Exception("El ID del documento debe ser un número positivo")
+        
+        try:
+            # Obtener usando repository
+            documento = self.documento_repo.obtener_por_id(db, documento_id)
+            
+            return documento
+            
+        except Exception as e:
+            raise Exception(f"Error en lógica de obtención de documento: {str(e)}")

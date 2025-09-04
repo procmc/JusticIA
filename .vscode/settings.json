@@ -7,6 +7,6 @@
     ],
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
-    "python.linting.enabled": false,
+    "python.linting.enabled": true,
     "python.analysis.stubPath": "C:\\JusticIA\\backend\\.venv\\Lib\\site-packages"
 }
