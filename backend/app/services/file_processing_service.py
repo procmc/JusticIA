@@ -209,7 +209,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
             documento_creado = None
             
             try:
-                # 1. Crear documento en BD (sin commit)
+                # 1. Crear documento en BD con estado "Pendiente" (sin commit)
                 extension = Path(file.filename).suffix.lower()
                 documento_creado = await ExpedienteService.crear_documento(
                     db=db,
@@ -219,7 +219,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     ruta_archivo=None,  # Se actualiza después
                     auto_commit=False  # No hacer commit automático
                 )
-                print(f"Documento creado en BD (sin commit): {documento_creado.CT_Nombre_archivo}")
+                print(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
                 
                 # 2. Guardar archivo físicamente
                 ruta_archivo = await FileStorageService.guardar_archivo(file, CT_Num_expediente)
@@ -240,19 +240,40 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                 await store_in_vectorstore(texto_extraido, metadatos, CT_Num_expediente)
                 print(f"Almacenado en vectorstore exitosamente")
                 
-                # 6. Si todo salió bien, hacer commit
+                # 6. Actualizar estado a "Procesado" si todo salió bien
+                await ExpedienteService.actualizar_estado_documento(
+                    db=db,
+                    documento=documento_creado,
+                    nuevo_estado="Procesado",
+                    auto_commit=False  # No hacer commit aún
+                )
+                print(f"Estado actualizado a 'Procesado'")
+                
+                # 7. Si todo salió bien, hacer commit final
                 db.commit()
                 db.refresh(documento_creado)
                 print(f"Transacción completada exitosamente")
                 
             except Exception as e:
-                # Rollback en caso de error
+                # Rollback en caso de error y actualizar estado a "Error"
                 print(f"Error en transacción: {str(e)}")
                 try:
-                    db.rollback()
+                    # Si tenemos el documento creado, actualizar su estado a "Error"
+                    if documento_creado:
+                        await ExpedienteService.actualizar_estado_documento(
+                            db=db,
+                            documento=documento_creado,
+                            nuevo_estado="Error",
+                            auto_commit=False
+                        )
+                        print(f"Estado actualizado a 'Error'")
+                        db.commit()  # Commit solo el cambio de estado
+                    else:
+                        db.rollback()  # Rollback completo si no hay documento
                     print("Rollback de BD realizado")
                 except Exception as rollback_error:
                     print(f"Error en rollback: {str(rollback_error)}")
+                    db.rollback()  # Rollback de emergencia
                 
                 # Re-lanzar la excepción original
                 raise e

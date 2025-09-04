@@ -3,6 +3,7 @@ from sqlalchemy import select
 from app.db.database import get_db
 from app.db.models.expediente import T_Expediente
 from app.db.models.documento import T_Documento
+from app.db.models.estado_procesamiento import T_Estado_procesamiento
 from datetime import datetime
 from typing import Optional
 import os
@@ -11,6 +12,30 @@ from fastapi import UploadFile
 
 class ExpedienteService:
     """Servicio para manejar operaciones de expedientes y documentos"""
+    
+    @staticmethod
+    async def obtener_estado_procesamiento(db: Session, nombre_estado: str) -> T_Estado_procesamiento:
+        """
+        Obtiene un estado de procesamiento por su nombre.
+        
+        Args:
+            db: Sesión de base de datos
+            nombre_estado: Nombre del estado ('Pendiente', 'Procesado', 'Error')
+            
+        Returns:
+            T_Estado_procesamiento: Estado encontrado
+            
+        Raises:
+            Exception: Si no se encuentra el estado
+        """
+        stmt = select(T_Estado_procesamiento).where(T_Estado_procesamiento.CT_Nombre_estado == nombre_estado)
+        result = db.execute(stmt)
+        estado = result.scalar_one_or_none()
+        
+        if not estado:
+            raise Exception(f"Estado de procesamiento '{nombre_estado}' no encontrado")
+        
+        return estado
     
     @staticmethod
     async def buscar_o_crear_expediente(db: Session, numero_expediente: str) -> T_Expediente:
@@ -68,12 +93,16 @@ class ExpedienteService:
             Exception: Si hay error en la operación
         """
         try:
+            # Obtener el estado "Pendiente" para el documento recién creado
+            estado_pendiente = await ExpedienteService.obtener_estado_procesamiento(db, "Pendiente")
+            
             # Iniciar transacción si es necesario
             documento = T_Documento(
                 CT_Nombre_archivo=nombre_archivo,
                 CT_Tipo_archivo=tipo_archivo,
                 CT_Ruta_archivo=ruta_archivo,
-                CF_Fecha_carga=datetime.utcnow()
+                CF_Fecha_carga=datetime.utcnow(),
+                CN_Id_estado=estado_pendiente.CN_Id_estado  # Asignar estado "Pendiente"
             )
             
             # Asociar con el expediente
@@ -95,6 +124,48 @@ class ExpedienteService:
             if auto_commit:
                 db.rollback()
             raise Exception(f"Error creando documento: {str(e)}")
+    
+    @staticmethod
+    async def actualizar_estado_documento(
+        db: Session, 
+        documento: T_Documento, 
+        nuevo_estado: str,
+        auto_commit: bool = True
+    ) -> T_Documento:
+        """
+        Actualiza el estado de procesamiento de un documento.
+        
+        Args:
+            db: Sesión de base de datos
+            documento: Documento a actualizar
+            nuevo_estado: Nuevo estado ('Pendiente', 'Procesado', 'Error')
+            auto_commit: Si debe hacer commit automático
+            
+        Returns:
+            T_Documento: Documento actualizado
+            
+        Raises:
+            Exception: Si hay error en la operación
+        """
+        try:
+            # Obtener el nuevo estado
+            estado = await ExpedienteService.obtener_estado_procesamiento(db, nuevo_estado)
+            
+            # Actualizar el estado del documento
+            documento.CN_Id_estado = estado.CN_Id_estado
+            
+            db.add(documento)
+            
+            if auto_commit:
+                db.commit()
+                db.refresh(documento)
+            
+            return documento
+            
+        except Exception as e:
+            if auto_commit:
+                db.rollback()
+            raise Exception(f"Error actualizando estado del documento: {str(e)}")
     
     @staticmethod
     async def listar_documentos_expediente(db: Session, numero_expediente: str) -> list[T_Documento]:

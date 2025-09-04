@@ -1,1 +1,12 @@
-{}
+{
+    "python.defaultInterpreterPath": "C:\\JusticIA\\backend\\.venv\\Scripts\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.extraPaths": [
+        "C:\\JusticIA\\backend",
+        "C:\\JusticIA\\backend\\app"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.linting.enabled": false,
+    "python.analysis.stubPath": "C:\\JusticIA\\backend\\.venv\\Lib\\site-packages"
+}
