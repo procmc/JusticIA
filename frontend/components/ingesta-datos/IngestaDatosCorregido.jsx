@@ -22,6 +22,7 @@ import {
 import { PiBroomLight } from 'react-icons/pi';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { validarFormatoExpediente, formatearTamano } from './funciones';
+import ingestaService from '../../services/ingestaService';
 
 const IngestaDatosCorregido = () => {
   const [files, setFiles] = useState([]);
@@ -120,51 +121,132 @@ const IngestaDatosCorregido = () => {
   const uploadFiles = async () => {
     setUploading(true);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.status !== 'pending') continue;
-
-      // Validar que tenga número de expediente
-      if (!file.expediente || file.expediente.trim() === '') {
-        setFiles(prev => prev.map(f =>
-          f.id === file.id ? { ...f, status: 'error', progress: 0 } : f
-        ));
-        continue;
+    // Agrupar archivos por expediente
+    const filesByExpediente = {};
+    files.forEach(file => {
+      if (file.status === 'pending' && file.expediente?.trim()) {
+        const exp = file.expediente.trim();
+        if (!filesByExpediente[exp]) {
+          filesByExpediente[exp] = [];
+        }
+        filesByExpediente[exp].push(file);
       }
+    });
 
-      // Actualizar estado a uploading
+    // Procesar cada grupo de expediente
+    for (const [expediente, expedienteFiles] of Object.entries(filesByExpediente)) {
+      // Actualizar estado a uploading para archivos de este expediente
       setFiles(prev => prev.map(f =>
-        f.id === file.id ? { ...f, status: 'uploading', progress: 0 } : f
+        expedienteFiles.some(ef => ef.id === f.id) 
+          ? { ...f, status: 'uploading', progress: 0, fileProcessId: null } 
+          : f
       ));
 
       try {
-        // Simular progreso de carga
-        for (let progress = 0; progress <= 100; progress += 10) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          setFiles(prev => prev.map(f =>
-            f.id === file.id ? { ...f, progress } : f
-          ));
+        // Obtener archivos reales
+        const archivosReales = expedienteFiles.map(f => f.file);
+
+        // Hacer la petición real - ahora devuelve IDs individuales
+        const resultado = await ingestaService.subirArchivos(expediente, archivosReales);
+        console.log('Respuesta del servidor:', resultado);
+
+        // Asignar IDs individuales a cada archivo
+        if (resultado && resultado.file_process_ids) {
+          setFiles(prev => prev.map(f => {
+            const fileIndex = expedienteFiles.findIndex(ef => ef.id === f.id);
+            if (fileIndex !== -1 && fileIndex < resultado.file_process_ids.length) {
+              return { 
+                ...f, 
+                fileProcessId: resultado.file_process_ids[fileIndex],
+                progress: 10,
+                message: 'Procesando...'
+              };
+            }
+            return f;
+          }));
+
+          // Iniciar polling para cada archivo
+          iniciarPollingArchivos(expedienteFiles, resultado.file_process_ids);
         }
 
-        // Marcar como exitoso
-        setFiles(prev => prev.map(f =>
-          f.id === file.id ? { ...f, status: 'success', progress: 100 } : f
-        ));
-
       } catch (error) {
+        console.error('Error subiendo archivos:', error);
+        
+        // Marcar archivos de este expediente como error
         setFiles(prev => prev.map(f =>
-          f.id === file.id ? { ...f, status: 'error', progress: 0 } : f
+          expedienteFiles.some(ef => ef.id === f.id) 
+            ? { ...f, status: 'error', progress: 0, message: 'Error en subida' } 
+            : f
         ));
       }
     }
 
     setUploading(false);
+  };
 
-    // Reiniciar el formulario después de completar todas las subidas
+  // Nueva función para polling individual
+  const iniciarPollingArchivos = (expedienteFiles, fileProcessIds) => {
+    const polling = setInterval(async () => {
+      try {
+        const estados = await ingestaService.consultarEstadoArchivos(fileProcessIds);
+        
+        let todosCompletos = true;
+
+        estados.forEach((estado, index) => {
+          if (estado.success && estado.data) {
+            const statusData = estado.data;
+            const archivoLocal = expedienteFiles[index];
+
+            setFiles(prev => prev.map(f => {
+              if (f.id === archivoLocal.id) {
+                const actualizado = {
+                  ...f,
+                  progress: statusData.progress || 0,
+                  message: statusData.message || '',
+                };
+
+                if (statusData.status === 'completado') {
+                  actualizado.status = 'success';
+                  actualizado.progress = 100;
+                  actualizado.resultado = statusData.resultado;
+                } else if (statusData.status === 'error') {
+                  actualizado.status = 'error';
+                  actualizado.progress = 0;
+                  actualizado.message = statusData.message || 'Error en procesamiento';
+                } else {
+                  todosCompletos = false;
+                }
+
+                return actualizado;
+              }
+              return f;
+            }));
+          } else {
+            todosCompletos = false;
+          }
+        });
+
+        // Si todos están completos, detener polling
+        if (todosCompletos) {
+          clearInterval(polling);
+          
+          // Limpiar después de 3 segundos
+          setTimeout(() => {
+            setFiles([]);
+            setExpedienteNumero('');
+          }, 3000);
+        }
+
+      } catch (error) {
+        console.error('Error en polling:', error);
+        clearInterval(polling);
+      }
+    }, 2000); // Consultar cada 2 segundos
+
+    // Limpiar polling después de 5 minutos máximo
     setTimeout(() => {
-      setFiles([]);
-      setExpedienteNumero('');
-    }, 2000);
+      clearInterval(polling);
+    }, 300000);
   };
 
   const getFileIcon = (type) => {
@@ -494,6 +576,11 @@ const IngestaDatosCorregido = () => {
                                       color="primary"
                                       className="max-w-md"
                                     />
+                                    {file.message && (
+                                      <p className="text-xs text-gray-500 mt-1 truncate">
+                                        {file.message}
+                                      </p>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -502,6 +589,21 @@ const IngestaDatosCorregido = () => {
 
                           <div className="flex items-center space-x-2">
                             {getStatusIcon(file.status)}
+                            
+                            {/* Información adicional para archivos completados */}
+                            {file.status === 'success' && file.resultado && (
+                              <div className="text-xs text-green-600 truncate max-w-[200px]">
+                                ✓ ID: {file.resultado.documento_id || 'Procesado'}
+                              </div>
+                            )}
+                            
+                            {/* Información de error */}
+                            {file.status === 'error' && file.message && (
+                              <div className="text-xs text-red-600 truncate max-w-[200px]" title={file.message}>
+                                ⚠ {file.message}
+                              </div>
+                            )}
+                            
                             {file.status === 'pending' && (
                               <button
                                 onClick={() => removeFile(file.id)}
