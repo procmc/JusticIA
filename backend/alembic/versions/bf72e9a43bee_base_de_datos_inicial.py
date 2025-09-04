@@ -1,8 +1,8 @@
-"""Initial migration
+"""Base de datos inicial
 
-Revision ID: 057e53b7a916
+Revision ID: bf72e9a43bee
 Revises: 
-Create Date: 2025-09-04 13:47:37.015501
+Create Date: 2025-09-04 14:28:19.637539
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '057e53b7a916'
+revision: str = 'bf72e9a43bee'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -34,7 +34,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('CT_Nombre_estado')
     )
     op.create_table('T_Expediente',
-    sa.Column('CN_Id_expediente', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('CN_Id_expediente', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('CT_Num_expediente', sa.String(length=60), nullable=False),
     sa.Column('CF_Fecha_creacion', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('CN_Id_expediente'),
@@ -53,7 +53,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('CT_Nombre_tipo_accion')
     )
     op.create_table('T_Documento',
-    sa.Column('CN_Id_documento', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('CN_Id_documento', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('CT_Nombre_archivo', sa.String(length=255), nullable=False),
     sa.Column('CT_Tipo_archivo', sa.String(length=50), nullable=False),
     sa.Column('CT_Ruta_archivo', sa.String(length=500), nullable=True),
@@ -79,21 +79,21 @@ def upgrade() -> None:
     sa.UniqueConstraint('CT_Nombre_usuario', name='uq_usuario_nombre')
     )
     op.create_table('T_Bitacora',
-    sa.Column('CN_Id_bitacora', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('CN_Id_bitacora', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('CF_Fecha_hora', sa.DateTime(), nullable=False),
     sa.Column('CT_Texto', sa.Text(), nullable=False),
     sa.Column('CT_Informacion_adicional', sa.Text(), nullable=True),
     sa.Column('CN_Id_usuario', sa.String(length=20), nullable=False),
     sa.Column('CN_Id_tipo_accion', sa.Integer(), nullable=True),
-    sa.Column('CN_Id_expediente', sa.Integer(), nullable=False),
+    sa.Column('CN_Id_expediente', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['CN_Id_expediente'], ['T_Expediente.CN_Id_expediente'], ),
     sa.ForeignKeyConstraint(['CN_Id_tipo_accion'], ['T_Tipo_accion.CN_Id_tipo_accion'], ),
     sa.ForeignKeyConstraint(['CN_Id_usuario'], ['T_Usuario.CN_Id_usuario'], ),
     sa.PrimaryKeyConstraint('CN_Id_bitacora')
     )
     op.create_table('T_Expediente_Documento',
-    sa.Column('CN_Id_expediente', sa.Integer(), nullable=False),
-    sa.Column('CN_Id_documento', sa.Integer(), nullable=False),
+    sa.Column('CN_Id_expediente', sa.BigInteger(), nullable=False),
+    sa.Column('CN_Id_documento', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['CN_Id_documento'], ['T_Documento.CN_Id_documento'], ),
     sa.ForeignKeyConstraint(['CN_Id_expediente'], ['T_Expediente.CN_Id_expediente'], ),
     sa.PrimaryKeyConstraint('CN_Id_expediente', 'CN_Id_documento')
