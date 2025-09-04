@@ -23,12 +23,16 @@ def obtener_usuario(usuario_id: int, db: Session = Depends(get_db)):
     return usuario
 
 @router.post("/", response_model=UsuarioRespuesta)
-def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db)):
-    """Crea un nuevo usuario"""
+async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db)):
+    """
+    Crea un nuevo usuario con contraseña automática.
+    SIEMPRE genera contraseña aleatoria y envía correo al usuario.
+    Similar a Node.js con nodemailer para envío automático.
+    """
     try:
-        usuario = usuario_service.crear_usuario(
+        usuario = await usuario_service.crear_usuario(
             db, usuario_data.nombre_usuario, usuario_data.correo, 
-            usuario_data.contrasenna, usuario_data.id_rol
+            usuario_data.id_rol  # Sin contraseña - se genera automáticamente
         )
         if not usuario:
             raise HTTPException(status_code=500, detail="Error al crear usuario")

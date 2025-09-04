@@ -3,13 +3,23 @@ from sqlalchemy.orm import Session
 from app.repositories.usuario_repository import UsuarioRepository
 from app.db.models.usuario import T_Usuario
 from app.schemas.usuario_schemas import UsuarioRespuesta, RolInfo, EstadoInfo
+from app.services.email_service import EmailService, get_email_config_from_env
+import os
 
 
 class UsuarioService:
-    """Servicio para usuarios"""
+    """Servicio para usuarios con funcionalidad de email"""
     
     def __init__(self):
         self.repository = UsuarioRepository()
+        
+        # Inicializar servicio de correo (como nodemailer transporter)
+        try:
+            email_config = get_email_config_from_env()
+            self.email_service = EmailService(email_config)
+        except Exception as e:
+            print(f"Warning: No se pudo inicializar el servicio de correo: {e}")
+            self.email_service = None
     
     def _mapear_usuario_respuesta(self, usuario: T_Usuario) -> UsuarioRespuesta:
         """Mapea un usuario del modelo a la respuesta con objetos de rol y estado"""
@@ -41,9 +51,46 @@ class UsuarioService:
             return self._mapear_usuario_respuesta(usuario)
         return None
     
-    def crear_usuario(self, db: Session, nombre_usuario: str, correo: str, contrasenna: str, id_rol: int) -> UsuarioRespuesta:
-        """Crea un nuevo usuario"""
+    async def crear_usuario(self, db: Session, nombre_usuario: str, correo: str, id_rol: int) -> UsuarioRespuesta:
+        """
+        Crea un nuevo usuario con contraseña automática y envía correo
+        Siempre genera contraseña y envía correo (como en Node.js con nodemailer)
+        """
+        # Siempre generar contraseña aleatoria
+        if self.email_service:
+            contrasenna = self.email_service.generate_random_password()
+        else:
+            # Fallback si no hay servicio de correo
+            import secrets
+            import string
+            contrasenna = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        
+        # Crear usuario en la base de datos
         usuario = self.repository.crear_usuario(db, nombre_usuario, correo, contrasenna, id_rol)
+        
+        # Siempre enviar correo con la contraseña (async correcto)
+        if self.email_service and usuario:
+            try:
+                # Envío async correcto (sin loops anidados)
+                await self.email_service.send_password_email(
+                    to=correo,
+                    password=contrasenna,
+                    usuario_nombre=nombre_usuario
+                )
+                print(f"✅ Correo enviado exitosamente a {correo}")
+                
+                # Solo para debug en desarrollo (comentar en producción)
+                debug_mode = os.getenv("DEBUG_PASSWORDS", "false").lower() == "true"
+                if debug_mode:
+                    print(f"🐛 [DEBUG] Contraseña generada: {contrasenna}")
+                    
+            except Exception as e:
+                print(f"❌ Error enviando correo a {correo}: {e}")
+                print(f"⚠️ Usuario creado pero correo no enviado - Verificar configuración de email")
+                # El usuario se crea de todas formas, solo falla el correo
+        else:
+            print(f"⚠️ Sin servicio de correo configurado - Usuario creado sin notificación")
+        
         return self._mapear_usuario_respuesta(usuario)
     
     def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:

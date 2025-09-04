@@ -15,7 +15,7 @@ class EstadoInfo(BaseModel):
 class UsuarioCrear(BaseModel):
     nombre_usuario: str
     correo: str
-    contrasenna: str
+    # Contraseña se genera automáticamente - no se solicita al usuario
     id_rol: int
 
 

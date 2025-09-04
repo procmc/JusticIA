@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.vectorstore.vectorstore import get_vectorstore
-from app.routes import ingesta, consulta, health, llm, usuarios, archivos
+from app.routes import ingesta, consulta, health, llm, usuarios, archivos, email
 from app.db import database
 
 @asynccontextmanager
@@ -27,6 +27,7 @@ app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(llm.router, prefix="/llm", tags=["llm"])
 app.include_router(usuarios.router, prefix="/usuarios", tags=["usuarios"])
 app.include_router(archivos.router, prefix="/archivos", tags=["archivos"])
+app.include_router(email.router, prefix="/email", tags=["email"])
 
 @app.get("/")
 async def root():
