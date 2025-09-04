@@ -1,14 +1,14 @@
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy import Integer, String, DateTime, ForeignKey
+from sqlalchemy import BigInteger, String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
-from .expediente_documento import T_Expediente_Documento  # <-- nueva asociación
+from .expediente_documento import T_Expediente_Documento
 
 class T_Documento(Base):
     __tablename__ = "T_Documento"
 
-    CN_Id_documento: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    CN_Id_documento: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     CT_Nombre_archivo: Mapped[str] = mapped_column(String(255), nullable=False)
     CT_Tipo_archivo: Mapped[str] = mapped_column(String(50), nullable=False)
     CT_Ruta_archivo: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

@@ -8,7 +8,13 @@ from app.config.file_config import FILE_TYPE_CODES
 from app.vectorstore.vectorstore import get_vectorstore
 from pathlib import Path
 
-async def store_in_vectorstore(texto: str, metadatos: dict, CT_Num_expediente: str):
+async def store_in_vectorstore(
+    texto: str, 
+    metadatos: dict, 
+    CT_Num_expediente: str,
+    id_expediente: int,  # ID real de la BD
+    id_documento: int    # ID real de la BD
+):
     """
     Almacena el texto extraído en Milvus dividido en chunks para manejar documentos grandes.
     
@@ -16,6 +22,8 @@ async def store_in_vectorstore(texto: str, metadatos: dict, CT_Num_expediente: s
         texto: Texto completo del documento
         metadatos: Metadatos del documento  
         CT_Num_expediente: Número de expediente
+        id_expediente: ID real del expediente en la BD transaccional
+        id_documento: ID real del documento en la BD transaccional
         
     Returns:
         List: Resultados de inserción para cada chunk
@@ -66,10 +74,10 @@ async def store_in_vectorstore(texto: str, metadatos: dict, CT_Num_expediente: s
         # Preparar datos según el schema de Milvus
         chunk_data = {
             "id_chunk": str(uuid.uuid4()),  # Primary key único para cada chunk
-            "id_expediente": hash(CT_Num_expediente) % (2**31),
+            "id_expediente": id_expediente,  # ID real de la BD
             "numero_expediente": CT_Num_expediente,
             "fecha_expediente_creacion": timestamp_ms,
-            "id_documento": hash(metadatos["file_id"]) % (2**31),
+            "id_documento": id_documento,  # ID real de la BD
             "nombre_archivo": metadatos["nombre_archivo"],
             "tipo_archivo": tipo_archivo_codigo,
             "fecha_carga": timestamp_ms,

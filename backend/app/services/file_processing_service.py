@@ -247,8 +247,14 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     "ruta_archivo": ruta_archivo
                 })
                 
-                # 5. Almacenar en Milvus
-                await store_in_vectorstore(texto_extraido, metadatos, CT_Num_expediente)
+                # 5. Almacenar en Milvus con IDs reales
+                await store_in_vectorstore(
+                    texto=texto_extraido, 
+                    metadatos=metadatos, 
+                    CT_Num_expediente=CT_Num_expediente,
+                    id_expediente=expediente.CN_Id_expediente,  # ID real del expediente
+                    id_documento=documento_creado.CN_Id_documento  # ID real del documento
+                )
                 print(f"Almacenado en vectorstore exitosamente")
                 
                 # 6. Actualizar estado a "Procesado" si todo salió bien
