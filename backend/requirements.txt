@@ -36,3 +36,8 @@ protobuf>=5.27.2,<6.0.0
 pymilvus>=2.5.14,<2.7
 
 python-dotenv==1.0.1
+
+# Envío de correos electrónicos
+fastapi-mail>=1.4.1  # Biblioteca para envío de correos con FastAPI
+aiosmtplib>=3.0.0    # Cliente SMTP asíncrono
+jinja2>=3.1.0        # Para plantillas de correo
