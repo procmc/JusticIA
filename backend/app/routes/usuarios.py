@@ -15,8 +15,8 @@ def obtener_usuarios(db: Session = Depends(get_db)):
     return usuarios
 
 @router.get("/{usuario_id}", response_model=UsuarioRespuesta)
-def obtener_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    """Obtiene un usuario por ID"""
+def obtener_usuario(usuario_id: str, db: Session = Depends(get_db)):
+    """Obtiene un usuario por ID (cédula)"""
     usuario = usuario_service.obtener_usuario(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -31,8 +31,9 @@ async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db
     """
     try:
         usuario = await usuario_service.crear_usuario(
-            db, usuario_data.nombre_usuario, usuario_data.correo, 
-            usuario_data.id_rol  # Sin contraseña - se genera automáticamente
+            db, usuario_data.cedula, usuario_data.nombre_usuario, 
+            usuario_data.nombre, usuario_data.apellido_uno, usuario_data.apellido_dos,
+            usuario_data.correo, usuario_data.id_rol  # Sin contraseña - se genera automáticamente
         )
         if not usuario:
             raise HTTPException(status_code=500, detail="Error al crear usuario")
@@ -44,10 +45,11 @@ async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @router.put("/{usuario_id}", response_model=UsuarioRespuesta)
-def editar_usuario(usuario_id: int, usuario_data: UsuarioEditar, db: Session = Depends(get_db)):
+def editar_usuario(usuario_id: str, usuario_data: UsuarioEditar, db: Session = Depends(get_db)):
     """Edita un usuario incluyendo rol y estado"""
     usuario = usuario_service.editar_usuario(
-        db, usuario_id, usuario_data.nombre_usuario, usuario_data.correo, 
+        db, usuario_id, usuario_data.nombre_usuario, usuario_data.nombre,
+        usuario_data.apellido_uno, usuario_data.apellido_dos, usuario_data.correo, 
         usuario_data.id_rol, usuario_data.id_estado
     )
     if not usuario:

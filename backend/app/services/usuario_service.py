@@ -26,6 +26,9 @@ class UsuarioService:
         return UsuarioRespuesta(
             CN_Id_usuario=usuario.CN_Id_usuario,
             CT_Nombre_usuario=usuario.CT_Nombre_usuario,
+            CT_Nombre=usuario.CT_Nombre,
+            CT_Apellido_uno=usuario.CT_Apellido_uno,
+            CT_Apellido_dos=usuario.CT_Apellido_dos,
             CT_Correo=usuario.CT_Correo,
             CN_Id_rol=usuario.CN_Id_rol,
             CN_Id_estado=usuario.CN_Id_estado,
@@ -44,14 +47,14 @@ class UsuarioService:
         usuarios = self.repository.obtener_usuarios(db)
         return [self._mapear_usuario_respuesta(usuario) for usuario in usuarios]
     
-    def obtener_usuario(self, db: Session, usuario_id: int) -> Optional[UsuarioRespuesta]:
-        """Obtiene un usuario por ID"""
+    def obtener_usuario(self, db: Session, usuario_id: str) -> Optional[UsuarioRespuesta]:
+        """Obtiene un usuario por ID (cédula)"""
         usuario = self.repository.obtener_usuario_por_id(db, usuario_id)
         if usuario:
             return self._mapear_usuario_respuesta(usuario)
         return None
     
-    async def crear_usuario(self, db: Session, nombre_usuario: str, correo: str, id_rol: int) -> UsuarioRespuesta:
+    async def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int) -> UsuarioRespuesta:
         """
         Crea un nuevo usuario con contraseña automática y envía correo
         Siempre genera contraseña y envía correo (como en Node.js con nodemailer)
@@ -66,7 +69,7 @@ class UsuarioService:
             contrasenna = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         
         # Crear usuario en la base de datos
-        usuario = self.repository.crear_usuario(db, nombre_usuario, correo, contrasenna, id_rol)
+        usuario = self.repository.crear_usuario(db, cedula, nombre_usuario, nombre, apellido_uno, apellido_dos, correo, contrasenna, id_rol)
         
         # Siempre enviar correo con la contraseña (async correcto)
         if self.email_service and usuario:
@@ -93,9 +96,9 @@ class UsuarioService:
         
         return self._mapear_usuario_respuesta(usuario)
     
-    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
+    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
         """Edita un usuario incluyendo rol y estado"""
-        usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, correo, id_rol, id_estado)
+        usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, nombre, apellido_uno, apellido_dos, correo, id_rol, id_estado)
         if usuario:
             return self._mapear_usuario_respuesta(usuario)
         return None
