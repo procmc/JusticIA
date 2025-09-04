@@ -7,8 +7,7 @@ from .expediente import T_Expediente
 from .documento import T_Documento
 from .tipo_accion import T_Tipo_accion
 from .bitacora import T_Bitacora
-from .usuario_expediente import T_Usuario_Expediente
-from .expediente_documento import T_Expediente_Documento  # <-- nuevo
+from .expediente_documento import T_Expediente_Documento
 
 __all__ = [
     "Base",
@@ -20,6 +19,5 @@ __all__ = [
     "T_Documento",
     "T_Tipo_accion",
     "T_Bitacora",
-    "T_Usuario_Expediente",
     "T_Expediente_Documento",
 ]

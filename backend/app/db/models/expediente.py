@@ -3,8 +3,7 @@ from datetime import datetime
 from sqlalchemy import Integer, String, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
-from .usuario_expediente import T_Usuario_Expediente
-from .expediente_documento import T_Expediente_Documento  # <-- nueva asociación
+from .expediente_documento import T_Expediente_Documento
 
 class T_Expediente(Base):
     __tablename__ = "T_Expediente"
@@ -17,12 +16,6 @@ class T_Expediente(Base):
     # M:N con Documento (Contiene)
     documentos: Mapped[List["T_Documento"]] = relationship(
         secondary=T_Expediente_Documento,
-        back_populates="expedientes"
-    )
-
-    # M:N con Usuario (Gestiona)
-    usuarios: Mapped[List["T_Usuario"]] = relationship(
-        secondary=T_Usuario_Expediente,
         back_populates="expedientes"
     )
 
