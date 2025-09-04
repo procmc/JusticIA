@@ -19,10 +19,10 @@ async def get_vectorstore():
                 collection_name=COLLECTION_NAME,
                 schema=COLLECTION_SCHEMA
             )
-            print(f"✔ Colección creada: {COLLECTION_NAME}")
+            print(f"Colección creada: {COLLECTION_NAME}")
 
         else:
-            print(f"ℹ Colección ya existe: {COLLECTION_NAME}")
+            print(f"Colección ya existe: {COLLECTION_NAME}")
 
         # Crear índices (vector HNSW + escalares + JSON)
         index_params = _milvus_client.prepare_index_params()

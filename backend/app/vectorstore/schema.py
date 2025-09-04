@@ -23,7 +23,7 @@ COLLECTION_FIELDS = [
     FieldSchema(name="fecha_carga", dtype=DataType.INT64),                        # Documentos.FechaCarga (epoch ms)
 
     # --- Datos del chunk (para RAG) ---
-    FieldSchema(name="texto", dtype=DataType.VARCHAR, max_length=8192, nullable=True),
+    FieldSchema(name="texto", dtype=DataType.VARCHAR, max_length=8192, nullable=True),  # Chunk de texto (máx 8K chars)
     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=DIM),
     FieldSchema(name="indice_chunk", dtype=DataType.INT32, nullable=True),
     FieldSchema(name="pagina_inicio", dtype=DataType.INT32, nullable=True),

@@ -2,7 +2,6 @@ from typing import List, Optional
 from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
-from .usuario_expediente import T_Usuario_Expediente
 
 class T_Usuario(Base):
     __tablename__ = "T_Usuario"
@@ -26,11 +25,5 @@ class T_Usuario(Base):
     # Estado (N:1)  — usuario posee un estado
     CN_Id_estado: Mapped[Optional[int]] = mapped_column(ForeignKey("T_Estado.CN_Id_estado"))
     estado: Mapped[Optional["T_Estado"]] = relationship(back_populates="usuarios")
-
-    # Gestiona (M:N) — expedientes que gestiona este usuario
-    expedientes: Mapped[List["T_Expediente"]] = relationship(
-        secondary=T_Usuario_Expediente,
-        back_populates="usuarios"
-    )
 
     bitacoras: Mapped[List["T_Bitacora"]] = relationship(back_populates="usuario")

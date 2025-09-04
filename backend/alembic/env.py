@@ -11,7 +11,7 @@ from alembic import context
 load_dotenv()
 
 # Importar nuestros modelos para que Alembic los detecte
-from app.db.models import Base, T_Usuario, T_Expediente, T_Documento, T_Bitacora, T_Rol, T_Estado, T_Estado_procesamiento, T_Tipo_accion, T_Usuario_Expediente, T_Expediente_Documento
+from app.db.models import Base, T_Usuario, T_Expediente, T_Documento, T_Bitacora, T_Rol, T_Estado, T_Estado_procesamiento, T_Tipo_accion, T_Expediente_Documento
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
