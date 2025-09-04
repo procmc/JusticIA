@@ -11,8 +11,11 @@ class T_Usuario(Base):
         UniqueConstraint("CT_Nombre_usuario", name="uq_usuario_nombre"),
     )
 
-    CN_Id_usuario: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    CN_Id_usuario: Mapped[str] = mapped_column(String(20), primary_key=True, autoincrement=False)  # Cédula como PK
     CT_Nombre_usuario: Mapped[str] = mapped_column(String(50), nullable=False)
+    CT_Nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    CT_Apellido_uno: Mapped[str] = mapped_column(String(100), nullable=False)  
+    CT_Apellido_dos: Mapped[str] = mapped_column(String(100), nullable=True)
     CT_Correo: Mapped[str] = mapped_column(String(100), nullable=False)
     CT_Contrasenna: Mapped[str] = mapped_column(String(255), nullable=False)
 

@@ -13,7 +13,11 @@ class EstadoInfo(BaseModel):
 
 
 class UsuarioCrear(BaseModel):
+    cedula: str  # ID del usuario (cédula)
     nombre_usuario: str
+    nombre: str
+    apellido_uno: str
+    apellido_dos: Optional[str] = None
     correo: str
     # Contraseña se genera automáticamente - no se solicita al usuario
     id_rol: int
@@ -21,14 +25,20 @@ class UsuarioCrear(BaseModel):
 
 class UsuarioEditar(BaseModel):
     nombre_usuario: str
+    nombre: str
+    apellido_uno: str
+    apellido_dos: Optional[str] = None
     correo: str
     id_rol: int
     id_estado: int
 
 
 class UsuarioRespuesta(BaseModel):
-    CN_Id_usuario: int
+    CN_Id_usuario: str  # Cédula
     CT_Nombre_usuario: str
+    CT_Nombre: str
+    CT_Apellido_uno: str
+    CT_Apellido_dos: Optional[str] = None
     CT_Correo: str
     CN_Id_rol: int
     CN_Id_estado: int

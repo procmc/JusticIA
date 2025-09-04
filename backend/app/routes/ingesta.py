@@ -12,7 +12,7 @@ from app.auth.jwt_auth import require_role
 router = APIRouter()
 
 @router.post("/archivos", response_model=IngestaArchivosResponse)
-@require_role("Usuario_Judicial")
+# @require_role("Usuario_Judicial")
 async def ingestar_archivos(
     CT_Num_expediente: str = Form(..., description="Número de expediente"),
     files: List[UploadFile] = File(..., description="Archivos a procesar"),

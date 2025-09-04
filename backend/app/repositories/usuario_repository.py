@@ -23,8 +23,8 @@ class UsuarioRepository:
             .all()
         )
     
-    def obtener_usuario_por_id(self, db: Session, usuario_id: int) -> Optional[T_Usuario]:
-        """Obtiene un usuario por su ID"""
+    def obtener_usuario_por_id(self, db: Session, usuario_id: str) -> Optional[T_Usuario]:
+        """Obtiene un usuario por su ID (cédula)"""
         return (
             db.query(T_Usuario)
             .options(joinedload(T_Usuario.rol), joinedload(T_Usuario.estado))
@@ -32,13 +32,16 @@ class UsuarioRepository:
             .first()
         )
     
-    def editar_usuario(self, db: Session, usuario_id: int, nombre_usuario: str, correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
+    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
         """Edita los datos de un usuario incluyendo rol y estado"""
         usuario = self.obtener_usuario_por_id(db, usuario_id)
         if not usuario:
             return None
         
         usuario.CT_Nombre_usuario = nombre_usuario
+        usuario.CT_Nombre = nombre
+        usuario.CT_Apellido_uno = apellido_uno
+        usuario.CT_Apellido_dos = apellido_dos
         usuario.CT_Correo = correo
         usuario.CN_Id_rol = id_rol
         usuario.CN_Id_estado = id_estado
@@ -47,7 +50,7 @@ class UsuarioRepository:
         db.refresh(usuario)
         return usuario
     
-    def crear_usuario(self, db: Session, nombre_usuario: str, correo: str, contrasenna: str, id_rol: int) -> T_Usuario:
+    def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, contrasenna: str, id_rol: int) -> T_Usuario:
         """Crea un nuevo usuario"""
         try:
             # Encriptar contraseña
@@ -62,7 +65,11 @@ class UsuarioRepository:
                 raise ValueError("No hay estados disponibles en la base de datos")
             
             nuevo_usuario = T_Usuario(
+                CN_Id_usuario=cedula,  # Usar cédula como PK
                 CT_Nombre_usuario=nombre_usuario,
+                CT_Nombre=nombre,
+                CT_Apellido_uno=apellido_uno,
+                CT_Apellido_dos=apellido_dos,
                 CT_Correo=correo,
                 CT_Contrasenna=contrasenna_hash,
                 CN_Id_rol=id_rol,

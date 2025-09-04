@@ -13,7 +13,7 @@ class T_Bitacora(Base):
 	CT_Informacion_adicional: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relaciones
-	CN_Id_usuario: Mapped[int] = mapped_column(ForeignKey("T_Usuario.CN_Id_usuario"), nullable=False)
+	CN_Id_usuario: Mapped[str] = mapped_column(ForeignKey("T_Usuario.CN_Id_usuario"), nullable=False)
 	usuario: Mapped["T_Usuario"] = relationship(back_populates="bitacoras")
 
 	CN_Id_tipo_accion: Mapped[Optional[int]] = mapped_column(ForeignKey("T_Tipo_accion.CN_Id_tipo_accion"))
