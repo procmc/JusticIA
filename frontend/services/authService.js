@@ -1,3 +1,5 @@
+import httpService from './httpService';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Función auxiliar para manejar respuestas HTTP
@@ -27,12 +29,8 @@ const handleResponse = async (response) => {
 
 export async function loginService(email, password) {
   try {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await handleResponse(res);
+    const data = await httpService.post('/auth/login', { email, password });
+
     if (data && data.error) {
       return { error: true, message: data.message || "Credenciales incorrectas" };
     }
@@ -41,6 +39,7 @@ export async function loginService(email, password) {
     }
     return { user: data.user };
   } catch (error) {
+    console.error('🔍 [DEBUG] Error en catch:', error);
     return { error: true, message: 'Error de red al iniciar sesión' };
   }
 }
