@@ -51,7 +51,13 @@ const IngestaDatos = () => {
   };
 
   // Hook para manejar el proceso de subida y polling
-  const { uploadFiles } = useFileUploadProcess(setFiles, setUploading);
+  const { uploadFiles, restoreFromStorage } = useFileUploadProcess(setFiles, setUploading);
+
+  // Al montar: intentar restaurar estado y reanudar polling si había archivos activos
+  React.useEffect(() => {
+    restoreFromStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Condiciones para deshabilitar el botón
   const isButtonDisabled = uploading || pendingFiles === 0 || filesWithoutExpediente > 0 || !expedienteNumero.trim() || !isExpedienteValid;
