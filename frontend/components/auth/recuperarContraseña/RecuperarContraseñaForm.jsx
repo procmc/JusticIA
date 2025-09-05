@@ -222,92 +222,87 @@ const RecuperarContraseñaForm = () => {
     };
 
     return (
-        <div className="flex flex-col justify-center min-h-[500px] md:min-h-[600px] p-6 md:p-8">
-            <div className="w-full max-w-md mx-auto">
+        <div className="w-full flex flex-col justify-start pt-24 md:pt-28 lg:pt-32 p-8 md:p-16 lg:p-20 pb-8 md:pb-16 lg:pb-20">
+            {/* Header con paso actual */}
+            <div className="text-center mb-6 md:mb-8">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-10 lg:mb-12 text-primary text-center drop-shadow-lg shadow-gray-400/50">
+                    {currentStep === 1 && "Recuperar Contraseña"}
+                    {currentStep === 2 && "Verificar Código"}
+                    {currentStep === 3 && "Nueva Contraseña"}
+                </h2>
+                <p className="text-gray-600 text-xs md:text-sm lg:text-base px-2">
+                    {currentStep === 1 && "Ingresa tu correo para recibir un código de verificación"}
+                    {currentStep === 2 && "Ingresa el código de 6 dígitos enviado a tu correo"}
+                    {currentStep === 3 && "Establece tu nueva contraseña"}
+                </p>
 
-                {/* Header con paso actual */}
-                <div className="text-center mb-6 md:mb-8">
-                    <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-10 lg:mb-12 text-azulOscuro text-center drop-shadow-lg shadow-gray-400/50">
-                        {currentStep === 1 && "Recuperar Contraseña"}
-                        {currentStep === 2 && "Verificar Código"}
-                        {currentStep === 3 && "Nueva Contraseña"}
-                    </h3>
-                    <p className="text-gray-600 text-xs md:text-sm lg:text-base px-2">
-                        {currentStep === 1 && "Ingresa tu correo para recibir un código de verificación"}
-                        {currentStep === 2 && "Ingresa el código de 6 dígitos enviado a tu correo"}
-                        {currentStep === 3 && "Establece tu nueva contraseña"}
-                    </p>
+                {/* Indicador de progreso */}
+                <div className="flex justify-center mt-4 md:mt-6 space-x-2 md:space-x-3">
+                    {[1, 2, 3].map((step) => (
+                        <div
+                            key={step}
+                            className={`w-2.5 h-2.5 md:w-3 md:h-3 lg:w-4 lg:h-4 rounded-full transition-colors duration-300 ${step <= currentStep ? 'bg-primary' : 'bg-gray-300'
+                                }`}
+                        />
+                    ))}
+                </div>
 
-                    {/* Indicador de progreso */}
-                    <div className="flex justify-center mt-4 md:mt-6 space-x-2 md:space-x-3">
-                        {[1, 2, 3].map((step) => (
-                            <div
-                                key={step}
-                                className={`w-2.5 h-2.5 md:w-3 md:h-3 lg:w-4 lg:h-4 rounded-full transition-colors duration-300 ${step <= currentStep ? 'bg-primary-500' : 'bg-gray-300'
-                                    }`}
-                            />
-                        ))}
+                {/* Timer */}
+                {timeLeft > 0 && currentStep > 1 && (
+                    <div className="mt-3 md:mt-4 text-xs md:text-sm text-primary font-medium">
+                        Tiempo restante: {formatTime(timeLeft)}
                     </div>
+                )}
+            </div>
 
-                    {/* Timer */}
-                    {timeLeft > 0 && currentStep > 1 && (
-                        <div className="mt-3 md:mt-4 text-xs md:text-sm text-primary-600 font-medium">
-                            Tiempo restante: {formatTime(timeLeft)}
-                        </div>
-                    )}
-                </div>
+            {/* Contenedor centrado para los formularios */}
+            <div className="flex flex-col items-center gap-4 md:gap-5">
+                {/* PASO 1: Email */}
+                {currentStep === 1 && (
+                    <Step1Email 
+                        formData={formData}
+                        errors={errors}
+                        loading={loading}
+                        handleChange={handleChange}
+                        handleSolicitarRecuperacion={handleSolicitarRecuperacion}
+                    />
+                )}
 
-                {/* Contenedor centrado para los formularios */}
-                <div className="flex justify-center items-center ">
-                    {/* PASO 1: Email */}
-                    {currentStep === 1 && (
-                        <Step1Email 
-                            formData={formData}
-                            errors={errors}
-                            loading={loading}
-                            handleChange={handleChange}
-                            handleSolicitarRecuperacion={handleSolicitarRecuperacion}
-                        />
-                    )}
+                {/* PASO 2: Código */}
+                {currentStep === 2 && (
+                    <Step2Code 
+                        formData={formData}
+                        errors={errors}
+                        loading={loading}
+                        timeLeft={timeLeft}
+                        handleChange={handleChange}
+                        handleVerificarCodigo={handleVerificarCodigo}
+                        handleVolverAtras={handleVolverAtras}
+                        handleSolicitarNuevoCodigo={handleSolicitarNuevoCodigo}
+                    />
+                )}
 
-                    {/* PASO 2: Código */}
-                    {currentStep === 2 && (
-                        <Step2Code 
-                            formData={formData}
-                            errors={errors}
-                            loading={loading}
-                            timeLeft={timeLeft}
-                            handleChange={handleChange}
-                            handleVerificarCodigo={handleVerificarCodigo}
-                            handleVolverAtras={handleVolverAtras}
-                            handleSolicitarNuevoCodigo={handleSolicitarNuevoCodigo}
-                        />
-                    )}
+                {/* PASO 3: Nueva contraseña */}
+                {currentStep === 3 && (
+                    <Step3Password 
+                        formData={formData}
+                        errors={errors}
+                        loading={loading}
+                        timeLeft={timeLeft}
+                        showPasswords={showPasswords}
+                        handleChange={handleChange}
+                        handleCambiarContraseña={handleCambiarContraseña}
+                        handleVolverAtras={handleVolverAtras}
+                        togglePasswordVisibility={togglePasswordVisibility}
+                        onRestart={handleRestart}
+                    />
+                )}
 
-                    {/* PASO 3: Nueva contraseña */}
-                    {currentStep === 3 && (
-                        <Step3Password 
-                            formData={formData}
-                            errors={errors}
-                            loading={loading}
-                            timeLeft={timeLeft}
-                            showPasswords={showPasswords}
-                            handleChange={handleChange}
-                            handleCambiarContraseña={handleCambiarContraseña}
-                            handleVolverAtras={handleVolverAtras}
-                            togglePasswordVisibility={togglePasswordVisibility}
-                            onRestart={handleRestart}
-                        />
-                    )}
-                </div>
-
-                <Divider className="my-6 md:my-8" />
-
-                {/* Link mejorado para volver al login */}
-                <div className="text-center">
+                {/* Link para volver al login */}
+                <div className="w-full md:w-3/4 flex justify-center mt-6">
                     <Link
                         href="/auth/login"
-                        className="inline-flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium transition-all duration-200 group hover:underline decoration-primary-600"
+                        className="inline-flex items-center text-primary hover:text-primary/80 text-sm font-medium transition-all duration-200 group hover:underline decoration-primary"
                     >
                         <svg 
                             className="w-4 h-4 mr-2 transition-transform duration-200 group-hover:-translate-x-1" 
