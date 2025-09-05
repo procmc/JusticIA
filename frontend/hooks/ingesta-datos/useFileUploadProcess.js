@@ -8,6 +8,26 @@ import Toast from '@/components/ui/CustomAlert';
 export const useFileUploadProcess = (setFiles, setUploading) => {
   // Set para rastrear archivos ya procesados
   const processedFiles = useRef(new Set());
+  const persistKey = 'ingesta_files_v1';
+
+  // Helper para actualizar files y persistir en localStorage
+  const updateFiles = (updater) => {
+    setFiles(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          // Sanitizar: no persistir el objeto File (no serializable)
+          const toStore = Array.isArray(next)
+            ? next.map(({ file, ...meta }) => meta)
+            : next;
+          localStorage.setItem(persistKey, JSON.stringify(toStore));
+        }
+      } catch (e) {
+        /* ignore storage errors */
+      }
+      return next;
+    });
+  };
 
   // Función para truncar nombres de archivo largos
   const truncateFileName = (fileName, maxLength = 30) => {
@@ -38,7 +58,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
     // Remover el archivo después de un breve delay para que se vea el toast
     setTimeout(() => {
-      setFiles(prev => {
+      updateFiles(prev => {
         const filtered = prev.filter(f => f.id !== fileId);
         // Si se removió el archivo, también remover del Set
         if (filtered.length < prev.length) {
@@ -65,7 +85,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           if (estado.success && estado.data) {
             const statusData = estado.data;
 
-            setFiles(prev => prev.map(f => {
+            updateFiles(prev => prev.map(f => {
               if (f.id === archivoLocal.id) {
                 const actualizado = {
                   ...f,
@@ -169,7 +189,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     for (const [expediente, expedienteFiles] of Object.entries(filesByExpediente)) {
 
       // Actualizar estado a uploading para archivos de este expediente
-      setFiles(prev => prev.map(f =>
+      updateFiles(prev => prev.map(f =>
         expedienteFiles.some(ef => ef.id === f.id)
           ? { ...f, status: 'uploading', progress: 0, fileProcessId: null }
           : f
@@ -183,7 +203,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
         // Asignar IDs individuales a cada archivo
         if (resultado && resultado.file_process_ids) {
-          setFiles(prev => prev.map(f => {
+          updateFiles(prev => prev.map(f => {
             const fileIndex = expedienteFiles.findIndex(ef => ef.id === f.id);
             if (fileIndex !== -1 && fileIndex < resultado.file_process_ids.length) {
               return {
@@ -195,7 +215,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
             }
             return f;
           }));
-
           // Iniciar polling para cada archivo
           iniciarPollingArchivos(expedienteFiles, resultado.file_process_ids);
         }
@@ -210,7 +229,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         );
 
         // Marcar archivos de este expediente como error
-        setFiles(prev => prev.map(f =>
+        updateFiles(prev => prev.map(f =>
           expedienteFiles.some(ef => ef.id === f.id)
             ? { ...f, status: 'error', progress: 0, message: error.message || 'Error en subida' }
             : f
@@ -221,11 +240,50 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     setUploading(false);
   };
 
+  // Restaurar desde localStorage y reanudar polling si es necesario
+  const restoreFromStorage = () => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      const raw = localStorage.getItem(persistKey);
+      if (!raw) return;
+      const stored = JSON.parse(raw);
+      if (!Array.isArray(stored) || stored.length === 0) return;
+
+      // Rehidratar estado de archivos
+      setFiles(stored);
+
+      // Detectar archivos activos (tienen fileProcessId y no están en success/error)
+      const activosByExp = {};
+      stored.forEach(f => {
+        if (f.fileProcessId && f.status && f.status !== 'success' && f.status !== 'error') {
+          const exp = f.expediente || 'NO_EXP';
+          if (!activosByExp[exp]) activosByExp[exp] = [];
+          activosByExp[exp].push(f);
+        }
+      });
+
+      const todasLasIds = [];
+      Object.entries(activosByExp).forEach(([exp, archivos]) => {
+        const ids = archivos.map(a => a.fileProcessId).filter(Boolean);
+        if (ids.length > 0) {
+          iniciarPollingArchivos(archivos, ids);
+          todasLasIds.push(...ids);
+        }
+      });
+
+      // Marcar uploading si hay polls activos
+      setUploading(todasLasIds.length > 0);
+    } catch (e) {
+      console.error('Error restaurando estado de archivos:', e);
+    }
+  };
+
   return {
     uploadFiles,
     truncateFileName,
     removeCompletedFile,
     iniciarPollingArchivos,
-    processedFiles
+    processedFiles,
+    restoreFromStorage
   };
 };
