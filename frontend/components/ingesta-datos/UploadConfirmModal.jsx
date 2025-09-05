@@ -17,7 +17,9 @@ const UploadConfirmModal = ({
   expedienteNumero
 }) => {
   
-  const handleConfirm = () => onConfirm();
+  const handleConfirm = () => {
+    onConfirm();
+  };
 
   return (
     <ConfirmModal
