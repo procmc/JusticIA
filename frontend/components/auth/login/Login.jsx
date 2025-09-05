@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { loginService } from "../../../services/authService";
 import LockAnimationSystem from "./LockAnimationSystem";
 import LoginForm from "./LoginForm";
-import { signIn } from "next-auth/react";
 
 const Login = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -20,23 +19,20 @@ const Login = () => {
 
     let formData = Object.fromEntries(new FormData(e.currentTarget));
     try {
-      // Usar signIn de NextAuth
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: formData.email,
-        password: formData.password
-      });
+      const result = await loginService(formData.email, formData.password);
+
       if (result?.error) {
-        setErrorMessage("Credenciales inválidas");
-      } else if (result?.ok) {
-        triggerSuccessAnimation();
+        setErrorMessage(result.message || "Credenciales inválidas");
+      } else if (result?.user) {
+        localStorage.setItem('user', JSON.stringify(result.user));
         setTimeout(() => {
           router.push("/");
-        }, 2200);
+        }, 500);
       } else {
         setErrorMessage("Credenciales inválidas");
       }
     } catch (error) {
+      console.error("Error en login:", error);
       setErrorMessage("Ocurrió un error. Intente nuevamente.");
     } finally {
       setLoading(false);
