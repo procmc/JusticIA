@@ -21,6 +21,20 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
             ? next.map(({ file, ...meta }) => meta)
             : next;
           localStorage.setItem(persistKey, JSON.stringify(toStore));
+          // Determinar si quedan archivos activos y limpiar storage si no
+          try {
+            const active = Array.isArray(next) && next.some(f => {
+              if (!f) return false;
+              const status = (f.status || '').toString().toLowerCase();
+              if (status === 'pending' || status === 'uploading') return true;
+              if (f.fileProcessId) return true;
+              return false;
+            });
+            if (typeof setUploading === 'function') setUploading(active);
+            if (!active) {
+              try { localStorage.removeItem(persistKey); } catch (e) { /* ignore */ }
+            }
+          } catch (e) { /* ignore */ }
         }
       } catch (e) {
         /* ignore storage errors */
@@ -154,90 +168,94 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   };
 
   const uploadFiles = async (files) => {
+    // Normalizar archivos (aceptar tanto array como objeto-array del hook)
+    const listFiles = Array.isArray(files) ? files : Array.from(files || []);
+
     setUploading(true);
-
-    // Notificación de inicio
-    Toast.info(
-      'Subida iniciada',
-      'Los archivos se están procesando en segundo plano'
-    );
-
-    // Agrupar archivos por expediente
-    const filesByExpediente = {};
-    files.forEach(file => {
-      if (file.status === 'pending' && file.expediente?.trim()) {
-        const exp = file.expediente.trim();
-        if (!filesByExpediente[exp]) {
-          filesByExpediente[exp] = [];
-        }
-        filesByExpediente[exp].push(file);
-      }
-    });
-
-    // Verificar si hay archivos para procesar
-    if (Object.keys(filesByExpediente).length === 0) {
-      console.log('No hay archivos con expediente para procesar');
-      Toast.warning(
-        'Sin archivos',
-        'No hay archivos válidos con número de expediente para procesar'
+    try {
+      // Notificación de inicio
+      Toast.info(
+        'Subida iniciada',
+        'Los archivos se están procesando en segundo plano'
       );
-      setUploading(false);
-      return;
-    }
 
-    // Procesar cada grupo de expediente
-    for (const [expediente, expedienteFiles] of Object.entries(filesByExpediente)) {
-
-      // Actualizar estado a uploading para archivos de este expediente
-      updateFiles(prev => prev.map(f =>
-        expedienteFiles.some(ef => ef.id === f.id)
-          ? { ...f, status: 'uploading', progress: 0, fileProcessId: null }
-          : f
-      ));
-
-      try {
-        // Obtener archivos reales
-        const archivosReales = expedienteFiles.map(f => f.file);
-
-        const resultado = await ingestaService.subirArchivos(expediente, archivosReales);
-
-        // Asignar IDs individuales a cada archivo
-        if (resultado && resultado.file_process_ids) {
-          updateFiles(prev => prev.map(f => {
-            const fileIndex = expedienteFiles.findIndex(ef => ef.id === f.id);
-            if (fileIndex !== -1 && fileIndex < resultado.file_process_ids.length) {
-              return {
-                ...f,
-                fileProcessId: resultado.file_process_ids[fileIndex],
-                progress: 10,
-                message: 'Procesando...'
-              };
-            }
-            return f;
-          }));
-          // Iniciar polling para cada archivo
-          iniciarPollingArchivos(expedienteFiles, resultado.file_process_ids);
+      // Agrupar archivos por expediente
+      const filesByExpediente = {};
+      listFiles.forEach(file => {
+        if (file && file.status === 'pending' && file.expediente?.trim()) {
+          const exp = file.expediente.trim();
+          if (!filesByExpediente[exp]) {
+            filesByExpediente[exp] = [];
+          }
+          filesByExpediente[exp].push(file);
         }
+      });
 
-      } catch (error) {
-        console.error('Error subiendo archivos del expediente', expediente, ':', error);
-
-        // Mostrar toast de error general
-        Toast.error(
-          'Error en la subida',
-          `No se pudieron subir los archivos del expediente ${expediente}`
+      // Verificar si hay archivos para procesar
+      if (Object.keys(filesByExpediente).length === 0) {
+        console.log('No hay archivos con expediente para procesar');
+        Toast.warning(
+          'Sin archivos',
+          'No hay archivos válidos con número de expediente para procesar'
         );
+        return;
+      }
 
-        // Marcar archivos de este expediente como error
+      // Procesar cada grupo de expediente
+      for (const [expediente, expedienteFiles] of Object.entries(filesByExpediente)) {
+
+        // Actualizar estado a uploading para archivos de este expediente
         updateFiles(prev => prev.map(f =>
           expedienteFiles.some(ef => ef.id === f.id)
-            ? { ...f, status: 'error', progress: 0, message: error.message || 'Error en subida' }
+            ? { ...f, status: 'uploading', progress: 0, fileProcessId: null }
             : f
         ));
-      }
-    }
 
-    setUploading(false);
+        try {
+          // Obtener archivos reales
+          const archivosReales = expedienteFiles.map(f => f.file);
+
+          const resultado = await ingestaService.subirArchivos(expediente, archivosReales);
+
+          // Asignar IDs individuales a cada archivo
+          if (resultado && resultado.file_process_ids) {
+            updateFiles(prev => prev.map(f => {
+              const fileIndex = expedienteFiles.findIndex(ef => ef.id === f.id);
+              if (fileIndex !== -1 && fileIndex < resultado.file_process_ids.length) {
+                return {
+                  ...f,
+                  fileProcessId: resultado.file_process_ids[fileIndex],
+                  progress: 10,
+                  message: 'Procesando...'
+                };
+              }
+              return f;
+            }));
+            // Iniciar polling para cada archivo
+            iniciarPollingArchivos(expedienteFiles, resultado.file_process_ids);
+          }
+
+        } catch (error) {
+          console.error('Error subiendo archivos del expediente', expediente, ':', error);
+
+          // Mostrar toast de error general
+          Toast.error(
+            'Error en la subida',
+            `No se pudieron subir los archivos del expediente ${expediente}`
+          );
+
+          // Marcar archivos de este expediente como error
+          updateFiles(prev => prev.map(f =>
+            expedienteFiles.some(ef => ef.id === f.id)
+              ? { ...f, status: 'error', progress: 0, message: error.message || 'Error en subida' }
+              : f
+          ));
+        }
+      }
+    } finally {
+      // Asegurar que uploading se limpie siempre
+      setUploading(false);
+    }
   };
 
   // Restaurar desde localStorage y reanudar polling si es necesario
