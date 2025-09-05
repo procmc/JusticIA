@@ -29,6 +29,11 @@ const apiRequest = async (url, options = {}) => {
         errorMessage = errorText || errorMessage;
       }
       
+      // Asegurar que sea string
+      if (typeof errorMessage !== 'string') {
+        errorMessage = String(errorMessage);
+      }
+      
       throw new Error(errorMessage);
     }
 
@@ -40,7 +45,7 @@ const apiRequest = async (url, options = {}) => {
     
     return await response.text();
   } catch (error) {
-    console.error('API Request Error:', error);
+    console.error('API Request Error:', error.message || error.toString());
     throw error;
   }
 };
