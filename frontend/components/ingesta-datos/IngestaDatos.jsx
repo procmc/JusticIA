@@ -51,11 +51,19 @@ const IngestaDatos = () => {
   };
 
   // Hook para manejar el proceso de subida y polling
-  const { uploadFiles, restoreFromStorage } = useFileUploadProcess(setFiles, setUploading);
+  const { uploadFiles, restoreFromStorage, stopAllPollings } = useFileUploadProcess(setFiles, setUploading);
 
   // Al montar: intentar restaurar estado y reanudar polling si había archivos activos
   React.useEffect(() => {
-    restoreFromStorage();
+    let restored = false;
+    if (!restored) {
+      restoreFromStorage();
+      restored = true;
+    }
+    return () => {
+      // Limpiar cualquier polling activo al salir de la vista
+      stopAllPollings();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
