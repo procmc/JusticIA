@@ -29,14 +29,35 @@ export const useFileUpload = () => {
           : file
       );
       
-      // Forzar actualización solo si hay cambios
-      const hasChanges = prev.some((file, index) => 
-        file.status === 'pending' && file.expediente !== updated[index]?.expediente
-      );
+      // Siempre devolver el array actualizado si hay archivos pendientes
+      const hasPendingFiles = prev.some(file => file.status === 'pending');
       
-      return hasChanges ? updated : prev;
+      return hasPendingFiles ? updated : prev;
     });
   }, [expedienteNumero]);
+
+  // Efecto adicional para asegurar que archivos recién agregados tengan expediente
+  useEffect(() => {
+    if (expedienteNumero.trim()) {
+     
+      setFilesArray(prev => {
+        const needsUpdate = prev.some(file => 
+          file.status === 'pending' && file.expediente !== expedienteNumero.trim()
+        );
+        
+        if (needsUpdate) {
+         
+          return prev.map(file => 
+            file.status === 'pending' 
+              ? { ...file, expediente: expedienteNumero.trim() }
+              : file
+          );
+        }
+        
+        return prev;
+      });
+    }
+  }, [filesArray.length, expedienteNumero]);
 
   // Manejadores de drag & drop
   const handleDrag = useCallback((e) => {
@@ -67,6 +88,7 @@ export const useFileUpload = () => {
 
   // Manejar archivos nuevos
   const handleFiles = useCallback((newFiles) => {
+    
     const validFiles = newFiles.filter(file => {
       const extension = '.' + file.name.split('.').pop().toLowerCase();
       return allowedTypes.includes(extension);
@@ -124,6 +146,7 @@ export const useFileUpload = () => {
   const pendingFiles = filesArray.filter(f => f.status === 'pending').length;
   const successFiles = filesArray.filter(f => f.status === 'success').length;
   const errorFiles = filesArray.filter(f => f.status === 'error').length;
+  
   // Forzar que NO haya archivos sin expediente si hay expediente principal
   const filesWithoutExpediente = expedienteNumero.trim() 
     ? 0 
