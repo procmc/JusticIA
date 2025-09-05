@@ -124,6 +124,110 @@ class EmailService:
         except Exception as e:
             print(f"❌ Error enviando correo universal: {e}")
             return False
+    
+    async def send_recovery_code_email(self, to_email: str, user_name: str, recovery_code: str) -> bool:
+        """Envía email con código de recuperación de contraseña"""
+        try:
+            subject = "Código de Recuperación de Contraseña - JusticIA"
+            
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+                    <h2 style="color: #2c3e50; margin-bottom: 20px;">🔐 Recuperación de Contraseña</h2>
+                    <p style="color: #34495e; font-size: 16px; margin-bottom: 15px;">
+                        Hola <strong>{user_name}</strong>,
+                    </p>
+                    <p style="color: #34495e; font-size: 14px; margin-bottom: 25px;">
+                        Has solicitado recuperar tu contraseña. Usa el siguiente código de verificación:
+                    </p>
+                    <div style="background-color: #3498db; color: white; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 2px; margin: 20px 0;">
+                        {recovery_code}
+                    </div>
+                    <p style="color: #e74c3c; font-size: 12px; margin-top: 20px;">
+                        ⚠️ Este código expira en 15 minutos por seguridad.
+                    </p>
+                    <p style="color: #7f8c8d; font-size: 12px; margin-top: 15px;">
+                        Si no solicitaste este código, ignora este mensaje.
+                    </p>
+                </div>
+                <div style="text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px;">
+                    Sistema JusticIA - Gestión de Documentos Jurídicos
+                </div>
+            </div>
+            """
+            
+            text_content = f"""
+            Recuperación de Contraseña - JusticIA
+            
+            Hola {user_name},
+            
+            Has solicitado recuperar tu contraseña. 
+            Tu código de verificación es: {recovery_code}
+            
+            Este código expira en 15 minutos por seguridad.
+            
+            Si no solicitaste este código, ignora este mensaje.
+            
+            Sistema JusticIA
+            """
+            
+            return await self.send_email(to_email, subject, html_content, text_content)
+            
+        except Exception as e:
+            print(f"❌ Error enviando email de recuperación: {e}")
+            return False
+    
+    async def send_password_reset_email(self, to_email: str, user_name: str, new_password: str) -> bool:
+        """Envía email con nueva contraseña restablecida"""
+        try:
+            subject = "Contraseña Restablecida - JusticIA"
+            
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
+                    <h2 style="color: #2c3e50; margin-bottom: 20px;">🔑 Contraseña Restablecida</h2>
+                    <p style="color: #34495e; font-size: 16px; margin-bottom: 15px;">
+                        Hola <strong>{user_name}</strong>,
+                    </p>
+                    <p style="color: #34495e; font-size: 14px; margin-bottom: 25px;">
+                        Tu contraseña ha sido restablecida exitosamente. Tu nueva contraseña temporal es:
+                    </p>
+                    <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 5px; font-size: 18px; font-weight: bold; letter-spacing: 1px; margin: 20px 0;">
+                        {new_password}
+                    </div>
+                    <p style="color: #e74c3c; font-size: 14px; margin-top: 20px;">
+                        ⚠️ <strong>Importante:</strong> Por tu seguridad, cambia esta contraseña después de iniciar sesión.
+                    </p>
+                    <p style="color: #7f8c8d; font-size: 12px; margin-top: 15px;">
+                        Si no solicitaste este restablecimiento, contacta al administrador inmediatamente.
+                    </p>
+                </div>
+                <div style="text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px;">
+                    Sistema JusticIA - Gestión de Documentos Jurídicos
+                </div>
+            </div>
+            """
+            
+            text_content = f"""
+            Contraseña Restablecida - JusticIA
+            
+            Hola {user_name},
+            
+            Tu contraseña ha sido restablecida exitosamente.
+            Tu nueva contraseña temporal es: {new_password}
+            
+            IMPORTANTE: Por tu seguridad, cambia esta contraseña después de iniciar sesión.
+            
+            Si no solicitaste este restablecimiento, contacta al administrador inmediatamente.
+            
+            Sistema JusticIA
+            """
+            
+            return await self.send_email(to_email, subject, html_content, text_content)
+            
+        except Exception as e:
+            print(f"❌ Error enviando email de restablecimiento: {e}")
+            return False
 
 # Configuraciones predefinidas (mantener las existentes)
 def get_gmail_config(username: str, password: str) -> EmailConfig:

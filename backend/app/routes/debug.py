@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models.usuario import T_Usuario
@@ -68,3 +68,32 @@ async def test_password_debug(
         resultado["password_valida_correo"] = password_valida
     
     return resultado
+
+@router.post("/reset-password")
+async def reset_password_debug(
+    email: str,
+    new_password: str,
+    db: Session = Depends(get_db)
+):
+    """Endpoint temporal para debug - resetear contraseña de un usuario"""
+    repo = UsuarioRepository()
+    
+    # Buscar usuario por correo
+    usuario = db.query(T_Usuario).filter(T_Usuario.CT_Correo == email).first()
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Hashear nueva contraseña
+    nueva_contrasenna_hash = repo._hash_password(new_password)
+    
+    # Actualizar contraseña
+    usuario.CT_Contrasenna = nueva_contrasenna_hash
+    db.commit()
+    
+    return {
+        "message": "Contraseña actualizada exitosamente",
+        "email": email,
+        "nueva_password": new_password,
+        "usuario_id": usuario.CN_Id_usuario
+    }

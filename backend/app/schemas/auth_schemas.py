@@ -24,3 +24,32 @@ class CambiarContrasenaRequest(BaseModel):
 class MensajeExito(BaseModel):
     success: bool
     message: str
+
+class SolicitarRecuperacionRequest(BaseModel):
+    email: str
+
+class SolicitarRecuperacionResponse(BaseModel):
+    success: bool
+    message: str
+    token: Optional[str] = None
+
+class VerificarCodigoRequest(BaseModel):
+    token: str
+    codigo: str
+
+class VerificarCodigoResponse(BaseModel):
+    success: bool
+    message: str
+    verificationToken: str
+
+class CambiarContrasenaRecuperacionRequest(BaseModel):
+    verificationToken: str
+    nuevaContrasenna: str
+
+class RestablecerContrasenaRequest(BaseModel):
+    cedula: str
+
+class RestablecerContrasenaResponse(BaseModel):
+    success: bool
+    message: str
+    data: dict
