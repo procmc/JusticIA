@@ -14,6 +14,7 @@ from app.schemas.auth_schemas import (
 )
 from app.repositories.usuario_repository import UsuarioRepository
 from app.services.usuario_service import UsuarioService
+from app.auth.jwt_auth import create_token
 
 class AuthService:
     """Servicio de autenticación para usuarios"""
@@ -53,6 +54,13 @@ class AuthService:
             # Obtener datos del usuario
             datos_usuario = self._obtener_datos_usuario(db, usuario)
             
+            # Generar access token JWT
+            access_token = create_token(
+                user_id=usuario.CN_Id_usuario,
+                role=datos_usuario['nombre_rol'],
+                username=usuario.CT_Correo
+            )
+            
             return LoginResponse(
                 success=True,
                 message="Login exitoso",
@@ -61,7 +69,8 @@ class AuthService:
                     name=datos_usuario['nombre_completo'],
                     email=usuario.CT_Correo,  # Usar el correo real, no el nombre de usuario
                     role=datos_usuario['nombre_rol']
-                )
+                ),
+                access_token=access_token  # Incluir el token en la respuesta
             )
             
         except ValueError:

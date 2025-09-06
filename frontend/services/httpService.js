@@ -1,19 +1,39 @@
 /**
  * Servicio HTTP simple para la aplicación
  */
+import { getSession } from 'next-auth/react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
- * Wrapper simple para fetch con manejo básico de errores
+ * Obtener headers con autenticación automática
+ */
+const getAuthHeaders = async () => {
+  const session = await getSession();
+  const headers = {};
+  
+  // Agregar token si hay sesión
+  if (session?.accessToken) {
+    headers.Authorization = `Bearer ${session.accessToken}`;
+  }
+  
+  return headers;
+};
+
+/**
+ * Wrapper simple para fetch con manejo básico de errores y auth automática
  */
 const apiRequest = async (url, options = {}) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   
   try {
+    // Obtener headers de autenticación
+    const authHeaders = await getAuthHeaders();
+    
     const response = await fetch(fullUrl, {
       ...options,
       headers: {
+        ...authHeaders,
         ...options.headers,
       },
     });
