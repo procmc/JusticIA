@@ -80,7 +80,7 @@ def require_role(required_role_name: str):
             if token_role != required_role_name:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Acceso denegado. Se requiere rol: {required_role_name}. Tu rol: {token_role}"
+                    detail=f"Acceso denegado"
                 )
             
             # Verificar que el rol existe en la BD

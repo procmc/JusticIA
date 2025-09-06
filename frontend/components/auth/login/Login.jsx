@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Card, CardBody } from "@heroui/react";
 import { useRouter } from "next/router";
-import { loginService } from "../../../services/authService";
+import { signIn } from "next-auth/react";
 import LockAnimationSystem from "./LockAnimationSystem";
 import LoginForm from "./LoginForm";
 
@@ -18,19 +18,23 @@ const Login = () => {
     setErrorMessage(null);
 
     let formData = Object.fromEntries(new FormData(e.currentTarget));
+    
     try {
-      const result = await loginService(formData.email, formData.password);
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false // Necesario para manejar errores manualmente
+      });
 
       if (result?.error) {
-        setErrorMessage(result.message || "Credenciales inválidas");
-      } else if (result?.user) {
-        localStorage.setItem('user', JSON.stringify(result.user));
-        setTimeout(() => {
-          router.push("/");
-        }, 500);
-      } else {
         setErrorMessage("Credenciales inválidas");
+      } else if (result?.ok) {
+        // Login exitoso - redirigir manualmente
+        router.push('/');
+      } else {
+        setErrorMessage("Error inesperado en el login");
       }
+
     } catch (error) {
       console.error("Error en login:", error);
       setErrorMessage("Ocurrió un error. Intente nuevamente.");

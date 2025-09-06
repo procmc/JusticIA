@@ -15,6 +15,7 @@ class LoginResponse(BaseModel):
     success: bool
     message: str
     user: UserInfo
+    access_token: Optional[str] = None  # Token JWT para autenticación
 
 class CambiarContrasenaRequest(BaseModel):
     cedula_usuario: str
