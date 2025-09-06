@@ -10,6 +10,7 @@ export async function loginService(email, password) {
     if (!data.success || !data.user) {
       return { error: true, message: data.message || "Credenciales incorrectas" };
     }
+    
     // Retornar tanto user como access_token
     const result = { 
       user: data.user,
@@ -24,16 +25,18 @@ export async function loginService(email, password) {
 
 export async function cambiarContraseñaService(contraseñaActual, nuevaContraseña, cedulaUsuario) {
   try {
+    const payload = {
+      cedula_usuario: String(cedulaUsuario),
+      contrasenna_actual: String(contraseñaActual),
+      nueva_contrasenna: String(nuevaContraseña)
+    };
+    
     const data = await httpService.apiRequest('/auth/cambiar-contrasenna', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        contraseñaActual, 
-        nuevaContraseña, 
-        cedulaUsuario 
-      })
+      body: JSON.stringify(payload)
     });
     
     if (data && data.error) {
@@ -78,6 +81,8 @@ export async function solicitarRecuperacionService(email) {
 // Función para verificar código de recuperación
 export async function verificarCodigoRecuperacionService(token, codigo) {
   try {
+    console.log('Verificando código:', { token: token?.substring(0, 20) + '...', codigo });
+    
     const data = await httpService.post('/auth/verificar-codigo', { token, codigo });
     
     if (data && data.error) {
@@ -94,6 +99,7 @@ export async function verificarCodigoRecuperacionService(token, codigo) {
       verificationToken: data.verificationToken 
     };
   } catch (error) {
+    console.error('Error en verificarCodigoRecuperacionService:', error);
     const errorMessage = error.message || error.toString() || 'Error de red al verificar código';
     return { error: true, message: errorMessage };
   }
