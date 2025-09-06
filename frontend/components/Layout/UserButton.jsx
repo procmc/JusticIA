@@ -179,29 +179,34 @@ export function UserButton() {
                 }}
                 titulo="Cambiar Contraseña"
                 size="md"
-                mostrarBotones={true}
-                textoBotonPrimario="Cambiar Contraseña"
-                textoBotonSecundario="Cancelar"
-                onBotonPrimario={async () => {
-                    if (isLoading) return;
-                    setIsLoading(true);
-                    const valid = await cambiarContraseñaRef.current?.validateAndSubmit?.();
-                    if (!valid) {
-                        setIsLoading(false);
+                mostrarFooter={true}
+                botonCerrar={{ 
+                    mostrar: true, 
+                    texto: "Cancelar",
+                    onPress: () => {
+                        if (!isLoading) {
+                            handleCloseDrawer();
+                        }
                     }
                 }}
-                onBotonSecundario={() => {
-                    if (!isLoading) {
-                        handleCloseDrawer();
+                botonAccion={{
+                    texto: "Cambiar Contraseña",
+                    color: "primary",
+                    loading: isLoading,
+                    onPress: async () => {
+                        if (isLoading) return;
+                        setIsLoading(true);
+                        const valid = await cambiarContraseñaRef.current?.validateAndSubmit?.();
+                        if (!valid) {
+                            setIsLoading(false);
+                        }
                     }
                 }}
-                loadingBotonPrimario={isLoading}
-                loadingBotonSecundario={isLoading}
                 disableClose={isLoading}
             >
                 <CambiarContraseña
                     ref={cambiarContraseñaRef}
-                    cedulaUsuario={1}
+                    cedulaUsuario={session?.user?.id || 1}
                     onSuccess={handlePasswordChangeSuccess}
                 />
             </DrawerGeneral>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardBody } from "@heroui/react";
 import { useRouter } from "next/router";
 import { signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import LockAnimationSystem from "./LockAnimationSystem";
 import LoginForm from "./LoginForm";
 
@@ -29,10 +30,11 @@ const Login = () => {
       if (result?.error) {
         setErrorMessage("Credenciales inválidas");
       } else if (result?.ok) {
-        // Login exitoso - redirigir manualmente
-        router.push('/');
+        setTimeout(() => {
+          router.push("/");
+        }, 500);
       } else {
-        setErrorMessage("Error inesperado en el login");
+        setErrorMessage("Error al iniciar sesión");
       }
 
     } catch (error) {
