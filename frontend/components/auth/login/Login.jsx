@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Card, CardBody } from "@heroui/react";
 import { useRouter } from "next/router";
 import { signIn } from "next-auth/react";
-import { signIn } from "next-auth/react";
 import LockAnimationSystem from "./LockAnimationSystem";
 import LoginForm from "./LoginForm";
 
