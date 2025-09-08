@@ -5,7 +5,7 @@
 import React from 'react';
 import { Card, CardBody } from '@heroui/react';
 import { IoCloudUpload } from 'react-icons/io5';
-import { formatearTamano } from '@/utils/ingesta-datos/funciones';
+import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 
 const HeaderStats = ({
   files,
