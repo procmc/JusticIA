@@ -3,7 +3,7 @@ import TablaUsuarios from './TablaUsuarios';
 import DetalleUsuario from './DetalleUsuario';
 import FormularioUsuario from './FormularioUsuario';
 import HeaderGestionUsuarios from './HeaderGestionUsuarios';
-import { obtenerUsuariosService, crearUsuarioService, resetearContrasenaService } from '../../../services/usuarioService';
+import { obtenerUsuariosService, crearUsuarioService, editarUsuarioService, resetearContrasenaService } from '../../../services/usuarioService';
 import { Toast } from '../../ui/CustomAlert';
 
 const GestionUsuarios = () => {
@@ -100,10 +100,16 @@ const GestionUsuarios = () => {
           Toast.error('Error', resultado.message || 'Error al crear usuario');
           return;
         }
-      } else {
-        // Editar usuario - implementar cuando sea necesario
-        Toast.info('Info', 'Función de editar en desarrollo');
-        return;
+      } else if (modoFormulario === 'editar') {
+        // Editar usuario
+        resultado = await editarUsuarioService(usuarioSeleccionado.CN_Id_usuario, datosUsuario);
+        if (resultado.success) {
+          Toast.success('Éxito', 'Usuario actualizado exitosamente');
+          await cargarUsuarios(); // Recargar lista
+        } else {
+          Toast.error('Error', resultado.message || 'Error al actualizar usuario');
+          return;
+        }
       }
       
       setModalFormularioAbierto(false);
