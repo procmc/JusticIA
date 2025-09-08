@@ -1,5 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks
-from typing import List
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Request
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.schemas.ingesta_schemas import IngestaArchivosRequest
 from app.services.file_processing_service import (
@@ -8,6 +8,7 @@ from app.services.file_processing_service import (
 )
 from app.services.async_processing_service import procesar_archivo_individual_en_background
 from app.db.database import get_db
+from app.auth.jwt_auth import require_role
 import uuid
 
 router = APIRouter()
@@ -33,16 +34,20 @@ async def get_process_status(process_id: str):
 
 
 @router.post("/archivos")
+@require_role("Usuario_Judicial")
 async def ingestar_archivos(
+    request: Request,
     background_tasks: BackgroundTasks,
     CT_Num_expediente: str = Form(..., description="Número de expediente"),
     files: List[UploadFile] = File(..., description="Archivos a procesar"),
     db: Session = Depends(get_db),
+    current_user: Optional[Dict[str, Any]] = None,
 ):
     """
     Ingesta de archivos de forma asíncrona.
     Devuelve inmediatamente IDs individuales para consultar el progreso de cada archivo.
     """
+        
     # Validaciones básicas (rápidas)
     if not files:
         raise HTTPException(

@@ -23,6 +23,8 @@ export default NextAuth({
             name: user.name,
             email: user.email,
             role: user.role,
+            // Incluir el access_token del backend para que pase a callbacks
+            accessToken: result.access_token
           };
           
           return userToReturn;
@@ -49,6 +51,7 @@ export default NextAuth({
         token.name = user.name;
         token.email = user.email;
         token.role = user.role;
+        token.accessToken = user.accessToken; // guardar access token
       }
       return token;
     },
@@ -61,6 +64,8 @@ export default NextAuth({
       session.user.name = token.name;
       session.user.email = token.email;
       session.user.role = token.role;
+      // Exponer accessToken en la sesión para el httpService
+      session.accessToken = token.accessToken;
       return session;
     }
   },

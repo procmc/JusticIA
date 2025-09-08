@@ -11,7 +11,13 @@ export async function loginService(email, password) {
       return { error: true, message: data.message || "Credenciales incorrectas" };
     }
     
-    return { user: data.user };
+    // Retornar tanto user como access_token
+    const result = { 
+      user: data.user,
+      access_token: data.access_token 
+    };
+    
+    return result;
   } catch (error) {
     return { error: true, message: 'Error de red al iniciar sesión' };
   }
