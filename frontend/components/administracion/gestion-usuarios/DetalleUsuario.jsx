@@ -21,8 +21,8 @@ const DetalleUsuario = ({
 }) => {
   if (!usuario) return null;
 
-  const formatearFecha = (fechaString) => {
-    if (!fechaString) return 'No disponible';
+  const formatearFecha = (fechaString, esUltimoAcceso = false) => {
+    if (!fechaString) return esUltimoAcceso ? 'El usuario nunca ha iniciado sesión' : 'No disponible';
     try {
       return format(new Date(fechaString), 'dd \'de\' MMMM \'de\' yyyy \'a las\' HH:mm', { locale: es });
     } catch (error) {
@@ -104,12 +104,12 @@ const DetalleUsuario = ({
               </label>
               <div>
                 <Chip
-                  color={obtenerColorRol(usuario.rolNombre)}
+                  color={obtenerColorRol(usuario.rol?.nombre)}
                   variant="flat"
                   size="md"
                   className="font-medium"
                 >
-                  {usuario.rolNombre}
+                  {usuario.rol?.nombre || 'Sin rol'}
                 </Chip>
               </div>
             </div>
@@ -120,12 +120,12 @@ const DetalleUsuario = ({
               </label>
               <div>
                 <Chip
-                  color={obtenerColorEstado(usuario.estadoNombre)}
+                  color={obtenerColorEstado(usuario.estado?.nombre)}
                   variant="flat"
                   size="md"
                   className="font-medium"
                 >
-                  {usuario.estadoNombre}
+                  {usuario.estado?.nombre || 'Sin estado'}
                 </Chip>
               </div>
             </div>
@@ -147,7 +147,7 @@ const DetalleUsuario = ({
                 </p>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300 ml-6">
-                {formatearFecha(usuario.fechaCreacion)}
+                {formatearFecha(usuario.CF_Fecha_creacion)}
               </p>
             </div>
             
@@ -159,7 +159,7 @@ const DetalleUsuario = ({
                 </p>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300 ml-6">
-                {formatearFecha(usuario.ultimoAcceso)}
+                {formatearFecha(usuario.CF_Ultimo_acceso, true)}
               </p>
             </div>
           </div>
