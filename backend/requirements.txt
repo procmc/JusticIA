@@ -10,7 +10,8 @@ alembic>=1.12.0  # Para migraciones
 # Autenticación JWT
 python-jose[cryptography]>=3.3.0
 pyjwt>=2.8.0  # JWT handling directo
-passlib[bcrypt]>=1.7.0
+passlib[bcrypt]>=1.7.4  # Versión más reciente para compatibilidad
+bcrypt>=4.0.0,<5.0.0  # Versión compatible con passlib
 python-multipart>=0.0.6
 email-validator>=2.0.0
 
@@ -35,6 +36,10 @@ ffmpeg-python>=0.2.0  # FFmpeg wrapper para conversión de audio
 # Milvus SDK (2.5.x o superior)
 protobuf>=5.27.2,<6.0.0
 pymilvus>=2.5.14,<2.7
+
+# Compatibilidad para evitar conflictos numpy/pandas
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0
 
 python-dotenv==1.0.1
 
