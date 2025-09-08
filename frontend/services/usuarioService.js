@@ -48,9 +48,21 @@ export async function editarUsuarioService(usuarioId, usuarioData) {
   }
 }
 
+// Resetear contraseña de usuario
+export async function resetearContrasenaService(usuarioId) {
+  try {
+    const data = await httpService.post(`/usuarios/${usuarioId}/resetear-contrasenna`);
+    return { success: true, message: data.mensaje };
+  } catch (error) {
+    console.error('Error al resetear contraseña:', error);
+    return { error: true, message: error.message || 'Error al resetear contraseña' };
+  }
+}
+
 export default {
   obtenerUsuariosService,
   obtenerUsuarioPorIdService,
   crearUsuarioService,
-  editarUsuarioService
+  editarUsuarioService,
+  resetearContrasenaService
 };
