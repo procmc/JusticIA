@@ -3,7 +3,7 @@ import TablaUsuarios from './TablaUsuarios';
 import DetalleUsuario from './DetalleUsuario';
 import FormularioUsuario from './FormularioUsuario';
 import HeaderGestionUsuarios from './HeaderGestionUsuarios';
-import { obtenerUsuariosService, crearUsuarioService } from '../../../services/usuarioService';
+import { obtenerUsuariosService, crearUsuarioService, resetearContrasenaService } from '../../../services/usuarioService';
 import { Toast } from '../../ui/CustomAlert';
 
 const GestionUsuarios = () => {
@@ -125,8 +125,18 @@ const GestionUsuarios = () => {
     }
   };
 
-  const handleResetearContrasena = (usuario) => {
-    console.log('Resetear contraseña para:', usuario.correo);
+  const handleResetearContrasena = async (usuario) => {
+    try {
+      const resultado = await resetearContrasenaService(usuario.CN_Id_usuario);
+      if (resultado.success) {
+        Toast.success('Éxito', resultado.message || 'Contraseña reseteada exitosamente');
+      } else {
+        Toast.error('Error', resultado.message || 'Error al resetear contraseña');
+      }
+    } catch (error) {
+      console.error('Error al resetear contraseña:', error);
+      Toast.error('Error', 'Error al resetear contraseña del usuario');
+    }
   };
 
   return (
@@ -150,7 +160,6 @@ const GestionUsuarios = () => {
           usuarios={usuariosFiltrados}
           onVerDetalle={handleVerDetalle}
           onEditarUsuario={handleEditarUsuario}
-          onCambiarEstado={handleCambiarEstadoUsuario}
           onResetearContrasena={handleResetearContrasena}
         />
       )}

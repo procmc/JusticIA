@@ -106,3 +106,17 @@ class UsuarioRepository:
         db.commit()
         db.refresh(usuario)
         return usuario
+
+    def resetear_contrasenna(self, db: Session, usuario_id: str, nueva_contrasenna: str) -> Optional[T_Usuario]:
+        """Resetea la contraseña de un usuario"""
+        usuario = self.obtener_usuario_por_id(db, usuario_id)
+        if not usuario:
+            return None
+        
+        # Encriptar la nueva contraseña
+        contrasenna_hash = self._hash_password(nueva_contrasenna)
+        usuario.CT_Contrasenna = contrasenna_hash
+        
+        db.commit()
+        db.refresh(usuario)
+        return usuario

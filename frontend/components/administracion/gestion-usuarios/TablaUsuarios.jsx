@@ -23,7 +23,7 @@ import { es } from 'date-fns/locale';
 import { 
   IoPeople, 
   IoEllipsisVertical, 
-  IoEye, 
+  IoEye,
   IoPencil, 
   IoLockClosed, 
   IoShield,
@@ -158,7 +158,7 @@ const TablaUsuarios = ({
                 isIconOnly
                 size="sm"
                 variant="light"
-                onPress={() => handleAccionUsuario('ver', usuario)}
+                onPress={() => onVerDetalle(usuario)}
               >
                 <IoEye className="h-6 w-6 text-default-600" />
               </Button>
@@ -200,16 +200,13 @@ const TablaUsuarios = ({
     }
   };
 
-  const handleAccionUsuario = (accion, usuario) => {
+  const handleAccionUsuario = async (accion, usuario) => {
     switch (accion) {
-      case 'ver':
-        onVerDetalle(usuario);
-        break;
       case 'editar':
         onEditarUsuario(usuario);
         break;
       case 'resetear':
-        onResetearContrasena(usuario);
+        await onResetearContrasena(usuario);
         break;
       default:
         break;
