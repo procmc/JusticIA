@@ -32,6 +32,8 @@ class UsuarioService:
             CT_Correo=usuario.CT_Correo,
             CN_Id_rol=usuario.CN_Id_rol,
             CN_Id_estado=usuario.CN_Id_estado,
+            CF_Ultimo_acceso=usuario.CF_Ultimo_acceso,
+            CF_Fecha_creacion=usuario.CF_Fecha_creacion,
             rol=RolInfo(
                 id=usuario.rol.CN_Id_rol,
                 nombre=usuario.rol.CT_Nombre_rol
@@ -99,6 +101,13 @@ class UsuarioService:
     def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
         """Edita un usuario incluyendo rol y estado"""
         usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, nombre, apellido_uno, apellido_dos, correo, id_rol, id_estado)
+        if usuario:
+            return self._mapear_usuario_respuesta(usuario)
+        return None
+
+    def actualizar_ultimo_acceso(self, db: Session, usuario_id: str) -> Optional[UsuarioRespuesta]:
+        """Actualiza el último acceso del usuario"""
+        usuario = self.repository.actualizar_ultimo_acceso(db, usuario_id)
         if usuario:
             return self._mapear_usuario_respuesta(usuario)
         return None

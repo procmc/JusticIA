@@ -1,6 +1,8 @@
 from typing import List, Optional
-from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+from datetime import datetime
 from .base import Base
 
 class T_Usuario(Base):
@@ -17,6 +19,8 @@ class T_Usuario(Base):
     CT_Apellido_dos: Mapped[str] = mapped_column(String(100), nullable=True)
     CT_Correo: Mapped[str] = mapped_column(String(100), nullable=False)
     CT_Contrasenna: Mapped[str] = mapped_column(String(255), nullable=False)
+    CF_Ultimo_acceso: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    CF_Fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Rol (N:1)
     CN_Id_rol: Mapped[Optional[int]] = mapped_column(ForeignKey("T_Rol.CN_Id_rol"))
