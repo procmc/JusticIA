@@ -156,7 +156,8 @@ const FormularioUsuario = ({
         apellido_uno: formData.CT_Apellido_uno.trim(),
         apellido_dos: formData.CT_Apellido_dos.trim() || null,
         correo: formData.CT_Correo.trim(),
-        id_rol: formData.CN_Id_rol
+        id_rol: formData.CN_Id_rol,
+        id_estado: formData.CN_Id_estado || 1
       };
 
       await onGuardar(datosUsuario);
@@ -228,6 +229,7 @@ const FormularioUsuario = ({
             errorMessage={errores.cedula}
             isRequired
             variant="bordered"
+            isDisabled={modo === 'editar'}
             classNames={{
               input: "text-sm",
               label: "text-sm font-medium"
@@ -289,7 +291,6 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Correo}
             isRequired
             variant="bordered"
-            description="Se usará como nombre de usuario para el login"
             classNames={{
               input: "text-sm",
               label: "text-sm font-medium"
@@ -305,6 +306,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CN_Id_rol}
             isRequired
             variant="bordered"
+            isDisabled={modo === 'editar'}
             classNames={{
               label: "text-sm font-medium"
             }}
