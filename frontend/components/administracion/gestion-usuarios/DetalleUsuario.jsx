@@ -68,7 +68,7 @@ const DetalleUsuario = ({
   };
 
   const calcularTiempoActividad = (fechaCreacion) => {
-    if (!fechaCreacion) return { valor: 0, unidad: 'minutos' };
+    if (!fechaCreacion) return { valor: 'Menos de 1', unidad: 'día' };
     
     try {
       const fecha = new Date(fechaCreacion);
@@ -76,14 +76,14 @@ const DetalleUsuario = ({
       
       // Validar que la fecha sea válida
       if (isNaN(fecha.getTime())) {
-        return { valor: 0, unidad: 'minutos' };
+        return { valor: 'Menos de 1', unidad: 'día' };
       }
       
       const diferencia = ahora - fecha;
       
-      // Si la diferencia es negativa (fecha en el futuro), mostrar 0
+      // Si la diferencia es negativa (fecha en el futuro), mostrar menos de un día
       if (diferencia < 0) {
-        return { valor: 0, unidad: 'minutos' };
+        return { valor: 'Menos de 1', unidad: 'día' };
       }
       
       const minutos = Math.floor(diferencia / (1000 * 60));
@@ -93,13 +93,9 @@ const DetalleUsuario = ({
       const meses = Math.floor(dias / 30);
       const años = Math.floor(dias / 365);
       
-      // Si lleva menos de 1 hora, mostrar en minutos (mínimo 1)
-      if (minutos < 60) {
-        return { valor: Math.max(1, minutos), unidad: minutos <= 1 ? 'minuto' : 'minutos' };
-      }
-      // Si lleva menos de 1 día, mostrar 1 hora, 2 horas, etc.
-      else if (horas < 24) {
-        return { valor: Math.max(1, horas), unidad: horas === 1 ? 'hora' : 'horas' };
+      // Si lleva menos de 1 día completo, mostrar "menos de 1 día"
+      if (dias < 1) {
+        return { valor: 'Menos de 1', unidad: 'día' };
       }
       // Si lleva menos de 1 semana, mostrar 1 día, 2 días, etc.
       else if (dias < 7) {
@@ -118,7 +114,7 @@ const DetalleUsuario = ({
         return { valor: Math.max(1, años), unidad: años === 1 ? 'año' : 'años' };
       }
     } catch (error) {
-      return { valor: 0, unidad: 'minutos' };
+      return { valor: 'Menos de 1', unidad: 'día' };
     }
   };
 
@@ -158,10 +154,26 @@ const DetalleUsuario = ({
 
   const calcularDiasDesdeCreacion = (fechaCreacion) => {
     if (!fechaCreacion) return 0;
-    const fecha = new Date(fechaCreacion);
-    const hoy = new Date();
-    const diferencia = hoy - fecha;
-    return Math.floor(diferencia / (1000 * 60 * 60 * 24));
+    try {
+      const fecha = new Date(fechaCreacion);
+      const hoy = new Date();
+      
+      // Validar que la fecha sea válida
+      if (isNaN(fecha.getTime())) {
+        return 0;
+      }
+      
+      const diferencia = hoy - fecha;
+      
+      // Si la diferencia es negativa, retornar 0
+      if (diferencia < 0) {
+        return 0;
+      }
+      
+      return Math.max(0, Math.floor(diferencia / (1000 * 60 * 60 * 24)));
+    } catch (error) {
+      return 0;
+    }
   };
 
   return (
@@ -286,7 +298,16 @@ const DetalleUsuario = ({
                   {format(new Date(usuario.CF_Fecha_creacion || new Date()), 'EEEE, dd \'de\' MMMM \'de\' yyyy', { locale: es })}
                 </p>
                 <p className="text-xs text-blue-500 mt-1">
-                  Hace {calcularDiasDesdeCreacion(usuario.CF_Fecha_creacion)} días
+                  {(() => {
+                    const dias = calcularDiasDesdeCreacion(usuario.CF_Fecha_creacion);
+                    if (dias === 0) {
+                      return 'Hace menos de 1 día';
+                    } else if (dias === 1) {
+                      return 'Hace 1 día';
+                    } else {
+                      return `Hace ${dias} días`;
+                    }
+                  })()}
                 </p>
               </div>
             </div>
