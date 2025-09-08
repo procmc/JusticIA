@@ -23,11 +23,9 @@ import { es } from 'date-fns/locale';
 import { 
   IoPeople, 
   IoEllipsisVertical, 
-  IoEye, 
+  IoEye,
   IoPencil, 
   IoLockClosed, 
-  IoCheckmark, 
-  IoClose,
   IoShield,
   IoPerson,
   IoPersonAdd
@@ -37,7 +35,6 @@ const TablaUsuarios = ({
   usuarios, 
   onVerDetalle, 
   onEditarUsuario, 
-  onCambiarEstado, 
   onResetearContrasena 
 }) => {
   const [paginaActual, setPaginaActual] = useState(1);
@@ -61,8 +58,8 @@ const TablaUsuarios = ({
     return rol === 'Administrador' ? <IoShield className="text-sm" /> : <IoPerson className="text-sm" />;
   };
 
-  const formatearFecha = (fechaString) => {
-    if (!fechaString) return 'N/A';
+  const formatearFecha = (fechaString, esUltimoAcceso = false) => {
+    if (!fechaString) return esUltimoAcceso ? 'Nunca' : 'N/A';
     try {
       if (typeof window === 'undefined') {
         // En el servidor, devolver un formato básico
@@ -70,7 +67,7 @@ const TablaUsuarios = ({
       }
       return format(new Date(fechaString), 'dd/MM/yyyy', { locale: es });
     } catch (error) {
-      return 'N/A';
+      return esUltimoAcceso ? 'Nunca' : 'N/A';
     }
   };
 
@@ -106,49 +103,51 @@ const TablaUsuarios = ({
         return (
           <div className="flex flex-col">
             <p className="font-medium text-small">
-              {usuario.nombre}
+              {`${usuario.CT_Nombre} ${usuario.CT_Apellido_uno} ${usuario.CT_Apellido_dos || ''}`.trim()}
             </p>
             <p className="text-tiny text-default-700">
-              {usuario.correo}
+              {usuario.CT_Correo}
             </p>
           </div>
         );
       case "rol":
         return (
           <Chip
-            color={obtenerColorRol(usuario.rolNombre)}
+            color={obtenerColorRol(usuario.rol?.nombre)}
             variant="flat"
-            startContent={obtenerIconoRol(usuario.rolNombre)}
+            startContent={obtenerIconoRol(usuario.rol?.nombre)}
             size="sm"
           >
-            {usuario.rolNombre}
+            {usuario.rol?.nombre || 'Sin rol'}
           </Chip>
         );
       case "estado":
         return (
           <Chip
-            color={obtenerColorEstado(usuario.estadoNombre)}
+            color={obtenerColorEstado(usuario.estado?.nombre)}
             variant="flat"
             size="sm"
           >
-            {usuario.estadoNombre}
+            {usuario.estado?.nombre || 'Sin estado'}
           </Chip>
         );
       case "ultimoAcceso":
         return (
           <div className="flex flex-col" suppressHydrationWarning>
             <p className="font-medium text-small">
-              {formatearFecha(usuario.ultimoAcceso)}
+              {formatearFecha(usuario.CF_Ultimo_acceso, true)}
             </p>
-            <p className="text-tiny text-default-700">
-              {formatearHora(usuario.ultimoAcceso)}
-            </p>
+            {usuario.CF_Ultimo_acceso && (
+              <p className="text-tiny text-default-700">
+                {formatearHora(usuario.CF_Ultimo_acceso)}
+              </p>
+            )}
           </div>
         );
       case "fechaCreacion":
         return (
           <div className="text-small" suppressHydrationWarning>
-            {formatearFecha(usuario.fechaCreacion)}
+            {formatearFecha(usuario.CF_Fecha_creacion)}
           </div>
         );
       case "acciones":
@@ -159,7 +158,7 @@ const TablaUsuarios = ({
                 isIconOnly
                 size="sm"
                 variant="light"
-                onPress={() => handleAccionUsuario('ver', usuario)}
+                onPress={() => onVerDetalle(usuario)}
               >
                 <IoEye className="h-6 w-6 text-default-600" />
               </Button>
@@ -192,28 +191,6 @@ const TablaUsuarios = ({
                 >
                   Resetear Contraseña
                 </DropdownItem>
-                
-                {usuario.estadoNombre === 'Activo' ? (
-                  <DropdownItem
-                    key="desactivar"
-                    className="text-danger"
-                    color="danger"
-                    startContent={<IoClose className="h-4 w-4" />}
-                    onPress={() => handleAccionUsuario('desactivar', usuario)}
-                  >
-                    Desactivar Usuario
-                  </DropdownItem>
-                ) : (
-                  <DropdownItem
-                    key="activar"
-                    className="text-success"
-                    color="success"
-                    startContent={<IoCheckmark className="h-4 w-4" />}
-                    onPress={() => handleAccionUsuario('activar', usuario)}
-                  >
-                    Activar Usuario
-                  </DropdownItem>
-                )}
               </DropdownMenu>
             </Dropdown>
           </div>
@@ -223,22 +200,13 @@ const TablaUsuarios = ({
     }
   };
 
-  const handleAccionUsuario = (accion, usuario) => {
+  const handleAccionUsuario = async (accion, usuario) => {
     switch (accion) {
-      case 'ver':
-        onVerDetalle(usuario);
-        break;
       case 'editar':
         onEditarUsuario(usuario);
         break;
-      case 'activar':
-        onCambiarEstado(usuario, 'Activo');
-        break;
-      case 'desactivar':
-        onCambiarEstado(usuario, 'Inactivo');
-        break;
       case 'resetear':
-        onResetearContrasena(usuario);
+        await onResetearContrasena(usuario);
         break;
       default:
         break;
@@ -306,7 +274,7 @@ const TablaUsuarios = ({
               </TableHeader>
               <TableBody items={usuariosPagina}>
                 {(usuario) => (
-                  <TableRow key={usuario.id}>
+                  <TableRow key={usuario.CN_Id_usuario}>
                     {(columnKey) => (
                       <TableCell className="py-4">{renderCell(usuario, columnKey)}</TableCell>
                     )}

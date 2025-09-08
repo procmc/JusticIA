@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class RolInfo(BaseModel):
@@ -42,6 +43,8 @@ class UsuarioRespuesta(BaseModel):
     CT_Correo: str
     CN_Id_rol: int
     CN_Id_estado: int
+    CF_Ultimo_acceso: Optional[datetime] = None
+    CF_Fecha_creacion: Optional[datetime] = None
     rol: Optional[RolInfo] = None
     estado: Optional[EstadoInfo] = None
     
