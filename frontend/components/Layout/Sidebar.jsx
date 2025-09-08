@@ -6,7 +6,7 @@ import { MdOutlineKeyboardDoubleArrowRight, MdOutlineKeyboardDoubleArrowLeft } f
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { LogoutIcon } from "../icons";
 import { menuItems } from "../../data/menuitems";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { Tooltip } from "@heroui/tooltip";
 
 const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
@@ -14,6 +14,19 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   const [expandedItems, setExpandedItems] = useState([]);
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ 
+        callbackUrl: '/auth/login',
+        redirect: true 
+      });
+    } catch (error) {
+      console.error('Error durante el logout:', error);
+      // Fallback: redirigir manualmente si hay error
+      router.push('/auth/login');
+    }
+  };
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -225,6 +238,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                 "justify-start": !toggleCollapse,
               }
             )}
+            onClick={handleLogout}
           >
             <div style={{ width: "2.5rem" }} className="flex justify-center">
               <LogoutIcon className="w-4 h-6 text-red-400" />
