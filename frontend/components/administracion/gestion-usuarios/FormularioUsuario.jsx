@@ -45,9 +45,9 @@ const FormularioUsuario = ({
         CT_Apellido_uno: usuario.CT_Apellido_uno || '',
         CT_Apellido_dos: usuario.CT_Apellido_dos || '',
         CT_Correo: usuario.CT_Correo || '',
-        CN_Id_rol: usuario.CN_Id_rol || '',
+        CN_Id_rol: (usuario.CN_Id_rol && usuario.CN_Id_rol > 0) ? usuario.CN_Id_rol : '',
         rolNombre: usuario.rol?.nombre || '',
-        CN_Id_estado: usuario.CN_Id_estado || 1,
+        CN_Id_estado: (usuario.CN_Id_estado && usuario.CN_Id_estado > 0) ? usuario.CN_Id_estado : 1,
         estadoNombre: usuario.estado?.nombre || 'Activo'
       });
     } else {
@@ -151,7 +151,7 @@ const FormularioUsuario = ({
       // Preparar datos para enviar
       const datosUsuario = {
         cedula: formData.cedula.trim(),
-        nombre_usuario: formData.CT_Correo.trim(), // Usar el correo como nombre de usuario
+        nombre_usuario: formData.CT_Correo.trim().split('@')[0], // Usar solo la parte antes del @ como nombre de usuario
         nombre: formData.CT_Nombre.trim(),
         apellido_uno: formData.CT_Apellido_uno.trim(),
         apellido_dos: formData.CT_Apellido_dos.trim() || null,
@@ -291,6 +291,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Correo}
             isRequired
             variant="bordered"
+            description="El nombre de usuario será automáticamente la parte antes del @ (ej: correo@justicia.gov.co → correo)"
             classNames={{
               input: "text-sm",
               label: "text-sm font-medium"
@@ -300,13 +301,14 @@ const FormularioUsuario = ({
           <Select
             label="Rol del Usuario"
             placeholder="Seleccionar rol"
-            selectedKeys={formData.CN_Id_rol ? [formData.CN_Id_rol.toString()] : []}
+            selectedKeys={formData.CN_Id_rol && formData.CN_Id_rol > 0 ? [formData.CN_Id_rol.toString()] : []}
             onSelectionChange={handleRolChange}
             isInvalid={!!errores.CN_Id_rol}
             errorMessage={errores.CN_Id_rol}
             isRequired
             variant="bordered"
             isDisabled={modo === 'editar'}
+            description={modo === 'editar' ? "El rol no puede modificarse después de la creación" : undefined}
             classNames={{
               label: "text-sm font-medium"
             }}
@@ -321,7 +323,7 @@ const FormularioUsuario = ({
           <Select
             label="Estado del Usuario"
             placeholder="Seleccionar estado"
-            selectedKeys={formData.CN_Id_estado ? [formData.CN_Id_estado.toString()] : []}
+            selectedKeys={formData.CN_Id_estado && formData.CN_Id_estado > 0 ? [formData.CN_Id_estado.toString()] : []}
             onSelectionChange={handleEstadoChange}
             variant="bordered"
             classNames={{

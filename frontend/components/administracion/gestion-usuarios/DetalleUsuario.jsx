@@ -7,7 +7,7 @@ import {
   Divider,
   Badge
 } from '@heroui/react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { 
   IoPerson, 
@@ -36,6 +36,89 @@ const DetalleUsuario = ({
       return format(new Date(fechaString), 'dd \'de\' MMMM \'de\' yyyy \'a las\' HH:mm', { locale: es });
     } catch (error) {
       return 'Fecha inválida';
+    }
+  };
+
+  const formatearTiempoRelativo = (fechaString) => {
+    if (!fechaString) return null;
+    try {
+      const fecha = new Date(fechaString);
+      const ahora = new Date();
+      const diferencia = ahora - fecha;
+      
+      // Convertir a minutos, horas y días
+      const minutos = Math.floor(diferencia / (1000 * 60));
+      const horas = Math.floor(diferencia / (1000 * 60 * 60));
+      const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+      
+      if (minutos < 1) {
+        return 'Hace menos de 1 minuto';
+      } else if (minutos < 60) {
+        return `Hace ${minutos} minuto${minutos !== 1 ? 's' : ''}`;
+      } else if (horas < 24) {
+        return `Hace ${horas} hora${horas !== 1 ? 's' : ''}`;
+      } else if (dias < 30) {
+        return `Hace ${dias} día${dias !== 1 ? 's' : ''}`;
+      } else {
+        return formatDistanceToNow(fecha, { addSuffix: true, locale: es });
+      }
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const calcularTiempoActividad = (fechaCreacion) => {
+    if (!fechaCreacion) return { valor: 0, unidad: 'minutos' };
+    
+    try {
+      const fecha = new Date(fechaCreacion);
+      const ahora = new Date();
+      
+      // Validar que la fecha sea válida
+      if (isNaN(fecha.getTime())) {
+        return { valor: 0, unidad: 'minutos' };
+      }
+      
+      const diferencia = ahora - fecha;
+      
+      // Si la diferencia es negativa (fecha en el futuro), mostrar 0
+      if (diferencia < 0) {
+        return { valor: 0, unidad: 'minutos' };
+      }
+      
+      const minutos = Math.floor(diferencia / (1000 * 60));
+      const horas = Math.floor(diferencia / (1000 * 60 * 60));
+      const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+      const semanas = Math.floor(dias / 7);
+      const meses = Math.floor(dias / 30);
+      const años = Math.floor(dias / 365);
+      
+      // Si lleva menos de 1 hora, mostrar en minutos (mínimo 1)
+      if (minutos < 60) {
+        return { valor: Math.max(1, minutos), unidad: minutos <= 1 ? 'minuto' : 'minutos' };
+      }
+      // Si lleva menos de 1 día, mostrar 1 hora, 2 horas, etc.
+      else if (horas < 24) {
+        return { valor: Math.max(1, horas), unidad: horas === 1 ? 'hora' : 'horas' };
+      }
+      // Si lleva menos de 1 semana, mostrar 1 día, 2 días, etc.
+      else if (dias < 7) {
+        return { valor: Math.max(1, dias), unidad: dias === 1 ? 'día' : 'días' };
+      }
+      // Si lleva menos de 1 mes, mostrar 1 semana, 2 semanas, etc.
+      else if (dias < 30) {
+        return { valor: Math.max(1, semanas), unidad: semanas === 1 ? 'semana' : 'semanas' };
+      }
+      // Si lleva menos de 1 año, mostrar 1 mes, 2 meses, etc.
+      else if (dias < 365) {
+        return { valor: Math.max(1, meses), unidad: meses === 1 ? 'mes' : 'meses' };
+      }
+      // Si lleva más de 1 año, mostrar 1 año, 2 años, etc.
+      else {
+        return { valor: Math.max(1, años), unidad: años === 1 ? 'año' : 'años' };
+      }
+    } catch (error) {
+      return { valor: 0, unidad: 'minutos' };
     }
   };
 
@@ -112,7 +195,7 @@ const DetalleUsuario = ({
             <div className="inline-block relative mb-4">
               <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-white text-xl font-bold">
-                  {obtenerIniciales(usuario.CT_Nombre_usuario, usuario.CT_Correo)}
+                  {obtenerIniciales((usuario.CT_Correo || usuario.correo)?.split('@')[0], usuario.CT_Correo)}
                 </span>
               </div>
               <div className="absolute -bottom-1 -right-1">
@@ -128,11 +211,11 @@ const DetalleUsuario = ({
             </div>
             
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-              {usuario.CT_Correo || usuario.correo}
+              {`${usuario.CT_Nombre || ''} ${usuario.CT_Apellido_uno || ''} ${usuario.CT_Apellido_dos || ''}`.trim() || 'Usuario sin nombre'}
             </h1>
             
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              @{usuario.CT_Nombre_usuario || usuario.nombreUsuario}
+              {usuario.CT_Correo || usuario.correo}
             </p>
             
             <div className="flex justify-center gap-2">
@@ -155,9 +238,11 @@ const DetalleUsuario = ({
               <IoCalendar className="w-3 h-3 text-white" />
             </div>
             <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-              {calcularDiasDesdeCreacion(usuario.CF_Fecha_creacion)}
+              {calcularTiempoActividad(usuario.CF_Fecha_creacion).valor}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Días activo</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {calcularTiempoActividad(usuario.CF_Fecha_creacion).unidad} activo
+            </p>
           </div>
           
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/50 dark:to-emerald-900/30 rounded-md p-2 text-center">
@@ -213,12 +298,20 @@ const DetalleUsuario = ({
                   <IoTime className="w-4 h-4 text-purple-500" />
                   <span className="font-medium text-gray-900 dark:text-white">Último acceso</span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {usuario.CF_Ultimo_acceso 
-                    ? format(new Date(usuario.CF_Ultimo_acceso), 'dd/MM/yyyy \'a las\' HH:mm', { locale: es })
-                    : 'Nunca ha iniciado sesión'
-                  }
-                </p>
+                {usuario.CF_Ultimo_acceso ? (
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {format(new Date(usuario.CF_Ultimo_acceso), 'dd/MM/yyyy \'a las\' HH:mm', { locale: es })}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                      {formatearTiempoRelativo(usuario.CF_Ultimo_acceso)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Nunca ha iniciado sesión
+                  </p>
+                )}
                 {usuario.CF_Ultimo_acceso && (
                   <div className="flex items-center gap-1 mt-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -242,7 +335,7 @@ const DetalleUsuario = ({
                   Nombre de Usuario
                 </label>
                 <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
-                  {usuario.CT_Nombre_usuario || usuario.nombreUsuario}
+                  {(usuario.CT_Correo || usuario.correo)?.split('@')[0] || 'usuario'}
                 </p>
               </div>
               
