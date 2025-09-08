@@ -18,11 +18,12 @@ const Login = () => {
     setErrorMessage(null);
 
     let formData = Object.fromEntries(new FormData(e.currentTarget));
+    
     try {
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
-        redirect: false
+        redirect: false // Necesario para manejar errores manualmente
       });
 
       if (result?.error) {
@@ -34,6 +35,7 @@ const Login = () => {
       } else {
         setErrorMessage("Error al iniciar sesión");
       }
+
     } catch (error) {
       console.error("Error en login:", error);
       setErrorMessage("Ocurrió un error. Intente nuevamente.");

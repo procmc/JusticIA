@@ -32,7 +32,11 @@ function AppContent({ Component, pageProps }) {
 //punto de entrada de la aplicación
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider 
+      session={session}
+      refetchInterval={10000} // Refrescar cada 10 segundos
+      refetchOnWindowFocus={true}
+    >
       <AppContent Component={Component} pageProps={pageProps} />
     </SessionProvider>
   );
