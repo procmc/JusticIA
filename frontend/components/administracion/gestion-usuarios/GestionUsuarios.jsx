@@ -3,7 +3,7 @@ import TablaUsuarios from './TablaUsuarios';
 import DetalleUsuario from './DetalleUsuario';
 import FormularioUsuario from './FormularioUsuario';
 import HeaderGestionUsuarios from './HeaderGestionUsuarios';
-import { obtenerUsuariosService } from '../../../services/usuarioService';
+import { obtenerUsuariosService, crearUsuarioService } from '../../../services/usuarioService';
 import { Toast } from '../../ui/CustomAlert';
 
 const GestionUsuarios = () => {
