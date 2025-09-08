@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getAllowedFileExtensions } from '@/utils/ingesta-datos/funciones';
+import { getAllowedFileExtensions } from '@/utils/ingesta-datos/ingestaUtils';
 
 /**
  * Hook unificado para manejo de archivos con compatibilidad total del componente original
@@ -89,13 +89,30 @@ export const useFileUpload = () => {
   // Manejar archivos nuevos
   const handleFiles = useCallback((newFiles) => {
     
+    // Validar extensiones permitidas
     const validFiles = newFiles.filter(file => {
       const extension = '.' + file.name.split('.').pop().toLowerCase();
       return allowedTypes.includes(extension);
     });
 
-    if (validFiles.length > 0) {
-      const filesWithMetadata = validFiles.map(file => ({
+    // Validar límite de 10 archivos
+    const currentFileCount = files.filter(f => f.status !== 'removed').length;
+    const maxFiles = 10;
+    const availableSlots = maxFiles - currentFileCount;
+    
+    if (availableSlots <= 0) {
+      alert(`Ya tienes el máximo de ${maxFiles} archivos. Elimina algunos antes de agregar más.`);
+      return;
+    }
+    
+    const filesToAdd = validFiles.slice(0, availableSlots);
+    
+    if (validFiles.length > availableSlots) {
+      alert(`Solo se pueden agregar ${availableSlots} archivos más. Se agregaron los primeros ${filesToAdd.length} archivos.`);
+    }
+
+    if (filesToAdd.length > 0) {
+      const filesWithMetadata = filesToAdd.map(file => ({
         id: Date.now() + Math.random(),
         file: file,
         name: file.name,

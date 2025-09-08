@@ -3,23 +3,17 @@ from typing import Optional, Dict, Any
 
 def validar_expediente(numero_expediente: str) -> bool:
     """
-    Valida el formato de un número de expediente del Poder Judicial.
-    Formato: AA-CCCCCC-OOOO-MM
-    
-    Donde:
-    - AA: Año (2 dígitos)
-    - CCCCCC: Consecutivo (6 dígitos)
-    - OOOO: Oficina (4 dígitos)
-    - MM: Materia (2 caracteres alfabéticos)
+    Valida el formato de un número de expediente.
+    Formato: entre 17 y 20 caracteres alfanuméricos (incluyendo guiones)
     """
     if not numero_expediente:
         return False
     
-    # Limpiar espacios y convertir a mayúsculas
-    numero_limpio = numero_expediente.strip().upper()
+    # Limpiar espacios
+    numero_limpio = numero_expediente.strip()
     
-    # Patrón regex: 2 dígitos - 6 dígitos - 4 dígitos - 2 letras
-    patron = r'^\d{2}-\d{6}-\d{4}-[A-Z]{2}$'
+    # Patrón regex: entre 17 y 20 caracteres alfanuméricos (incluyendo guiones)
+    patron = r'^[A-Za-z0-9\-]{17,20}$'
     
     return bool(re.match(patron, numero_limpio))
 

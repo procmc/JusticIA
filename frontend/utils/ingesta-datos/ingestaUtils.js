@@ -1,6 +1,6 @@
 /**
- * Funciones de utilidad consolidadas para ingesta de datos
- * Versión unificada sin duplicaciones
+ * Utilidades para el módulo de ingesta de datos
+ * Funciones de validación, formato y procesamiento de archivos
  */
 
 // Tipos de archivos permitidos (centralizados)
@@ -33,8 +33,8 @@ export const validarFormatoExpediente = (expediente) => {
     return false;
   }
   
-  // Formato: 98-003287-0166-LA (año 2 dígitos, -, 6 dígitos consecutivo, -, 4 dígitos oficina, -, 2 caracteres materia)
-  const regex = /^\d{2}-\d{6}-\d{4}-[A-Za-z]{2}$/;
+  // Formato: entre 17 y 20 caracteres alfanuméricos (incluyendo guiones)
+  const regex = /^[A-Za-z0-9\-]{17,20}$/;
   return regex.test(expediente.trim());
 };
 
