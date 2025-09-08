@@ -103,8 +103,30 @@ const post = (url, data = null) => {
   return apiRequest(url, options);
 };
 
+/**
+ * PUT request
+ */
+const put = (url, data = null) => {
+  const options = {
+    method: 'PUT',
+  };
+
+  if (data instanceof FormData) {
+    options.body = data;
+    // No establecer Content-Type para FormData
+  } else if (data) {
+    options.headers = {
+      'Content-Type': 'application/json',
+    };
+    options.body = JSON.stringify(data);
+  }
+
+  return apiRequest(url, options);
+};
+
 export default {
   get,
   post,
+  put,
   apiRequest
 };
