@@ -32,6 +32,8 @@ class UsuarioService:
             CT_Correo=usuario.CT_Correo,
             CN_Id_rol=usuario.CN_Id_rol,
             CN_Id_estado=usuario.CN_Id_estado,
+            CF_Ultimo_acceso=usuario.CF_Ultimo_acceso,
+            CF_Fecha_creacion=usuario.CF_Fecha_creacion,
             rol=RolInfo(
                 id=usuario.rol.CN_Id_rol,
                 nombre=usuario.rol.CT_Nombre_rol
@@ -102,3 +104,57 @@ class UsuarioService:
         if usuario:
             return self._mapear_usuario_respuesta(usuario)
         return None
+
+    def actualizar_ultimo_acceso(self, db: Session, usuario_id: str) -> Optional[UsuarioRespuesta]:
+        """Actualiza el último acceso del usuario"""
+        usuario = self.repository.actualizar_ultimo_acceso(db, usuario_id)
+        if usuario:
+            return self._mapear_usuario_respuesta(usuario)
+        return None
+
+    async def resetear_contrasenna_usuario(self, db: Session, usuario_id: str) -> Optional[UsuarioRespuesta]:
+        """
+        Resetea la contraseña de un usuario y envía la nueva por correo
+        Solo para uso de administradores
+        """
+        # Obtener el usuario
+        usuario = self.repository.obtener_usuario_por_id(db, usuario_id)
+        if not usuario:
+            return None
+        
+        # Generar nueva contraseña aleatoria
+        if self.email_service:
+            nueva_contrasenna = self.email_service.generate_random_password()
+        else:
+            # Fallback si no hay servicio de correo
+            import secrets
+            import string
+            nueva_contrasenna = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        
+        # Actualizar contraseña en la base de datos
+        usuario_actualizado = self.repository.resetear_contrasenna(db, usuario_id, nueva_contrasenna)
+        if not usuario_actualizado:
+            return None
+        
+        # Enviar correo con la nueva contraseña
+        if self.email_service:
+            try:
+                await self.email_service.send_password_email(
+                    to=usuario.CT_Correo,
+                    password=nueva_contrasenna,
+                    usuario_nombre=usuario.CT_Nombre_usuario
+                )
+                print(f"✅ Contraseña reseteada y correo enviado a {usuario.CT_Correo}")
+                
+                # Solo para debug en desarrollo
+                debug_mode = os.getenv("DEBUG_PASSWORDS", "false").lower() == "true"
+                if debug_mode:
+                    print(f"🐛 [DEBUG] Nueva contraseña: {nueva_contrasenna}")
+                    
+            except Exception as e:
+                print(f"❌ Error enviando correo a {usuario.CT_Correo}: {e}")
+                print(f"⚠️ Contraseña reseteada pero correo no enviado")
+        else:
+            print(f"⚠️ Sin servicio de correo configurado - Contraseña reseteada sin notificación")
+        
+        return self._mapear_usuario_respuesta(usuario_actualizado)

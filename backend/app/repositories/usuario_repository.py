@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db.models.usuario import T_Usuario
 from app.db.models.estado import T_Estado
 from passlib.context import CryptContext
+from datetime import datetime
 
 
 class UsuarioRepository:
@@ -94,3 +95,28 @@ class UsuarioRepository:
             db.rollback()
             print(f"Error al crear usuario: {e}")
             raise
+
+    def actualizar_ultimo_acceso(self, db: Session, usuario_id: str) -> Optional[T_Usuario]:
+        """Actualiza el último acceso del usuario"""
+        usuario = self.obtener_usuario_por_id(db, usuario_id)
+        if not usuario:
+            return None
+        
+        usuario.CF_Ultimo_acceso = datetime.now()
+        db.commit()
+        db.refresh(usuario)
+        return usuario
+
+    def resetear_contrasenna(self, db: Session, usuario_id: str, nueva_contrasenna: str) -> Optional[T_Usuario]:
+        """Resetea la contraseña de un usuario"""
+        usuario = self.obtener_usuario_por_id(db, usuario_id)
+        if not usuario:
+            return None
+        
+        # Encriptar la nueva contraseña
+        contrasenna_hash = self._hash_password(nueva_contrasenna)
+        usuario.CT_Contrasenna = contrasenna_hash
+        
+        db.commit()
+        db.refresh(usuario)
+        return usuario

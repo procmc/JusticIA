@@ -55,3 +55,28 @@ def editar_usuario(usuario_id: str, usuario_data: UsuarioEditar, db: Session = D
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
+
+@router.patch("/{usuario_id}/ultimo-acceso", response_model=UsuarioRespuesta)
+def actualizar_ultimo_acceso(usuario_id: str, db: Session = Depends(get_db)):
+    """Actualiza el último acceso del usuario"""
+    usuario = usuario_service.actualizar_ultimo_acceso(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return usuario
+
+@router.post("/{usuario_id}/resetear-contrasenna", response_model=MensajeRespuesta)
+async def resetear_contrasenna(usuario_id: str, db: Session = Depends(get_db)):
+    """
+    Resetea la contraseña de un usuario y envía la nueva por correo.
+    Solo para administradores.
+    """
+    try:
+        usuario = await usuario_service.resetear_contrasenna_usuario(db, usuario_id)
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        return MensajeRespuesta(mensaje="Contraseña reseteada exitosamente. Se envió un correo con la nueva contraseña al usuario.")
+        
+    except Exception as e:
+        print(f"Error al resetear contraseña: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
