@@ -22,7 +22,10 @@ const FormularioUsuario = ({
   onGuardar 
 }) => {
   const [formData, setFormData] = useState({
-    CT_Nombre_usuario: '',
+    cedula: '',
+    CT_Nombre: '',
+    CT_Apellido_uno: '',
+    CT_Apellido_dos: '',
     CT_Correo: '',
     CN_Id_rol: '',
     rolNombre: '',
@@ -37,17 +40,23 @@ const FormularioUsuario = ({
   useEffect(() => {
     if (modo === 'editar' && usuario) {
       setFormData({
-        CT_Nombre_usuario: usuario.CT_Nombre_usuario || '',
+        cedula: usuario.CN_Id_usuario || '',
+        CT_Nombre: usuario.CT_Nombre || '',
+        CT_Apellido_uno: usuario.CT_Apellido_uno || '',
+        CT_Apellido_dos: usuario.CT_Apellido_dos || '',
         CT_Correo: usuario.CT_Correo || '',
         CN_Id_rol: usuario.CN_Id_rol || '',
-        rolNombre: usuario.rolNombre || '',
+        rolNombre: usuario.rol?.nombre || '',
         CN_Id_estado: usuario.CN_Id_estado || 1,
-        estadoNombre: usuario.estadoNombre || 'Activo'
+        estadoNombre: usuario.estado?.nombre || 'Activo'
       });
     } else {
       // Resetear formulario para nuevo usuario
       setFormData({
-        CT_Nombre_usuario: '',
+        cedula: '',
+        CT_Nombre: '',
+        CT_Apellido_uno: '',
+        CT_Apellido_dos: '',
         CT_Correo: '',
         CN_Id_rol: '',
         rolNombre: '',
@@ -103,10 +112,18 @@ const FormularioUsuario = ({
     const nuevosErrores = {};
 
     // Validaciones requeridas
-    if (!formData.CT_Nombre_usuario.trim()) {
-      nuevosErrores.CT_Nombre_usuario = 'El nombre de usuario es requerido';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.CT_Nombre_usuario)) {
-      nuevosErrores.CT_Nombre_usuario = 'Debe ser un correo electrónico válido';
+    if (!formData.cedula.trim()) {
+      nuevosErrores.cedula = 'La cédula es requerida';
+    } else if (!/^\d{8,15}$/.test(formData.cedula.trim())) {
+      nuevosErrores.cedula = 'La cédula debe contener solo números (8-15 dígitos)';
+    }
+
+    if (!formData.CT_Nombre.trim()) {
+      nuevosErrores.CT_Nombre = 'El nombre es requerido';
+    }
+
+    if (!formData.CT_Apellido_uno.trim()) {
+      nuevosErrores.CT_Apellido_uno = 'El primer apellido es requerido';
     }
 
     if (!formData.CT_Correo.trim()) {
@@ -133,12 +150,13 @@ const FormularioUsuario = ({
     try {
       // Preparar datos para enviar
       const datosUsuario = {
-        CT_Nombre_usuario: formData.CT_Nombre_usuario.trim(),
-        CT_Correo: formData.CT_Correo.trim(),
-        CN_Id_rol: formData.CN_Id_rol,
-        rolNombre: formData.rolNombre,
-        CN_Id_estado: formData.CN_Id_estado,
-        estadoNombre: formData.estadoNombre
+        cedula: formData.cedula.trim(),
+        nombre_usuario: formData.CT_Correo.trim(), // Usar el correo como nombre de usuario
+        nombre: formData.CT_Nombre.trim(),
+        apellido_uno: formData.CT_Apellido_uno.trim(),
+        apellido_dos: formData.CT_Apellido_dos.trim() || null,
+        correo: formData.CT_Correo.trim(),
+        id_rol: formData.CN_Id_rol
       };
 
       await onGuardar(datosUsuario);
@@ -153,7 +171,10 @@ const FormularioUsuario = ({
 
   const handleClose = () => {
     setFormData({
-      CT_Nombre_usuario: '',
+      cedula: '',
+      CT_Nombre: '',
+      CT_Apellido_uno: '',
+      CT_Apellido_dos: '',
       CT_Correo: '',
       CN_Id_rol: '',
       rolNombre: '',
@@ -169,7 +190,7 @@ const FormularioUsuario = ({
       isOpen={isOpen}
       onOpenChange={(open) => !open && handleClose()}
       titulo={modo === 'crear' ? 'Crear Nuevo Usuario' : 'Editar Usuario'}
-      size="lg"
+      size="md"
       disableClose={cargando}
       botonCerrar={{
         mostrar: true,
@@ -198,14 +219,59 @@ const FormularioUsuario = ({
         {/* Campos del formulario con mejor espaciado */}
         <div className="space-y-5">
           <Input
-            label="Nombre de Usuario"
-            placeholder="usuario@justicia.gov.co"
-            type="email"
-            value={formData.CT_Nombre_usuario}
-            onValueChange={(valor) => handleInputChange('CT_Nombre_usuario', valor)}
-            isInvalid={!!errores.CT_Nombre_usuario}
-            errorMessage={errores.CT_Nombre_usuario}
+            label="Cédula"
+            placeholder="123456789"
+            type="text"
+            value={formData.cedula}
+            onValueChange={(valor) => handleInputChange('cedula', valor)}
+            isInvalid={!!errores.cedula}
+            errorMessage={errores.cedula}
             isRequired
+            variant="bordered"
+            classNames={{
+              input: "text-sm",
+              label: "text-sm font-medium"
+            }}
+          />
+
+          <Input
+            label="Nombre"
+            placeholder="Juan"
+            type="text"
+            value={formData.CT_Nombre}
+            onValueChange={(valor) => handleInputChange('CT_Nombre', valor)}
+            isInvalid={!!errores.CT_Nombre}
+            errorMessage={errores.CT_Nombre}
+            isRequired
+            variant="bordered"
+            classNames={{
+              input: "text-sm",
+              label: "text-sm font-medium"
+            }}
+          />
+
+          <Input
+            label="Primer Apellido"
+            placeholder="Pérez"
+            type="text"
+            value={formData.CT_Apellido_uno}
+            onValueChange={(valor) => handleInputChange('CT_Apellido_uno', valor)}
+            isInvalid={!!errores.CT_Apellido_uno}
+            errorMessage={errores.CT_Apellido_uno}
+            isRequired
+            variant="bordered"
+            classNames={{
+              input: "text-sm",
+              label: "text-sm font-medium"
+            }}
+          />
+
+          <Input
+            label="Segundo Apellido (Opcional)"
+            placeholder="López"
+            type="text"
+            value={formData.CT_Apellido_dos}
+            onValueChange={(valor) => handleInputChange('CT_Apellido_dos', valor)}
             variant="bordered"
             classNames={{
               input: "text-sm",
@@ -223,6 +289,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Correo}
             isRequired
             variant="bordered"
+            description="Se usará como nombre de usuario para el login"
             classNames={{
               input: "text-sm",
               label: "text-sm font-medium"

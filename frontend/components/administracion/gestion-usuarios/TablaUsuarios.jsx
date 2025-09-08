@@ -26,8 +26,6 @@ import {
   IoEye, 
   IoPencil, 
   IoLockClosed, 
-  IoCheckmark, 
-  IoClose,
   IoShield,
   IoPerson,
   IoPersonAdd
@@ -37,7 +35,6 @@ const TablaUsuarios = ({
   usuarios, 
   onVerDetalle, 
   onEditarUsuario, 
-  onCambiarEstado, 
   onResetearContrasena 
 }) => {
   const [paginaActual, setPaginaActual] = useState(1);
@@ -194,28 +191,6 @@ const TablaUsuarios = ({
                 >
                   Resetear Contraseña
                 </DropdownItem>
-                
-                {usuario.estado?.nombre === 'Activo' ? (
-                  <DropdownItem
-                    key="desactivar"
-                    className="text-danger"
-                    color="danger"
-                    startContent={<IoClose className="h-4 w-4" />}
-                    onPress={() => handleAccionUsuario('desactivar', usuario)}
-                  >
-                    Desactivar Usuario
-                  </DropdownItem>
-                ) : (
-                  <DropdownItem
-                    key="activar"
-                    className="text-success"
-                    color="success"
-                    startContent={<IoCheckmark className="h-4 w-4" />}
-                    onPress={() => handleAccionUsuario('activar', usuario)}
-                  >
-                    Activar Usuario
-                  </DropdownItem>
-                )}
               </DropdownMenu>
             </Dropdown>
           </div>
@@ -232,12 +207,6 @@ const TablaUsuarios = ({
         break;
       case 'editar':
         onEditarUsuario(usuario);
-        break;
-      case 'activar':
-        onCambiarEstado(usuario, 'Activo');
-        break;
-      case 'desactivar':
-        onCambiarEstado(usuario, 'Inactivo');
         break;
       case 'resetear':
         onResetearContrasena(usuario);
