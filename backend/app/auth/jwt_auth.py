@@ -38,7 +38,7 @@ def require_role(required_role_name: str):
     Decorador que requiere un rol específico validando que exista en la BD.
     
     Uso: @require_role("Administrador")
-         @require_role("Usuario_Judicial")
+         @require_role("Usuario Judicial")
     
     Args:
         required_role_name: Nombre exacto del rol en la tabla T_Rol

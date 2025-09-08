@@ -5,7 +5,7 @@ import React from 'react';
 import { Chip } from '@heroui/react';
 import { FiFile, FiUploadCloud } from 'react-icons/fi';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import { formatearTamano } from '@/utils/ingesta-datos/funciones';
+import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 import { getFileIcon } from '@/utils/ingesta-datos/iconos';
 
 const UploadConfirmModal = ({

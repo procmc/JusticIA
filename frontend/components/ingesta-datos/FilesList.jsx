@@ -6,7 +6,7 @@ import React from 'react';
 import { Card, CardHeader, CardBody, Divider, Chip, Input, Progress } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiFolder } from 'react-icons/fi';
-import { formatearTamano } from '@/utils/ingesta-datos/funciones';
+import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 import { getFileIcon, getStatusIcon, getStatusColor } from '@/utils/ingesta-datos/iconos';
 
 const FilesList = ({

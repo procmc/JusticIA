@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardBody } from '@heroui/react';
-import { validarFormatoExpediente } from '@/utils/ingesta-datos/funciones';
+import { validarFormatoExpediente } from '@/utils/ingesta-datos/ingestaUtils';
 
 // Hooks unificados
 import { useFileUpload } from '@/hooks/ingesta-datos/useFileUpload';

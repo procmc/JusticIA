@@ -1,11 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Request
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.schemas.ingesta_schemas import IngestaArchivosRequest
-from app.services.file_processing_service import (
-    process_uploaded_files,
-    generar_respuesta_simplificada,
-)
 from app.services.async_processing_service import procesar_archivo_individual_en_background
 from app.db.database import get_db
 from app.auth.jwt_auth import require_role
@@ -34,7 +29,7 @@ async def get_process_status(process_id: str):
 
 
 @router.post("/archivos")
-@require_role("Usuario_Judicial")
+@require_role("Usuario Judicial")
 async def ingestar_archivos(
     request: Request,
     background_tasks: BackgroundTasks,
