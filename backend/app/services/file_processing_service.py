@@ -374,8 +374,8 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
 
 async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
     """
-    Transcribe audio MP3 usando Whisper con sistema de chunks adaptativos.
-    Automáticamente detecta si usar chunks basado en el tamaño del archivo.
+    Transcribe audio MP3 usando faster-whisper optimizado.
+    Sistema secuencial inteligente: intenta directo primero, chunks si es necesario.
     """
     try:
         from app.services.audio_chunk_service import audio_processor
@@ -385,11 +385,12 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
         file_size_mb = len(content) / (1024 * 1024)
         print(f"Procesando audio {filename}: {file_size_mb:.1f} MB")
         print(f"Configuración: modelo={AUDIO_CONFIG.whisper_model}, device={AUDIO_CONFIG.device}")
-        print(f"Chunks habilitados para archivos >= {AUDIO_CONFIG.enable_chunking_threshold_mb} MB")
-        print(f"Procesamiento paralelo: {AUDIO_CONFIG.enable_parallel_processing} (max {AUDIO_CONFIG.max_parallel_chunks} chunks)")
+        print(f"faster-whisper: compute_type={AUDIO_CONFIG.compute_type}, workers={AUDIO_CONFIG.num_workers}")
+        print(f"Chunks si archivo >= {AUDIO_CONFIG.enable_chunking_threshold_mb} MB o falla directo")
+        print(f"Procesamiento: SECUENCIAL OPTIMIZADO (sin paralelismo)")
         
-        # Usar el procesador de audio con chunks
-        texto = await audio_processor.transcribe_audio_with_chunks(content, filename)
+        # Usar el procesador de audio optimizado
+        texto = await audio_processor.transcribe_audio_direct(content, filename)
         
         if not texto.strip():
             raise ValueError("No se pudo transcribir el audio")
