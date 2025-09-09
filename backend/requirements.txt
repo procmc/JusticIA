@@ -29,7 +29,7 @@ httpx>=0.24.0
 # Procesamiento de documentos y audio para ingesta
 tika>=3.1.0  # Apache Tika para extraer texto de documentos (última versión)
 filetype>=1.2.0  # Detección de tipos de archivo pura Python (alternativa a python-magic)
-openai-whisper>=20231117  # Whisper para transcripción de audio
+faster-whisper>=0.10.0  # faster-whisper para transcripción de audio optimizada
 pydub>=0.25.1  # Manipulación de archivos de audio
 ffmpeg-python>=0.2.0  # FFmpeg wrapper para conversión de audio
 

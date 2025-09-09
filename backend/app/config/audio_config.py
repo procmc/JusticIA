@@ -1,6 +1,6 @@
 """
-Configuración para procesamiento de audio y transcripción con Whisper.
-Sistema totalmente parametrizado para adaptarse a recursos del servidor.
+Configuración simplificada para procesamiento de audio con faster-whisper.
+Sistema secuencial optimizado para máximo rendimiento sin paralelismo.
 """
 import os
 import psutil
@@ -10,20 +10,18 @@ from dataclasses import dataclass
 
 @dataclass
 class AudioProcessingConfig:
-    """Configuración para procesamiento de audio."""
+    """Configuración para procesamiento de audio secuencial con faster-whisper."""
     
     # Configuración básica de chunks
     chunk_duration_minutes: int = 10
     chunk_overlap_seconds: int = 30
     max_file_size_mb: int = 500
     
-    # Configuración de paralelización
-    max_parallel_chunks: int = 1
-    enable_parallel_processing: bool = False
-    
-    # Configuración de Whisper
+    # Configuración de faster-whisper
     whisper_model: str = "base"
     device: str = "cpu"
+    compute_type: str = "int8"  # Optimización para faster-whisper
+    num_workers: int = 4        # Threads internos de faster-whisper
     
     # Configuración de memoria
     max_memory_usage_mb: int = 1024
@@ -38,10 +36,10 @@ class AudioProcessingConfig:
             'chunk_duration_minutes': self.chunk_duration_minutes,
             'chunk_overlap_seconds': self.chunk_overlap_seconds,
             'max_file_size_mb': self.max_file_size_mb,
-            'max_parallel_chunks': self.max_parallel_chunks,
-            'enable_parallel_processing': self.enable_parallel_processing,
             'whisper_model': self.whisper_model,
             'device': self.device,
+            'compute_type': self.compute_type,
+            'num_workers': self.num_workers,
             'max_memory_usage_mb': self.max_memory_usage_mb,
             'enable_chunking_threshold_mb': self.enable_chunking_threshold_mb,
             'environment': self.environment
@@ -83,8 +81,8 @@ class AudioConfigManager:
     @staticmethod
     def get_optimal_config() -> AudioProcessingConfig:
         """
-        Genera configuración óptima basada en recursos del sistema.
-        Solo 2 entornos: development y production.
+        Genera configuración óptima para faster-whisper basada en recursos del sistema.
+        Sistema secuencial optimizado sin paralelismo.
         """
         resources = AudioConfigManager.detect_system_resources()
         environment = os.getenv('ENVIRONMENT', 'development')
@@ -100,46 +98,53 @@ class AudioConfigManager:
         # === CONFIGURACIÓN POR ENTORNO ===
         
         if environment == "production":
-            # PRODUCCIÓN: Máximos recursos disponibles
-            if resources['gpu_available'] and resources['gpu_memory_gb'] >= 4:
-                # Producción con GPU
+            # PRODUCCIÓN: Mejor modelo y optimizaciones según recursos
+            if resources['gpu_available'] and resources['gpu_memory_gb'] >= 8:
+                # Producción con GPU grande
                 config.device = "cuda"
-                config.whisper_model = "large" if resources['gpu_memory_gb'] >= 10 else "medium"
-                config.max_parallel_chunks = min(resources['gpu_count'] * 4, 16)
-                config.enable_parallel_processing = True
-                config.chunk_duration_minutes = 3  # Chunks pequeños para máxima paralelización
+                config.whisper_model = "large-v3"
+                config.compute_type = "float16"  # Mejor calidad con GPU
+                config.num_workers = min(8, resources['gpu_count'] * 2)
+                config.chunk_duration_minutes = 15  # Chunks más grandes para eficiencia
                 config.max_memory_usage_mb = int(resources['gpu_memory_gb'] * 1024 * 0.8)
+            elif resources['gpu_available'] and resources['gpu_memory_gb'] >= 4:
+                # Producción con GPU mediana
+                config.device = "cuda"
+                config.whisper_model = "medium"
+                config.compute_type = "float16"
+                config.num_workers = min(6, resources['gpu_count'] * 2)
+                config.chunk_duration_minutes = 12
+                config.max_memory_usage_mb = int(resources['gpu_memory_gb'] * 1024 * 0.7)
             else:
-                # Producción solo CPU
+                # Producción solo CPU - optimizado para servidor
                 config.device = "cpu"
                 config.whisper_model = "medium" if resources['total_ram_gb'] >= 16 else "small"
-                config.max_parallel_chunks = min(resources['cpu_count_physical'], 8)
-                config.enable_parallel_processing = True
-                config.chunk_duration_minutes = 5
+                config.compute_type = "int8"  # Máxima eficiencia en CPU
+                config.num_workers = min(resources['cpu_count_physical'], 8)
+                config.chunk_duration_minutes = 10
                 config.max_memory_usage_mb = int(resources['available_ram_gb'] * 1024 * 0.6)
                 
             # Configuración agresiva para producción
-            config.enable_chunking_threshold_mb = 50
+            config.enable_chunking_threshold_mb = 25  # Chunk archivos más pequeños
             config.max_file_size_mb = 2000
             
         else:
-            # DESARROLLO: Whisper BASE mínimo, GPU si está disponible
-            # Habilitar paralelismo porque el cuello de botella es RAM, no CPU
+            # DESARROLLO: faster-whisper base conservador
             if resources['gpu_available'] and resources['gpu_memory_gb'] >= 2:
                 # Desarrollo con GPU
                 config.device = "cuda"
-                config.whisper_model = "base"  # BASE como mínimo
-                config.max_parallel_chunks = 2
-                config.enable_parallel_processing = True
+                config.whisper_model = "base"
+                config.compute_type = "float16"
+                config.num_workers = 4
                 config.chunk_duration_minutes = 10
                 config.max_memory_usage_mb = int(resources['gpu_memory_gb'] * 1024 * 0.5)
             else:
-                # Desarrollo solo CPU - PARALELISMO HABILITADO para i5+
+                # Desarrollo solo CPU
                 config.device = "cpu"
-                config.whisper_model = "base"  # BASE como mínimo
-                config.max_parallel_chunks = 2  # Aprovechar múltiples cores
-                config.enable_parallel_processing = True  # Habilitado para desarrollo
-                config.chunk_duration_minutes = 10  # Chunks medianos para balance RAM/CPU
+                config.whisper_model = "base"
+                config.compute_type = "int8"  # Óptimo para CPU
+                config.num_workers = min(resources['cpu_count_physical'], 4)
+                config.chunk_duration_minutes = 10
                 config.max_memory_usage_mb = int(resources['available_ram_gb'] * 1024 * 0.4)
             
             # Configuración conservadora para desarrollo
@@ -149,10 +154,14 @@ class AudioConfigManager:
         # === OVERRIDE CON VARIABLES DE ENTORNO ===
         
         config.chunk_duration_minutes = int(os.getenv('AUDIO_CHUNK_DURATION_MIN', config.chunk_duration_minutes))
-        config.max_parallel_chunks = int(os.getenv('AUDIO_MAX_PARALLEL_CHUNKS', config.max_parallel_chunks))
         config.whisper_model = os.getenv('WHISPER_MODEL', config.whisper_model)
         config.device = os.getenv('WHISPER_DEVICE', config.device)
-        config.enable_parallel_processing = os.getenv('ENABLE_PARALLEL_AUDIO', str(config.enable_parallel_processing)).lower() == 'true'
+        
+        # Nuevas configuraciones para faster-whisper
+        if 'WHISPER_COMPUTE_TYPE' in os.environ:
+            config.compute_type = os.getenv('WHISPER_COMPUTE_TYPE', config.compute_type)
+        if 'WHISPER_NUM_WORKERS' in os.environ:
+            config.num_workers = int(os.getenv('WHISPER_NUM_WORKERS', config.num_workers))
         
         return config
     
@@ -162,13 +171,14 @@ class AudioConfigManager:
         resources = AudioConfigManager.detect_system_resources()
         config = AudioConfigManager.get_optimal_config()
         
-        print("=== CONFIGURACIÓN DE AUDIO ===")
+        print("=== CONFIGURACIÓN DE AUDIO (faster-whisper) ===")
         print(f"Entorno: {config.environment}")
         print(f"Modelo Whisper: {config.whisper_model}")
         print(f"Dispositivo: {config.device}")
-        print(f"Chunks paralelos: {config.max_parallel_chunks}")
-        print(f"Procesamiento paralelo: {config.enable_parallel_processing}")
+        print(f"Tipo de cómputo: {config.compute_type}")
+        print(f"Workers internos: {config.num_workers}")
         print(f"Duración chunk: {config.chunk_duration_minutes} min")
+        print(f"Procesamiento: SECUENCIAL OPTIMIZADO (sin paralelismo)")
         
         print(f"\n=== RECURSOS DETECTADOS ===")
         print(f"RAM: {resources['available_ram_gb']:.1f}/{resources['total_ram_gb']:.1f} GB")
