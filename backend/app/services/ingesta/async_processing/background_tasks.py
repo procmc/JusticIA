@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi import UploadFile
 from io import BytesIO
 
-from app.services.file_processing_service import process_uploaded_files
+from ..file_management.document_processor import process_uploaded_files
 
 
 def procesar_archivo_individual_en_background(
