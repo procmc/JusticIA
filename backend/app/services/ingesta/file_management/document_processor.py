@@ -16,7 +16,7 @@ from app.schemas.schemas import (
 from app.config.file_config import ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
 from app.vectorstore.milvus_storage import store_in_vectorstore
 from app.services.expediente_service import ExpedienteService
-from app.services.file_storage_service import FileStorageService
+from .file_storage_manager import FileStorageService
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
 
@@ -378,7 +378,7 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
     Sistema secuencial inteligente: intenta directo primero, chunks si es necesario.
     """
     try:
-        from app.services.audio_chunk_service import audio_processor
+        from ..audio_transcription.whisper_service import audio_processor
         from app.config.audio_config import AUDIO_CONFIG
         
         # Log de configuración
