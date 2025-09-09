@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.services.file_storage_service import FileStorageService
+from app.services.ingesta.file_management.file_storage_manager import FileStorageService
 from app.db.database import get_db
 from app.utils.expediente_validator import validar_expediente
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Request
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.services.async_processing_service import procesar_archivo_individual_en_background
+from app.services.ingesta.async_processing.background_tasks import procesar_archivo_individual_en_background
 from app.db.database import get_db
 from app.auth.jwt_auth import require_role
 import uuid
