@@ -231,9 +231,11 @@ const FormularioUsuario = ({
             variant="bordered"
             isDisabled={modo === 'editar'}
             classNames={{
-              input: "text-sm",
-              label: "text-sm font-medium"
+              input: modo === 'editar' ? "text-sm bg-gray-100 text-gray-700" : "text-sm",
+              label: modo === 'editar' ? "text-sm font-medium text-gray-700" : "text-sm font-medium",
+              inputWrapper: modo === 'editar' ? "bg-gray-100 border-gray-300" : ""
             }}
+            color='primary'
           />
 
           <Input
@@ -246,10 +248,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Nombre}
             isRequired
             variant="bordered"
-            classNames={{
-              input: "text-sm",
-              label: "text-sm font-medium"
-            }}
+            color='primary'
           />
 
           <Input
@@ -262,10 +261,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Apellido_uno}
             isRequired
             variant="bordered"
-            classNames={{
-              input: "text-sm",
-              label: "text-sm font-medium"
-            }}
+            color='primary'
           />
 
           <Input
@@ -275,15 +271,12 @@ const FormularioUsuario = ({
             value={formData.CT_Apellido_dos}
             onValueChange={(valor) => handleInputChange('CT_Apellido_dos', valor)}
             variant="bordered"
-            classNames={{
-              input: "text-sm",
-              label: "text-sm font-medium"
-            }}
+            color='primary'
           />
 
           <Input
             label="Correo Electrónico"
-            placeholder="correo@justicia.gov.co"
+            placeholder="correo@ejemplo.com"
             type="email"
             value={formData.CT_Correo}
             onValueChange={(valor) => handleInputChange('CT_Correo', valor)}
@@ -291,11 +284,7 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Correo}
             isRequired
             variant="bordered"
-            description="El nombre de usuario será automáticamente la parte antes del @ (ej: correo@justicia.gov.co → correo)"
-            classNames={{
-              input: "text-sm",
-              label: "text-sm font-medium"
-            }}
+            color='primary'
           />
 
           <Select
@@ -308,10 +297,12 @@ const FormularioUsuario = ({
             isRequired
             variant="bordered"
             isDisabled={modo === 'editar'}
-            description={modo === 'editar' ? "El rol no puede modificarse después de la creación" : undefined}
             classNames={{
-              label: "text-sm font-medium"
+              label: modo === 'editar' ? "text-sm font-medium text-gray-700" : "text-sm font-medium",
+              trigger: modo === 'editar' ? "bg-gray-100 border-gray-300" : "",
+              value: modo === 'editar' ? "text-gray-700" : ""
             }}
+            color='primary'
           >
             {roles.map((rol) => (
               <SelectItem key={rol.id.toString()} value={rol.id.toString()}>
@@ -326,9 +317,7 @@ const FormularioUsuario = ({
             selectedKeys={formData.CN_Id_estado && formData.CN_Id_estado > 0 ? [formData.CN_Id_estado.toString()] : []}
             onSelectionChange={handleEstadoChange}
             variant="bordered"
-            classNames={{
-              label: "text-sm font-medium"
-            }}
+            color='primary'
           >
             {estadosUsuario.map((estado) => (
               <SelectItem key={estado.id.toString()} value={estado.id.toString()}>
