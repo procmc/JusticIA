@@ -1,6 +1,8 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.vectorstore.vectorstore import get_vectorstore
 from app.routes import ingesta, health, llm, usuarios, archivos, email, auth, debug
 from app.db import database
@@ -43,3 +45,13 @@ app.include_router(debug.router, prefix="/debug", tags=["debug"])
 @app.get("/")
 async def root():
     return {"message": "JusticIA API está funcionando", "version": "1.0.0"}
+
+@app.get("/debug-milvus")
+async def debug_milvus():
+    """Servir la página de debug de Milvus"""
+    return FileResponse("debug_milvus.html")
+
+@app.get("/test-streaming")
+async def test_streaming():
+    """Servir la página de test de streaming"""
+    return FileResponse("test_streaming.html")
