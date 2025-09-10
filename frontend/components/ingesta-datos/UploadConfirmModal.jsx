@@ -26,7 +26,7 @@ const UploadConfirmModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Confirmar Guardado de Archivos"
-      description={
+      customContent={
         <div className="space-y-4 text-left">
           {/* Warning al inicio */}
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -79,8 +79,14 @@ const UploadConfirmModal = ({
                           <div className="flex items-center space-x-1">
                             <FiFile className="w-3 h-3 text-gray-400" />
                             <span className="text-xs font-mono font-bold text-gray-600">
-                              {file.expediente || expedienteNumero}
+                              {file.expediente && file.expediente.trim() 
+                                ? file.expediente.trim() 
+                                : expedienteNumero || 'SIN EXPEDIENTE'
+                              }
                             </span>
+                            {!file.expediente?.trim() && !expedienteNumero?.trim() && (
+                              <span className="text-xs text-red-500 font-semibold">⚠️</span>
+                            )}
                           </div>
                         </div>
                       </div>

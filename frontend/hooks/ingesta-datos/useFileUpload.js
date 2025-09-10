@@ -8,6 +8,7 @@ export const useFileUpload = () => {
   // Referencias
   const fileInputRef = useRef(null);
   const dragZoneRef = useRef(null);
+  const expedienteRef = useRef(''); // Referencia para el expediente actual
   
   // Estados simples
   const [uploading, setUploading] = useState(false);
@@ -19,45 +20,23 @@ export const useFileUpload = () => {
   // Configuración
   const allowedTypes = getAllowedFileExtensions();
 
-  // Efecto para actualizar automáticamente el expediente de todos los archivos pendientes
+  // Mantener la referencia sincronizada con el estado
   useEffect(() => {
-    setFilesArray(prev => {
-      // Actualizar TODOS los archivos pendientes con el expediente actual
-      const updated = prev.map(file => 
-        file.status === 'pending' 
-          ? { ...file, expediente: expedienteNumero.trim() }
-          : file
-      );
-      
-      // Siempre devolver el array actualizado si hay archivos pendientes
-      const hasPendingFiles = prev.some(file => file.status === 'pending');
-      
-      return hasPendingFiles ? updated : prev;
-    });
+    expedienteRef.current = expedienteNumero;
   }, [expedienteNumero]);
 
-  // Efecto adicional para asegurar que archivos recién agregados tengan expediente
+  // Efecto simple para sincronizar expediente cuando cambia
   useEffect(() => {
-    if (expedienteNumero.trim()) {
-     
-      setFilesArray(prev => {
-        const needsUpdate = prev.some(file => 
-          file.status === 'pending' && file.expediente !== expedienteNumero.trim()
-        );
-        
-        if (needsUpdate) {
-         
-          return prev.map(file => 
-            file.status === 'pending' 
-              ? { ...file, expediente: expedienteNumero.trim() }
-              : file
-          );
-        }
-        
-        return prev;
-      });
+    const expedienteTrimmed = expedienteNumero.trim();
+    
+    if (expedienteTrimmed) {
+      setFilesArray(prev => prev.map(file => 
+        file.status === 'pending' 
+          ? { ...file, expediente: expedienteTrimmed }
+          : file
+      ));
     }
-  }, [filesArray.length, expedienteNumero]);
+  }, [expedienteNumero]); // Solo cuando cambia el expediente
 
   // Manejadores de drag & drop
   const handleDrag = useCallback((e) => {
@@ -88,57 +67,64 @@ export const useFileUpload = () => {
 
   // Manejar archivos nuevos
   const handleFiles = useCallback((newFiles) => {
-    
     // Validar extensiones permitidas
     const validFiles = newFiles.filter(file => {
       const extension = '.' + file.name.split('.').pop().toLowerCase();
       return allowedTypes.includes(extension);
     });
 
-    // Validar límite de 10 archivos
-    const currentFileCount = files.filter(f => f.status !== 'removed').length;
-    const maxFiles = 10;
-    const availableSlots = maxFiles - currentFileCount;
-    
-    if (availableSlots <= 0) {
-      alert(`Ya tienes el máximo de ${maxFiles} archivos. Elimina algunos antes de agregar más.`);
-      return;
-    }
-    
-    const filesToAdd = validFiles.slice(0, availableSlots);
-    
-    if (validFiles.length > availableSlots) {
-      alert(`Solo se pueden agregar ${availableSlots} archivos más. Se agregaron los primeros ${filesToAdd.length} archivos.`);
-    }
+    // Usar setFilesArray con función para acceder al estado actual
+    setFilesArray(currentFiles => {
+      // Validar límite de 10 archivos usando el estado actual
+      const currentFileCount = currentFiles.filter(f => f.status !== 'removed').length;
+      const maxFiles = 10;
+      const availableSlots = maxFiles - currentFileCount;
+      
+      if (availableSlots <= 0) {
+        alert(`Ya tienes el máximo de ${maxFiles} archivos. Elimina algunos antes de agregar más.`);
+        return currentFiles; // No cambiar el estado
+      }
+      
+      const filesToAdd = validFiles.slice(0, availableSlots);
+      
+      if (validFiles.length > availableSlots) {
+        alert(`Solo se pueden agregar ${availableSlots} archivos más. Se agregaron los primeros ${filesToAdd.length} archivos.`);
+      }
 
-    if (filesToAdd.length > 0) {
-      const filesWithMetadata = filesToAdd.map(file => ({
-        id: Date.now() + Math.random(),
-        file: file,
-        name: file.name,
-        size: file.size,
-        type: file.type.startsWith('audio/') ? 'audio' : 'document',
-        status: 'pending',
-        expediente: expedienteNumero.trim(), // SIEMPRE usar el expediente principal actual
-        progress: 0,
-        message: '',
-        fileProcessId: null,
-        resultado: null
-      }));
+      if (filesToAdd.length > 0) {
+        // Usar la referencia que siempre tiene el valor actual
+        const currentExpediente = expedienteRef.current.trim();
+        
+        const filesWithMetadata = filesToAdd.map(file => ({
+          id: Date.now() + Math.random(),
+          file: file,
+          name: file.name,
+          size: file.size,
+          type: file.type.startsWith('audio/') ? 'audio' : 'document',
+          status: 'pending',
+          expediente: currentExpediente,
+          progress: 0,
+          message: '',
+          fileProcessId: null,
+          resultado: null
+        }));
 
-      setFilesArray(prev => [...prev, ...filesWithMetadata]);
+        // Scroll automático hacia la zona de arrastre después de un breve delay
+        setTimeout(() => {
+          if (dragZoneRef.current) {
+            dragZoneRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+          }
+        }, 100);
 
-      // Scroll automático hacia la zona de arrastre después de un breve delay
-      setTimeout(() => {
-        if (dragZoneRef.current) {
-          dragZoneRef.current.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-        }
-      }, 100);
-    }
-  }, [allowedTypes, expedienteNumero]); // Incluir expedienteNumero en dependencias
+        return [...currentFiles, ...filesWithMetadata];
+      }
+
+      return currentFiles; // No hay archivos para agregar
+    });
+  }, [allowedTypes]); // Solo allowedTypes como dependencia
 
   // Funciones de gestión
   const removeFile = useCallback((fileId) => {
@@ -159,15 +145,15 @@ export const useFileUpload = () => {
     }
   }, []);
 
-  // Estados calculados - asegurar que nunca muestre input
+  // Estados calculados
   const pendingFiles = filesArray.filter(f => f.status === 'pending').length;
   const successFiles = filesArray.filter(f => f.status === 'success').length;
   const errorFiles = filesArray.filter(f => f.status === 'error').length;
   
-  // Forzar que NO haya archivos sin expediente si hay expediente principal
-  const filesWithoutExpediente = expedienteNumero.trim() 
-    ? 0 
-    : filesArray.filter(f => f.status === 'pending' && !f.expediente?.trim()).length;
+  // Calcular archivos sin expediente
+  const filesWithoutExpediente = filesArray.filter(f => {
+    return f.status === 'pending' && (!f.expediente || f.expediente.trim() === '');
+  }).length;
 
   // Crear objeto files con dragActive y métodos de array
   const files = Object.assign(filesArray, {
