@@ -102,6 +102,14 @@ CONSULTA DEL USUARIO:
 RESPUESTA:
 """
         
+        # Log para debugging - ver qué contexto se está enviando
+        print(f"CONTEXT DEBUG - Tamaño del contexto: {len(context)} caracteres")
+        print(f"CONTEXT DEBUG - Número de documentos: {len(similar_docs)}")
+        if context:
+            print(f"CONTEXT DEBUG - Inicio del contexto: {context[:500]}")
+        else:
+            print("CONTEXT DEBUG - CONTEXTO VACÍO!")
+        
         # 6. Consultar al LLM usando tu función existente
         respuesta_llm = await consulta_simple(full_prompt)
         respuesta = respuesta_llm.get("respuesta", "Error al generar respuesta")
@@ -247,6 +255,23 @@ CONSULTA DEL USUARIO:
 
 RESPUESTA:
 """
+        
+        # Log para debugging - ver qué contexto se está enviando
+        print(f"CONTEXT DEBUG - Tamaño del contexto: {len(context)} caracteres")
+        print(f"CONTEXT DEBUG - Número de documentos: {len(similar_docs) if similar_docs else 0}")
+        if context:
+            print(f"CONTEXT DEBUG - Inicio del contexto: {context[:500]}")
+        else:
+            print("CONTEXT DEBUG - CONTEXTO VACÍO!")
+        
+        # DEBUG: Imprimir el prompt completo que se envía al LLM
+        print("=" * 80)
+        print("PROMPT COMPLETO ENVIADO AL LLM:")
+        print("=" * 80)
+        print(full_prompt)
+        print("=" * 80)
+        print("FIN DEL PROMPT")
+        print("=" * 80)
         
         # 6. Consultar al LLM con streaming
         return await consulta_general_streaming(full_prompt)
