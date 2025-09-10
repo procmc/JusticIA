@@ -6,28 +6,51 @@ import { ScrollShadow } from '@heroui/react';
 const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
   const messagesEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
+  const lastMessageContentRef = useRef('');
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
+  // Auto-scroll cuando se agregan nuevos mensajes
   useEffect(() => {
-    // Solo hacer scroll cuando se agregue un nuevo mensaje, no durante el streaming
     if (messages.length > prevMessagesLengthRef.current) {
       prevMessagesLengthRef.current = messages.length;
       scrollToBottom();
     }
-  }, [messages.length]); // Solo observa el cambio en la cantidad de mensajes
+  }, [messages.length]);
 
+  // Auto-scroll durante el streaming del mensaje
   useEffect(() => {
-    // Scroll cuando cambie el estado de typing
+    if (streamingMessageIndex !== null && streamingMessageIndex >= 0) {
+      const streamingMessage = messages[streamingMessageIndex];
+      if (streamingMessage && !streamingMessage.isUser) {
+        // Solo hacer scroll si el contenido del mensaje ha cambiado
+        if (streamingMessage.text !== lastMessageContentRef.current) {
+          lastMessageContentRef.current = streamingMessage.text;
+          
+          // Usar un pequeño delay para asegurar que el DOM se actualice
+          setTimeout(() => {
+            scrollToBottom("auto");
+          }, 10);
+        }
+      }
+    }
+  }, [messages, streamingMessageIndex]);
+
+  // Scroll cuando cambie el estado de typing
+  useEffect(() => {
     if (isTyping) {
       scrollToBottom();
     }
   }, [isTyping]);
 
   return (
-    <ScrollShadow hideScrollBar className="flex-1 h-full" size={60}>
+    <ScrollShadow 
+      hideScrollBar 
+      className="flex-1 h-full" 
+      size={60}
+    >
       <div className="mx-2 sm:mx-12 md:mr-28">
         <div className="min-h-full py-8 sm:py-20">
           {messages.length === 0 ? (

@@ -15,6 +15,35 @@ module.exports = {
       themes: {
         light: {
           colors: {
+            // Colores personalizados para el sistema judicial
+            primario: {
+              50: "#eaf0ff",
+              100: "#d6e0ff", 
+              200: "#b7c9f5",
+              300: "#98b2ea",
+              400: "#7696d6",
+              500: "#001a4f", // Color principal
+              600: "#001744",
+              700: "#001239",
+              800: "#000c2d",
+              900: "#000720",
+              DEFAULT: "#001a4f",
+              foreground: "#ffffff",
+            },
+            azulOscuro: {
+              50: "#eaf0ff",
+              100: "#d6e0ff",
+              200: "#a6c1ff", 
+              300: "#7696d6",
+              400: "#4d6db3",
+              500: "#003d82", // Azul más oscuro
+              600: "#003570",
+              700: "#002d5e", 
+              800: "#00254c",
+              900: "#001d3a",
+              DEFAULT: "#003d82",
+              foreground: "#ffffff",
+            },
             default: {
               50: "#fafafa",
               100: "#f2f2f3",
