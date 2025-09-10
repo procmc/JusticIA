@@ -60,36 +60,63 @@ async def search_similar_documents(
     try:
         client = await get_vectorstore()
         
+        # Verificar que la colección existe y tiene datos
+        try:
+            stats = client.get_collection_stats(collection_name=COLLECTION_NAME)
+            print(f"Estadísticas de la colección: {stats}")
+            
+            # Verificar si hay documentos
+            row_count = stats.get('row_count', 0) if isinstance(stats, dict) else 0
+            if row_count == 0:
+                print("⚠️ La colección no tiene documentos")
+                return []
+                
+        except Exception as e:
+            print(f"Error obteniendo estadísticas: {e}")
+        
         search_params = {
             "metric_type": "COSINE",
             "params": {"ef": 100}
         }
         
-        results = client.search(
-            collection_name=COLLECTION_NAME,
-            data=[query_embedding],
-            anns_field="embedding",
-            search_params=search_params,
-            limit=limit,
-            expr=filters,
-            output_fields=["id_chunk", "id_expediente", "id_documento", "texto", "nombre_archivo", "numero_expediente"]
-        )
+        # Preparar parámetros de búsqueda base
+        search_kwargs = {
+            "collection_name": COLLECTION_NAME,
+            "data": [query_embedding],
+            "anns_field": "embedding",
+            "search_params": search_params,
+            "limit": limit,
+            "output_fields": ["id_chunk", "id_expediente", "id_documento", "texto", "nombre_archivo", "numero_expediente"]
+        }
+        
+        # Solo agregar expr si filters no es None
+        if filters is not None:
+            search_kwargs["expr"] = filters
+        
+        print(f"Buscando con parámetros: {search_kwargs}")
+        results = client.search(**search_kwargs)
+        print(f"Resultados obtenidos: {len(results) if results else 0}")
         
         if not results or len(results) == 0:
+            print("No se obtuvieron resultados de la búsqueda")
             return []
             
         hits = results[0]
         if not hits or len(hits) == 0:
+            print("No hay hits en los resultados")
             return []
         
+        print(f"Procesando {len(hits)} hits")
         processed = []
         for hit in hits:
             try:
-                # Formato estándar PyMilvus
+                # Formato estándar PyMilvus - acceso seguro a atributos
                 if hasattr(hit, 'entity') and hasattr(hit, 'distance'):
+                    entity_data = getattr(hit, 'entity', {})
+                    distance_value = getattr(hit, 'distance', 1.0)
                     processed.append({
-                        "entity": hit.entity,
-                        "distance": hit.distance
+                        "entity": entity_data,
+                        "distance": distance_value
                     })
                 # Formato dict directo
                 elif isinstance(hit, dict):
@@ -99,10 +126,13 @@ async def search_similar_documents(
                 else:
                     continue
                     
-            except Exception:
+            except Exception as e:
+                print(f"Error procesando hit: {e}")
                 continue
         
+        print(f"Documentos procesados exitosamente: {len(processed)}")
         return processed
         
     except Exception as e:
+        print(f"Error en búsqueda vectorial: {e}")
         return []
