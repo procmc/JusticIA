@@ -23,3 +23,11 @@ async def get_embeddings():
         model = SentenceTransformer(EMBEDDING_MODEL)
         _embeddings = EmbeddingsWrapper(model)
     return _embeddings
+
+async def get_embedding(text: str) -> list:
+    """
+    Función de conveniencia para generar embedding de un texto.
+    Compatible con el servicio de consulta general.
+    """
+    embeddings = await get_embeddings()
+    return await embeddings.aembed_query(text)
