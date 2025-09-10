@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.db.models.expediente import T_Expediente
@@ -78,3 +78,78 @@ class ExpedienteRepository:
         
         # Crear nuevo expediente
         return self.crear(db, numero_expediente, auto_commit)
+    
+    def obtener_expedientes_similares(
+        self, 
+        db: Session, 
+        expediente_ids: List[int], 
+        limit: int = 50
+    ) -> List[T_Expediente]:
+        """
+        Obtiene múltiples expedientes por sus IDs para búsqueda de similares.
+        
+        Args:
+            db: Sesión de base de datos
+            expediente_ids: Lista de IDs de expedientes
+            limit: Límite de expedientes a retornar
+            
+        Returns:
+            List[T_Expediente]: Lista de expedientes encontrados
+        """
+        try:
+            stmt = select(T_Expediente).where(
+                T_Expediente.CN_Id_expediente.in_(expediente_ids)
+            ).limit(limit)
+            
+            result = db.execute(stmt)
+            return list(result.scalars().all())
+            
+        except Exception as e:
+            raise Exception(f"Error obteniendo expedientes similares: {str(e)}")
+    
+    def obtener_expedientes_por_numeros(
+        self, 
+        db: Session, 
+        numeros_expediente: List[str]
+    ) -> List[T_Expediente]:
+        """
+        Obtiene múltiples expedientes por sus números.
+        
+        Args:
+            db: Sesión de base de datos
+            numeros_expediente: Lista de números de expedientes
+            
+        Returns:
+            List[T_Expediente]: Lista de expedientes encontrados
+        """
+        try:
+            stmt = select(T_Expediente).where(
+                T_Expediente.CT_Num_expediente.in_(numeros_expediente)
+            )
+            
+            result = db.execute(stmt)
+            return list(result.scalars().all())
+            
+        except Exception as e:
+            raise Exception(f"Error obteniendo expedientes por números: {str(e)}")
+    
+    def validar_expediente_existe(self, db: Session, numero_expediente: str) -> bool:
+        """
+        Valida si un expediente existe sin cargarlo completamente.
+        
+        Args:
+            db: Sesión de base de datos
+            numero_expediente: Número del expediente
+            
+        Returns:
+            bool: True si existe, False si no
+        """
+        try:
+            stmt = select(T_Expediente.CN_Id_expediente).where(
+                T_Expediente.CT_Num_expediente == numero_expediente
+            )
+            result = db.execute(stmt)
+            return result.scalar_one_or_none() is not None
+            
+        except Exception:
+            return False
