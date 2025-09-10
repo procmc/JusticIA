@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.vectorstore.vectorstore import get_vectorstore
-from app.routes import ingesta, health, llm, usuarios, archivos, email, auth, debug
+from app.routes import ingesta, health, llm, usuarios, archivos, email, auth, debug, similarity
 from app.db import database
 
 # Crear app sin lifespan primero
@@ -41,6 +41,7 @@ app.include_router(archivos.router, prefix="/archivos", tags=["archivos"])
 app.include_router(email.router, prefix="/email", tags=["email"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(debug.router, prefix="/debug", tags=["debug"])
+app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 
 @app.get("/")
 async def root():
