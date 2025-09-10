@@ -14,7 +14,12 @@ async def get_llm():
             temperature=0.1,
             streaming=True,
             keep_alive="5m",
-            model_kwargs={"num_ctx": 512, "num_predict": 128},
+            model_kwargs={
+                "num_ctx": 4096,      # Aumentado para más contexto
+                "num_predict": 512,   # Aumentado para respuestas más largas
+                "top_k": 10,
+                "top_p": 0.9
+            },
         )
     return _llm
 
@@ -44,3 +49,46 @@ async def consulta_streaming(pregunta: str):
             yield str(chunk.content)
 
     return StreamingResponse(event_generator(), media_type="text/plain")
+
+
+async def consulta_general_streaming(prompt_completo: str):
+    """Consulta general con RAG y streaming de respuesta"""
+    print(f"Consulta general streaming iniciada")
+    
+    async def event_generator():
+        try:
+            # Obtener LLM con manejo de errores
+            llm = await get_llm()
+            print(f"LLM obtenido: {llm}")
+            
+            # Verificar conexión antes de hacer streaming
+            print(f"Iniciando streaming para prompt de {len(prompt_completo)} caracteres")
+            
+            async for chunk in llm.astream(prompt_completo):
+                # Enviar cada chunk como Server-Sent Event
+                content = getattr(chunk, 'content', str(chunk))
+                if content and content.strip():
+                    print(f"Chunk recibido: {content[:50]}...")
+                    yield f"data: {content}\n\n"
+            
+            # Señal de finalización
+            print("Streaming completado exitosamente")
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            print(f"Error en streaming: {e}")
+            import traceback
+            traceback.print_exc()
+            yield f"data: Error: {str(e)}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
