@@ -4,6 +4,102 @@ import { Avatar } from '@heroui/react';
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
   const isWarning = message.isWarning || false;
+
+  // Función para formatear el texto del mensaje
+  const formatText = (text) => {
+    if (!text) return '';
+    
+    return text
+      // Agregar espacios después de puntos seguidos de letras mayúsculas
+      .replace(/\.([A-Z])/g, '. $1')
+      // Agregar espacios después de comas seguidas de letras mayúsculas
+      .replace(/,([A-Z])/g, ', $1')
+      // Agregar espacios después de dos puntos seguidos de letras mayúsculas
+      .replace(/:([A-Z])/g, ': $1')
+      // Separar cédulas mal formateadas (ej: cédula1-0555-0099 -> cédula 1-0555-0099)
+      .replace(/([a-záéíóúñ])(\d+-\d+-\d+)/gi, '$1 $2')
+      // Separar expedientes mal formateados (ej: expediente2025-CR-000567 -> expediente 2025-CR-000567)
+      .replace(/([a-záéíóúñ])(\d{4}-[A-Z]{2}-\d+)/gi, '$1 $2')
+      // Separar números de expediente mal formateados
+      .replace(/([a-záéíóúñ])(\d{4}-[A-Z]{2,3}-\d+)/gi, '$1 $2')
+      // Agregar espacios después de números seguidos de letras (pero no en códigos)
+      .replace(/(\d)([A-Za-záéíóúñ])/g, (match, num, letter, offset, string) => {
+        // No separar si es parte de un código como "2025-CR" o cédula
+        const before = string.substring(Math.max(0, offset - 10), offset);
+        if (before.includes('-') || before.toLowerCase().includes('cédula') || before.toLowerCase().includes('expediente')) {
+          return match;
+        }
+        return `${num} ${letter}`;
+      })
+      // Agregar espacios antes de números después de letras (excepto en códigos)
+      .replace(/([A-Za-záéíóúñ])(\d)/g, (match, letter, num, offset, string) => {
+        // No separar si es parte de un código
+        const after = string.substring(offset + match.length, offset + match.length + 10);
+        if (after.includes('-') || match.toLowerCase().includes('artículo') || match.toLowerCase().includes('ley')) {
+          return match;
+        }
+        return `${letter} ${num}`;
+      })
+      // Agregar espacios después de paréntesis de cierre seguidos de letras mayúsculas
+      .replace(/\)([A-Z])/g, ') $1')
+      // Separar múltiples espacios en uno solo
+      .replace(/\s+/g, ' ')
+      // Limpiar espacios al inicio y final
+      .trim();
+  };
+  // Función para renderizar texto con párrafos separados
+  const renderFormattedText = (text) => {
+    if (!text) return '';
+    
+    const formattedText = formatText(text);
+    
+    // Identificar patrones que indican nuevos párrafos
+    const paragraphBreakPatterns = [
+      // Después de un punto seguido de una frase que comienza con mayúscula y contiene ":"
+      /\.\s*(?=[A-Z][^.]*:)/g,
+      // Antes de "Según la información", "En el expediente", etc.
+      /(?=(?:Según|En el|De acuerdo|El expediente|La denuncia|Los hechos|El caso|Por otro lado|Además|Asimismo|Por lo tanto|En conclusión|Finalmente|Fuente:))/g,
+      // Después de frases que terminan con punto y van seguidas de una sección nueva
+      /\.\s*(?=(?:El día|La fecha|Durante|Posteriormente|Testigo|Prueba|Declaración|Informe|Resolución))/g
+    ];
+
+    let processedText = formattedText;
+    
+    // Aplicar saltos de párrafo
+    paragraphBreakPatterns.forEach(pattern => {
+      processedText = processedText.replace(pattern, '\n\n');
+    });
+
+    // Dividir en párrafos y limpiar
+    const paragraphs = processedText
+      .split(/\n\n+/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    if (paragraphs.length <= 1) {
+      return <div className="leading-relaxed text-justify">{formattedText}</div>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {paragraphs.map((paragraph, index) => {
+          // Identificar si es la fuente (última línea)
+          const isFuente = paragraph.toLowerCase().startsWith('fuente:');
+          
+          return (
+            <div 
+              key={index} 
+              className={`leading-relaxed text-justify ${
+                isFuente ? 'text-xs text-gray-500 italic mt-6 pt-2 border-t border-gray-200' : ''
+              }`}
+            >
+              {paragraph}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
   
   return (
     <div className={`flex gap-2 sm:gap-4 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
@@ -36,7 +132,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
                 ? 'bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-2xl rounded-tl-md px-4 py-3'
                 : 'bg-transparent text-gray-800'
         }`}>
-          <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words word-wrap ${
+          <div className={`text-sm leading-relaxed break-words word-wrap ${
             isUser 
               ? 'text-gray-800' 
               : isError 
@@ -51,16 +147,20 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
             {isWarning && (
               <span className="text-yellow-600 mr-2">ℹ️</span>
             )}
-            {message.text}
-            {isStreaming && (
-              <span 
-                className="inline-block w-0.5 h-4 bg-primario ml-1" 
-                style={{
-                  animation: 'blink 1.2s ease-in-out infinite'
-                }}
-              >
-                |
-              </span>
+            {isUser ? (
+              <span>{message.text}</span>
+            ) : (
+              renderFormattedText(message.text)
+            )}
+            {isStreaming && !isUser && !message.text && (
+              <div className="inline-flex items-center space-x-1 align-baseline">
+                <div className="flex space-x-1 items-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                </div>
+                <span className="text-gray-500 text-sm ml-2">Escribiendo...</span>
+              </div>
             )}
           </div>
         </div>
