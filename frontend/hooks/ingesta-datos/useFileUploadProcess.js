@@ -47,7 +47,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   const removeCompletedFile = (fileId, fileName) => {
     // Evitar duplicados
     if (processedFiles.current.has(fileId)) {
-      console.log('Archivo ya procesado, evitando duplicado:', fileName);
       return;
     }
 
@@ -75,9 +74,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
   // Detener polling específico
   const stopPolling = (fileProcessId) => {
-    const intId = activePollings.current.get(fileProcessId);
-    if (!intId) return;
-    clearInterval(intId);
+    const pollingRef = activePollings.current.get(fileProcessId);
+    if (!pollingRef) return;
+    if (pollingRef.current) {
+      clearTimeout(pollingRef.current);
+    }
     activePollings.current.delete(fileProcessId);
   };
 
@@ -85,67 +86,194 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   const startPollingForFile = (archivoLocal, fileProcessId) => {
     if (!fileProcessId || activePollings.current.has(fileProcessId) || isTerminal(archivoLocal.status)) return;
 
-    const intervalId = setInterval(async () => {
+    // Contador de reintentos para manejar 404s temporales
+    let retryCount = 0;
+    let consecutive404s = 0;
+    const maxRetries = 5;
+    const max404s = 3;
+    let currentInterval = 1500; // Empezar con 1.5 segundos inicial
+    const maxInterval = 8000;   // Máximo 8 segundos
+
+    const pollFunction = async () => {
       try {
         const estados = await ingestaService.consultarEstadoArchivos([fileProcessId]);
         const estado = estados[0];
 
+        // Resetear contador de reintentos en éxito
+        retryCount = 0;
+        
+        // Si obtenemos datos exitosos, ajustar intervalo
         if (estado && estado.success && estado.data) {
+          currentInterval = Math.max(1500, currentInterval * 0.9); // Reducir gradualmente
+          consecutive404s = 0;
+          
           const statusData = estado.data;
+          
+          // 🆕 Verificar si fue auto-limpiada
+          if (statusData.was_auto_cleaned) {
+            // La tarea fue auto-limpiada, usar el estado final guardado
+            const finalStatus = statusData.status;
+            const wasSuccessful = statusData.status === 'completed';
+            
+            updateFiles(prev => prev.map(f => {
+              if (f.id === archivoLocal.id) {
+                return { 
+                  ...f, 
+                  status: wasSuccessful ? 'success' : 'error',
+                  progress: wasSuccessful ? 100 : 0, 
+                  message: statusData.message || (wasSuccessful ? 'Procesado completamente' : 'Error en procesamiento'),
+                  was_auto_cleaned: true
+                };
+              }
+              return f;
+            }));
+            stopPolling(fileProcessId);
+            return;
+          }
+          
+          // Continuar con lógica normal para tareas activas
+          const isGranular = estado.isGranular;
 
           let reachedTerminal = false;
+          let finalStatus = '';
+          let progressValue = 0;
+          let messageText = '';
+
+          // Procesar respuesta según el tipo (granular vs legacy)
+          if (isGranular) {
+            // Nuevo sistema de progreso granular
+            finalStatus = statusData.status;
+            progressValue = statusData.progress || 0;
+            messageText = statusData.message || '';
+
+            // Mapear estados del nuevo sistema
+            if (finalStatus === 'completed') {
+              reachedTerminal = true;
+              finalStatus = 'completado';
+              progressValue = 100;
+            } else if (finalStatus === 'failed') {
+              reachedTerminal = true;
+              finalStatus = 'error';
+              progressValue = 0;
+            } else if (finalStatus === 'processing') {
+              finalStatus = 'procesando';
+            }
+          } else {
+            // Sistema legacy
+            finalStatus = statusData.status;
+            progressValue = statusData.progress || 0;
+            messageText = statusData.message || '';
+
+            // Para legacy, si está "Procesado" considerarlo como completado
+            if (finalStatus?.toLowerCase() === 'procesado') {
+              reachedTerminal = true;
+              finalStatus = 'completado';
+              progressValue = 100;
+            }
+          }
+
           updateFiles(prev => prev.map(f => {
             if (f.id === archivoLocal.id) {
-              const st = statusData.status;
-              const base = { ...f, progress: statusData.progress || 0, message: statusData.message || '' };
-              if (st === 'completado') {
+              const base = { 
+                ...f, 
+                progress: progressValue, 
+                message: messageText,
+                isGranular: isGranular,
+                metadata: isGranular ? statusData.metadata : f.metadata
+              };
+
+              if (finalStatus === 'completado') {
                 reachedTerminal = true;
-                return { ...base, status: 'success', progress: 100, resultado: statusData.resultado };
+                return { 
+                  ...base, 
+                  status: 'success', 
+                  progress: 100, 
+                  resultado: statusData.resultado || statusData.metadata,
+                  metadata: isGranular ? statusData.metadata : f.metadata
+                };
               }
-              if (st === 'error') {
+              
+              if (finalStatus === 'error') {
                 reachedTerminal = true;
-                const msg = statusData.message || 'Error en procesamiento';
+                const msg = messageText || 'Error en procesamiento';
                 const displayName = truncateFileName(archivoLocal.name);
                 Toast.error('Error en archivo', `${displayName}: ${msg}`);
                 return { ...base, status: 'error', progress: 0, message: msg };
               }
-              return base;
+
+              // Estados en progreso
+              return { ...base, status: 'uploading' };
             }
             return f;
           }));
 
           if (reachedTerminal) {
             stopPolling(fileProcessId);
-            // Remover visualmente luego de un breve delay si success
-            const estadoFinal = statusData.status;
-            if (estadoFinal === 'completado') {
-              setTimeout(() => removeCompletedFile(archivoLocal.id, archivoLocal.name), 120);
-            }
+            return;
           }
+        } 
+        
+        // Manejar 404s específicamente
+        if (estado && estado.is404) {
+          consecutive404s++;
+          
+          if (consecutive404s >= max404s) {
+            // ⚠️ Después de varios 404s, la tarea probablemente no existe o fue auto-limpiada
+            // NO asumimos que fue exitosa, la marcamos como desconocida
+            updateFiles(prev => prev.map(f => {
+              if (f.id === archivoLocal.id) {
+                return { 
+                  ...f, 
+                  status: 'error', 
+                  progress: 0, 
+                  message: 'No se pudo verificar el estado del archivo. Puede haber sido procesado pero el seguimiento expiró.' 
+                };
+              }
+              return f;
+            }));
+            stopPolling(fileProcessId);
+            return;
+          }
+          
+          // Incrementar intervalo para 404s pero continuar
+          currentInterval = Math.min(currentInterval * 1.3, maxInterval);
         }
+        
+        // Agendar siguiente poll con intervalo dinámico
+        setTimeout(pollFunction, currentInterval);
+        
       } catch (error) {
-        // Detectar 404 => proceso ya no existe (posiblemente backend lo limpió) => marcar como success silencioso
-  if (error?.response?.status === 404) {
+        retryCount++;
+        consecutive404s = 0; // Resetear contador de 404s en errores reales
+        
+        // Para errores de red, reintentar con backoff exponencial
+        if (retryCount <= maxRetries) {
+          currentInterval = Math.min(currentInterval * 1.8, maxInterval);
+          setTimeout(pollFunction, currentInterval);
+          return;
+        }
+        
+        // Después de muchos errores, marcar como error y detener
+        if (!isTerminal(archivoLocal.status)) {
+          const displayName = truncateFileName(archivoLocal.name);
+          Toast.error('Error de conexión', `No se pudo consultar el estado de ${displayName}`);
           updateFiles(prev => prev.map(f => {
             if (f.id === archivoLocal.id) {
-              return { ...f, status: 'success', progress: 100, message: 'Procesado (registro no encontrado)' };
+              return { ...f, status: 'error', progress: 0, message: 'Error de conexión persistente' };
             }
             return f;
           }));
-          stopPolling(fileProcessId);
-          setTimeout(() => removeCompletedFile(archivoLocal.id, archivoLocal.name), 120);
-          return;
-        }
-        console.error(`Error en polling para archivo ${archivoLocal.name}:`, error);
-  if (!isTerminal(archivoLocal.status)) { // evitar spam
-          const displayName = truncateFileName(archivoLocal.name);
-          Toast.error('Error de conexión', `No se pudo consultar el estado de ${displayName}`);
         }
         stopPolling(fileProcessId);
       }
-    }, 2500);
+    };
 
-    activePollings.current.set(fileProcessId, intervalId);
+    // Ejecutar primera consulta inmediatamente
+    pollFunction();
+    
+    // Guardar una referencia para poder cancelar
+    const timeoutRef = { current: null };
+    activePollings.current.set(fileProcessId, timeoutRef);
   };
 
   // Iniciar polling para lote de archivos
@@ -157,7 +285,14 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   };
 
   // Detener todos los pollings activos (p.ej. al desmontar componente si se implementa)
-  const stopAllPollings = () => { activePollings.current.forEach(clearInterval); activePollings.current.clear(); };
+  const stopAllPollings = () => { 
+    activePollings.current.forEach((pollingRef) => {
+      if (pollingRef && pollingRef.current) {
+        clearTimeout(pollingRef.current);
+      }
+    }); 
+    activePollings.current.clear();
+  };
 
   const uploadFiles = async (files) => {
     // Normalizar archivos (aceptar tanto array como objeto-array del hook)
@@ -182,7 +317,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
       // Verificar si hay archivos para procesar
       if (Object.keys(filesByExpediente).length === 0) {
-        console.log('No hay archivos con expediente para procesar');
         Toast.warning(
           'Sin archivos',
           'No hay archivos válidos con número de expediente para procesar'
@@ -293,13 +427,55 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     }
   };
 
+  // Función para cancelar el procesamiento de un archivo
+  const cancelFileProcessing = async (fileId, fileProcessId) => {
+    try {
+      // Detener el polling inmediatamente
+      if (fileProcessId) {
+        stopPolling(fileProcessId);
+      }
+      
+      // Marcar el archivo como cancelado
+      updateFiles(prev => prev.map(f => {
+        if (f.id === fileId) {
+          return { 
+            ...f, 
+            status: 'error', 
+            progress: 0, 
+            message: 'Cancelado por el usuario' 
+          };
+        }
+        return f;
+      }));
+
+      // Intentar cancelar en el backend si es posible
+      if (fileProcessId) {
+        try {
+          await ingestaService.cancelarProcesamiento(fileProcessId);
+        } catch (error) {
+          // No es crítico si falla la cancelación en el backend
+        }
+      }
+
+      Toast.warning(
+        'Procesamiento cancelado',
+        'El archivo ha sido cancelado exitosamente'
+      );
+
+    } catch (error) {
+      console.error('Error cancelando procesamiento:', error);
+      Toast.error('Error', 'No se pudo cancelar el procesamiento');
+    }
+  };
+
   return {
     uploadFiles,
     truncateFileName,
     removeCompletedFile,
-  iniciarPollingArchivos,
-  processedFiles,
-  restoreFromStorage,
-  stopAllPollings
+    cancelFileProcessing,
+    iniciarPollingArchivos,
+    processedFiles,
+    restoreFromStorage,
+    stopAllPollings
   };
 };

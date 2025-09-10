@@ -23,9 +23,9 @@ class AudioProcessingConfig:
     compute_type: str = "int8"  # Optimización para faster-whisper
     num_workers: int = 4        # Threads internos de faster-whisper
     
-    # Configuración de memoria
-    max_memory_usage_mb: int = 1024
-    enable_chunking_threshold_mb: int = 100
+    # Configuración de memoria optimizada para faster-whisper
+    max_memory_usage_mb: int = 2048
+    enable_chunking_threshold_mb: int = 300  # Aumentado de 100 a 300 MB
     
     # Configuración de desarrollo vs producción
     environment: Literal["development", "production"] = "development"

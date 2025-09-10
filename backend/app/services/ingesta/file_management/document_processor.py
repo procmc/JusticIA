@@ -1,11 +1,14 @@
 import os
 import uuid
+import logging
 from datetime import datetime
 from typing import List, Optional
 from pathlib import Path
 from fastapi import UploadFile, HTTPException, Depends
 from sqlalchemy.orm import Session
 import filetype
+
+logger = logging.getLogger(__name__)
 
 from app.schemas.schemas import (
     FileUploadResponse, 
@@ -19,8 +22,9 @@ from app.services.expediente_service import ExpedienteService
 from .file_storage_manager import FileStorageService
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
+from ..async_processing.progress_tracker import ProgressTracker
 
-async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None) -> FileProcessingStatus:
+async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None, progress_tracker: Optional[ProgressTracker] = None) -> FileProcessingStatus:
     """
     Procesa una lista de archivos subidos para un expediente específico.
     Solo almacena en vectorstore si se puede crear registro en BD (transaccional).
@@ -41,12 +45,11 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
         try:
             expediente_service = ExpedienteService()
             expediente = await expediente_service.buscar_o_crear_expediente(db, CT_Num_expediente)
-            print(f"Expediente obtenido/creado: {expediente.CT_Num_expediente}")
         except Exception as e:
-            print(f"Error BD - procesamiento sin almacenamiento: {str(e)}")
+            logger.warning(f"Error BD - procesamiento sin almacenamiento: {str(e)}")
             expediente = None
     else:
-        print(f"Sin sesión BD - procesamiento sin almacenamiento")
+        logger.info(f"Sin sesión BD - procesamiento sin almacenamiento")
         expediente = None
     
     # 2. Procesar cada archivo (solo se almacena en vectorstore si hay BD)
@@ -225,12 +228,12 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     ruta_archivo="",  # Se actualiza después
                     auto_commit=False  # No hacer commit automático
                 )
-                print(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
+                logger.debug(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
                 
                 # 2. Guardar archivo físicamente
                 storage = FileStorageService()
                 ruta_archivo = await storage.guardar_archivo(file, CT_Num_expediente)
-                print(f"Archivo guardado físicamente: {ruta_archivo}")
+                logger.debug(f"Archivo guardado físicamente: {ruta_archivo}")
                 
                 # 3. Actualizar la ruta en el documento
                 await expediente_service.actualizar_ruta_documento(
@@ -239,7 +242,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     ruta_archivo=ruta_archivo,
                     auto_commit=False
                 )
-                print(f"Ruta actualizada en documento")
+                logger.debug(f"Ruta actualizada en documento")
                 
                 # 4. Actualizar metadatos con info de BD
                 metadatos.update({
@@ -255,7 +258,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     id_expediente=expediente.CN_Id_expediente,  # ID real del expediente
                     id_documento=documento_creado.CN_Id_documento  # ID real del documento
                 )
-                print(f"Almacenado en vectorstore exitosamente")
+                logger.info(f"Almacenado en vectorstore exitosamente")
                 
                 # 6. Actualizar estado a "Procesado" si todo salió bien
                 await expediente_service.actualizar_estado_documento(
@@ -264,16 +267,16 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                     nuevo_estado="Procesado",
                     auto_commit=False  # No hacer commit aún
                 )
-                print(f"Estado actualizado a 'Procesado'")
+                logger.debug(f"Estado actualizado a 'Procesado'")
                 
                 # 7. Si todo salió bien, hacer commit final
                 db.commit()
                 db.refresh(documento_creado)
-                print(f"Transacción completada exitosamente")
+                logger.info(f"Transacción completada exitosamente")
                 
             except Exception as e:
                 # Rollback en caso de error y actualizar estado a "Error"
-                print(f"Error en transacción: {str(e)}")
+                logger.error(f"Error en transacción: {str(e)}")
                 try:
                     # Si tenemos el documento creado, actualizar su estado a "Error"
                     if documento_creado:
@@ -283,13 +286,13 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                             nuevo_estado="Error",
                             auto_commit=False
                         )
-                        print(f"Estado actualizado a 'Error'")
+                        logger.debug(f"Estado actualizado a 'Error'")
                         db.commit()  # Commit solo el cambio de estado
                     else:
                         db.rollback()  # Rollback completo si no hay documento
-                    print("Rollback de BD realizado")
+                    logger.debug("Rollback de BD realizado")
                 except Exception as rollback_error:
-                    print(f"Error en rollback: {str(rollback_error)}")
+                    logger.error(f"Error en rollback: {str(rollback_error)}")
                     db.rollback()  # Rollback de emergencia
                 
                 # Re-lanzar la excepción original
@@ -297,7 +300,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
         
         else:
             # Sin BD disponible - NO almacenar en Milvus
-            print(f"No se almacena en vectorstore: requiere transacción de BD exitosa")
+            logger.warning(f"No se almacena en vectorstore: requiere transacción de BD exitosa")
             metadatos.update({"status": "procesado_sin_bd"})
 
         # Reiniciar posición del archivo para futuras operaciones
@@ -322,7 +325,7 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
         )
         
     except Exception as e:
-        print(f"Error en procesamiento de archivo: {str(e)}")
+        logger.error(f"Error en procesamiento de archivo: {str(e)}")
         return FileUploadResponse(
             status="error",
             message="Error procesando archivo (transacciones revertidas)",
@@ -383,11 +386,11 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
         
         # Log de configuración
         file_size_mb = len(content) / (1024 * 1024)
-        print(f"Procesando audio {filename}: {file_size_mb:.1f} MB")
-        print(f"Configuración: modelo={AUDIO_CONFIG.whisper_model}, device={AUDIO_CONFIG.device}")
-        print(f"faster-whisper: compute_type={AUDIO_CONFIG.compute_type}, workers={AUDIO_CONFIG.num_workers}")
-        print(f"Chunks si archivo >= {AUDIO_CONFIG.enable_chunking_threshold_mb} MB o falla directo")
-        print(f"Procesamiento: SECUENCIAL OPTIMIZADO (sin paralelismo)")
+        logger.info(f"Procesando audio {filename}: {file_size_mb:.1f} MB")
+        logger.debug(f"Configuración: modelo={AUDIO_CONFIG.whisper_model}, device={AUDIO_CONFIG.device}")
+        logger.debug(f"faster-whisper: compute_type={AUDIO_CONFIG.compute_type}, workers={AUDIO_CONFIG.num_workers}")
+        logger.debug(f"Chunks si archivo >= {AUDIO_CONFIG.enable_chunking_threshold_mb} MB o falla directo")
+        logger.debug(f"Procesamiento: SECUENCIAL OPTIMIZADO (sin paralelismo)")
         
         # Usar el procesador de audio optimizado
         texto = await audio_processor.transcribe_audio_direct(content, filename)
@@ -395,7 +398,7 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
         if not texto.strip():
             raise ValueError("No se pudo transcribir el audio")
         
-        print(f"Transcripción completada: {len(texto)} caracteres")
+        logger.info(f"Transcripción completada: {len(texto)} caracteres")
         return texto
         
     except ImportError:

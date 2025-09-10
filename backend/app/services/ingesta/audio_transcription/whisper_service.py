@@ -1,23 +1,33 @@
 """
-Servicio simplificado para procesamiento de audio con faster-whisper.
-Sistema secuencial optimizado sin paralelismo - máximo rendimiento y confiabilidad.
+Servicio orquestador para procesamiento de audio con faster-whisper.
+Sistema modular con estrategias separadas para procesamiento directo y chunks.
 """
 import os
-import tempfile
-import asyncio
-from typing import List, Optional
+from typing import Optional
 import logging
 
 from app.config.audio_config import AUDIO_CONFIG, AudioProcessingConfig
+from ..async_processing.progress_tracker import ProgressTracker, TaskStatus
+from .audio_utils import AudioUtils
+from .direct_strategy import DirectTranscriptionStrategy
+from .chunking_strategy import ChunkingTranscriptionStrategy
 
 logger = logging.getLogger(__name__)
 
-class AudioChunkProcessor:
-    """Procesador de audio secuencial optimizado con faster-whisper."""
+class AudioTranscriptionOrchestrator:
+    """
+    Orquestador principal para transcripción de audio.
+    Selecciona automáticamente la mejor estrategia (directa o chunks) según el contexto.
+    """
     
     def __init__(self, config: Optional[AudioProcessingConfig] = None):
         self.config = config or AUDIO_CONFIG
         self._whisper_model = None
+        self.audio_utils = AudioUtils()
+        
+        # Estrategias de procesamiento (se inicializan cuando se carga el modelo)
+        self.direct_strategy = None
+        self.chunking_strategy = None
         
     def _load_faster_whisper_model(self):
         """Carga el modelo faster-whisper (lazy loading) con optimizaciones."""
@@ -38,228 +48,176 @@ class AudioChunkProcessor:
                     local_files_only=False
                 )
                 
-                logger.info("faster-whisper modelo cargado exitosamente")
+                # Inicializar estrategias con el modelo cargado
+                self.direct_strategy = DirectTranscriptionStrategy(self._whisper_model, self.config)
+                self.chunking_strategy = ChunkingTranscriptionStrategy(self._whisper_model, self.config)
+                
+                logger.info("faster-whisper modelo y estrategias cargadas exitosamente")
                 
             except Exception as e:
                 logger.error(f"Error cargando modelo faster-whisper: {e}")
                 raise
         return self._whisper_model
     
-    async def transcribe_audio_direct(self, audio_content: bytes, filename: str) -> str:
+    async def transcribe_audio_direct(self, audio_content: bytes, filename: str, 
+                                     progress_tracker: Optional[ProgressTracker] = None) -> str:
         """
-        Transcripción inteligente de audio completo.
-        Intenta procesar completo primero, recurre a chunks si es necesario.
+        Transcripción inteligente de audio usando estrategias modulares.
+        Selecciona automáticamente la mejor estrategia: directa primero, chunks como fallback.
         """
         temp_file_path = None
         
         try:
-            # Crear archivo temporal
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
-                temp_file.write(audio_content)
-                temp_file_path = temp_file.name
+            # Paso 1: Preparación inicial (0-5%)
+            if progress_tracker:
+                progress_tracker.update_progress(2, f"Iniciando procesamiento de {filename}")
             
-            file_size_mb = len(audio_content) / (1024 * 1024)
+            # Crear archivo temporal
+            temp_file_path = self.audio_utils.create_temp_file(audio_content)
+            file_size_mb = self.audio_utils.get_file_size_mb(audio_content)
+            
+            if progress_tracker:
+                progress_tracker.update_progress(5, f"Archivo temporal creado ({file_size_mb:.1f} MB)", 
+                                               {"file_size_mb": file_size_mb})
+
             logger.info(f"Transcribiendo audio {filename} ({file_size_mb:.1f} MB) con faster-whisper")
             
-            # Intentar transcripción directa primero
+            # Paso 2: Análisis del archivo (5-15%)
+            if progress_tracker:
+                progress_tracker.update_progress(8, "Analizando archivo de audio")
+            
+            # Obtener duración del audio para mejor estimación de progreso
             try:
-                model = self._load_faster_whisper_model()
+                duration = await self.audio_utils.get_audio_duration(temp_file_path)
+                if progress_tracker:
+                    progress_tracker.update_progress(12, f"Audio analizado: {duration/60:.1f} minutos", 
+                                                   {"duration_seconds": duration})
+            except Exception as e:
+                logger.warning(f"No se pudo obtener duración del audio: {e}")
+                if progress_tracker:
+                    progress_tracker.update_progress(12, "Continuando sin análisis de duración")
+
+            # Paso 3: Carga del modelo (12-20%)
+            if progress_tracker:
+                progress_tracker.update_progress(15, "Cargando modelo faster-whisper")
+            
+            model = self._load_faster_whisper_model()
+            
+            if progress_tracker:
+                progress_tracker.update_progress(20, "Modelo cargado, seleccionando estrategia")
+            
+            # Paso 4: Selección y ejecución de estrategia (20-95%)
+            strategy = self._select_strategy(file_size_mb)
+            logger.info(f"Estrategia seleccionada: {strategy.get_strategy_name()} (umbral: {self.config.enable_chunking_threshold_mb} MB)")
+            
+            if progress_tracker:
+                progress_tracker.update_progress(25, f"Ejecutando estrategia: {strategy.get_strategy_name()}", 
+                                               {"strategy": strategy.get_strategy_name()})
+            
+            try:
+                # Intentar estrategia principal (generalmente directa)
+                result = await strategy.transcribe(temp_file_path, filename, file_size_mb, progress_tracker)
                 
-                # Ejecutar transcripción en thread separado para no bloquear
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(
-                    None, 
-                    self._transcribe_file_sync, 
-                    temp_file_path
-                )
+                # Paso 5: Finalización (95-100%)
+                if progress_tracker:
+                    progress_tracker.mark_completed(f"Audio transcrito exitosamente: {len(result)} caracteres usando {strategy.get_strategy_name()}")
                 
-                if not result.strip():
-                    raise ValueError("Transcripción directa resultó en texto vacío")
-                
-                logger.info(f"Transcripción directa exitosa: {len(result)} caracteres")
                 return result
                 
-            except Exception as direct_error:
-                logger.warning(f"Transcripción directa falló: {direct_error}")
+            except Exception as strategy_error:
+                logger.warning(f"Estrategia {strategy.get_strategy_name()} falló: {strategy_error}")
                 
-                # Si es un archivo grande o falló por memoria, usar chunks
-                if file_size_mb >= self.config.enable_chunking_threshold_mb or "memory" in str(direct_error).lower():
-                    logger.info(f"Recurriendo a procesamiento con chunks...")
-                    return await self._transcribe_with_chunks(temp_file_path, filename)
+                # Intentar estrategia de fallback
+                fallback_strategy = self._get_fallback_strategy(file_size_mb, str(strategy_error))
+                
+                if fallback_strategy and fallback_strategy != strategy:
+                    if progress_tracker:
+                        progress_tracker.update_progress(25, f"Recurriendo a estrategia de fallback: {fallback_strategy.get_strategy_name()}")
+                    
+                    logger.info(f"Recurriendo a estrategia de fallback: {fallback_strategy.get_strategy_name()}")
+                    result = await fallback_strategy.transcribe(temp_file_path, filename, file_size_mb, progress_tracker)
+                    
+                    if progress_tracker:
+                        progress_tracker.mark_completed(f"Audio transcrito con fallback: {len(result)} caracteres usando {fallback_strategy.get_strategy_name()}")
+                    
+                    return result
                 else:
-                    # Re-lanzar error si no es un problema de tamaño
-                    raise direct_error
+                    # No hay estrategia de fallback disponible
+                    if progress_tracker:
+                        progress_tracker.mark_failed(f"Error en transcripción: {str(strategy_error)}", str(strategy_error))
+                    raise strategy_error
                 
         except Exception as e:
-            logger.error(f"Error transcribiendo audio {filename}: {e}")
-            raise ValueError(f"Error transcribiendo audio {filename}: {str(e)}")
+            error_msg = f"Error transcribiendo audio {filename}: {str(e)}"
+            logger.error(error_msg)
+            if progress_tracker:
+                progress_tracker.mark_failed(error_msg, str(e))
+            raise ValueError(error_msg)
         
         finally:
             # Limpieza
-            if temp_file_path and os.path.exists(temp_file_path):
-                try:
-                    os.unlink(temp_file_path)
-                except:
-                    pass
+            if temp_file_path:
+                self.audio_utils.cleanup_temp_file(temp_file_path)
     
-    def _transcribe_file_sync(self, file_path: str) -> str:
-        """Función auxiliar síncrona para transcribir un archivo con faster-whisper."""
-        model = self._load_faster_whisper_model()
+    def _select_strategy(self, file_size_mb: float):
+        """Selecciona la estrategia principal basada en el tamaño del archivo."""
+        # Asegurar que las estrategias estén inicializadas
+        if not self.direct_strategy or not self.chunking_strategy:
+            self._load_faster_whisper_model()
         
-        # Transcribir con faster-whisper
-        segments, info = model.transcribe(
-            file_path, 
-            beam_size=5,
-            language="es",  # Forzar español para mejor rendimiento
-            condition_on_previous_text=False,  # Mejor para chunks independientes
-            temperature=0.0,  # Determinístico
-            compression_ratio_threshold=2.4,
-            log_prob_threshold=-1.0,
-            no_speech_threshold=0.6
-        )
+        # Verificación adicional de seguridad
+        if not self.direct_strategy or not self.chunking_strategy:
+            raise RuntimeError("Error inicializando estrategias de transcripción")
         
-        # Unir segmentos en texto completo
-        text_parts = []
-        for segment in segments:
-            text_parts.append(segment.text.strip())
-        
-        full_text = " ".join(text_parts).strip()
-        
-        # Log información adicional
-        logger.info(f"Idioma detectado: {info.language} (probabilidad: {info.language_probability:.2f})")
-        logger.info(f"Duración: {info.duration:.1f}s")
-        
-        return full_text
+        # Preferir estrategia directa para archivos menores al umbral
+        if self.direct_strategy.can_handle(file_size_mb):
+            return self.direct_strategy
+        else:
+            return self.chunking_strategy
     
-    async def _transcribe_with_chunks(self, audio_path: str, filename: str) -> str:
-        """Transcribe audio dividido en chunks secuencialmente."""
-        chunk_paths = []
+    def _get_fallback_strategy(self, file_size_mb: float, error_context: str):
+        """Obtiene la estrategia de fallback basada en el contexto de error."""
+        # Asegurar que las estrategias estén inicializadas
+        if not self.direct_strategy or not self.chunking_strategy:
+            self._load_faster_whisper_model()
         
+        # Verificación adicional de seguridad
+        if not self.direct_strategy or not self.chunking_strategy:
+            return None
+        
+        # Si la estrategia directa falló, intentar chunks
+        if self.chunking_strategy.can_handle(file_size_mb, error_context):
+            return self.chunking_strategy
+        
+        # Si chunks falló, intentar directa (por si era un error temporal)
+        if self.direct_strategy.can_handle(file_size_mb, error_context):
+            return self.direct_strategy
+        
+        return None
+    
+    def get_strategy_info(self, file_size_mb: float) -> dict:
+        """Obtiene información sobre qué estrategia se usaría para un archivo."""
         try:
-            # Obtener duración del audio
-            duration = await self._get_audio_duration(audio_path)
-            logger.info(f"Duración del audio: {duration/60:.1f} minutos")
+            primary_strategy = self._select_strategy(file_size_mb)
             
-            # Dividir en chunks
-            chunk_paths = await self._split_audio_into_chunks(audio_path)
-            
-            if not chunk_paths:
-                raise ValueError("No se pudieron crear chunks de audio")
-            
-            logger.info(f"Transcribiendo {len(chunk_paths)} chunks secuencialmente con faster-whisper")
-            
-            # Transcribir cada chunk secuencialmente
-            transcriptions = []
-            model = self._load_faster_whisper_model()
-            
-            for i, chunk_path in enumerate(chunk_paths):
-                try:
-                    logger.info(f"Transcribiendo chunk {i + 1}/{len(chunk_paths)}")
-                    
-                    # Transcribir chunk en thread separado
-                    loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(
-                        None, 
-                        self._transcribe_file_sync, 
-                        chunk_path
-                    )
-                    
-                    transcriptions.append(result)
-                    
-                    # Log de progreso
-                    progress = ((i + 1) / len(chunk_paths)) * 100
-                    logger.info(f"Progreso: {progress:.1f}% - Chunk {i + 1} completado: {len(result)} caracteres")
-                    
-                except Exception as e:
-                    logger.error(f"Error transcribiendo chunk {i + 1}: {e}")
-                    transcriptions.append("")  # Continuar con chunk vacío
-            
-            # Unir todas las transcripciones
-            full_text = " ".join(transcriptions).strip()
-            logger.info(f"Transcripción por chunks completada: {len(full_text)} caracteres totales")
-            
-            if not full_text:
-                raise ValueError("No se pudo transcribir ningún chunk del audio")
-            
-            return full_text
-            
-        finally:
-            # Limpieza de chunks temporales
-            await self._cleanup_chunks(chunk_paths)
-    
-    async def _get_audio_duration(self, audio_path: str) -> float:
-        """Obtiene la duración del audio en segundos."""
-        try:
-            from pydub import AudioSegment
-            audio = AudioSegment.from_file(audio_path)
-            return len(audio) / 1000.0  # Convertir ms a segundos
+            return {
+                "file_size_mb": file_size_mb,
+                "threshold_mb": self.config.enable_chunking_threshold_mb,
+                "primary_strategy": primary_strategy.get_strategy_name(),
+                "will_use_chunking": isinstance(primary_strategy, ChunkingTranscriptionStrategy),
+                "fallback_available": True  # Siempre hay fallback en el diseño actual
+            }
         except Exception as e:
-            logger.warning(f"No se pudo obtener duración de audio: {e}")
-            return 0.0
-    
-    async def _split_audio_into_chunks(self, audio_path: str) -> List[str]:
-        """Divide el audio en chunks y retorna las rutas de los archivos temporales."""
-        try:
-            from pydub import AudioSegment
-            
-            # Cargar audio
-            audio = AudioSegment.from_file(audio_path)
-            duration_ms = len(audio)
-            
-            # Configuración de chunks
-            chunk_duration_ms = self.config.chunk_duration_minutes * 60 * 1000
-            overlap_ms = self.config.chunk_overlap_seconds * 1000
-            
-            chunks_paths = []
-            chunk_start = 0
-            chunk_index = 0
-            
-            logger.info(f"Dividiendo audio en chunks de {self.config.chunk_duration_minutes} min con overlap de {self.config.chunk_overlap_seconds}s")
-            
-            while chunk_start < duration_ms:
-                # Calcular fin del chunk
-                chunk_end = min(chunk_start + chunk_duration_ms, duration_ms)
-                
-                # Extraer chunk con overlap
-                if chunk_index > 0:
-                    # Para chunks posteriores, incluir overlap al inicio
-                    chunk_start_with_overlap = max(0, chunk_start - overlap_ms)
-                else:
-                    chunk_start_with_overlap = chunk_start
-                
-                chunk = audio[chunk_start_with_overlap:chunk_end]
-                
-                # Guardar chunk temporal
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'_chunk_{chunk_index}.mp3')
-                chunk.export(temp_file.name, format="mp3")
-                chunks_paths.append(temp_file.name)
-                
-                logger.info(f"Chunk {chunk_index + 1}: {chunk_start_with_overlap/1000:.1f}s - {chunk_end/1000:.1f}s")
-                
-                # Avanzar al siguiente chunk
-                chunk_start = chunk_end
-                chunk_index += 1
-                
-                # Limitar número de chunks por seguridad
-                if chunk_index >= 50:
-                    logger.warning("Límite de 50 chunks alcanzado, truncando audio")
-                    break
-            
-            logger.info(f"Audio dividido en {len(chunks_paths)} chunks")
-            return chunks_paths
-            
-        except Exception as e:
-            logger.error(f"Error dividiendo audio: {e}")
-            raise ValueError(f"Error en división de audio: {str(e)}")
-    
-    async def _cleanup_chunks(self, chunk_paths: List[str]):
-        """Limpia archivos temporales de chunks."""
-        for chunk_path in chunk_paths:
-            try:
-                if os.path.exists(chunk_path):
-                    os.unlink(chunk_path)
-            except Exception as e:
-                logger.warning(f"Error limpiando chunk {chunk_path}: {e}")
+            logger.error(f"Error obteniendo información de estrategia: {e}")
+            return {
+                "file_size_mb": file_size_mb,
+                "threshold_mb": self.config.enable_chunking_threshold_mb,
+                "primary_strategy": "unknown",
+                "will_use_chunking": file_size_mb >= self.config.enable_chunking_threshold_mb,
+                "fallback_available": False,
+                "error": str(e)
+            }
 
-# Instancia global del procesador
-audio_processor = AudioChunkProcessor()
+
+# Instancia global del orquestador
+audio_processor = AudioTranscriptionOrchestrator()
