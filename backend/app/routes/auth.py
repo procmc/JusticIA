@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import logging
 from app.db.database import get_db
 from app.services.auth_service import AuthService
+
+logger = logging.getLogger(__name__)
 from app.schemas.auth_schemas import (
     LoginRequest, LoginResponse, CambiarContrasenaRequest,
     SolicitarRecuperacionRequest, SolicitarRecuperacionResponse,
@@ -38,7 +41,7 @@ async def login_usuario(
             detail=str(e)
         )
     except Exception as e:
-        print(f"Error en login: {e}")
+        logger.error(f"Error en login: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
@@ -95,7 +98,7 @@ async def solicitar_recuperacion_contrasenna(
             detail=str(e)
         )
     except Exception as e:
-        print(f"Error en solicitar recuperación: {e}")
+        logger.error(f"Error en solicitar recuperación: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
@@ -119,7 +122,7 @@ async def verificar_codigo_recuperacion(
             detail=str(e)
         )
     except Exception as e:
-        print(f"Error en verificar código: {e}")
+        logger.error(f"Error en verificar código: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
@@ -143,7 +146,7 @@ async def cambiar_contrasenna_recuperacion(
             detail=str(e)
         )
     except Exception as e:
-        print(f"Error en cambiar contraseña recuperación: {e}")
+        logger.error(f"Error en cambiar contraseña recuperación: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
@@ -167,7 +170,7 @@ async def restablecer_contrasenna(
             detail=str(e)
         )
     except Exception as e:
-        print(f"Error en restablecer contraseña: {e}")
+        logger.error(f"Error en restablecer contraseña: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"

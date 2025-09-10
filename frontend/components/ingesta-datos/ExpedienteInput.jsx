@@ -3,7 +3,7 @@
  * Extraído del componente principal sin modificaciones
  */
 import React from 'react';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, Tooltip } from '@heroui/react';
 import { FiAlertCircle, FiFolder, FiSave } from 'react-icons/fi';
 import { PiBroomLight } from 'react-icons/pi';
 
@@ -101,17 +101,24 @@ const ExpedienteInput = ({
           </Button>
 
           {files.length > 0 && (
-            <Button
-              onPress={() => setFiles([])}
-              color="default"
-              variant="flat"
-              size="sn"
-              startContent={<PiBroomLight className="w-4 h-4" />}
-              disabled={uploading}
-              className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm"
-              radius="md"
+            <Tooltip 
+              content="Limpiar lista de archivos" 
+              placement="top"
+              delay={300}
             >
-            </Button>
+              <Button
+                onPress={() => setFiles([])}
+                color="default"
+                variant="bordered"
+                size="md"
+                startContent={<PiBroomLight className="w-4 h-4" />}
+                disabled={uploading}
+                className="px-4 font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-slate-300 hover:border-slate-400 transition-all duration-200 text-sm shadow-sm hover:shadow-md"
+                radius="md"
+              >
+                Limpiar
+              </Button>
+            </Tooltip>
           )}
         </div>
       </div>
