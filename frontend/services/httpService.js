@@ -124,9 +124,52 @@ const put = (url, data = null) => {
   return apiRequest(url, options);
 };
 
+/**
+ * POST request para streaming
+ */
+const postStream = async (url, data = null) => {
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  
+  try {
+    // Obtener headers de autenticación
+    const authHeaders = await getAuthHeaders();
+    
+    const options = {
+      method: 'POST',
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    };
+
+    const response = await fetch(fullUrl, options);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Error ${response.status}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return response; // Devolver la respuesta completa para streaming
+  } catch (error) {
+    console.error('API Stream Request Error:', error.message || error.toString());
+    throw error;
+  }
+};
+
 export default {
   get,
   post,
   put,
-  apiRequest
+  apiRequest,
+  postStream
 };
