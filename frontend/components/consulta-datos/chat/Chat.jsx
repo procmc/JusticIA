@@ -1,76 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
+import consultaService from '../../../services/consultaService';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
-  const [stopStreamingRef, setStopStreamingRef] = useState({ current: false });
+  const stopStreamingRef = useRef(false);
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
-
-  const simulateStreamingResponse = (fullText, messageIndex) => {
-    let currentText = '';
-    let currentIndex = 0;
-    stopStreamingRef.current = false;
-
-    const addNextCharacter = () => {
-      if (currentIndex < fullText.length && !stopStreamingRef.current) {
-        currentText += fullText[currentIndex];
-
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[messageIndex] = {
-            ...newMessages[messageIndex],
-            text: currentText
-          };
-          return newMessages;
-        });
-
-        currentIndex++;
-
-        // Velocidad más lenta y variada para efecto más natural
-        let delay = 80; // Velocidad base más lenta
-        const char = fullText[currentIndex - 1];
-
-        if (char === ' ') {
-          delay = 60; // Espacios moderadamente rápidos
-        } else if (char === '.' || char === '\n') {
-          delay = 400; // Pausa larga en puntos y saltos de línea
-        } else if (char === ',') {
-          delay = 250; // Pausa media en comas
-        } else if (char === '?' || char === '!') {
-          delay = 500; // Pausa muy larga en signos
-        } else if (char === ':' || char === ';') {
-          delay = 300; // Pausa en dos puntos
-        }
-
-        // Variación aleatoria más amplia para mayor naturalidad
-        delay += Math.random() * 40 - 20; // ±20ms de variación
-
-        // Asegurar que el delay no sea negativo
-        delay = Math.max(delay, 30);
-
-        setTimeout(addNextCharacter, delay);
-      } else {
-        setStreamingMessageIndex(null);
-      }
-    };
-
-    addNextCharacter();
-  };
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
     setIsTyping(false);
     setStreamingMessageIndex(null);
-    // El chat queda inmediatamente disponible para nuevos mensajes
   };
 
   const handleSendMessage = async (text) => {
-    // Crear mensaje del usuario con información del alcance
+    // Resetear flag de parada
+    stopStreamingRef.current = false;
+
+    // Crear mensaje del usuario
     const userMessage = {
       text,
       isUser: true,
@@ -85,54 +37,66 @@ const ConsultaChat = () => {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Simular delay de respuesta
-    setTimeout(() => {
+    // Crear mensaje del asistente vacío
+    const assistantMessage = {
+      text: '',
+      isUser: false,
+      timestamp: new Date().toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+
+    // Agregar mensaje vacío del asistente
+    setMessages(prev => {
+      const newMessages = [...prev, assistantMessage];
+      const messageIndex = newMessages.length - 1;
+      setStreamingMessageIndex(messageIndex);
       setIsTyping(false);
 
-      // Crear mensaje del asistente vacío
-      const assistantMessage = {
-        text: '',
-        isUser: false,
-        timestamp: new Date().toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      };
+      // Iniciar consulta con streaming
+      consultaService.consultaGeneralStreaming(
+        text,
+        // onChunk: Cada fragmento de texto que llega
+        (chunk) => {
+          if (stopStreamingRef.current) return;
+          
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            updatedMessages[messageIndex] = {
+              ...updatedMessages[messageIndex],
+              text: updatedMessages[messageIndex].text + chunk
+            };
+            return updatedMessages;
+          });
+        },
+        // onComplete: Cuando termina el streaming
+        () => {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+        },
+        // onError: Si hay un error
+        (error) => {
+          console.error('Error en la consulta:', error);
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          
+          // Mostrar mensaje de error
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            updatedMessages[messageIndex] = {
+              ...updatedMessages[messageIndex],
+              text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+              isError: true
+            };
+            return updatedMessages;
+          });
+        },
+        30 // top_k: número de documentos a buscar
+      );
 
-      // Agregar mensaje vacío y comenzar streaming
-      setMessages(prev => {
-        const newMessages = [...prev, assistantMessage];
-        const messageIndex = newMessages.length - 1;
-        setStreamingMessageIndex(messageIndex);
-
-        // Respuesta contextualizada según el alcance
-        let contextInfo = '';
-        if (searchScope === 'expediente') {
-          contextInfo = `\n\n🔍 *Búsqueda realizada por expediente específico*`;
-        } else {
-          contextInfo = `\n\n🔍 *Búsqueda realizada en toda la base de datos*`;
-        }
-
-        // Texto completo de respuesta
-        const fullResponse = `Entiendo tu consulta sobre "${text}". Como asistente jurídico de JusticIA, he analizado tu pregunta y puedo ayudarte con información relevante basada en el marco jurídico costarricense.${contextInfo}
-
-Según mi análisis de los expedientes y la jurisprudencia disponible, puedo proporcionarte los siguientes puntos clave:
-
-• Marco jurídico aplicable
-• Precedentes jurisprudenciales relevantes  
-• Procedimientos recomendados
-• Posibles alternativas de solución
-
-¿Te gustaría que profundice en algún aspecto específico de tu consulta?`;
-
-        // Comenzar streaming después de un breve delay
-        setTimeout(() => {
-          simulateStreamingResponse(fullResponse, messageIndex);
-        }, 500);
-
-        return newMessages;
-      });
-    }, 1000);
+      return newMessages;
+    });
   };
 
   return (

@@ -48,10 +48,23 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
                 # Convertir search results a formato estándar
                 if search_results and len(search_results) > 0:
                     for hit in search_results[0]:
-                        if hasattr(hit, 'entity'):
+                        if hasattr(hit, 'entity') and hasattr(hit, 'distance'):
+                            # Acceso seguro a los datos de la entidad usando getattr
+                            entity_obj = getattr(hit, 'entity', {})
+                            entity_data = {}
+                            
+                            if hasattr(entity_obj, 'get'):
+                                # Si entity es un diccionario
+                                entity_data = dict(entity_obj)
+                            else:
+                                # Si entity es un objeto, extraer campos específicos
+                                for field in ["id_chunk", "texto", "numero_expediente", "nombre_archivo"]:
+                                    if hasattr(entity_obj, field):
+                                        entity_data[field] = getattr(entity_obj, field)
+                            
                             similar_docs.append({
-                                "entity": hit.entity,
-                                "distance": hit.distance
+                                "entity": entity_data,
+                                "distance": getattr(hit, 'distance', 0.5)
                             })
                         elif isinstance(hit, dict):
                             similar_docs.append({
@@ -113,55 +126,57 @@ RESPUESTA:
 def _prepare_context(documents: List[Dict[str, Any]]) -> str:
     """
     Prepara el contexto para el LLM a partir de los documentos encontrados.
+    Solo incluye el contenido textual relevante, sin información técnica.
+    NUNCA incluye nombres de archivos o metadatos sensibles.
     """
     context_parts = []
     
     for i, doc in enumerate(documents, 1):
         # Obtener información del documento
         entity = doc.get("entity", {})
-        texto = entity.get("texto", "")  # ✅ Cambió de "contenido" a "texto"
-        id_expediente = entity.get("id_expediente", "")
-        id_documento = entity.get("id_documento", "")
-        tipo_archivo = entity.get("tipo_archivo", "")
-        fecha = entity.get("fecha_carga", "")
-        nombre_archivo = entity.get("nombre_archivo", "")
+        texto = entity.get("texto", "")
         numero_expediente = entity.get("numero_expediente", "")
-        similitud = round(1 - doc.get("distance", 1), 3)  # Convertir distancia a similitud
         
-        # Limitar contenido si es muy largo
-        texto_resumido = texto[:500] + "..." if len(texto) > 500 else texto
-        
-        context_part = f"""
-Documento {i} (Similitud: {similitud}):
-- Expediente: {numero_expediente} (ID: {id_expediente})
-- Archivo: {nombre_archivo} (ID: {id_documento})
-- Tipo: {tipo_archivo}
-- Fecha: {fecha}
-- Contenido: {texto_resumido}
+        # Solo incluir texto si existe
+        if texto.strip():
+            # Limitar contenido si es muy largo para mantener eficiencia
+            texto_para_contexto = texto[:1500] + "..." if len(texto) > 1500 else texto
+            
+            # Formato simple sin información técnica
+            context_part = f"""
+FRAGMENTO {i}:
+{texto_para_contexto}
 """
-        context_parts.append(context_part)
+            # Solo agregar referencia al expediente si existe (sin revelar archivos específicos)
+            if numero_expediente and numero_expediente.strip():
+                context_part += f"(Del expediente: {numero_expediente})\n"
+            
+            context_parts.append(context_part)
     
     return "\n".join(context_parts)
 
 def _extract_sources(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Extrae información de fuentes para mostrar al usuario.
+    NO incluye información técnica como similitud, nombres de archivos o IDs.
     """
     sources = []
+    expedientes_vistos = set()
     
     for doc in documents:
         entity = doc.get("entity", {})
-        similitud = round(1 - doc.get("distance", 1), 3)
+        numero_expediente = entity.get("numero_expediente")
         
-        sources.append({
-            "id_expediente": entity.get("id_expediente"),
-            "numero_expediente": entity.get("numero_expediente"),
-            "id_documento": entity.get("id_documento"),
-            "nombre_archivo": entity.get("nombre_archivo"),
-            "tipo_archivo": entity.get("tipo_archivo"),
-            "fecha_carga": entity.get("fecha_carga"),
-            "similitud": similitud
-        })
+        # Solo incluir información básica de la fuente sin duplicados
+        if numero_expediente and numero_expediente not in expedientes_vistos:
+            source_info = {
+                "numero_expediente": numero_expediente,
+                "tipo_documento": "Documento legal",  # Genérico, sin especificar archivo
+                "fuente_sistema": "Sistema del Poder Judicial"
+            }
+            
+            sources.append(source_info)
+            expedientes_vistos.add(numero_expediente)
     
     return sources
 
