@@ -300,6 +300,20 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
     setUploading(true);
     try {
+      // Validación previa: verificar que todos los archivos pendientes tengan expediente
+      const filesWithoutExpediente = listFiles.filter(file => 
+        file && file.status === 'pending' && (!file.expediente || !file.expediente.trim())
+      );
+      
+      if (filesWithoutExpediente.length > 0) {
+        Toast.error(
+          'Error de validación',
+          `${filesWithoutExpediente.length} archivo(s) no tienen número de expediente asignado`
+        );
+        setUploading(false);
+        return;
+      }
+
       // Notificación de inicio
       Toast.info(
         'Subida iniciada',
@@ -318,9 +332,10 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
       // Verificar si hay archivos para procesar
       if (Object.keys(filesByExpediente).length === 0) {
         Toast.warning(
-          'Sin archivos',
+          'Sin archivos válidos',
           'No hay archivos válidos con número de expediente para procesar'
         );
+        setUploading(false);
         return;
       }
 

@@ -68,7 +68,11 @@ const IngestaDatos = () => {
   }, []);
 
   // Condiciones para deshabilitar el botón
-  const isButtonDisabled = uploading || pendingFiles === 0 || filesWithoutExpediente > 0 || !expedienteNumero.trim() || !isExpedienteValid;
+  const isButtonDisabled = uploading || 
+                          pendingFiles === 0 || 
+                          filesWithoutExpediente > 0 || 
+                          !expedienteNumero.trim() || 
+                          !isExpedienteValid;
 
   return (
     <div className="p-6 space-y-6 mx-auto">
