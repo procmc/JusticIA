@@ -60,61 +60,63 @@ const ConsultaChat = () => {
     };
 
     // Agregar mensaje vacío del asistente
-    setMessages(prev => {
-      const newMessages = [...prev, assistantMessage];
-      const messageIndex = newMessages.length - 1;
-      setStreamingMessageIndex(messageIndex);
-      setIsTyping(false);
+    setMessages(prev => [...prev, assistantMessage]);
+    
+    // Obtener el índice del mensaje que vamos a actualizar
+    const messageIndex = messages.length + 1; // +1 porque ya agregamos el mensaje del usuario
+    setStreamingMessageIndex(messageIndex);
+    setIsTyping(false);
 
-      // Iniciar consulta con streaming
-      consultaService.consultaGeneralStreaming(
-        text,
-        // onChunk: Cada fragmento de texto que llega
-        (chunk) => {
-          if (stopStreamingRef.current || !currentRequestRef.current?.active) return;
-          
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
+    // Iniciar consulta con streaming FUERA del setMessages
+    consultaService.consultaGeneralStreaming(
+      text,
+      // onChunk: Cada fragmento de texto que llega
+      (chunk) => {
+        if (stopStreamingRef.current || !currentRequestRef.current?.active) return;
+        
+        setMessages(prevMessages => {
+          const updatedMessages = [...prevMessages];
+          if (updatedMessages[messageIndex]) {
             updatedMessages[messageIndex] = {
               ...updatedMessages[messageIndex],
               text: updatedMessages[messageIndex].text + chunk
             };
-            return updatedMessages;
-          });
-        },
-        // onComplete: Cuando termina el streaming
-        () => {
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
           }
-        },
-        // onError: Si hay un error
-        (error) => {
-          console.error('Error en la consulta:', error);
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
-            
-            // Mostrar mensaje de error
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
+          return updatedMessages;
+        });
+      },
+      // onComplete: Cuando termina el streaming
+      () => {
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+        }
+      },
+      // onError: Si hay un error
+      (error) => {
+        console.error('Error en la consulta:', error);
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+          
+          // Mostrar mensaje de error
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
               updatedMessages[messageIndex] = {
                 ...updatedMessages[messageIndex],
                 text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
                 isError: true
               };
-              return updatedMessages;
-            });
-          }
-        },
-        30 // top_k: número de documentos a buscar
-      );
-
-      return newMessages;
-    });
+            }
+            return updatedMessages;
+          });
+        }
+      },
+      30 // top_k: número de documentos a buscar
+    );
   };
 
   return (
