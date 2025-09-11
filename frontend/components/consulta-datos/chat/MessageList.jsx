@@ -72,7 +72,7 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
 
                 {/* Descripción simple */}
                 <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6">
-                  Tu asistente jurídico inteligente especializado en el marco jurídico costarricense.
+                  Tu asistente inteligente especializado en el marco jurídico costarricense.
                 </p>
 
                 {/* Mensaje de advertencia discreto */}
