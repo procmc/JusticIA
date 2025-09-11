@@ -34,5 +34,15 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
 
+# Configuración LLM
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "10m")
+LLM_REQUEST_TIMEOUT = int(os.getenv("LLM_REQUEST_TIMEOUT", "120"))
+LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "2048"))
+LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1024"))
+LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))
+LLM_TOP_P = float(os.getenv("LLM_TOP_P", "0.95"))
+LLM_REPEAT_PENALTY = float(os.getenv("LLM_REPEAT_PENALTY", "1.1"))
+
 if not MILVUS_URI or not MILVUS_TOKEN:
     raise RuntimeError("Configura MILVUS_URI y MILVUS_TOKEN (.env o variables de entorno).")
