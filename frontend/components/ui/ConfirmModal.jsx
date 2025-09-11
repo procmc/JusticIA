@@ -1,4 +1,4 @@
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Spinner } from "@heroui/react";
 import { FiAlertTriangle, FiCheckCircle, FiInfo, FiX } from "react-icons/fi";
 
 const ConfirmModal = ({ 
@@ -14,7 +14,9 @@ const ConfirmModal = ({
   size = "md", // Nuevo prop para tamaño
   showIcon = true, // Nuevo prop para mostrar/ocultar ícono
   centered = true, // Nuevo prop para centrar contenido
-  customContent = null // Nuevo prop para contenido personalizado
+  customContent = null, // Nuevo prop para contenido personalizado
+  isLoading = false, // Nuevo prop para estado de carga
+  disableBackdropClose = false // Nuevo prop para deshabilitar cierre por backdrop
 }) => {
   
   // Configuración de temas y estilos
@@ -68,8 +70,18 @@ const ConfirmModal = ({
   const modalIcon = icon || currentTheme.icon;
 
   const handleConfirm = () => {
-    onConfirm();
-    onClose();
+    if (!isLoading) {
+      onConfirm();
+      if (!isLoading) {
+        onClose();
+      }
+    }
+  };
+
+  const handleClose = () => {
+    if (!isLoading && !disableBackdropClose) {
+      onClose();
+    }
   };
 
   // Componente para el ícono y título juntos
@@ -102,11 +114,11 @@ const ConfirmModal = ({
   // Componente para los botones
   const ButtonSection = () => (
     <div className={`flex gap-2 ${centered ? 'justify-center' : 'justify-end'}`}>
-      {cancelText && (
+      {cancelText && !isLoading && (
         <Button 
           color="default" 
           variant="bordered"
-          onPress={onClose}
+          onPress={handleClose}
           className="px-4 py-2 font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-md text-sm"
           size="sm"
         >
@@ -116,23 +128,25 @@ const ConfirmModal = ({
       <Button 
         color={confirmColor} 
         onPress={handleConfirm}
+        isDisabled={isLoading}
         className="px-4 py-2 font-medium text-white rounded-md text-sm"
         size="sm"
         style={{
           backgroundColor: confirmColor === 'success' ? '#22c55e' : 
                          confirmColor === 'danger' ? '#ef4444' : 
-                         confirmColor === 'primary' ? '#3b82f6' : '#6b7280'
+                         confirmColor === 'primary' ? '#3b82f6' :
+                         confirmColor === 'warning' ? '#f59e0b' : '#6b7280',
+          opacity: isLoading ? 0.8 : 1
         }}
       >
         {confirmText}
       </Button>
     </div>
-  );
-
-  return (
+  );  return (
     <Modal 
       isOpen={isOpen} 
-      onClose={onClose}
+      onClose={handleClose}
+      isDismissable={!isLoading && !disableBackdropClose}
       placement="center"
       backdrop="blur"
       size={size}
