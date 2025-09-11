@@ -102,7 +102,7 @@ async def search_similar_cases(
 async def search_similar_to_expedient(
     expedient_number: str,
     limit: int = 30,
-    similarity_threshold: float = 0.5
+    similarity_threshold: float = 0.3
 ) -> SimilaritySearchResponse:
     """
     Busca expedientes similares a un expediente específico
