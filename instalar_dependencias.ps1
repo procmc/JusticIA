@@ -269,32 +269,82 @@ try {
         Write-Success "OK ODBC Driver 18 for SQL Server ya está instalado"
     } else {
         Write-Info "ODBC Driver 18 for SQL Server no encontrado. Instalando..."
-        try {
-            winget install Microsoft.ODBCDriver.18.SQLServer --accept-package-agreements --accept-source-agreements
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "OK ODBC Driver 18 for SQL Server instalado correctamente"
-            } else {
-                Write-Warning "ADVERTENCIA Problema instalando ODBC Driver 18"
-                Write-Info "   Descárgalo manualmente desde:"
-                Write-Info "   https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
+        
+        # Intentar con diferentes IDs de winget
+        $odbcInstalled = $false
+        $odbcIds = @(
+            "Microsoft.SqlServerODBC",
+            "Microsoft.ODBCDriver.18.SQLServer", 
+            "Microsoft.ODBC.Driver.18.for.SQL.Server"
+        )
+        
+        foreach ($odbcId in $odbcIds) {
+            if (-not $odbcInstalled) {
+                Write-Info "Intentando instalar con ID: $odbcId"
+                try {
+                    winget install $odbcId --accept-package-agreements --accept-source-agreements --silent
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Success "OK ODBC Driver 18 instalado correctamente con $odbcId"
+                        $odbcInstalled = $true
+                        break
+                    }
+                } catch {
+                    Write-Info "ID $odbcId no funcionó, probando siguiente..."
+                }
             }
-        } catch {
-            Write-Error "ERROR instalando ODBC Driver 18: $_"
-            Write-Info "   Descárgalo manualmente desde:"
+        }
+        
+        # Si winget no funcionó, intentar descarga directa
+        if (-not $odbcInstalled) {
+            Write-Info "Winget no funcionó. Intentando descarga directa..."
+            try {
+                # URL de descarga directa para ODBC Driver 18
+                $odbcUrl = "https://go.microsoft.com/fwlink/?linkid=2249006"
+                $odbcFile = "$env:TEMP\msodbcsql.msi"
+                
+                Write-Info "Descargando ODBC Driver desde Microsoft..."
+                Invoke-WebRequest -Uri $odbcUrl -OutFile $odbcFile -UseBasicParsing
+                
+                Write-Info "Instalando ODBC Driver 18..."
+                Start-Process msiexec.exe -ArgumentList "/i", $odbcFile, "/quiet", "/norestart" -Wait
+                
+                # Limpiar archivo temporal
+                Remove-Item $odbcFile -Force -ErrorAction SilentlyContinue
+                
+                Write-Success "OK ODBC Driver 18 instalado mediante descarga directa"
+                $odbcInstalled = $true
+                
+            } catch {
+                Write-Warning "ADVERTENCIA Error en descarga directa: $_"
+            }
+        }
+        
+        if (-not $odbcInstalled) {
+            Write-Warning "ADVERTENCIA No se pudo instalar ODBC Driver 18 automaticamente"
+            Write-Info "   Descargalo manualmente desde:"
             Write-Info "   https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
+            Write-Info "   O desde: https://go.microsoft.com/fwlink/?linkid=2249006"
         }
     }
 } catch {
-    Write-Warning "ADVERTENCIA No se pudo verificar drivers ODBC. Instalando ODBC Driver 18..."
+    Write-Warning "ADVERTENCIA No se pudo verificar drivers ODBC. Intentando instalación directa..."
     try {
-        winget install Microsoft.ODBCDriver.18.SQLServer --accept-package-agreements --accept-source-agreements
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "OK ODBC Driver 18 for SQL Server instalado correctamente"
-        } else {
-            Write-Warning "ADVERTENCIA Problema instalando ODBC Driver 18"
-        }
+        # Intentar descarga directa como fallback
+        $odbcUrl = "https://go.microsoft.com/fwlink/?linkid=2249006"
+        $odbcFile = "$env:TEMP\msodbcsql.msi"
+        
+        Write-Info "Descargando ODBC Driver desde Microsoft..."
+        Invoke-WebRequest -Uri $odbcUrl -OutFile $odbcFile -UseBasicParsing
+        
+        Write-Info "Instalando ODBC Driver 18..."
+        Start-Process msiexec.exe -ArgumentList "/i", $odbcFile, "/quiet", "/norestart" -Wait
+        
+        Remove-Item $odbcFile -Force -ErrorAction SilentlyContinue
+        Write-Success "OK ODBC Driver 18 instalado correctamente"
+        
     } catch {
         Write-Warning "ADVERTENCIA Error instalando ODBC Driver 18. Instálalo manualmente si es necesario"
+        Write-Info "   Descarga desde: https://go.microsoft.com/fwlink/?linkid=2249006"
     }
 }
 
