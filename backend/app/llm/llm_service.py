@@ -1,6 +1,10 @@
 import asyncio
 from langchain_ollama import ChatOllama
-from app.config.config import OLLAMA_MODEL, OLLAMA_BASE_URL
+from app.config.config import (
+    OLLAMA_MODEL, OLLAMA_BASE_URL,
+    LLM_TEMPERATURE, LLM_KEEP_ALIVE, LLM_REQUEST_TIMEOUT,
+    LLM_NUM_CTX, LLM_NUM_PREDICT, LLM_TOP_K, LLM_TOP_P, LLM_REPEAT_PENALTY
+)
 from fastapi.responses import StreamingResponse
 
 _llm = None
@@ -14,15 +18,16 @@ async def get_llm():
             _llm = ChatOllama(
                 model=OLLAMA_MODEL,
                 base_url=OLLAMA_BASE_URL,
-                temperature=0.1,
+                temperature=LLM_TEMPERATURE,
                 streaming=True,
-                keep_alive="10m",  # Aumentar keep_alive para evitar desconexiones
-                request_timeout=120,  # Timeout más largo para consultas complejas
+                keep_alive=LLM_KEEP_ALIVE,  
+                request_timeout=LLM_REQUEST_TIMEOUT,  
                 model_kwargs={
-                    "num_ctx": 4096,      
-                    "num_predict": 512,   
-                    "top_k": 10,
-                    "top_p": 0.9
+                    "num_ctx": LLM_NUM_CTX,
+                    "num_predict": LLM_NUM_PREDICT,
+                    "top_k": LLM_TOP_K,
+                    "top_p": LLM_TOP_P,
+                    "repeat_penalty": LLM_REPEAT_PENALTY
                 },
             )
         return _llm
