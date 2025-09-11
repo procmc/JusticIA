@@ -51,6 +51,10 @@ class AuthService:
             if not self._usuario_activo(db, usuario):
                 raise ValueError('Credenciales inválidas')
             
+            # Actualizar fecha de último acceso
+            usuario.CF_Ultimo_acceso = datetime.utcnow()
+            db.commit()
+            
             # Obtener datos del usuario
             datos_usuario = self._obtener_datos_usuario(db, usuario)
             
