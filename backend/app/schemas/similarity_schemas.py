@@ -26,7 +26,7 @@ class SimilaritySearchRequest(BaseModel):
         description="Número máximo de expedientes similares a retornar"
     )
     similarity_threshold: float = Field(
-        0.5, 
+        0.3, 
         ge=0.0, 
         le=1.0,
         description="Umbral mínimo de similitud (0.0 a 1.0)"
