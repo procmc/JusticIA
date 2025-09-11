@@ -3,6 +3,7 @@ import TablaUsuarios from './TablaUsuarios';
 import DetalleUsuario from './DetalleUsuario';
 import FormularioUsuario from './FormularioUsuario';
 import HeaderGestionUsuarios from './HeaderGestionUsuarios';
+import ConfirmModal from '../../ui/ConfirmModal';
 import { obtenerUsuariosService, crearUsuarioService, editarUsuarioService, resetearContrasenaService } from '../../../services/usuarioService';
 import { Toast } from '../../ui/CustomAlert';
 
@@ -10,10 +11,13 @@ const GestionUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [usuariosFiltrados, setUsuariosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingResetPassword, setLoadingResetPassword] = useState(false); // Loading para el modal
   const [estadisticas, setEstadisticas] = useState(null);
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
   const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
   const [modalFormularioAbierto, setModalFormularioAbierto] = useState(false);
+  const [modalConfirmResetAbierto, setModalConfirmResetAbierto] = useState(false); // Modal de confirmación
+  const [usuarioParaReset, setUsuarioParaReset] = useState(null); // Usuario a resetear
   const [modoFormulario, setModoFormulario] = useState('crear');
   const [filtroTexto, setFiltroTexto] = useState('');
 
@@ -131,17 +135,38 @@ const GestionUsuarios = () => {
     }
   };
 
-  const handleResetearContrasena = async (usuario) => {
+  const handleResetearContrasena = (usuario) => {
+    // Abrir modal de confirmación en lugar de ejecutar directamente
+    setUsuarioParaReset(usuario);
+    setModalConfirmResetAbierto(true);
+  };
+
+  const confirmarResetearContrasena = async () => {
+    setLoadingResetPassword(true);
     try {
-      const resultado = await resetearContrasenaService(usuario.CN_Id_usuario);
+      const resultado = await resetearContrasenaService(usuarioParaReset.CN_Id_usuario);
       if (resultado.success) {
         Toast.success('Éxito', resultado.message || 'Contraseña reseteada exitosamente');
+        // Cerrar modal después del éxito
+        setTimeout(() => {
+          setModalConfirmResetAbierto(false);
+          setUsuarioParaReset(null);
+        }, 1000);
       } else {
         Toast.error('Error', resultado.message || 'Error al resetear contraseña');
       }
     } catch (error) {
       console.error('Error al resetear contraseña:', error);
       Toast.error('Error', 'Error al resetear contraseña del usuario');
+    } finally {
+      setLoadingResetPassword(false);
+    }
+  };
+
+  const cerrarModalConfirmReset = () => {
+    if (!loadingResetPassword) {
+      setModalConfirmResetAbierto(false);
+      setUsuarioParaReset(null);
     }
   };
 
@@ -191,6 +216,20 @@ const GestionUsuarios = () => {
           setUsuarioSeleccionado(null);
         }}
         onGuardar={handleGuardarUsuario}
+      />
+
+      {/* Modal de confirmación para resetear contraseña */}
+      <ConfirmModal
+        isOpen={modalConfirmResetAbierto}
+        onClose={cerrarModalConfirmReset}
+        title="Resetear Contraseña"
+        description={`¿Estás seguro de que deseas resetear la contraseña del usuario ${usuarioParaReset?.CN_Nombre || ''} ${usuarioParaReset?.CN_Apellido1 || ''} ${usuarioParaReset?.CN_Apellido2 || ''}?\n\nSe enviará un correo electrónico a ${usuarioParaReset?.CT_Correo || ''} con las instrucciones para establecer una nueva contraseña.`}
+        confirmText={loadingResetPassword ? "Enviando..." : "Sí, Resetear"}
+        cancelText="Cancelar"
+        confirmColor="danger"
+        onConfirm={confirmarResetearContrasena}
+        isLoading={loadingResetPassword}
+        disableBackdropClose={loadingResetPassword}
       />
     </div>
   );
