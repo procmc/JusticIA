@@ -9,6 +9,7 @@
 # - Node.js LTS (instalación automática si no está presente)
 # - Ollama (LLM local)
 # - Git (control de versiones)
+# - ODBC Driver 18 for SQL Server (para Azure SQL Database)
 # - Windows Terminal (opcional)
 # - Verificación y actualización automática de versiones
 # ===============================================================================
@@ -258,6 +259,45 @@ if (-not (Install-WithWinget "Git" "Git.Git" "git")) {
     Write-Info "   Descárgalo manualmente desde: https://git-scm.com/"
 }
 
+# ODBC Driver 18 for SQL Server (para Azure SQL Database)
+Write-Info ""
+Write-Info "Verificando ODBC Driver 18 for SQL Server..."
+try {
+    $odbcDriver = Get-OdbcDriver | Where-Object {$_.Name -eq "ODBC Driver 18 for SQL Server"} -ErrorAction SilentlyContinue
+    
+    if ($odbcDriver) {
+        Write-Success "OK ODBC Driver 18 for SQL Server ya está instalado"
+    } else {
+        Write-Info "ODBC Driver 18 for SQL Server no encontrado. Instalando..."
+        try {
+            winget install Microsoft.ODBCDriver.18.SQLServer --accept-package-agreements --accept-source-agreements
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "OK ODBC Driver 18 for SQL Server instalado correctamente"
+            } else {
+                Write-Warning "ADVERTENCIA Problema instalando ODBC Driver 18"
+                Write-Info "   Descárgalo manualmente desde:"
+                Write-Info "   https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
+            }
+        } catch {
+            Write-Error "ERROR instalando ODBC Driver 18: $_"
+            Write-Info "   Descárgalo manualmente desde:"
+            Write-Info "   https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
+        }
+    }
+} catch {
+    Write-Warning "ADVERTENCIA No se pudo verificar drivers ODBC. Instalando ODBC Driver 18..."
+    try {
+        winget install Microsoft.ODBCDriver.18.SQLServer --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "OK ODBC Driver 18 for SQL Server instalado correctamente"
+        } else {
+            Write-Warning "ADVERTENCIA Problema instalando ODBC Driver 18"
+        }
+    } catch {
+        Write-Warning "ADVERTENCIA Error instalando ODBC Driver 18. Instálalo manualmente si es necesario"
+    }
+}
+
 # ===============================================================================
 # HERRAMIENTAS OPCIONALES (mejorar experiencia de desarrollo)
 # ===============================================================================
@@ -349,6 +389,19 @@ foreach ($tool in $tools) {
     }
 }
 
+# Verificar ODBC Driver 18 for SQL Server
+Write-Info ""
+try {
+    $odbcDriver = Get-OdbcDriver | Where-Object {$_.Name -eq "ODBC Driver 18 for SQL Server"} -ErrorAction SilentlyContinue
+    if ($odbcDriver) {
+        Write-Success "OK ODBC Driver 18 for SQL Server: Instalado"
+    } else {
+        Write-Warning "ADVERTENCIA ODBC Driver 18 for SQL Server: No disponible"
+    }
+} catch {
+    Write-Warning "ADVERTENCIA No se pudo verificar ODBC Driver 18"
+}
+
 # ===============================================================================
 # INSTRUCCIONES FINALES
 # ===============================================================================
@@ -376,6 +429,11 @@ Write-Info ""
 Write-Info "5. Si Ollama esta instalado, verifica que este funcionando:"
 Write-Info "   ollama list"
 Write-Info "   ollama serve (si no esta ejecutandose automaticamente)"
+Write-Info ""
+Write-Info "6. Verifica la conexión a la base de datos Azure SQL Server:"
+Write-Info "   El script instaló ODBC Driver 18 for SQL Server necesario para:"
+Write-Info "   - Host: uiidb.eastus.cloudapp.azure.com"
+Write-Info "   - Base de datos: db_JusticIA"
 Write-Info ""
 Write-Warning "IMPORTANTE: Es recomendable reiniciar el terminal despues de esta instalacion"
 Write-Info ""
