@@ -127,12 +127,15 @@ const put = (url, data = null) => {
 /**
  * POST request para streaming
  */
-const postStream = async (url, data = null) => {
+const postStream = async (url, data = null, timeout = 120000) => { // 2 minutos timeout
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   
   try {
     // Obtener headers de autenticación
     const authHeaders = await getAuthHeaders();
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
     
     const options = {
       method: 'POST',
@@ -140,10 +143,12 @@ const postStream = async (url, data = null) => {
         ...authHeaders,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     };
 
     const response = await fetch(fullUrl, options);
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -161,6 +166,10 @@ const postStream = async (url, data = null) => {
 
     return response; // Devolver la respuesta completa para streaming
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('Request was aborted due to timeout');
+      throw new Error('La consulta tardó demasiado tiempo. Por favor, intenta nuevamente.');
+    }
     console.error('API Stream Request Error:', error.message || error.toString());
     throw error;
   }

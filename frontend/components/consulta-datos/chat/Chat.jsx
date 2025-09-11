@@ -8,6 +8,7 @@ const ConsultaChat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
   const stopStreamingRef = useRef(false);
+  const currentRequestRef = useRef(null);
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
@@ -16,11 +17,22 @@ const ConsultaChat = () => {
     stopStreamingRef.current = true;
     setIsTyping(false);
     setStreamingMessageIndex(null);
+    
+    // Cancelar la request actual si existe
+    if (currentRequestRef.current) {
+      currentRequestRef.current = null;
+    }
   };
 
   const handleSendMessage = async (text) => {
+    // Cancelar cualquier request anterior
+    if (currentRequestRef.current) {
+      stopStreamingRef.current = true;
+    }
+    
     // Resetear flag de parada
     stopStreamingRef.current = false;
+    currentRequestRef.current = { active: true };
 
     // Crear mensaje del usuario
     const userMessage = {
@@ -59,7 +71,7 @@ const ConsultaChat = () => {
         text,
         // onChunk: Cada fragmento de texto que llega
         (chunk) => {
-          if (stopStreamingRef.current) return;
+          if (stopStreamingRef.current || !currentRequestRef.current?.active) return;
           
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
@@ -72,25 +84,31 @@ const ConsultaChat = () => {
         },
         // onComplete: Cuando termina el streaming
         () => {
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
+          if (currentRequestRef.current?.active) {
+            setStreamingMessageIndex(null);
+            setIsTyping(false);
+            currentRequestRef.current = null;
+          }
         },
         // onError: Si hay un error
         (error) => {
           console.error('Error en la consulta:', error);
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
-          
-          // Mostrar mensaje de error
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            updatedMessages[messageIndex] = {
-              ...updatedMessages[messageIndex],
-              text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-              isError: true
-            };
-            return updatedMessages;
-          });
+          if (currentRequestRef.current?.active) {
+            setStreamingMessageIndex(null);
+            setIsTyping(false);
+            currentRequestRef.current = null;
+            
+            // Mostrar mensaje de error
+            setMessages(prevMessages => {
+              const updatedMessages = [...prevMessages];
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+                isError: true
+              };
+              return updatedMessages;
+            });
+          }
         },
         30 // top_k: número de documentos a buscar
       );

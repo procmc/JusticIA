@@ -1,27 +1,31 @@
+import asyncio
 from langchain_ollama import ChatOllama
 from app.config.config import OLLAMA_MODEL, OLLAMA_BASE_URL
 from fastapi.responses import StreamingResponse
 
 _llm = None
+_llm_lock = asyncio.Lock()
 
 
 async def get_llm():
     global _llm
-    if _llm is None:
-        _llm = ChatOllama(
-            model=OLLAMA_MODEL,
-            base_url=OLLAMA_BASE_URL,
-            temperature=0.1,
-            streaming=True,
-            keep_alive="5m",
-            model_kwargs={
-                "num_ctx": 4096,      # Aumentado para más contexto
-                "num_predict": 512,   # Aumentado para respuestas más largas
-                "top_k": 10,
-                "top_p": 0.9
-            },
-        )
-    return _llm
+    async with _llm_lock:
+        if _llm is None:
+            _llm = ChatOllama(
+                model=OLLAMA_MODEL,
+                base_url=OLLAMA_BASE_URL,
+                temperature=0.1,
+                streaming=True,
+                keep_alive="10m",  # Aumentar keep_alive para evitar desconexiones
+                request_timeout=120,  # Timeout más largo para consultas complejas
+                model_kwargs={
+                    "num_ctx": 4096,      
+                    "num_predict": 512,   
+                    "top_k": 10,
+                    "top_p": 0.9
+                },
+            )
+        return _llm
 
 
 async def consulta_simple(pregunta: str):
@@ -56,6 +60,7 @@ async def consulta_general_streaming(prompt_completo: str):
     print(f"Consulta general streaming iniciada")
     
     async def event_generator():
+        llm = None
         try:
             # Obtener LLM con manejo de errores
             llm = await get_llm()
@@ -64,23 +69,31 @@ async def consulta_general_streaming(prompt_completo: str):
             # Verificar conexión antes de hacer streaming
             print(f"Iniciando streaming para prompt de {len(prompt_completo)} caracteres")
             
+            chunk_count = 0
             async for chunk in llm.astream(prompt_completo):
                 # Enviar cada chunk como Server-Sent Event
                 content = getattr(chunk, 'content', str(chunk))
                 if content and content.strip():
-                    print(f"Chunk recibido: {content[:50]}...")
+                    chunk_count += 1
+                    print(f"Chunk {chunk_count} recibido: {content[:50]}...")
                     yield f"data: {content}\n\n"
             
             # Señal de finalización
-            print("Streaming completado exitosamente")
+            print(f"Streaming completado exitosamente. Total chunks: {chunk_count}")
             yield "data: [DONE]\n\n"
             
+        except asyncio.CancelledError:
+            print("Streaming cancelado por el cliente")
+            yield "data: [DONE]\n\n"
         except Exception as e:
             print(f"Error en streaming: {e}")
             import traceback
             traceback.print_exc()
             yield f"data: Error: {str(e)}\n\n"
             yield "data: [DONE]\n\n"
+        finally:
+            # Cleanup si es necesario
+            print("Limpieza del streaming completada")
 
     return StreamingResponse(
         event_generator(), 
