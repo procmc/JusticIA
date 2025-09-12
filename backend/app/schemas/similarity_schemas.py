@@ -67,7 +67,6 @@ class SimilarCase(BaseModel):
     last_activity_date: Optional[datetime] = None
     
     # Metadatos adicionales para el frontend
-    matter_type: Optional[str] = None
     court_instance: Optional[str] = None
 
 
@@ -108,8 +107,7 @@ class SimilaritySearchResponse(BaseModel):
                                 "page_number": 3
                             }
                         ],
-                        "creation_date": "2024-01-15T10:30:00Z",
-                        "matter_type": "Civil"
+                        "creation_date": "2024-01-15T10:30:00Z"
                     }
                 ],
                 "search_timestamp": "2025-09-10T14:30:00Z",
