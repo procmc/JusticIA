@@ -1,12 +1,19 @@
 from fastapi import APIRouter, HTTPException, status
-from typing import Optional
+from typing import List
+from datetime import datetime
+import logging
 
 from app.schemas.similarity_schemas import (
     SimilaritySearchRequest, 
     SimilaritySearchResponse,
-    SimilaritySearchError
+    SimilarCase,
+    DocumentMatch
 )
-from app.services.similarity_service import similarity_service
+from app.services.busqueda_similares import SimilarityService
+
+# Instancia global del servicio
+similarity_service = SimilarityService()
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -15,39 +22,7 @@ router = APIRouter()
     "/search", 
     response_model=SimilaritySearchResponse,
     summary="Buscar casos similares",
-    description="""
-    Busca expedientes similares basándose en criterios específicos.
-    
-    **Modos de búsqueda:**
-    - `description`: Búsqueda por texto libre describiendo el caso
-    - `expedient`: Búsqueda de expedientes similares a uno específico
-    
-    **Parámetros importantes:**
-    - `similarity_threshold`: Umbral mínimo de similitud (0.0 a 1.0)
-    - `limit`: Número máximo de expedientes a retornar
-    
-    **Respuesta:**
-    - Lista de expedientes ordenados por similitud descendente
-    - Cada expediente incluye documentos coincidentes y porcentaje de similitud
-    - Metadatos de la búsqueda (tiempo de ejecución, documentos analizados, etc.)
-    """,
-    responses={
-        200: {
-            "description": "Búsqueda exitosa",
-            "model": SimilaritySearchResponse
-        },
-        400: {
-            "description": "Parámetros de búsqueda inválidos",
-            "model": SimilaritySearchError
-        },
-        401: {
-            "description": "No autorizado"
-        },
-        500: {
-            "description": "Error interno del servidor",
-            "model": SimilaritySearchError
-        }
-    }
+    description="Busca expedientes similares basándose en criterios específicos (por descripción o por expediente)."
 )
 async def search_similar_cases(
     request: SimilaritySearchRequest
@@ -56,17 +31,66 @@ async def search_similar_cases(
     Endpoint principal para búsqueda de casos similares
     """
     try:
-        # Realizar búsqueda sin autenticación por ahora
-        # TODO: Agregar autenticación cuando esté configurada
-        result = await similarity_service.search_similar_cases(
-            request=request,
-            user_id=None  # Sin usuario por ahora
+        import time
+        start_time = time.time()
+        
+        # Realizar búsqueda usando el nuevo servicio modular
+        casos_similares_dict = await similarity_service.search_similar_cases(request)
+        
+        execution_time_ms = (time.time() - start_time) * 1000
+        
+        # Adaptar resultados al esquema esperado
+        adapted_cases = []
+        for case_dict in casos_similares_dict:
+            # Adaptar documentos coincidentes
+            matched_documents = []
+            for i, doc in enumerate(case_dict.get("matching_documents", [])[:5]):
+                matched_doc = DocumentMatch(
+                    document_id=i + 1,
+                    document_name=doc.get("document_name", "Documento sin nombre"),
+                    similarity_score=doc.get("similarity_score", 0.0),
+                    text_fragment=doc.get("content_preview", "")[:500],
+                    page_number=None
+                )
+                matched_documents.append(matched_doc)
+            
+            # Crear caso adaptado
+            try:
+                expedient_id_int = int(case_dict.get("expedient_id", 0))
+            except (ValueError, TypeError):
+                expedient_id_int = hash(str(case_dict.get("expedient_id", ""))) % 1000000
+            
+            adapted_case = SimilarCase(
+                expedient_id=expedient_id_int,
+                expedient_number=str(case_dict.get("expedient_id", "")),
+                similarity_percentage=case_dict.get("similarity_score", 0.0) * 100,
+                document_count=len(case_dict.get("matching_documents", [])),
+                matched_documents=matched_documents,
+                creation_date=datetime.now(),
+                last_activity_date=None,
+                court_instance=None
+            )
+            adapted_cases.append(adapted_case)
+        
+        # Construir respuesta completa
+        search_criteria = (
+            request.expedient_number if request.search_mode == "expedient" 
+            else request.query_text
         )
         
-        return result
+        response = SimilaritySearchResponse(
+            search_criteria=search_criteria or "",
+            search_mode=request.search_mode,
+            total_results=len(adapted_cases),
+            execution_time_ms=execution_time_ms,
+            similarity_threshold=request.similarity_threshold,
+            similar_cases=adapted_cases,
+            total_documents_analyzed=sum(case.document_count for case in adapted_cases)
+        )
+        
+        return response
         
     except ValueError as e:
-        # Errores de validación
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -76,108 +100,12 @@ async def search_similar_cases(
             }
         )
     except Exception as e:
-        # Errores internos
-        print(f"Error en búsqueda de similares: {str(e)}")
+        logger.error(f"Error en búsqueda de similares: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error_code": "INTERNAL_ERROR",
                 "error_message": "Error interno del servidor",
                 "details": str(e) if isinstance(e, (ValueError, TypeError)) else "Error procesando búsqueda"
-            }
-        )
-
-
-@router.get(
-    "/expedient/{expedient_number}",
-    response_model=SimilaritySearchResponse,
-    summary="Buscar expedientes similares a uno específico",
-    description="""
-    Busca expedientes similares a un expediente específico usando su número.
-    
-    Este endpoint es una forma simplificada de usar el modo 'expedient' 
-    del endpoint principal de búsqueda.
-    """
-)
-async def search_similar_to_expedient(
-    expedient_number: str,
-    limit: int = 30,
-    similarity_threshold: float = 0.3
-) -> SimilaritySearchResponse:
-    """
-    Busca expedientes similares a un expediente específico
-    """
-    try:
-        # Crear request automáticamente
-        request = SimilaritySearchRequest(
-            search_mode="expedient",
-            expedient_number=expedient_number,
-            limit=limit,
-            similarity_threshold=similarity_threshold
-        )
-        
-        # Realizar búsqueda sin autenticación por ahora
-        # TODO: Agregar autenticación cuando esté configurada
-        result = await similarity_service.search_similar_cases(
-            request=request,
-            user_id=None  # Sin usuario por ahora
-        )
-        
-        return result
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error_code": "VALIDATION_ERROR",
-                "error_message": str(e),
-                "details": f"Número de expediente inválido: {expedient_number}"
-            }
-        )
-    except Exception as e:
-        print(f"Error en búsqueda por expediente: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_code": "INTERNAL_ERROR",
-                "error_message": "Error interno del servidor",
-                "details": str(e) if isinstance(e, (ValueError, TypeError)) else "Error procesando búsqueda"
-            }
-        )
-
-
-@router.get(
-    "/health",
-    summary="Health check del servicio de similitud",
-    description="Verifica que el servicio de búsqueda de similares esté funcionando correctamente"
-)
-async def similarity_health_check():
-    """
-    Health check específico para el servicio de similitud
-    """
-    try:
-        from app.vectorstore.vectorstore import get_vectorstore
-        from app.config.config import COLLECTION_NAME
-        
-        # Verificar conexión con Milvus
-        client = await get_vectorstore()
-        stats = client.get_collection_stats(collection_name=COLLECTION_NAME)
-        
-        return {
-            "status": "healthy",
-            "service": "similarity_search",
-            "vectorstore_status": "connected",
-            "collection_stats": stats,
-            "timestamp": "2025-09-10T14:30:00Z"
-        }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "status": "unhealthy",
-                "service": "similarity_search",
-                "error": str(e),
-                "timestamp": "2025-09-10T14:30:00Z"
             }
         )
