@@ -71,7 +71,7 @@ class DocumentoService:
                     "created_date": expediente.CF_Fecha_creacion.isoformat() if expediente.CF_Fecha_creacion else None,
                     "status": "activo",  # Valor por defecto
                     "created_by": None,
-                    "updated_date": expediente.CF_Fecha_modificacion.isoformat() if expediente.CF_Fecha_modificacion else None,
+                    "updated_date": expediente.CF_Fecha_creacion.isoformat() if expediente.CF_Fecha_creacion else None,  # Usar fecha de creación como updated_date
                     "updated_by": None,
                     "documents": []
                 }
@@ -126,12 +126,12 @@ class DocumentoService:
                     "id": doc.CN_Id_documento,
                     "document_name": doc.CT_Nombre_archivo,
                     "file_path": doc.CT_Ruta_archivo,
-                    "upload_date": doc.CF_Fecha_creacion.isoformat() if doc.CF_Fecha_creacion else None,
+                    "upload_date": doc.CF_Fecha_carga.isoformat() if doc.CF_Fecha_carga else None,
                     "content_preview": getattr(doc, 'CT_Contenido_preview', None),  # Puede no existir
                     "file_size": getattr(doc, 'CN_Tamaño', None),  # Puede no existir
                     "file_type": doc.CT_Tipo_archivo,
                     "created_by": getattr(doc, 'CT_Creado_por', None),  # Puede no existir
-                    "updated_date": doc.CF_Fecha_modificacion.isoformat() if doc.CF_Fecha_modificacion else None
+                    "updated_date": doc.CF_Fecha_carga.isoformat() if doc.CF_Fecha_carga else None  # Usar fecha de carga como updated_date
                 }
                 documents.append(document)
             
@@ -220,17 +220,21 @@ class DocumentoService:
                     return None
                 
                 # Obtener información del expediente si está disponible
+                expedient_id = None
                 expedient_name = None
-                if documento.expediente:
-                    expedient_name = documento.expediente.CT_Num_expediente
+                if documento.expedientes and len(documento.expedientes) > 0:
+                    # Tomar el primer expediente relacionado
+                    expediente = documento.expedientes[0]
+                    expedient_id = expediente.CT_Num_expediente
+                    expedient_name = expediente.CT_Num_expediente
                 
                 return {
                     "id": documento.CN_Id_documento,
                     "document_name": documento.CT_Nombre_archivo,
-                    "expedient_id": documento.CN_Id_expediente,
+                    "expedient_id": expedient_id,
                     "expedient_name": expedient_name,
                     "file_path": documento.CT_Ruta_archivo,
-                    "upload_date": documento.CF_Fecha_creacion.isoformat() if documento.CF_Fecha_creacion else None,
+                    "upload_date": documento.CF_Fecha_carga.isoformat() if documento.CF_Fecha_carga else None,
                     "content_preview": getattr(documento, 'CT_Contenido_preview', None),
                     "file_size": getattr(documento, 'CN_Tamaño', None),
                     "file_type": documento.CT_Tipo_archivo
