@@ -34,26 +34,26 @@ export function UserButton() {
 
     const getRoleStyles = (role) => {
         switch (role) {
-            case 1:
+            case 'Administrador':
                 return {
                     borderColor: 'border-red-500',
                     textColor: 'text-danger',
                     bgColor: 'bg-danger-50',
                     label: 'Administrador'
                 };
-            case 2:
+            case 'Usuario Judicial':
                 return {
                     borderColor: 'border-green-500',
                     textColor: 'text-green-600',
                     bgColor: 'bg-green-50',
-                    label: 'Docente'
+                    label: 'Usuario Judicial'
                 };
             default:
                 return {
                     borderColor: 'border-gray-400',
                     textColor: 'text-default-600',
                     bgColor: 'bg-default-50',
-                    label: 'Usuario'
+                    label: role || 'Usuario'
                 };
         }
     };
@@ -133,13 +133,13 @@ export function UserButton() {
                                     </div>
                                     <div className="flex flex-col">
                                         <p className="font-semibold text-gray-800">
-                                            {formatearNombre("Yeslin Chinchilla")}
+                                            {formatearNombre(session?.user?.name || "Usuario")}
                                         </p>
                                         <p className="text-xs text-gray-500">
-                                            yes@gmail.com
+                                            {session?.user?.email || "usuario@example.com"}
                                         </p>
-                                        <div className={`text-xs font-medium mt-1`}>
-                                            Prueba
+                                        <div className={`text-xs font-medium mt-1 px-2 py-1 rounded-md ${getRoleStyles(session?.user?.role).bgColor} ${getRoleStyles(session?.user?.role).textColor}`}>
+                                            {getRoleStyles(session?.user?.role).label}
                                         </div>
                                     </div>
                                 </div>

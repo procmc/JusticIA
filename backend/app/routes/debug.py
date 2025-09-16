@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models.usuario import T_Usuario
+from app.db.models.rol import T_Rol
 from app.repositories.usuario_repository import UsuarioRepository
 from app.vectorstore.vectorstore import get_vectorstore, search_similar_documents
 from app.embeddings.embeddings import get_embedding
@@ -9,6 +10,39 @@ from app.config.config import COLLECTION_NAME
 from typing import Optional
 
 router = APIRouter(tags=["debug"])
+
+@router.get("/usuario-por-email/{email}")
+async def debug_usuario_por_email(email: str, db: Session = Depends(get_db)):
+    """Debug: Ver datos completos de un usuario por email incluyendo rol"""
+    usuario = db.query(T_Usuario).filter(T_Usuario.CT_Correo == email).first()
+    
+    if not usuario:
+        return {"error": "Usuario no encontrado"}
+    
+    # Obtener información del rol
+    rol_info = None
+    if usuario.CN_Id_rol:
+        rol = db.query(T_Rol).filter(T_Rol.CN_Id_rol == usuario.CN_Id_rol).first()
+        if rol:
+            rol_info = {
+                "id": rol.CN_Id_rol,
+                "nombre": rol.CT_Nombre_rol
+            }
+    
+    return {
+        "usuario": {
+            "id": usuario.CN_Id_usuario,
+            "email": usuario.CT_Correo,
+            "nombre_usuario": usuario.CT_Nombre_usuario,
+            "nombre": usuario.CT_Nombre,
+            "apellido_uno": usuario.CT_Apellido_uno,
+            "apellido_dos": usuario.CT_Apellido_dos,
+            "nombre_completo": f"{usuario.CT_Nombre} {usuario.CT_Apellido_uno}" + (f" {usuario.CT_Apellido_dos}" if usuario.CT_Apellido_dos else ""),
+            "rol_id": usuario.CN_Id_rol,
+            "estado_id": usuario.CN_Id_estado
+        },
+        "rol": rol_info
+    }
 
 @router.get("/usuarios")
 async def listar_usuarios_debug(db: Session = Depends(get_db)):
