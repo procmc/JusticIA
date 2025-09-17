@@ -207,7 +207,7 @@ def _load_system_prompt() -> str:
             return file.read().strip()
     
     except Exception as e:
-        return """Eres JusticIA, un asistente virtual especializado en documentos legales. 
+        return """Eres JustiBot, un asistente virtual especializado en documentos legales. 
         Responde de forma clara, profesional y basándote únicamente en el contexto proporcionado.
         Si la información no está en el contexto, indica claramente que no tienes esa información."""
 
