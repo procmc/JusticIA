@@ -93,11 +93,19 @@ RESTRICCIONES ESTRICTAS:
 - NO menciones legislación general ni códigos legales
 - Si no tienes información suficiente en los expedientes, indica claramente que la consulta requiere revisar más documentos del despacho
 
+FORMATO DE RESPUESTA REQUERIDO:
+- Usa **texto en negrita** para números de expediente, materias importantes, fechas y nombres de juzgados
+- Agrega líneas de separación (---) entre diferentes expedientes
+- Estructura la información claramente con espacios y saltos de línea
+- Usa bullet points (- ) para enumerar detalles importantes
+- Mantén párrafos separados con doble salto de línea
+
 Tu trabajo es:
 1. Analizar ÚNICAMENTE la información de los expedientes internos proporcionados
 2. Responder basándote EXCLUSIVAMENTE en los documentos de este despacho
 3. Citar SOLAMENTE expedientes y documentos internos específicos
-4. Si falta información, sugerir revisar otros expedientes internos relacionados
+4. Estructurar la respuesta de forma clara y legible
+5. Si falta información, sugerir revisar otros expedientes internos relacionados
 
 IMPORTANTE - SISTEMA PRIVADO:
 - Este es un sistema interno y confidencial
@@ -122,6 +130,12 @@ SISTEMA PRIVADO - RESTRICCIONES:
 - NUNCA menciones leyes, códigos o jurisprudencia externa
 - NO recomiendes consultar fuentes externas
 - Mantén toda la información confidencial dentro del despacho
+
+FORMATO DE RESPUESTA REQUERIDO:
+- Usa **texto en negrita** para números de expediente, materias importantes, fechas y nombres de juzgados
+- Estructura la información claramente con espacios y saltos de línea
+- Usa bullet points (- ) para enumerar detalles importantes
+- Mantén párrafos separados con doble salto de línea
 
 Analiza el expediente interno proporcionado y responde de manera estructurada:
 1. Resumen del caso basado en documentos internos
@@ -149,6 +163,13 @@ SISTEMA PRIVADO - RESTRICCIONES ESTRICTAS:
 - NUNCA menciones jurisprudencia externa o casos públicos
 - NO recomiendes consultar bases de datos externas
 - Mantén toda la información confidencial dentro del despacho
+
+FORMATO DE RESPUESTA REQUERIDO:
+- Usa **texto en negrita** para números de expediente, materias importantes, fechas y nombres de juzgados
+- Agrega líneas de separación (---) entre diferentes expedientes
+- Estructura la información claramente con espacios y saltos de línea
+- Usa bullet points (- ) para enumerar detalles importantes
+- Mantén párrafos separados con doble salto de línea
 
 Analiza los expedientes internos proporcionados y:
 1. Identifica similitudes en cuanto a materia y hechos según documentos internos
@@ -205,6 +226,13 @@ RESTRICCIONES ESTRICTAS:
 - NUNCA recomiendes consultar fuentes externas o bases de datos públicas
 - NO menciones legislación general ni códigos legales
 - Si no tienes información suficiente en los expedientes, indica claramente que la consulta requiere revisar más documentos del despacho
+
+FORMATO DE RESPUESTA REQUERIDO:
+- Usa **texto en negrita** para números de expediente, materias importantes, fechas y nombres de juzgados
+- Agrega líneas de separación (---) entre diferentes expedientes cuando listés múltiples casos
+- Estructura la información claramente con espacios y saltos de línea
+- Usa bullet points (- ) para enumerar detalles importantes
+- Mantén párrafos separados con doble salto de línea
 
 IMPORTANTE - SISTEMA PRIVADO:
 - Este es un sistema interno y confidencial
@@ -284,6 +312,12 @@ SISTEMA PRIVADO - RESTRICCIONES:
 - NUNCA menciones leyes, códigos o jurisprudencia externa
 - NO recomiendes consultar fuentes externas
 - Mantén toda la información confidencial dentro del despacho
+
+FORMATO DE RESPUESTA REQUERIDO:
+- Usa **texto en negrita** para números de expediente, materias importantes, fechas y nombres de juzgados
+- Estructura la información claramente con espacios y saltos de línea
+- Usa bullet points (- ) para enumerar detalles importantes
+- Mantén párrafos separados con doble salto de línea
 
 Analiza el expediente interno proporcionado y responde de manera estructurada:
 1. Resumen del caso basado en documentos internos
