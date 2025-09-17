@@ -9,13 +9,17 @@ logger = logging.getLogger(__name__)
 # Base para los modelos SQLAlchemy
 Base = declarative_base()
 
-# Motor de SQLAlchemy con validación de conexión
+# Motor de SQLAlchemy con pool aumentado para concurrencia
 try:
     engine = create_engine(
         DATABASE_URL,
         echo=False,  # Cambiar a True para ver las consultas SQL
         pool_pre_ping=True,
-        pool_recycle=3600
+        pool_recycle=3600,
+        pool_size=20,          # Base de 20 conexiones (era 5 por defecto)
+        max_overflow=40,       # Hasta 40 adicionales (era 10 por defecto)
+        pool_timeout=60,       # Timeout más largo: 60 segundos
+        pool_reset_on_return='commit'  # Limpiar conexiones al devolverlas
     )
     
     # Probar conexión al inicializar
