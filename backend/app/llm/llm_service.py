@@ -1,4 +1,5 @@
 import asyncio
+import re
 from langchain_ollama import ChatOllama
 from app.config.config import (
     OLLAMA_MODEL, OLLAMA_BASE_URL,
@@ -11,6 +12,66 @@ _llm = None
 _llm_lock = asyncio.Lock()
 
 
+def filter_thinking_chunk(chunk: str) -> str:
+    """Filtra cualquier texto de pensamiento que aparezca en el chunk"""
+    if not chunk:
+        return chunk
+    
+    # Patrones más amplios para capturar todo tipo de texto de pensamiento
+    patterns = [
+        r'<think>.*?</think>',  # <think>...</think>
+        r'<\|thinking\|>.*?</\|thinking\|>',  # <|thinking|>...</|thinking|>
+        r'<think>.*',  # <think> hasta el final
+        r'.*</think>',  # desde el inicio hasta </think>
+        r'<\|thinking\|>.*',  # <|thinking|> hasta el final
+        r'.*</\|thinking\|>',  # desde el inicio hasta </|thinking|>
+        r'^.*?<think>',  # todo antes de <think>
+        r'</think>.*?$',  # todo después de </think>
+    ]
+    
+    filtered = chunk
+    for pattern in patterns:
+        filtered = re.sub(pattern, '', filtered, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Limpiar espacios extra pero preservar la estructura del texto
+    if filtered != chunk:  # Solo si se hizo algún cambio
+        filtered = re.sub(r'\n\s*\n\s*\n', '\n\n', filtered)  # Máximo 2 saltos de línea
+        filtered = filtered.strip()
+    
+    return filtered
+
+
+class StreamBuffer:
+    """Buffer para acumular chunks y filtrar pensamiento de manera más efectiva"""
+    def __init__(self):
+        self.buffer = ""
+        self.in_thinking = False
+    
+    def add_chunk(self, chunk: str) -> str:
+        """Agrega un chunk al buffer y retorna contenido filtrado listo para enviar"""
+        self.buffer += chunk
+        
+        # Verificar si estamos en modo pensamiento
+        if '<think>' in self.buffer.lower() or '<|thinking|>' in self.buffer.lower():
+            self.in_thinking = True
+        
+        # Si estamos en modo pensamiento, buscar el cierre
+        if self.in_thinking:
+            if '</think>' in self.buffer.lower() or '</|thinking|>' in self.buffer.lower():
+                # Filtrar todo el pensamiento acumulado
+                filtered_buffer = filter_thinking_chunk(self.buffer)
+                self.buffer = ""
+                self.in_thinking = False
+                return filtered_buffer
+            else:
+                # Seguimos acumulando hasta encontrar el cierre
+                return ""
+        else:
+            # No estamos en pensamiento, devolver el chunk filtrado
+            result = filter_thinking_chunk(chunk)
+            return result
+
+
 async def get_llm():
     global _llm
     async with _llm_lock:
@@ -18,7 +79,7 @@ async def get_llm():
             _llm = ChatOllama(
                 model=OLLAMA_MODEL,
                 base_url=OLLAMA_BASE_URL,
-                temperature=LLM_TEMPERATURE,
+                temperature=LLM_TEMPERATURE,  # Usar configuración original
                 streaming=True,
                 keep_alive=LLM_KEEP_ALIVE,  
                 request_timeout=LLM_REQUEST_TIMEOUT,  
@@ -27,7 +88,9 @@ async def get_llm():
                     "num_predict": LLM_NUM_PREDICT,
                     "top_k": LLM_TOP_K,
                     "top_p": LLM_TOP_P,
-                    "repeat_penalty": LLM_REPEAT_PENALTY
+                    "repeat_penalty": LLM_REPEAT_PENALTY,
+                    # Solo agregar stop tokens para los marcadores de pensamiento
+                    "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
                 },
             )
         return _llm
@@ -40,9 +103,13 @@ async def consulta_simple(pregunta: str):
     print("LLM:", llm)
     try:
         response = await llm.ainvoke(pregunta)
-        print("Respuesta:", response)
-        # Si la respuesta tiene el atributo 'content'
-        return {"respuesta": getattr(response, "content", str(response))}
+        raw_content = getattr(response, "content", str(response))
+        
+        # Aplicar filtrado de pensamiento
+        filtered_content = filter_thinking_chunk(raw_content)
+        
+        print("Respuesta filtrada:", filtered_content)
+        return {"respuesta": filtered_content}
     except Exception as e:
         print("Error:", e)
         return {"error": str(e)}
@@ -55,7 +122,11 @@ async def consulta_streaming(pregunta: str):
 
     async def event_generator():
         async for chunk in llm.astream(pregunta):
-            yield str(chunk.content)
+            content = str(chunk.content)
+            # Solo filtrar si realmente hay marcadores de pensamiento
+            filtered_content = filter_thinking_chunk(content)
+            if filtered_content.strip():  # Solo enviar si hay contenido después del filtrado
+                yield filtered_content
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
@@ -75,13 +146,18 @@ async def consulta_general_streaming(prompt_completo: str):
             print(f"Iniciando streaming para prompt de {len(prompt_completo)} caracteres")
             
             chunk_count = 0
+            stream_buffer = StreamBuffer()
+            
             async for chunk in llm.astream(prompt_completo):
                 # Enviar cada chunk como Server-Sent Event
                 content = getattr(chunk, 'content', str(chunk))
                 if content and content.strip():
-                    chunk_count += 1
-                    print(f"Chunk {chunk_count} recibido: {content[:50]}...")
-                    yield f"data: {content}\n\n"
+                    # Usar el buffer inteligente para filtrar pensamiento
+                    filtered_content = stream_buffer.add_chunk(content)
+                    if filtered_content and filtered_content.strip():  # Solo enviar si hay contenido válido
+                        chunk_count += 1
+                        print(f"Chunk {chunk_count} recibido: {content[:50]}...")
+                        yield f"data: {filtered_content}\n\n"
             
             # Señal de finalización
             print(f"Streaming completado exitosamente. Total chunks: {chunk_count}")
