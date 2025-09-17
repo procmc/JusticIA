@@ -115,7 +115,7 @@ const ConsultaChat = () => {
           });
         }
       },
-      30 // top_k: número de documentos a buscar
+      10
     );
   };
 
