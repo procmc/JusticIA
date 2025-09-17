@@ -352,18 +352,49 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     # Los demás formatos con Tika
     try:
         from tika import parser
+        import chardet
         
-        # Tika procesa automáticamente cualquier formato soportado
-        parsed = parser.from_buffer(content)
-        
-        # Extraer el texto - Tika devuelve un dict
-        if not isinstance(parsed, dict):
-            raise ValueError("Respuesta inesperada de Tika")
+        # Para archivos .txt, detectar codificación y manejar directamente
+        if file_extension == '.txt':
+            # Detectar codificación automáticamente
+            detected = chardet.detect(content)
+            encoding = detected.get('encoding') if detected else None
+            confidence = detected.get('confidence', 0) if detected else 0
             
-        texto = parsed.get('content', '') or ''
+            # Si la confianza es alta y tenemos codificación válida, usar la detectada
+            if encoding and confidence > 0.7:
+                try:
+                    texto = content.decode(encoding)
+                    print(f"Archivo {filename}: codificación detectada {encoding} (confianza: {confidence:.2f})")
+                except UnicodeDecodeError:
+                    # Fallback a UTF-8 con manejo de errores
+                    texto = content.decode('utf-8', errors='replace')
+                    print(f"Archivo {filename}: fallback a UTF-8 con reemplazo de errores")
+            else:
+                # Intentar UTF-8 primero, luego Latin-1 como fallback
+                try:
+                    texto = content.decode('utf-8')
+                    print(f"Archivo {filename}: usando UTF-8")
+                except UnicodeDecodeError:
+                    texto = content.decode('latin-1')
+                    print(f"Archivo {filename}: usando Latin-1 como fallback")
+        else:
+            # Para otros formatos, usar Tika con configuración de codificación
+            parsed = parser.from_buffer(content, headers={'Content-Type': 'application/octet-stream'})
+            
+            # Extraer el texto - Tika devuelve un dict
+            if not isinstance(parsed, dict):
+                raise ValueError("Respuesta inesperada de Tika")
+                
+            texto = parsed.get('content', '') or ''
         
         if not texto or not texto.strip():
             raise ValueError("No se pudo extraer texto del archivo")
+        
+        # Validar que no hay caracteres corruptos
+        if any(char in texto for char in ['茅', '谩', '帽', '贸', 'iacute', 'aacute']):
+            print(f"ADVERTENCIA: Detectados caracteres corruptos en {filename}")
+            print(f"   Muestra: {texto[:100]}...")
         
         # Limpiar el texto (remover espacios excesivos, saltos de línea múltiples)
         texto_limpio = ' '.join(texto.split())

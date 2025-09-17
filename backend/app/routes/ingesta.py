@@ -82,7 +82,7 @@ async def get_tasks_stats():
 
 
 @router.post("/archivos")
-@require_role("Usuario Judicial")
+#@require_role("Usuario Judicial")
 async def ingestar_archivos(
     request: Request,
     background_tasks: BackgroundTasks,
