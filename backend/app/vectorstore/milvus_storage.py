@@ -1,11 +1,17 @@
+"""
+Almacenamiento vectorial usando LangChain como orquestador.
+
+MIGRADO A LANGCHAIN: Este módulo ahora usa add_documents() para aprovechar
+la automación completa de embeddings e inserción de LangChain.
+"""
+
 import uuid
 import time
 from typing import List, Dict, Any
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from app.embeddings.embeddings import get_embeddings
-from app.config.config import COLLECTION_NAME
+from langchain_core.documents import Document
 from app.config.file_config import FILE_TYPE_CODES
-from app.vectorstore.vectorstore import get_vectorstore
+from app.vectorstore.vectorstore import add_documents
 from pathlib import Path
 
 async def store_in_vectorstore(
@@ -16,7 +22,12 @@ async def store_in_vectorstore(
     id_documento: int    # ID real de la BD
 ):
     """
-    Almacena el texto extraído en Milvus dividido en chunks para manejar documentos grandes.
+    Almacena el texto en Milvus usando LangChain para automación completa.
+    
+    BENEFICIOS LANGCHAIN:
+    - Embeddings automáticos (sin código manual)
+    - Inserción optimizada
+    - Gestión de errores integrada
     
     Args:
         texto: Texto completo del documento
@@ -26,16 +37,9 @@ async def store_in_vectorstore(
         id_documento: ID real del documento en la BD transaccional
         
     Returns:
-        List: Resultados de inserción para cada chunk
+        List: IDs de los documentos almacenados
     """
-    # Obtener cliente Milvus
-    client = await get_vectorstore()
-    
-    # Obtener modelo de embeddings
-    embeddings_model = await get_embeddings()
-    
-    # Configurar el text splitter para chunks de máximo 7000 caracteres
-    # (dejamos margen por si hay caracteres especiales que ocupen más espacio)
+    # Configurar text splitter para chunks optimizados
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=7000,      # Tamaño máximo del chunk
         chunk_overlap=200,    # Overlap entre chunks para mantener contexto
@@ -45,25 +49,20 @@ async def store_in_vectorstore(
     
     # Dividir el texto en chunks
     chunks = text_splitter.split_text(texto)
+    print(f"Documento dividido en {len(chunks)} chunks para LangChain")
     
-    print(f"Documento dividido en {len(chunks)} chunks")
-    
-    # Preparar datos comunes
+    # Preparar metadatos comunes
     timestamp_ms = int(time.time() * 1000)
     extension = Path(metadatos["nombre_archivo"]).suffix.lower()
     tipo_archivo_codigo = FILE_TYPE_CODES.get(extension, 1)
     
-    # Procesar cada chunk
-    all_data = []
-    results = []
-    
-    # Estimar páginas aproximadas (asumiendo ~500 palabras por página)
+    # Estimar páginas aproximadas
     caracteres_por_pagina = 2500  # Aproximadamente 500 palabras x 5 chars/palabra
     
+    # Crear documentos LangChain para cada chunk
+    langchain_documents = []
+    
     for i, chunk_text in enumerate(chunks):
-        # Generar embedding para este chunk
-        embedding = await embeddings_model.aembed_query(chunk_text)
-        
         # Calcular páginas aproximadas para este chunk
         inicio_char = i * (7000 - 200)  # Tamaño chunk menos overlap
         fin_char = inicio_char + len(chunk_text)
@@ -71,23 +70,28 @@ async def store_in_vectorstore(
         pagina_inicio = max(1, (inicio_char // caracteres_por_pagina) + 1)
         pagina_fin = max(pagina_inicio, (fin_char // caracteres_por_pagina) + 1)
         
-        # Preparar datos según el schema de Milvus
-        chunk_data = {
-            "id_chunk": str(uuid.uuid4()),  # Primary key único para cada chunk
-            "id_expediente": id_expediente,  # ID real de la BD
+        # Metadatos específicos del chunk para LangChain
+        chunk_metadata = {
+            # IDs únicos
+            "id_chunk": str(uuid.uuid4()),
+            
+            # Referencias a BD transaccional
+            "id_expediente": id_expediente,
             "numero_expediente": CT_Num_expediente,
             "fecha_expediente_creacion": timestamp_ms,
-            "id_documento": id_documento,  # ID real de la BD
+            "id_documento": id_documento,
             "nombre_archivo": metadatos["nombre_archivo"],
             "tipo_archivo": tipo_archivo_codigo,
             "fecha_carga": timestamp_ms,
-            "texto": chunk_text,  # Texto del chunk (ya está dentro del límite)
-            "embedding": embedding,
-            "indice_chunk": i,  # Índice del chunk (0, 1, 2, ...)
-            "pagina_inicio": pagina_inicio,  # Página aproximada de inicio
-            "pagina_fin": pagina_fin,        # Página aproximada de fin
+            
+            # Info del chunk
+            "indice_chunk": i,
+            "pagina_inicio": pagina_inicio,
+            "pagina_fin": pagina_fin,
             "tipo_documento": "documento",
             "fecha_vectorizacion": timestamp_ms,
+            
+            # Metadatos flexibles
             "meta": {
                 **metadatos,
                 "total_chunks": len(chunks),
@@ -97,16 +101,17 @@ async def store_in_vectorstore(
             }
         }
         
-        all_data.append(chunk_data)
-    
-    # Insertar todos los chunks en una sola operación
-    if all_data:
-        result = client.insert(
-            collection_name=COLLECTION_NAME,
-            data=all_data
+        # Crear documento LangChain
+        document = Document(
+            page_content=chunk_text,
+            metadata=chunk_metadata
         )
-        results.append(result)
-        
-        print(f"{len(chunks)} chunks insertados en Milvus para: {metadatos['nombre_archivo']}")
+        langchain_documents.append(document)
     
-    return results
+    # USAR LANGCHAIN: add_documents maneja embeddings automáticamente
+    if langchain_documents:
+        doc_ids = await add_documents(langchain_documents)
+        print(f"LangChain: {len(doc_ids)} chunks almacenados para {metadatos['nombre_archivo']}")
+        return doc_ids
+    
+    return []

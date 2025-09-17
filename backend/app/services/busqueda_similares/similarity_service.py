@@ -11,10 +11,12 @@ from app.schemas.similarity_schemas import SimilaritySearchRequest
 
 # Importar módulos especializados
 from .busqueda.milvus_service import MilvusSearchService
-from .busqueda.embedding_service import EmbeddingGeneratorService
 from .resumen.resumen_service import ResumenSemanticoService
 from .documentos.documento_service import DocumentoService
 from .validacion.validacion_service import ValidacionService
+
+# Importar servicio de embeddings centralizado
+from app.embeddings.embeddings import get_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +32,18 @@ class SimilarityService:
     def __init__(self):
         """Inicializa todos los servicios especializados."""
         self.milvus_service = MilvusSearchService()
-        self.embedding_service = EmbeddingGeneratorService()
         self.resumen_service = ResumenSemanticoService()
         self.documento_service = DocumentoService()
         self.validacion_service = ValidacionService()
+        self.embeddings_service = None  # Inicialización lazy
         
         logger.info("SimilarityService inicializado con todos los módulos")
+    
+    async def _get_embeddings_service(self):
+        """Obtiene el servicio de embeddings de forma lazy."""
+        if self.embeddings_service is None:
+            self.embeddings_service = await get_embeddings()
+        return self.embeddings_service
     
     async def search_similar_cases(
         self,
@@ -81,7 +89,8 @@ class SimilarityService:
                 
                 # 4. Generar embedding del expediente
                 expedient_text = self._preparar_texto_expediente(expedient_data)
-                query_vector = await self.embedding_service.generate_text_embedding(expedient_text)
+                embeddings_service = await self._get_embeddings_service()
+                query_vector = await embeddings_service.aembed_query(expedient_text)
                 exclude_expedient_id = expedient_id
                 
             else:  # search_mode == "description"
@@ -91,7 +100,8 @@ class SimilarityService:
                 logger.info(f"Iniciando búsqueda de similares por descripción")
                 
                 # 4. Generar embedding del texto de consulta
-                query_vector = await self.embedding_service.generate_text_embedding(request.query_text)
+                embeddings_service = await self._get_embeddings_service()
+                query_vector = await embeddings_service.aembed_query(request.query_text)
                 exclude_expedient_id = None
             
             # 5. Buscar documentos similares en Milvus
@@ -249,7 +259,7 @@ class SimilarityService:
     def __del__(self):
         """Limpia recursos al destruir el servicio."""
         try:
-            if hasattr(self, 'milvus_service') and self.milvus_service:
-                self.milvus_service.disconnect()
+            # El vectorstore centralizado maneja sus propias conexiones
+            logger.info("SimilarityService destruido - recursos centralizados")
         except Exception as e:
             logger.error(f"Error limpiando recursos: {e}")
