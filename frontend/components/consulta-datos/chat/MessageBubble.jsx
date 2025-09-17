@@ -47,53 +47,55 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       // Limpiar espacios al inicio y final
       .trim();
   };
-  // Función para renderizar texto con párrafos separados
+
+  // Función para renderizar texto con markdown y estructura mejorada
   const renderFormattedText = (text) => {
     if (!text) return '';
     
     const formattedText = formatText(text);
     
-    // Identificar patrones que indican nuevos párrafos
-    const paragraphBreakPatterns = [
-      // Después de un punto seguido de una frase que comienza con mayúscula y contiene ":"
-      /\.\s*(?=[A-Z][^.]*:)/g,
-      // Antes de "Según la información", "En el expediente", etc.
-      /(?=(?:Según|En el|De acuerdo|El expediente|La denuncia|Los hechos|El caso|Por otro lado|Además|Asimismo|Por lo tanto|En conclusión|Finalmente|Fuente:))/g,
-      // Después de frases que terminan con punto y van seguidas de una sección nueva
-      /\.\s*(?=(?:El día|La fecha|Durante|Posteriormente|Testigo|Prueba|Declaración|Informe|Resolución))/g
-    ];
-
-    let processedText = formattedText;
+    // Dividir por líneas de separación (---)
+    const sections = formattedText.split(/\n*---+\n*/);
     
-    // Aplicar saltos de párrafo
-    paragraphBreakPatterns.forEach(pattern => {
-      processedText = processedText.replace(pattern, '\n\n');
-    });
-
-    // Dividir en párrafos y limpiar
-    const paragraphs = processedText
-      .split(/\n\n+/)
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
-
-    if (paragraphs.length <= 1) {
-      return <div className="leading-relaxed text-justify">{formattedText}</div>;
-    }
-
     return (
       <div className="space-y-4">
-        {paragraphs.map((paragraph, index) => {
-          // Identificar si es la fuente (última línea)
-          const isFuente = paragraph.toLowerCase().startsWith('fuente:');
+        {sections.map((section, sectionIndex) => {
+          if (!section.trim()) return null;
+          
+          // Dividir en párrafos dentro de cada sección
+          const paragraphs = section
+            .split(/\n\n+/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
           
           return (
-            <div 
-              key={index} 
-              className={`leading-relaxed text-justify ${
-                isFuente ? 'text-xs text-gray-500 italic mt-6 pt-2 border-t border-gray-200' : ''
-              }`}
-            >
-              {paragraph}
+            <div key={sectionIndex} className="space-y-3">
+              {sectionIndex > 0 && (
+                <div className="border-t border-gray-200 pt-4"></div>
+              )}
+              {paragraphs.map((paragraph, paragraphIndex) => {
+                // Procesar markdown simple
+                const processedParagraph = paragraph
+                  // Convertir **texto** a <strong>texto</strong>
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  // Convertir saltos de línea simples a <br>
+                  .replace(/\n/g, '<br>');
+                
+                // Identificar si es la fuente (última línea)
+                const isFuente = paragraph.toLowerCase().startsWith('fuente:');
+                
+                return (
+                  <div 
+                    key={paragraphIndex}
+                    className={`leading-relaxed text-justify ${
+                      isFuente 
+                        ? 'text-xs text-gray-500 italic mt-6 pt-2 border-t border-gray-200' 
+                        : 'text-sm'
+                    }`}
+                    dangerouslySetInnerHTML={{ __html: processedParagraph }}
+                  />
+                );
+              })}
             </div>
           );
         })}
