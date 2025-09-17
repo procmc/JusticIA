@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.vectorstore.vectorstore import get_vectorstore
-from app.routes import ingesta, health, llm, usuarios, archivos, email, auth, debug, similarity
+from app.vectorstore.vectorstore import get_client
+from app.routes import ingesta, llm, usuarios, archivos, email, auth, similarity, rag
 from app.db import database
 
 # Crear app sin lifespan primero
