@@ -6,7 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_ollama import ChatOllama
 from app.embeddings.embeddings import get_embedding
-from app.vectorstore.vectorstore import search_similar_documents
+from app.vectorstore.vectorstore import search_by_text, search_by_vector
 from app.llm.llm_service import get_llm
 from app.config.config import COLLECTION_NAME
 import logging
@@ -24,41 +24,28 @@ class JusticIARetriever(BaseRetriever):
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
         """Obtiene documentos relevantes de Milvus"""
         try:
-            # Usar tu embedding service existente
-            query_embedding = await get_embedding(query)
-            
-            # Usar tu función de búsqueda existente
-            similar_docs = await search_similar_documents(
-                query_embedding=query_embedding,
-                limit=self.top_k,
-                filters=self.filters
+            # Usar la nueva función de búsqueda del vectorstore central
+            similar_docs = await search_by_text(
+                query_text=query,
+                top_k=self.top_k,
+                score_threshold=0.0
             )
             
             # Convertir a formato LangChain Document
             documents = []
             for doc in similar_docs:
                 try:
-                    # Extraer datos según tu estructura actual
-                    if "entity" in doc:
-                        entity = doc["entity"]
-                        texto = entity.get("texto", "")
-                        metadata = {
-                            "expediente_numero": entity.get("numero_expediente", ""),
-                            "archivo": entity.get("nombre_archivo", ""),
-                            "id_expediente": entity.get("id_expediente", ""),
-                            "id_documento": entity.get("id_documento", ""),
-                            "distance": doc.get("distance", 1.0),
-                            "relevance_score": 1.0 - doc.get("distance", 1.0)
-                        }
-                    else:
-                        # Formato directo
-                        texto = doc.get("texto", "")
-                        metadata = {
-                            "expediente_numero": doc.get("numero_expediente", ""),
-                            "archivo": doc.get("nombre_archivo", ""),
-                            "distance": doc.get("distance", 1.0),
-                            "relevance_score": 1.0 - doc.get("distance", 1.0)
-                        }
+                    # Usar el nuevo formato del vectorstore central
+                    texto = doc.get("content_preview", "")
+                    metadata = {
+                        "expediente_numero": doc.get("expedient_id", ""),
+                        "archivo": doc.get("document_name", ""),
+                        "id_expediente": doc.get("expedient_id", ""),
+                        "id_documento": doc.get("id", ""),
+                        "similarity_score": doc.get("similarity_score", 0.0),
+                        "relevance_score": doc.get("similarity_score", 0.0),
+                        "distance": 1.0 - doc.get("similarity_score", 0.0)
+                    }
                     
                     if texto.strip():
                         documents.append(Document(
