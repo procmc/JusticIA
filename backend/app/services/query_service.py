@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from app.embeddings.embeddings import get_embedding
 from app.llm.llm_service import consulta_simple, consulta_general_streaming
-from app.vectorstore.vectorstore import search_similar_documents
+from app.vectorstore.vectorstore import search_by_vector, search_by_text
 import os
 
 async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
@@ -16,64 +16,23 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
         Diccionario con la respuesta y metadatos
     """
     try:
-        # 1. Generar embedding de la consulta
-        query_embedding = await get_embedding(query)
-        
-        # 2. Buscar documentos similares en Milvus
-        similar_docs = await search_similar_documents(
-            query_embedding=query_embedding,
-            limit=top_k,
-            filters=None
+        # OPCIÓN 1: Búsqueda semántica directa (recomendada)
+        # LangChain maneja automáticamente: texto → embedding → búsqueda
+        similar_docs = await search_by_text(
+            query_text=query,
+            top_k=top_k,
+            score_threshold=0.0
         )
         
-        # Si no encuentra documentos, intentar query directo como fallback
+        # Si no encuentra documentos, intentar con búsqueda vectorial manual
         if not similar_docs:
-            from app.vectorstore.vectorstore import get_vectorstore
-            from app.config.config import COLLECTION_NAME
-            
-            client = await get_vectorstore()
-            
-            try:
-                # Fallback: búsqueda con vector dummy
-                dummy_vector = [0.1] * 768
-                search_results = client.search(
-                    collection_name=COLLECTION_NAME,
-                    data=[dummy_vector],
-                    anns_field="embedding",
-                    search_params={"metric_type": "COSINE", "params": {"ef": 64}},
-                    limit=top_k,
-                    output_fields=["id_chunk", "texto", "numero_expediente", "nombre_archivo"]
-                )
-                
-                # Convertir search results a formato estándar
-                if search_results and len(search_results) > 0:
-                    for hit in search_results[0]:
-                        if hasattr(hit, 'entity') and hasattr(hit, 'distance'):
-                            # Acceso seguro a los datos de la entidad usando getattr
-                            entity_obj = getattr(hit, 'entity', {})
-                            entity_data = {}
-                            
-                            if hasattr(entity_obj, 'get'):
-                                # Si entity es un diccionario
-                                entity_data = dict(entity_obj)
-                            else:
-                                # Si entity es un objeto, extraer campos específicos
-                                for field in ["id_chunk", "texto", "numero_expediente", "nombre_archivo"]:
-                                    if hasattr(entity_obj, field):
-                                        entity_data[field] = getattr(entity_obj, field)
-                            
-                            similar_docs.append({
-                                "entity": entity_data,
-                                "distance": getattr(hit, 'distance', 0.5)
-                            })
-                        elif isinstance(hit, dict):
-                            similar_docs.append({
-                                "entity": hit,
-                                "distance": hit.get('distance', 0.5)
-                            })
-                            
-            except Exception:
-                pass
+            # OPCIÓN 2: Generar embedding manualmente y buscar
+            query_embedding = await get_embedding(query)
+            similar_docs = await search_by_vector(
+                query_vector=query_embedding,
+                top_k=top_k,
+                score_threshold=0.0
+            )
         
         if not similar_docs:
             return {
@@ -84,7 +43,18 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
             }
         
         # 3. Preparar contexto para el LLM
-        context = _prepare_context(similar_docs)
+        # Adaptar formato nuevo al formato legacy esperado por _prepare_context
+        adapted_docs = []
+        for doc in similar_docs:
+            adapted_docs.append({
+                "entity": {
+                    "texto": doc.get("content_preview", ""),
+                    "numero_expediente": doc.get("expedient_id", ""),
+                    "nombre_archivo": doc.get("document_name", "")
+                },
+                "distance": 1.0 - doc.get("similarity_score", 0.0)
+            })
+        context = _prepare_context(adapted_docs)
         
         # 4. Cargar system prompt
         system_prompt = _load_system_prompt()
@@ -224,19 +194,27 @@ async def general_search_streaming(query: str, top_k: int = 30):
         StreamingResponse con la respuesta en tiempo real
     """
     try:
-        # 1. Generar embedding de la consulta
-        query_embedding = await get_embedding(query)
-        
-        # 2. Buscar documentos similares en Milvus
-        similar_docs = await search_similar_documents(
-            query_embedding=query_embedding,
-            limit=top_k,
-            filters=None  # Sin filtros = búsqueda general
+        # 1. Búsqueda semántica directa con LangChain
+        similar_docs = await search_by_text(
+            query_text=query,
+            top_k=top_k,
+            score_threshold=0.0
         )
         
         # 3. Preparar contexto para el LLM
         if similar_docs:
-            context = _prepare_context(similar_docs)
+            # Adaptar formato nuevo al formato legacy esperado por _prepare_context
+            adapted_docs = []
+            for doc in similar_docs:
+                adapted_docs.append({
+                    "entity": {
+                        "texto": doc.get("content_preview", ""),
+                        "numero_expediente": doc.get("expedient_id", ""),
+                        "nombre_archivo": doc.get("document_name", "")
+                    },
+                    "distance": 1.0 - doc.get("similarity_score", 0.0)
+                })
+            context = _prepare_context(adapted_docs)
         else:
             context = "No se encontraron documentos relevantes en la base de datos."
         

@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.vectorstore.vectorstore import get_vectorstore
-from app.routes import ingesta, health, llm, usuarios, archivos, email, auth, debug, similarity
+from app.vectorstore.vectorstore import get_client
+from app.routes import ingesta, llm, usuarios, archivos, email, auth, similarity
 from app.db import database
 
 # Crear app sin lifespan primero
@@ -15,8 +15,8 @@ app = FastAPI(title="JusticIA API")
 async def startup_event():
     """Inicializar recursos al arranque"""
     try:
-        await get_vectorstore()
-        print("Milvus inicializado correctamente")
+        await get_client()
+        print("Milvus configurado correctamente")
     except Exception as e:
         print(f"Error inicializando Milvus: {e}")
 
@@ -34,13 +34,11 @@ app.add_middleware(
 )
 
 app.include_router(ingesta.router, prefix="/ingesta", tags=["ingesta"])
-app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(llm.router, prefix="/llm", tags=["llm"])
 app.include_router(usuarios.router, prefix="/usuarios", tags=["usuarios"])
 app.include_router(archivos.router, prefix="/archivos", tags=["archivos"])
 app.include_router(email.router, prefix="/email", tags=["email"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(debug.router, prefix="/debug", tags=["debug"])
 app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 
 @app.get("/")
