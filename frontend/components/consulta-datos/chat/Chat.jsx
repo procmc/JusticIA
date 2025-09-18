@@ -59,14 +59,11 @@ const ConsultaChat = () => {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Crear mensaje del asistente vacío
+    // Crear mensaje del asistente vacío SIN timestamp
     const assistantMessage = {
       text: '',
       isUser: false,
-      timestamp: new Date().toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      timestamp: '' // Se asignará cuando termine la respuesta
     };
 
     // Agregar mensaje vacío del asistente
@@ -111,6 +108,21 @@ const ConsultaChat = () => {
           setIsTyping(false);
           currentRequestRef.current = null;
           
+          // Actualizar el timestamp del mensaje del asistente AHORA que terminó
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              };
+            }
+            return updatedMessages;
+          });
+          
           // Guardar la conversación en el contexto
           if (fullResponse.trim()) {
             addToContext(text, fullResponse.trim());
@@ -132,7 +144,11 @@ const ConsultaChat = () => {
               updatedMessages[messageIndex] = {
                 ...updatedMessages[messageIndex],
                 text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-                isError: true
+                isError: true,
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
               };
             }
             return updatedMessages;
