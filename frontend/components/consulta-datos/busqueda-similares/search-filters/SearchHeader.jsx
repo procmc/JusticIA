@@ -23,9 +23,24 @@ const SearchHeader = ({
     if (searchMode === 'description') {
       return searchText.trim().length > 0;
     } else if (searchMode === 'expedient') {
-      return expedientNumber.trim().length > 0;
+      const trimmedNumber = expedientNumber.trim();
+      if (trimmedNumber.length === 0) return false;
+      
+      // Validar formato de expediente
+      const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
+      return expedientPattern.test(trimmedNumber);
     }
     return false;
+  };
+
+  // Verificar si el formato de expediente es inválido (para mostrar error)
+  const isExpedientFormatInvalid = () => {
+    if (searchMode !== 'expedient') return false;
+    const trimmedNumber = expedientNumber.trim();
+    if (trimmedNumber.length === 0) return false;
+    
+    const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
+    return !expedientPattern.test(trimmedNumber);
   };
 
   const isButtonDisabled = !canSearch() || isSearching;
@@ -195,9 +210,11 @@ const SearchHeader = ({
                     onChange={(e) => setExpedientNumber(e.target.value)}
                     onKeyDown={handleKeyDown}
                     variant="bordered"
-                    color='primary'
+                    color={isExpedientFormatInvalid() ? 'danger' : 'primary'}
                     size="md"
                     isRequired
+                    isInvalid={isExpedientFormatInvalid()}
+                    errorMessage={isExpedientFormatInvalid() ? "Formato inválido. Ejemplo: 2024-077074-3274-TR" : ""}
                     startContent={
                       <IoDocument className="w-4 h-4 text-gray-400" />
                     }

@@ -7,7 +7,6 @@ from app.services.busqueda_similares.similarity_service import SimilarityService
 
 router = APIRouter()
 
-
 @router.post("/search", response_model=RespuestaBusquedaSimilitud)
 async def search_similar_cases(
     request: SimilaritySearchRequest,
