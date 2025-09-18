@@ -399,6 +399,64 @@ async def get_stats() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+async def get_expedient_documents(expedient_id: str) -> List[Document]:
+    """
+    Obtiene todos los documentos de un expediente específico usando LangChain.
+    
+    Args:
+        expedient_id: ID del expediente a buscar
+        
+    Returns:
+        Lista de objetos Document del expediente
+    """
+    try:
+        vectorstore = await get_langchain_vectorstore()
+        
+        # Buscar usando el número de expediente como query
+        # Esto debería devolver documentos relacionados con el expediente
+        all_docs = vectorstore.similarity_search(
+            query=f"expediente {expedient_id}",
+            k=500  # Buscar muchos documentos para asegurar obtener todos del expediente
+        )
+        
+        if not all_docs:
+            logger.info(f"No se encontraron documentos para el expediente {expedient_id}")
+            return []
+        
+        # Filtrar documentos que realmente pertenecen al expediente
+        expedient_docs = []
+        for doc in all_docs:
+            metadata = doc.metadata if hasattr(doc, 'metadata') else {}
+            doc_expedient = metadata.get('numero_expediente') or metadata.get('id_expediente')
+            
+            if doc_expedient == expedient_id:
+                expedient_docs.append(doc)
+        
+        # Si no encontramos documentos con filtro, intentar búsqueda más amplia
+        if not expedient_docs:
+            logger.info(f"No se encontraron documentos con filtro, intentando búsqueda más amplia")
+            
+            # Hacer una búsqueda más general
+            all_docs_broad = vectorstore.similarity_search(
+                query=expedient_id,  # Buscar solo por el ID
+                k=1000
+            )
+            
+            for doc in all_docs_broad:
+                metadata = doc.metadata if hasattr(doc, 'metadata') else {}
+                doc_expedient = metadata.get('numero_expediente') or metadata.get('id_expediente')
+                
+                if doc_expedient == expedient_id:
+                    expedient_docs.append(doc)
+        
+        logger.info(f"Encontrados {len(expedient_docs)} documentos para expediente {expedient_id}")
+        return expedient_docs
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo documentos del expediente {expedient_id}: {e}")
+        raise
+
+
 # ================================
 # FUNCIONES AUXILIARES
 # ================================

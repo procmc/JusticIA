@@ -50,3 +50,24 @@ class RespuestaBusquedaSimilitud(BaseModel):
     modo_busqueda: str
     total_resultados: int
     casos_similares: List[CasoSimilar]
+
+
+class GenerateResumenRequest(BaseModel):
+    """Request para generar resumen de IA de un expediente"""
+    numero_expediente: str = Field(..., description="Número del expediente a resumir")
+
+
+class ResumenIA(BaseModel):
+    """Resumen generado por IA para un expediente"""
+    resumen: str = Field(..., description="Resumen del caso")
+    palabras_clave: List[str] = Field(..., description="Palabras clave identificadas")
+    factores_similitud: List[str] = Field(..., description="Factores de similitud encontrados")
+    conclusion: str = Field(..., description="Conclusión del análisis")
+
+
+class RespuestaGenerarResumen(BaseModel):
+    """Respuesta de generación de resumen de IA"""
+    numero_expediente: str
+    total_documentos_analizados: int
+    resumen_ia: ResumenIA
+    tiempo_generacion_segundos: float
