@@ -19,6 +19,7 @@ const CaseDetailsModal = ({
   getSimilarityColor
 }) => {
   const [selectedTab, setSelectedTab] = useState("resumen");
+  const [documentCount, setDocumentCount] = useState(0);
   
   // Estados para generación de resumen IA - organizados por expediente
   const [aiSummaries, setAiSummaries] = useState({}); // { expedienteNumber: { summary, stats, isGenerating } }
@@ -32,6 +33,7 @@ const CaseDetailsModal = ({
   useEffect(() => {
     if (numeroExpediente) {
       setSelectedTab("resumen");
+      setDocumentCount(0); // Resetear contador al cambiar expediente
     }
   }, [numeroExpediente]);
 
@@ -168,7 +170,7 @@ const CaseDetailsModal = ({
               }
             >
               <div className="pt-6">
-                <DocumentosTab selectedCase={selectedCase} />
+                <DocumentosTab selectedCase={selectedCase} onDocumentCountChange={setDocumentCount} />
               </div>
             </Tab>
           </Tabs>

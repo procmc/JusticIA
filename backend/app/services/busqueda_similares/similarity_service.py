@@ -120,7 +120,7 @@ class SimilarityService:
             
             # Usar el LLM rápido específico para resúmenes
             fast_llm = await get_llm(fast=True)
-            respuesta_llm = await fast_llm.ainvoke(prompt)
+            respuesta_llm = fast_llm.invoke(prompt)
             respuesta_content = getattr(respuesta_llm, "content", str(respuesta_llm))
             
             # 4. Parsear respuesta de IA

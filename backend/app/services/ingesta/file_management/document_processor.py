@@ -19,7 +19,7 @@ from app.schemas.schemas import (
 from app.config.file_config import ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
 from app.vectorstore.milvus_storage import store_in_vectorstore
 from app.services.expediente_service import ExpedienteService
-from .file_storage_manager import FileStorageService
+from app.services.documentos.file_management_service import file_management_service
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
 from ..async_processing.progress_tracker import ProgressTracker
@@ -62,7 +62,16 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
                 continue
             
             # Procesar archivo con lógica transaccional
-            result = await process_single_file(file, CT_Num_expediente, expediente, db)
+            # Para compatibilidad, leer el archivo aquí también
+            content = await file.read()
+            await file.seek(0)  # Reset para otras operaciones
+            
+            # Usar el nombre del archivo como ruta temporal (esto será mejorado)
+            temp_filepath = f"uploads/{CT_Num_expediente}/{file.filename}"
+            
+            result = await process_single_file_with_content(
+                file, content, temp_filepath, CT_Num_expediente, expediente, db
+            )
             archivos_procesados.append(result)
             
         except Exception as e:
@@ -176,10 +185,25 @@ def validate_file(file: UploadFile) -> FileValidationError | None:
     
     return None
 
-async def process_single_file(file: UploadFile, CT_Num_expediente: str, expediente=None, db: Optional[Session] = None) -> FileUploadResponse:
+async def process_single_file_with_content(
+    file: UploadFile, 
+    content: bytes, 
+    filepath: str, 
+    CT_Num_expediente: str, 
+    expediente=None, 
+    db: Optional[Session] = None
+) -> FileUploadResponse:
     """
-    Procesa un solo archivo usando transacciones atómicas con TransactionManager.
-    Garantiza consistencia entre BD, almacenamiento físico y vectorstore.
+    Procesa un solo archivo que ya fue guardado en disco.
+    Garantiza consistencia entre BD y vectorstore.
+    
+    Args:
+        file: Objeto UploadFile (para metadata)
+        content: Contenido del archivo ya leído
+        filepath: Ruta donde ya fue guardado el archivo
+        CT_Num_expediente: Número del expediente
+        expediente: Objeto expediente (opcional)
+        db: Sesión de BD (opcional)
     """
     file_id = str(uuid.uuid4())
     
@@ -187,9 +211,6 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
         # Validar nombre de archivo primero
         if not file.filename:
             raise ValueError("El archivo debe tener un nombre")
-        
-        # Leer contenido del archivo
-        content = await file.read()
         
         # Detectar tipo de archivo usando filetype
         detected_type = filetype.guess(content)
@@ -230,10 +251,9 @@ async def process_single_file(file: UploadFile, CT_Num_expediente: str, expedien
                 )
                 logger.debug(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
                 
-                # 2. Guardar archivo físicamente
-                storage = FileStorageService()
-                ruta_archivo = await storage.guardar_archivo(file, CT_Num_expediente)
-                logger.debug(f"Archivo guardado físicamente: {ruta_archivo}")
+                # 2. Usar la ruta de archivo que ya fue guardada
+                ruta_archivo = filepath
+                logger.debug(f"Usando archivo ya guardado: {ruta_archivo}")
                 
                 # 3. Actualizar la ruta en el documento
                 await expediente_service.actualizar_ruta_documento(

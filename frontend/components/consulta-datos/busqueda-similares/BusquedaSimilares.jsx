@@ -123,6 +123,7 @@ const BusquedaSimilares = () => {
 
   // Función para ver detalles
   const handleViewDetails = (caseData) => {
+    console.log('🔍 BusquedaSimilares - caseData seleccionado:', caseData);
     setSelectedCase(caseData);
     onOpen();
   };
