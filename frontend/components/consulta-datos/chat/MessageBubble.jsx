@@ -167,7 +167,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
           </div>
         </div>
         <div className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-          {message.timestamp}
+          {message.timestamp && message.timestamp}
         </div>
       </div>
     </div>
