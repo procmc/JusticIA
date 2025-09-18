@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import consultaService from '../../../services/consultaService';
+import { useConversationContext } from '../../../hooks/conversacion/useConversationContext';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -12,6 +13,15 @@ const ConsultaChat = () => {
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
+
+  // Hook para manejar el contexto de conversación
+  const { 
+    addToContext, 
+    getFormattedContext, 
+    clearContext, 
+    hasContext,
+    getContextStats 
+  } = useConversationContext();
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -67,12 +77,21 @@ const ConsultaChat = () => {
     setStreamingMessageIndex(messageIndex);
     setIsTyping(false);
 
+    // Obtener el contexto de conversación formateado
+    const conversationContext = getFormattedContext();
+    
+    // Variable para almacenar la respuesta completa
+    let fullResponse = '';
+
     // Iniciar consulta con streaming FUERA del setMessages
     consultaService.consultaGeneralStreaming(
       text,
       // onChunk: Cada fragmento de texto que llega
       (chunk) => {
         if (stopStreamingRef.current || !currentRequestRef.current?.active) return;
+        
+        // Acumular la respuesta completa
+        fullResponse += chunk;
         
         setMessages(prevMessages => {
           const updatedMessages = [...prevMessages];
@@ -91,6 +110,11 @@ const ConsultaChat = () => {
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;
+          
+          // Guardar la conversación en el contexto
+          if (fullResponse.trim()) {
+            addToContext(text, fullResponse.trim());
+          }
         }
       },
       // onError: Si hay un error
@@ -115,12 +139,32 @@ const ConsultaChat = () => {
           });
         }
       },
-      10
+      10, // topK
+      conversationContext // contexto de conversación
     );
   };
 
   return (
     <div className="h-full flex flex-col bg-white">
+      {/* Información del contexto - solo mostrar si hay contexto */}
+      {hasContext && (
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-sm text-blue-700 flex items-center justify-between">
+          <span>
+            💬 Conversación activa ({getContextStats().totalInteractions} intercambios)
+          </span>
+          <button
+            onClick={() => {
+              clearContext();
+              setMessages([]); // También limpiar mensajes visuales
+            }}
+            className="text-blue-600 hover:text-blue-800 underline text-xs"
+            title="Limpiar historial de conversación"
+          >
+            Nuevo chat
+          </button>
+        </div>
+      )}
+      
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
         <MessageList
