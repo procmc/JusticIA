@@ -4,7 +4,9 @@ from langchain_ollama import ChatOllama
 from app.config.config import (
     OLLAMA_MODEL, OLLAMA_BASE_URL,
     LLM_TEMPERATURE, LLM_KEEP_ALIVE, LLM_REQUEST_TIMEOUT,
-    LLM_NUM_CTX, LLM_NUM_PREDICT, LLM_TOP_K, LLM_TOP_P, LLM_REPEAT_PENALTY
+    LLM_NUM_CTX, LLM_NUM_PREDICT, LLM_TOP_K, LLM_TOP_P, LLM_REPEAT_PENALTY,
+    FAST_LLM_MODEL, FAST_LLM_TEMPERATURE, FAST_LLM_REQUEST_TIMEOUT,
+    FAST_LLM_NUM_CTX, FAST_LLM_NUM_PREDICT, FAST_LLM_TOP_K, FAST_LLM_TOP_P, FAST_LLM_REPEAT_PENALTY
 )
 from fastapi.responses import StreamingResponse
 
@@ -72,28 +74,54 @@ class StreamBuffer:
             return result
 
 
-async def get_llm():
-    global _llm
-    async with _llm_lock:
-        if _llm is None:
-            _llm = ChatOllama(
-                model=OLLAMA_MODEL,
-                base_url=OLLAMA_BASE_URL,
-                temperature=LLM_TEMPERATURE,  # Usar configuración original
-                streaming=True,
-                keep_alive=LLM_KEEP_ALIVE,  
-                request_timeout=LLM_REQUEST_TIMEOUT,  
-                model_kwargs={
-                    "num_ctx": LLM_NUM_CTX,
-                    "num_predict": LLM_NUM_PREDICT,
-                    "top_k": LLM_TOP_K,
-                    "top_p": LLM_TOP_P,
-                    "repeat_penalty": LLM_REPEAT_PENALTY,
-                    # Solo agregar stop tokens para los marcadores de pensamiento
-                    "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
-                },
-            )
-        return _llm
+async def get_llm(fast: bool = False):
+    """
+    Obtiene una instancia de LLM.
+    
+    Args:
+        fast: Si es True, retorna un LLM rápido para resúmenes.
+              Si es False, retorna el LLM principal.
+    """
+    if fast:
+        # LLM rápido para resúmenes usando configuración del .env
+        return ChatOllama(
+            model=FAST_LLM_MODEL,
+            base_url=OLLAMA_BASE_URL,
+            temperature=FAST_LLM_TEMPERATURE,
+            streaming=False,  # Sin streaming para resúmenes rápidos
+            keep_alive=LLM_KEEP_ALIVE,  
+            request_timeout=FAST_LLM_REQUEST_TIMEOUT,
+            model_kwargs={
+                "num_ctx": FAST_LLM_NUM_CTX,
+                "num_predict": FAST_LLM_NUM_PREDICT,
+                "top_k": FAST_LLM_TOP_K,
+                "top_p": FAST_LLM_TOP_P,
+                "repeat_penalty": FAST_LLM_REPEAT_PENALTY,
+                "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
+            },
+        )
+    else:
+        # LLM principal (singleton con caché)
+        global _llm
+        async with _llm_lock:
+            if _llm is None:
+                _llm = ChatOllama(
+                    model=OLLAMA_MODEL,  # Usar el modelo principal de configuración
+                    base_url=OLLAMA_BASE_URL,
+                    temperature=LLM_TEMPERATURE,
+                    streaming=True,
+                    keep_alive=LLM_KEEP_ALIVE,  
+                    request_timeout=LLM_REQUEST_TIMEOUT,  
+                    model_kwargs={
+                        "num_ctx": LLM_NUM_CTX,
+                        "num_predict": LLM_NUM_PREDICT,
+                        "top_k": LLM_TOP_K,
+                        "top_p": LLM_TOP_P,
+                        "repeat_penalty": LLM_REPEAT_PENALTY,
+                        "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
+                    },
+                )
+            return _llm
 
 
 async def consulta_simple(pregunta: str):
