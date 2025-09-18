@@ -3,6 +3,68 @@ from app.embeddings.embeddings import get_embedding
 from app.llm.llm_service import consulta_simple, consulta_general_streaming
 from app.vectorstore.vectorstore import search_by_vector, search_by_text
 import os
+import re
+
+def is_greeting_or_simple_conversation(query: str) -> bool:
+    """
+    Detecta si la consulta es un saludo o conversación simple que no requiere búsqueda en expedientes.
+    
+    Args:
+        query: Consulta del usuario
+        
+    Returns:
+        True si es un saludo/conversación simple, False si es una consulta legal
+    """
+    query_lower = query.lower().strip()
+    
+    # Patrones de saludos y conversación simple
+    greeting_patterns = [
+        r'^(hola|hello|hi|buenos días|buenas tardes|buenas noches|saludos)\.?$',
+        r'^(¿?cómo estás\??|¿?qué tal\??|¿?cómo están\??)\.?$',
+        r'^(gracias|thank you|thanks)\.?$',
+        r'^(adiós|bye|hasta luego|nos vemos)\.?$',
+        r'^(¿?quién eres\??|¿?qué eres\??|¿?cuál es tu nombre\??)\.?$',
+        r'^(ayuda|help|¿?en qué puedes ayudarme\??)\.?$',
+        r'^(test|prueba|testing)\.?$'
+    ]
+    
+    # Si la consulta tiene menos de 10 caracteres y coincide con patrones de saludo
+    if len(query_lower) <= 15:
+        for pattern in greeting_patterns:
+            if re.match(pattern, query_lower):
+                return True
+    
+    return False
+
+async def handle_greeting_response(query: str) -> Dict[str, Any]:
+    """
+    Maneja respuestas para saludos y conversación simple.
+    
+    Args:
+        query: Consulta del usuario
+        
+    Returns:
+        Respuesta formateada para saludos
+    """
+    query_lower = query.lower().strip()
+    
+    if re.match(r'^(hola|hello|hi|buenos días|buenas tardes|buenas noches)', query_lower):
+        respuesta = "¡Hola! Soy JusticIA, tu asistente virtual especializado en documentos legales del Poder Judicial de Costa Rica. Estoy aquí para ayudarte con consultas sobre expedientes, casos y información jurídica. ¿En qué puedo asistirte hoy?"
+    elif re.match(r'^(¿?cómo estás\??|¿?qué tal\??)', query_lower):
+        respuesta = "¡Muy bien, gracias por preguntar! Estoy aquí y listo para ayudarte con cualquier consulta sobre expedientes legales o información jurídica. ¿Hay algo específico en lo que pueda asistirte?"
+    elif re.match(r'^(¿?quién eres\??|¿?qué eres\??)', query_lower):
+        respuesta = "Soy JusticIA, un asistente virtual inteligente especializado en documentos legales y jurídicos del Poder Judicial de Costa Rica. Puedo ayudarte a buscar información en expedientes, analizar casos similares y responder consultas jurídicas. ¿En qué puedo ayudarte?"
+    elif re.match(r'^(ayuda|help)', query_lower):
+        respuesta = "¡Por supuesto! Puedo ayudarte con:\n\n• Búsqueda de expedientes específicos\n• Análisis de casos similares\n• Consultas sobre materias legales (civil, penal, laboral, etc.)\n• Información sobre procesos judiciales\n• Revisión de documentos legales\n\n¿Sobre qué tema específico te gustaría consultar?"
+    else:
+        respuesta = "¡Hola! Soy JusticIA, tu asistente legal virtual. Estoy aquí para ayudarte con consultas sobre expedientes y documentos jurídicos. ¿En qué puedo asistirte?"
+    
+    return {
+        "respuesta": respuesta,
+        "expedientes_consultados": 0,
+        "documentos_similares": [],
+        "es_saludo": True
+    }
 
 async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
     """
@@ -16,6 +78,10 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
         Diccionario con la respuesta y metadatos
     """
     try:
+        # Verificar si es un saludo o conversación simple
+        if is_greeting_or_simple_conversation(query):
+            return await handle_greeting_response(query)
+        
         # OPCIÓN 1: Búsqueda semántica directa (recomendada)
         # LangChain maneja automáticamente: texto → embedding → búsqueda
         similar_docs = await search_by_text(
@@ -194,7 +260,46 @@ async def general_search_streaming(query: str, top_k: int = 30):
         StreamingResponse con la respuesta en tiempo real
     """
     try:
-        # 1. Búsqueda semántica directa con LangChain
+        # Verificar si es un saludo o conversación simple
+        if is_greeting_or_simple_conversation(query):
+            # Para saludos, devolver respuesta directamente sin streaming complejo
+            greeting_response = await handle_greeting_response(query)
+            
+            # Simular streaming suave para mantener consistencia con la interfaz
+            async def greeting_stream():
+                respuesta = greeting_response["respuesta"]
+                
+                # Enviar la respuesta en chunks más naturales (por oraciones)
+                oraciones = respuesta.split('. ')
+                for i, oracion in enumerate(oraciones):
+                    if i > 0:
+                        # Agregar el punto que se perdió al hacer split
+                        chunk = '. ' + oracion
+                    else:
+                        chunk = oracion
+                    
+                    # Asegurar que no esté vacío
+                    if chunk.strip():
+                        yield f"data: {chunk}\n\n"
+                        # Pequeña pausa entre oraciones para efecto natural
+                        import asyncio
+                        await asyncio.sleep(0.1)
+                
+                yield "data: [DONE]\n\n"
+            
+            from fastapi.responses import StreamingResponse
+            return StreamingResponse(
+                greeting_stream(), 
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
+        
+        # 1. Búsqueda semántica directa con LangChain (solo para consultas legales)
         similar_docs = await search_by_text(
             query_text=query,
             top_k=top_k,
