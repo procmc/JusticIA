@@ -207,6 +207,50 @@ class SimilarityService {
       maxQueryLength: 2000
     };
   }
+
+  async generateCaseSummary(numeroExpediente) {
+    try {
+      // Validar entrada
+      if (!numeroExpediente || typeof numeroExpediente !== 'string') {
+        throw new Error('Número de expediente es requerido');
+      }
+
+      const expedienteTrimmed = numeroExpediente.trim();
+      if (!expedienteTrimmed) {
+        throw new Error('Número de expediente no puede estar vacío');
+      }
+
+      console.log('🤖 Generando resumen de IA para expediente:', expedienteTrimmed);
+
+      // Hacer llamada al backend
+      const response = await httpService.post('/similarity/generate-summary', {
+        numero_expediente: expedienteTrimmed
+      });
+
+      console.log('✅ Resumen generado exitosamente:', {
+        expediente: response.numero_expediente,
+        documentos_analizados: response.total_documentos_analizados,
+        tiempo_generacion: response.tiempo_generacion_segundos
+      });
+
+      return {
+        numeroExpediente: response.numero_expediente,
+        totalDocumentosAnalizados: response.total_documentos_analizados,
+        tiempoGeneracionSegundos: response.tiempo_generacion_segundos,
+        resumen: response.resumen_ia.resumen,
+        palabrasClave: response.resumen_ia.palabras_clave,
+        factoresSimilitud: response.resumen_ia.factores_similitud,
+        conclusion: response.resumen_ia.conclusion
+      };
+
+    } catch (error) {
+      console.error('❌ Error generando resumen de IA:', error);
+      
+      // Manejo de errores específicos
+      const handledError = this._handleError(error);
+      throw handledError;
+    }
+  }
 }
 
 export default new SimilarityService();
