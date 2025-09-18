@@ -8,17 +8,20 @@ import NoResults from './results-grid/NoResults';
 import ResultsGrid from './results-grid/ResultsGrid';
 import CaseDetailsModal from './results-grid/details-drawer/CaseDetailsDrawer';
 import useSimilarityUtils from '@/hooks/busqueda-similares/useSimilarityUtils';
+import similarityService from '@/services/similarityService';
+import Toast from '@/components/ui/CustomAlert';  
 
 const BusquedaSimilares = () => {
   // Estados
   const [searchMode, setSearchMode] = useState('description');
   const [searchText, setSearchText] = useState('');
   const [expedientNumber, setExpedientNumber] = useState('');
-  const [similarityThreshold, setSimilarityThreshold] = useState([75]);
+  const [similarityThreshold, setSimilarityThreshold] = useState([30]); // Cambiar a 30% por defecto
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
+  const [searchError, setSearchError] = useState(null);
   
   // Ref para hacer scroll a los resultados
   const resultsRef = useRef(null);
@@ -27,34 +30,95 @@ const BusquedaSimilares = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   
   // Hook personalizado para utilidades
-  const { parseExpedientNumber, getMatterDescription, getSimilarityColor, mockResults } = useSimilarityUtils();
+  const { parseExpedientNumber, getMatterDescription, getSimilarityColor } = useSimilarityUtils();
 
-  // Filtrar resultados por umbral de similitud
+  // Filtrar resultados por umbral de similitud (convertir de porcentaje a decimal)
   const filteredResults = searchResults.filter(
-    result => result.similarity >= similarityThreshold[0]
+    result => (result.similarityPercentage || 0) >= similarityThreshold[0]
   );
 
-  // Función de búsqueda con scroll automático
+  // Función de búsqueda real con el servicio
   const handleSearch = async () => {
-    setIsSearching(true);
-    setHasSearched(true);
-    
-    // Hacer scroll inmediatamente cuando comience la búsqueda (para mostrar "Analizando...")
-    setTimeout(() => {
-      if (resultsRef.current) {
-        resultsRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        });
+    try {
+      setIsSearching(true);
+      setHasSearched(true);
+      setSearchError(null);
+      setSearchResults([]);
+      
+      // Hacer scroll inmediatamente cuando comience la búsqueda
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+
+      // Determinar query según modo
+      const query = searchMode === 'description' ? searchText : expedientNumber;
+      const searchModeSpanish = searchMode === 'description' ? 'descripcion' : 'expediente';
+      
+      // Validar query
+      if (!query || query.trim().length === 0) {
+        throw new Error(
+          searchMode === 'description' 
+            ? 'Por favor ingrese una descripción para buscar'
+            : 'Por favor ingrese un número de expediente para buscar'
+        );
       }
-    }, 100); // Scroll inmediato para mostrar el loading
-    
-    // Simular delay de búsqueda
-    setTimeout(() => {
-      setSearchResults(mockResults);
+
+      console.log('🔍 Iniciando búsqueda:', {
+        modo: searchModeSpanish,
+        query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
+        umbral: similarityThreshold[0] / 100
+      });
+
+      // Llamar al servicio
+      const results = await similarityService.searchSimilarCases({
+        searchMode: searchModeSpanish,
+        query: query,
+        limit: 30,
+        threshold: similarityThreshold[0] / 100 // Convertir de porcentaje a decimal
+      });
+
+      if (results) {
+        setSearchResults(results.similarCases || []);
+        
+        // Mostrar notificación de éxito
+        Toast.success(
+          'Búsqueda completada',
+          `Se encontraron ${results.totalResults} casos similares`,
+          {
+            timeout: 4000
+          }
+        );
+
+        console.log('✅ Búsqueda completada:', {
+          total_resultados: results.totalResults,
+          casos_mostrados: results.similarCases?.length || 0
+        });
+      } else {
+        setSearchResults([]);
+      }
+
+    } catch (error) {
+      console.error('❌ Error en búsqueda:', error);
+      setSearchError(error.message);
+      setSearchResults([]);
+      
+      // Mostrar notificación de error
+      Toast.error(
+        'Error en búsqueda',
+        error.message || 'Error al realizar búsqueda',
+        {
+          timeout: 5000
+        }
+      );
+    } finally {
       setIsSearching(false);
-    }, 2000);
+    }
   };
 
   // Función para ver detalles
@@ -65,15 +129,20 @@ const BusquedaSimilares = () => {
 
   // Función para reducir similitud cuando no hay resultados
   const handleReduceSimilarity = () => {
-    setSimilarityThreshold([60]);
+    setSimilarityThreshold([20]); // Reducir a 20%
   };
 
-  // Función para limpiar inputs
+  // Función para limpiar inputs y cancelar búsqueda
   const clearInputs = () => {
+    // Cancelar búsqueda en progreso si existe
+    similarityService.cancelSearch();
+    
     setSearchText('');
     setExpedientNumber('');
     setHasSearched(false);
     setSearchResults([]);
+    setSearchError(null);
+    setIsSearching(false);
   };
 
   // Verificar si hay contenido para limpiar
