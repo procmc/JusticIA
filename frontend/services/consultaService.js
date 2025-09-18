@@ -5,7 +5,7 @@ class ConsultaService {
     this.currentRequest = null;
   }
 
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30) {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30, conversationContext = '') {
     // Cancelar request anterior si existe
     if (this.currentRequest) {
       console.log('Cancelando consulta anterior...');
@@ -17,10 +17,16 @@ class ConsultaService {
     this.currentRequest = { id: requestId, cancelled: false };
     const currentRequest = this.currentRequest;
     try {
+      // Preparar la consulta con contexto si existe
+      const queryWithContext = conversationContext 
+        ? `${conversationContext}\n\n${query.trim()}`
+        : query.trim();
+
       // Usar httpService.postStream para manejo de streaming
       const response = await httpService.postStream('/llm/consulta-general-stream', {
-        query: query.trim(),
-        top_k: topK
+        query: queryWithContext,
+        top_k: topK,
+        has_context: !!conversationContext
       });
 
       if (currentRequest.cancelled) {
