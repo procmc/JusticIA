@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Progress,
   Tabs,
@@ -19,15 +19,50 @@ const CaseDetailsModal = ({
   getSimilarityColor
 }) => {
   const [selectedTab, setSelectedTab] = useState("resumen");
+  
+  // Estados para generación de resumen IA - organizados por expediente
+  const [aiSummaries, setAiSummaries] = useState({}); // { expedienteNumber: { summary, stats, isGenerating } }
+  
+  // Calcular datos del expediente (puede ser null)
+  const numeroExpediente = selectedCase?.expedientNumber || selectedCase?.expedient || selectedCase?.expedientId;
+  const expedientData = numeroExpediente ? parseExpedientNumber(numeroExpediente) : null;
+  const matterDescription = expedientData ? getMatterDescription(expedientData.matter) : null;
 
-  if (!selectedCase) return null;
+  // Resetear tab al cambiar expediente
+  useEffect(() => {
+    if (numeroExpediente) {
+      setSelectedTab("resumen");
+    }
+  }, [numeroExpediente]);
 
-  const expedientData = parseExpedientNumber(selectedCase.expedient);
-  const matterDescription = getMatterDescription(expedientData.matter);
+  // Early return DESPUÉS de todos los hooks
+  if (!selectedCase || !numeroExpediente) return null;
+
+  // Obtener estado específico de este expediente
+  const currentExpedientState = aiSummaries[numeroExpediente] || {
+    aiSummary: null,
+    isGenerating: false,
+    generationStats: null
+  };
+
+  // Funciones para actualizar estado de este expediente específico
+  const updateExpedientState = (updates) => {
+    setAiSummaries(prev => ({
+      ...prev,
+      [numeroExpediente]: {
+        ...prev[numeroExpediente],
+        ...updates
+      }
+    }));
+  };
+
+  const setAiSummary = (summary) => updateExpedientState({ aiSummary: summary });
+  const setIsGeneratingResumen = (isGenerating) => updateExpedientState({ isGenerating });
+  const setGenerationStats = (stats) => updateExpedientState({ generationStats: stats });
 
   return (
     <DrawerGeneral
-      titulo={`Expediente: ${selectedCase.expedient}`}
+      titulo={`Expediente: ${numeroExpediente || 'No definido'}`}
       isOpen={isOpen}
       onOpenChange={onClose}
       size="3xl"
@@ -102,6 +137,9 @@ const CaseDetailsModal = ({
                 <div className="flex items-center gap-2">
                   <IoDocument className="w-4 h-4" />
                   <span>Resumen IA</span>
+                  {currentExpedientState.isGenerating && (
+                    <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+                  )}
                 </div>
               }
             >
@@ -110,6 +148,12 @@ const CaseDetailsModal = ({
                   selectedCase={selectedCase}
                   expedientData={expedientData}
                   matterDescription={matterDescription}
+                  aiSummary={currentExpedientState.aiSummary}
+                  setAiSummary={setAiSummary}
+                  isGeneratingResumen={currentExpedientState.isGenerating}
+                  setIsGeneratingResumen={setIsGeneratingResumen}
+                  generationStats={currentExpedientState.generationStats}
+                  setGenerationStats={setGenerationStats}
                 />
               </div>
             </Tab>
