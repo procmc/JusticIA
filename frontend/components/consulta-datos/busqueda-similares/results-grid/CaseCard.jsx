@@ -9,8 +9,15 @@ const CaseCard = ({
   getSimilarityColor,
   onViewDetails
 }) => {
-  const expedientData = parseExpedientNumber(caseData.expedient);
+  // Usar expedientNumber del servicio en lugar de expedient
+  const expedientData = parseExpedientNumber(caseData.expedientNumber || caseData.expedient);
   const matterDescription = getMatterDescription(expedientData.matter);
+  
+  // Usar similarityPercentage del servicio
+  const similarityPercent = caseData.similarityPercentage || Math.round((caseData.similarity || 0) * 100);
+  
+  // Usar totalDocuments del servicio
+  const documentCount = caseData.totalDocuments || caseData.documentCount || 0;
 
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
@@ -24,7 +31,7 @@ const CaseCard = ({
                   <IoDocument className="w-5 h-5 text-primary-600" />
                 </div>
                 <h3 className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent text-md tracking-wide">
-                  {caseData.expedient}
+                  {caseData.expedientNumber || caseData.expedient}
                 </h3>
               </div>
             </div>
@@ -57,11 +64,11 @@ const CaseCard = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 font-medium">Similitud</span>
-              <span className="font-bold text-xl text-primary">{caseData.similarity}%</span>
+              <span className="font-bold text-xl text-primary">{similarityPercent}%</span>
             </div>
             <Progress
-              value={caseData.similarity}
-              color={getSimilarityColor(caseData.similarity)}
+              value={similarityPercent}
+              color={getSimilarityColor(similarityPercent)}
               size="sm"
               className="w-full h-2"
               classNames={{
@@ -78,7 +85,7 @@ const CaseCard = ({
             <div className="text-sm">
               <div className="flex items-center gap-1 text-gray-600">
                 <IoDocument className="w-4 h-4" />
-                <span className="font-medium">{caseData.documentCount} documentos</span>
+                <span className="font-medium">{documentCount} documentos</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Creado: {caseData.date}
