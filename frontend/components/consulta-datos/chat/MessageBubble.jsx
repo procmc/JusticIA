@@ -1,104 +1,155 @@
 import React from 'react';
 import { Avatar } from '@heroui/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
   const isWarning = message.isWarning || false;
 
-  // Función para formatear el texto del mensaje
-  const formatText = (text) => {
-    if (!text) return '';
-    
-    return text
-      // Agregar espacios después de puntos seguidos de letras mayúsculas
-      .replace(/\.([A-Z])/g, '. $1')
-      // Agregar espacios después de comas seguidas de letras mayúsculas
-      .replace(/,([A-Z])/g, ', $1')
-      // Agregar espacios después de dos puntos seguidos de letras mayúsculas
-      .replace(/:([A-Z])/g, ': $1')
-      // Separar cédulas mal formateadas (ej: cédula1-0555-0099 -> cédula 1-0555-0099)
-      .replace(/([a-záéíóúñ])(\d+-\d+-\d+)/gi, '$1 $2')
-      // Separar expedientes mal formateados (ej: expediente2025-CR-000567 -> expediente 2025-CR-000567)
-      .replace(/([a-záéíóúñ])(\d{4}-[A-Z]{2}-\d+)/gi, '$1 $2')
-      // Separar números de expediente mal formateados
-      .replace(/([a-záéíóúñ])(\d{4}-[A-Z]{2,3}-\d+)/gi, '$1 $2')
-      // Agregar espacios después de números seguidos de letras (pero no en códigos)
-      .replace(/(\d)([A-Za-záéíóúñ])/g, (match, num, letter, offset, string) => {
-        // No separar si es parte de un código como "2025-CR" o cédula
-        const before = string.substring(Math.max(0, offset - 10), offset);
-        if (before.includes('-') || before.toLowerCase().includes('cédula') || before.toLowerCase().includes('expediente')) {
-          return match;
-        }
-        return `${num} ${letter}`;
-      })
-      // Agregar espacios antes de números después de letras (excepto en códigos)
-      .replace(/([A-Za-záéíóúñ])(\d)/g, (match, letter, num, offset, string) => {
-        // No separar si es parte de un código
-        const after = string.substring(offset + match.length, offset + match.length + 10);
-        if (after.includes('-') || match.toLowerCase().includes('artículo') || match.toLowerCase().includes('ley')) {
-          return match;
-        }
-        return `${letter} ${num}`;
-      })
-      // Agregar espacios después de paréntesis de cierre seguidos de letras mayúsculas
-      .replace(/\)([A-Z])/g, ') $1')
-      // Separar múltiples espacios en uno solo
-      .replace(/\s+/g, ' ')
-      // Limpiar espacios al inicio y final
-      .trim();
-  };
+  // Componente personalizado para renderizar Markdown con estilos
+  const MarkdownRenderer = ({ content }) => {
+    if (!content) return null;
 
-  // Función para renderizar texto con markdown y estructura mejorada
-  const renderFormattedText = (text) => {
-    if (!text) return '';
-    
-    const formattedText = formatText(text);
-    
-    // Dividir por líneas de separación (---)
-    const sections = formattedText.split(/\n*---+\n*/);
-    
-    return (
-      <div className="space-y-4">
-        {sections.map((section, sectionIndex) => {
-          if (!section.trim()) return null;
-          
-          // Dividir en párrafos dentro de cada sección
-          const paragraphs = section
-            .split(/\n\n+/)
-            .map(p => p.trim())
-            .filter(p => p.length > 0);
-          
+    // Componentes personalizados para elementos Markdown
+    const components = {
+      // Párrafos con justificación
+      p: ({ children }) => (
+        <p className="mb-4 leading-relaxed text-gray-800 last:mb-0 text-justify">
+          {children}
+        </p>
+      ),
+      
+      // Encabezados con mejor espaciado
+      h1: ({ children }) => (
+        <h1 className="text-lg font-bold text-gray-900 mb-3 mt-4 first:mt-0 text-left">
+          {children}
+        </h1>
+      ),
+      h2: ({ children }) => (
+        <h2 className="text-base font-semibold text-gray-900 mb-2 mt-3 first:mt-0 text-left">
+          {children}
+        </h2>
+      ),
+      h3: ({ children }) => (
+        <h3 className="text-sm font-semibold text-gray-900 mb-2 mt-3 first:mt-0 text-left">
+          {children}
+        </h3>
+      ),
+      
+      // Listas con bullets justificadas
+      ul: ({ children }) => (
+        <ul className="list-disc list-outside mb-4 space-y-2 ml-6">
+          {children}
+        </ul>
+      ),
+      ol: ({ children }) => (
+        <ol className="list-decimal list-outside mb-4 space-y-2 ml-6">
+          {children}
+        </ol>
+      ),
+      li: ({ children }) => (
+        <li className="text-gray-800 leading-relaxed text-justify">
+          {children}
+        </li>
+      ),
+      
+      // Texto en negrita
+      strong: ({ children }) => (
+        <strong className="font-semibold text-gray-900">
+          {children}
+        </strong>
+      ),
+      
+      // Texto en cursiva
+      em: ({ children }) => (
+        <em className="italic text-gray-800">
+          {children}
+        </em>
+      ),
+      
+      // Código inline
+      code: ({ children, className, ...props }) => {
+        // Si no tiene className, es código inline
+        if (!className) {
           return (
-            <div key={sectionIndex} className="space-y-3">
-              {sectionIndex > 0 && (
-                <div className="border-t border-gray-200 pt-4"></div>
-              )}
-              {paragraphs.map((paragraph, paragraphIndex) => {
-                // Procesar markdown simple
-                const processedParagraph = paragraph
-                  // Convertir **texto** a <strong>texto</strong>
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  // Convertir saltos de línea simples a <br>
-                  .replace(/\n/g, '<br>');
-                
-                // Identificar si es la fuente (última línea)
-                const isFuente = paragraph.toLowerCase().startsWith('fuente:');
-                
-                return (
-                  <div 
-                    key={paragraphIndex}
-                    className={`leading-relaxed text-justify ${
-                      isFuente 
-                        ? 'text-xs text-gray-500 italic mt-6 pt-2 border-t border-gray-200' 
-                        : 'text-sm'
-                    }`}
-                    dangerouslySetInnerHTML={{ __html: processedParagraph }}
-                  />
-                );
-              })}
-            </div>
+            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">
+              {children}
+            </code>
           );
-        })}
+        }
+        // Si tiene className, es un bloque de código
+        return (
+          <code className={className} {...props}>
+            {children}
+          </code>
+        );
+      },
+      
+      // Bloques de código
+      pre: ({ children }) => (
+        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 overflow-x-auto">
+          {children}
+        </pre>
+      ),
+      
+      // Enlaces
+      a: ({ href, children }) => (
+        <a 
+          href={href} 
+          className="text-blue-600 hover:text-blue-800 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      ),
+      
+      // Citas/blockquotes
+      blockquote: ({ children }) => (
+        <blockquote className="border-l-4 border-blue-200 pl-4 italic text-gray-700 mb-4 text-justify">
+          {children}
+        </blockquote>
+      ),
+      
+      // Líneas horizontales con mejor espaciado
+      hr: () => (
+        <hr className="border-t-2 border-gray-300 my-6" />
+      ),
+      
+      // Tablas
+      table: ({ children }) => (
+        <div className="overflow-x-auto mb-4">
+          <table className="min-w-full border border-gray-200 rounded-lg">
+            {children}
+          </table>
+        </div>
+      ),
+      thead: ({ children }) => (
+        <thead className="bg-gray-50">
+          {children}
+        </thead>
+      ),
+      th: ({ children }) => (
+        <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-900">
+          {children}
+        </th>
+      ),
+      td: ({ children }) => (
+        <td className="border border-gray-200 px-3 py-2 text-gray-800">
+          {children}
+        </td>
+      ),
+    };
+
+    return (
+      <div className="markdown-content">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={components}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     );
   };
@@ -152,7 +203,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
             {isUser ? (
               <span>{message.text}</span>
             ) : (
-              renderFormattedText(message.text)
+              <MarkdownRenderer content={message.text} />
             )}
             {isStreaming && !isUser && !message.text && (
               <div className="inline-flex items-center space-x-1 align-baseline">

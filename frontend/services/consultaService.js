@@ -104,6 +104,31 @@ class ConsultaService {
       }
     }
   }
+
+  // Método SIN streaming para pruebas
+  async consultaGeneralNoStreaming(query, topK = 30, conversationContext = '') {
+    try {
+      // Preparar la consulta con contexto si existe
+      const queryWithContext = conversationContext 
+        ? `${conversationContext}\n\n${query.trim()}`
+        : query.trim();
+
+      console.log('Consulta sin streaming:', queryWithContext);
+
+      // Usar el endpoint sin streaming
+      const response = await httpService.post('/llm/consulta-general', {
+        query: queryWithContext,
+        top_k: topK,
+        has_context: !!conversationContext
+      });
+
+      return response;
+
+    } catch (error) {
+      console.error('Error en consulta sin streaming:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ConsultaService();

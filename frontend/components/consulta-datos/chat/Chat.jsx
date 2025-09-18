@@ -77,87 +77,66 @@ const ConsultaChat = () => {
     // Obtener el contexto de conversación formateado
     const conversationContext = getFormattedContext();
     
-    // Variable para almacenar la respuesta completa
-    let fullResponse = '';
+    // ======= MODO SIN STREAMING PARA PRUEBAS =======
+    try {
+      const resultado = await consultaService.consultaGeneralNoStreaming(
+        text,
+        5, // topK
+        conversationContext
+      );
 
-    // Iniciar consulta con streaming FUERA del setMessages
-    consultaService.consultaGeneralStreaming(
-      text,
-      // onChunk: Cada fragmento de texto que llega
-      (chunk) => {
-        if (stopStreamingRef.current || !currentRequestRef.current?.active) return;
+      if (currentRequestRef.current?.active) {
+        setStreamingMessageIndex(null);
+        setIsTyping(false);
+        currentRequestRef.current = null;
         
-        // Acumular la respuesta completa
-        fullResponse += chunk;
-        
+        // Actualizar el mensaje del asistente con la respuesta completa
         setMessages(prevMessages => {
           const updatedMessages = [...prevMessages];
           if (updatedMessages[messageIndex]) {
             updatedMessages[messageIndex] = {
               ...updatedMessages[messageIndex],
-              text: updatedMessages[messageIndex].text + chunk
+              text: resultado.respuesta || 'No se recibió respuesta del servidor.',
+              timestamp: new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
             };
           }
           return updatedMessages;
         });
-      },
-      // onComplete: Cuando termina el streaming
-      () => {
-        if (currentRequestRef.current?.active) {
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
-          currentRequestRef.current = null;
-          
-          // Actualizar el timestamp del mensaje del asistente AHORA que terminó
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                timestamp: new Date().toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              };
-            }
-            return updatedMessages;
-          });
-          
-          // Guardar la conversación en el contexto
-          if (fullResponse.trim()) {
-            addToContext(text, fullResponse.trim());
+        
+        // Guardar la conversación en el contexto
+        if (resultado.respuesta?.trim()) {
+          addToContext(text, resultado.respuesta.trim());
+        }
+      }
+    } catch (error) {
+      console.error('Error en la consulta sin streaming:', error);
+      if (currentRequestRef.current?.active) {
+        setStreamingMessageIndex(null);
+        setIsTyping(false);
+        currentRequestRef.current = null;
+        
+        // Mostrar mensaje de error
+        setMessages(prevMessages => {
+          const updatedMessages = [...prevMessages];
+          if (updatedMessages[messageIndex]) {
+            updatedMessages[messageIndex] = {
+              ...updatedMessages[messageIndex],
+              text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+              isError: true,
+              timestamp: new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            };
           }
-        }
-      },
-      // onError: Si hay un error
-      (error) => {
-        console.error('Error en la consulta:', error);
-        if (currentRequestRef.current?.active) {
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
-          currentRequestRef.current = null;
-          
-          // Mostrar mensaje de error
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-                isError: true,
-                timestamp: new Date().toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              };
-            }
-            return updatedMessages;
-          });
-        }
-      },
-      10, // topK
-      conversationContext // contexto de conversación
-    );
+          return updatedMessages;
+        });
+      }
+    }
+    // ======= FIN MODO SIN STREAMING =======
   };
 
   return (
