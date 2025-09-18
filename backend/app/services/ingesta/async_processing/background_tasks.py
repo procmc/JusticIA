@@ -183,3 +183,117 @@ def cleanup_old_tasks(max_age_hours: int = 24):
         max_age_hours: Edad máxima en horas para mantener tareas completadas
     """
     progress_manager.remove_completed_tasks(max_age_hours)
+
+
+def procesar_archivo_con_contenido_en_background(
+    file_process_id: str,
+    CT_Num_expediente: str,
+    archivo_info: dict,  # Información del archivo ya guardado
+    db: Session,
+    process_status_store: Optional[Dict[str, dict]] = None
+):
+    """
+    Función que procesa UN archivo que ya fue guardado en disco.
+    Evita el problema de leer el archivo dos veces.
+    
+    Args:
+        file_process_id: ID único del archivo
+        CT_Num_expediente: Número de expediente
+        archivo_info: Información del archivo ya guardado (incluye content)
+        db: Sesión de base de datos
+        process_status_store: (Opcional) Diccionario para compatibilidad
+    """
+    # Crear tracker de progreso granular
+    tracker = progress_manager.create_tracker(file_process_id, total_steps=100)
+    
+    try:
+        # Paso 1: Inicialización (0-10%)
+        tracker.update_progress(5, f"Procesando archivo guardado: {archivo_info['filename']}")
+        
+        # Compatibilidad con sistema legacy
+        if process_status_store:
+            process_status_store[file_process_id]["status"] = "processing"
+            process_status_store[file_process_id]["message"] = f"Procesando {archivo_info['filename']}..."
+            process_status_store[file_process_id]["progress"] = 5
+        
+        tracker.update_progress(10, "Recreando objeto de archivo desde contenido guardado")
+        
+        # Usar el contenido ya leído y guardado
+        file_buffer = BytesIO(archivo_info['content'])
+        file_obj = UploadFile(
+            file=file_buffer,
+            filename=archivo_info['original_filename']
+        )
+        file_obj.content_type = archivo_info['content_type']
+        
+        # Paso 2: Configuración de entorno async (10-20%)
+        tracker.update_progress(15, "Configurando entorno de procesamiento")
+        
+        # Procesar como lista de un solo archivo
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        tracker.update_progress(20, "Iniciando procesamiento del archivo")
+        
+        # Paso 3: Procesamiento principal (20-90%)
+        resultado_completo = loop.run_until_complete(
+            process_uploaded_files([file_obj], CT_Num_expediente, db, tracker)
+        )
+        
+        # Paso 4: Evaluación de resultados (90-100%)
+        tracker.update_progress(90, "Evaluando resultados del procesamiento")
+        
+        # Extraer resultado del archivo individual
+        if resultado_completo.procesados_exitosamente > 0:
+            archivo_resultado = resultado_completo.archivos_procesados[0]
+            
+            # Actualizar estado: completado
+            tracker.mark_completed("Archivo procesado exitosamente")
+            
+            # Auto-limpieza: Programar eliminación de esta tarea en 5 minutos
+            progress_manager.schedule_task_cleanup(file_process_id, delay_minutes=5)
+            
+            # Compatibilidad legacy
+            if process_status_store:
+                process_status_store[file_process_id].update({
+                    "status": "completed",
+                    "message": "Archivo procesado exitosamente",
+                    "progress": 100,
+                    "resultado": {
+                        "filename": archivo_info['filename'],
+                        "documento_id": archivo_resultado.file_id,
+                        "mensaje": archivo_resultado.message,
+                        "status": "success"
+                    }
+                })
+        else:
+            # Error en procesamiento
+            error_msg = "Error procesando el archivo"
+            if resultado_completo.archivos_con_error:
+                error_detalle = resultado_completo.archivos_con_error[0]
+                error_msg = f"Error: {error_detalle.error_message}"
+            
+            tracker.mark_failed(error_msg)
+            
+            if process_status_store:
+                process_status_store[file_process_id].update({
+                    "status": "error",
+                    "message": error_msg,
+                    "progress": 0
+                })
+        
+        # Limpiar loop
+        loop.close()
+        
+    except Exception as e:
+        error_msg = f"Error crítico procesando archivo: {str(e)}"
+        logger.error(f"Error en background task {file_process_id}: {e}")
+        
+        tracker.mark_failed(error_msg)
+        
+        if process_status_store:
+            process_status_store[file_process_id].update({
+                "status": "error",
+                "message": error_msg,
+                "progress": 0
+            })

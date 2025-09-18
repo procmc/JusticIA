@@ -1,40 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   Card,
-  CardBody
+  CardBody,
+  Spinner
 } from '@heroui/react';
-import { IoDocument, IoDownload, IoEye } from 'react-icons/io5';
+import { IoDocument, IoDownload, IoEye, IoFolderOpen } from 'react-icons/io5';
+import downloadService from '../../../../../services/downloadService';
 
-const DocumentosTab = ({ selectedCase }) => {
-  // Datos simulados para documentos
-  const documents = [
-    { id: 1, nombre: "Demanda inicial", tipo: "PDF", fecha: "2023-03-15", tamaño: "2.1 MB" },
-    { id: 2, nombre: "Contestación", tipo: "PDF", fecha: "2023-04-02", tamaño: "1.8 MB" },
-    { id: 3, nombre: "Pruebas documentales", tipo: "PDF", fecha: "2023-04-15", tamaño: "4.2 MB" },
-    { id: 4, nombre: "Peritaje técnico", tipo: "PDF", fecha: "2023-05-01", tamaño: "3.5 MB" },
-    { id: 5, nombre: "Alegatos finales", tipo: "PDF", fecha: "2023-05-20", tamaño: "2.9 MB" }
-  ];
+const DocumentosTab = ({ selectedCase, onDocumentCountChange }) => {
+  const [documents, setDocuments] = useState([]);
+  const [downloadingDoc, setDownloadingDoc] = useState(null);
+
+  // Extraer documentos del caso seleccionado
+  useEffect(() => {
+    if (!selectedCase) {
+      setDocuments([]);
+      return;
+    }
+    // Usar los datos adaptados por similarityService.js
+    const documentosArray = selectedCase?.documents;
+    setDocuments(documentosArray || []);
+    if (onDocumentCountChange) {
+      onDocumentCountChange(documentosArray ? documentosArray.length : 0);
+    }
+  }, [selectedCase, onDocumentCountChange]);
 
   // Función para descargar documento individual
-  const handleDownloadDocument = (doc) => {
-    // Aquí iría la lógica para descargar el documento específico
-    console.log(`Descargando: ${doc.nombre}`);
-    // Ejemplo: window.open(`/api/documents/download/${doc.id}`);
+  const handleDownloadDocument = async (doc) => {
+    try {
+      setDownloadingDoc(doc.id);
+      await downloadService.downloadFile(doc.filePath, doc.name);
+    } catch (error) {
+      console.error('Error descargando documento:', error);
+    } finally {
+      setDownloadingDoc(null);
+    }
   };
 
   // Función para ver documento
-  const handleViewDocument = (doc) => {
-    // Aquí iría la lógica para abrir el documento en una nueva pestaña
-    console.log(`Viendo: ${doc.nombre}`);
-    // Ejemplo: window.open(`/api/documents/view/${doc.id}`);
-  };
-
-  // Función para descargar todos los documentos
-  const handleDownloadAll = () => {
-    // Aquí iría la lógica para descargar todos los documentos como ZIP
-    console.log(`Descargando todos los documentos del expediente: ${selectedCase.expedient}`);
-    // Ejemplo: window.open(`/api/expedients/${selectedCase.expedient}/download-all`);
+  const handleViewDocument = async (doc) => {
+    try {
+      await downloadService.viewFile(doc.filePath);
+    } catch (error) {
+      console.error('Error abriendo documento:', error);
+    }
   };
 
   return (
@@ -43,62 +53,71 @@ const DocumentosTab = ({ selectedCase }) => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-600">
-            Documentos del Expediente
+            Documentos del Expediente ({documents.length})
           </h4>
-          <Button
-            size="sm"
-            color="primary"
-            variant="flat"
-            startContent={<IoDownload className="w-3 h-3" />}
-            onPress={handleDownloadAll}
-            className="text-xs"
-          >
-            Descargar Todos
-          </Button>
         </div>
-        {documents.map((doc) => (
-          <Card key={doc.id} className="hover:bg-gray-50 cursor-pointer transition-colors">
-            <CardBody className="p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded">
-                    <IoDocument className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      {doc.nombre}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {doc.fecha} • {doc.tamaño}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="light"
-                    color="primary"
-                    startContent={<IoEye className="w-3 h-3" />}
-                    onPress={() => handleViewDocument(doc)}
-                    className="text-xs px-2"
-                  >
-                    Ver
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    color="secondary"
-                    startContent={<IoDownload className="w-3 h-3" />}
-                    onPress={() => handleDownloadDocument(doc)}
-                    className="text-xs px-2"
-                  >
-                    Descargar
-                  </Button>
-                </div>
-              </div>
+        
+        {documents.length === 0 ? (
+          <Card className="border-dashed border-2 border-gray-300">
+            <CardBody className="p-6 text-center">
+              <IoFolderOpen className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">
+                No hay documentos disponibles para este expediente
+              </p>
             </CardBody>
           </Card>
-        ))}
+        ) : (
+          documents.map((doc, index) => (
+            <Card key={doc.id || index} className="hover:bg-gray-50 cursor-pointer transition-colors">
+              <CardBody className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 rounded">
+                      <IoDocument className="w-4 h-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {doc.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Similitud: {doc.similarityPercentage}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="primary"
+                      startContent={<IoEye className="w-3 h-3" />}
+                      onPress={() => handleViewDocument(doc)}
+                      className="text-xs px-2"
+                    >
+                      Ver
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="secondary"
+                      startContent={
+                        downloadingDoc === doc.id ? (
+                          <Spinner size="sm" color="secondary" />
+                        ) : (
+                          <IoDownload className="w-3 h-3" />
+                        )
+                      }
+                      onPress={() => handleDownloadDocument(doc)}
+                      className="text-xs px-2"
+                      isDisabled={downloadingDoc === doc.id}
+                    >
+                      {downloadingDoc === doc.id ? 'Descargando...' : 'Descargar'}
+                    </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

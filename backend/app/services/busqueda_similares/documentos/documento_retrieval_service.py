@@ -3,7 +3,8 @@ Servicio para procesar documentos coincidentes.
 """
 
 import logging
-from typing import List, Dict, Any
+import os
+from typing import List, Dict, Any, Optional
 from app.services.busqueda_similares.documentos.documento_service import (
     DocumentoService,
 )
@@ -63,15 +64,32 @@ class DocumentoRetrievalService:
             for doc in similar_info.get("documents", []):
                 # Obtener IDs reales del documento desde metadatos o BD
                 doc_metadata = doc.get("metadata", {})
+                document_name = doc.get('document_name')
+                
+                # Obtener la ruta real del archivo desde la base de datos
+                try:
+                    # Intentar obtener el documento desde la BD para conseguir la ruta real
+                    documento_bd = await self._obtener_documento_por_nombre(expedient_id, document_name)
+                    
+                    ruta_archivo = documento_bd.get("file_path") if documento_bd else None
+                    
+                    if not ruta_archivo:
+                        # Fallback: construir ruta basada en estructura estándar
+                        ruta_archivo = os.path.join(os.getcwd(), "uploads", expedient_id, document_name)
+                        
+                except Exception as e:
+                    # En caso de error, usar ruta de fallback
+                    ruta_archivo = os.path.join(os.getcwd(), "uploads", expedient_id, document_name)
+                    logger.error(f"Error obteniendo ruta de BD para {document_name}: {e}")
 
                 documentos_coincidentes.append(
                     {
                         "CN_Id_documento": doc_metadata.get("id_documento")
                         or doc_metadata.get("CN_Id_documento"),  # ID real de BD
-                        "CT_Nombre_archivo": doc.get("document_name"),
+                        "CT_Nombre_archivo": document_name,
                         "puntuacion_similitud": doc.get("similarity_score"),
-                        "url_descarga": f"/api/documents/{expedient_id}/{doc.get('document_name')}",
-                        "CT_Ruta_archivo": f"/uploads/{expedient_id}/{doc.get('document_name')}",
+                        "url_descarga": f"/api/documents/{expedient_id}/{document_name}",
+                        "CT_Ruta_archivo": ruta_archivo,
                     }
                 )
 
@@ -97,3 +115,34 @@ class DocumentoRetrievalService:
         )
 
         return casos_similares
+
+    async def _obtener_documento_por_nombre(self, expedient_id: str, document_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene información del documento desde la base de datos usando expediente y nombre.
+        
+        Args:
+            expedient_id: Número del expediente
+            document_name: Nombre del archivo
+            
+        Returns:
+            Diccionario con información del documento o None si no se encuentra
+        """
+        try:
+            # Usar el documento_service para obtener documentos del expediente
+            expediente_data = await self.documento_service.obtener_expediente_completo(
+                expedient_id, incluir_documentos=True
+            )
+            
+            if not expediente_data or not expediente_data.get("documents"):
+                return None
+            
+            # Buscar el documento específico por nombre
+            for doc in expediente_data["documents"]:
+                if doc.get("document_name") == document_name:
+                    return doc
+                    
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo documento {document_name} del expediente {expedient_id}: {e}")
+            return None

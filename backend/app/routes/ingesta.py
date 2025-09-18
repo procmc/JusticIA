@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 # )
 from app.db.database import get_db
 from app.auth.jwt_auth import require_role
+from app.services.documentos.file_management_service import file_management_service
 import uuid
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Almacén temporal para estados de procesos (en memoria)
 process_status_store = {}
@@ -110,35 +113,41 @@ async def ingestar_archivos(
         file_process_id = str(uuid.uuid4())
         file_process_ids.append(file_process_id)
         
-        # Leer contenido del archivo
-        contenido = await file.read()
-        archivo_data = {
-            'filename': file.filename,
-            'content_type': file.content_type,
-            'content': contenido
-        }
-        
-        # Guardar estado inicial para este archivo
-        process_status_store[file_process_id] = {
-            "status": "iniciando",
-            "progress": 0,
-            "message": f"Archivo {file.filename} en cola",
-            "expediente": CT_Num_expediente,
-            "filename": file.filename
-        }
-        
-        # Crear función wrapper para este archivo
-        def crear_wrapper(fid, exp, data):
-            def ejecutar_procesamiento_individual():
-                from app.services.ingesta.async_processing.background_tasks import procesar_archivo_individual_en_background
-                procesar_archivo_individual_en_background(
-                    fid, exp, data, db, process_status_store
-                )
-            return ejecutar_procesamiento_individual
-        
-        # Ejecutar procesamiento individual en segundo plano
-        wrapper = crear_wrapper(file_process_id, CT_Num_expediente, archivo_data)
-        background_tasks.add_task(wrapper)
+        # Guardar archivo usando el nuevo servicio y obtener contenido
+        try:
+            archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
+            
+            # Guardar estado inicial para este archivo
+            process_status_store[file_process_id] = {
+                "status": "iniciando",
+                "progress": 0,
+                "message": f"Archivo {archivo_info['filename']} guardado, iniciando procesamiento",
+                "expediente": CT_Num_expediente,
+                "filename": archivo_info['filename']
+            }
+            
+            # Crear función wrapper para este archivo con contenido ya leído
+            def crear_wrapper(fid, exp, archivo_data):
+                def ejecutar_procesamiento_individual():
+                    from app.services.ingesta.async_processing.background_tasks import procesar_archivo_con_contenido_en_background
+                    procesar_archivo_con_contenido_en_background(
+                        fid, exp, archivo_data, db, process_status_store
+                    )
+                return ejecutar_procesamiento_individual
+            
+            # Ejecutar procesamiento individual en segundo plano
+            wrapper = crear_wrapper(file_process_id, CT_Num_expediente, archivo_info)
+            background_tasks.add_task(wrapper)
+            
+        except Exception as e:
+            logger.error(f"Error guardando archivo {file.filename}: {e}")
+            process_status_store[file_process_id] = {
+                "status": "error",
+                "progress": 0,
+                "message": f"Error guardando archivo {file.filename}: {str(e)}",
+                "expediente": CT_Num_expediente,
+                "filename": file.filename
+            }
     
     # Devolver lista de IDs de archivos
     return {
