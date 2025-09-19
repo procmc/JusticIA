@@ -140,11 +140,20 @@ async def ingestar_archivos(
             background_tasks.add_task(wrapper)
             
         except Exception as e:
+            # Crear mensaje de error más amigable para el usuario
+            error_message = "Error al guardar el archivo"
+            if "subpath" in str(e).lower() or "relative" in str(e).lower():
+                error_message = "Error de configuración de directorio"
+            elif "permission" in str(e).lower():
+                error_message = "Sin permisos para guardar el archivo"
+            elif "space" in str(e).lower() or "disk" in str(e).lower():
+                error_message = "Espacio insuficiente en disco"
+            
             logger.error(f"Error guardando archivo {file.filename}: {e}")
             process_status_store[file_process_id] = {
                 "status": "error",
                 "progress": 0,
-                "message": f"Error guardando archivo {file.filename}: {str(e)}",
+                "message": f"{error_message}: {file.filename}",
                 "expediente": CT_Num_expediente,
                 "filename": file.filename
             }
