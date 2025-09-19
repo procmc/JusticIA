@@ -44,15 +44,5 @@ LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))
 LLM_TOP_P = float(os.getenv("LLM_TOP_P", "0.95"))
 LLM_REPEAT_PENALTY = float(os.getenv("LLM_REPEAT_PENALTY", "1.1"))
 
-# Configuración del modelo rápido para resúmenes
-FAST_LLM_MODEL = os.getenv("FAST_LLM_MODEL", "qwen3:0.6b")
-FAST_LLM_TEMPERATURE = float(os.getenv("FAST_LLM_TEMPERATURE", "0.1"))
-FAST_LLM_REQUEST_TIMEOUT = int(os.getenv("FAST_LLM_REQUEST_TIMEOUT", "60"))
-FAST_LLM_NUM_CTX = int(os.getenv("FAST_LLM_NUM_CTX", "1024"))
-FAST_LLM_NUM_PREDICT = int(os.getenv("FAST_LLM_NUM_PREDICT", "512"))
-FAST_LLM_TOP_K = int(os.getenv("FAST_LLM_TOP_K", "40"))
-FAST_LLM_TOP_P = float(os.getenv("FAST_LLM_TOP_P", "0.9"))
-FAST_LLM_REPEAT_PENALTY = float(os.getenv("FAST_LLM_REPEAT_PENALTY", "1.1"))
-
 if not MILVUS_URI or not MILVUS_TOKEN:
     raise RuntimeError("Configura MILVUS_URI y MILVUS_TOKEN (.env o variables de entorno).")
