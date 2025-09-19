@@ -22,8 +22,8 @@ class ConsultaService {
         ? `${conversationContext}\n\n${query.trim()}`
         : query.trim();
 
-      // Usar httpService.postStream para manejo de streaming
-      const response = await httpService.postStream('/llm/consulta-general-stream', {
+      // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
+      const response = await httpService.postStream('/rag/consulta-general-stream', {
         query: queryWithContext,
         top_k: topK,
         has_context: !!conversationContext
@@ -115,11 +115,10 @@ class ConsultaService {
 
       console.log('Consulta sin streaming:', queryWithContext);
 
-      // Usar el endpoint sin streaming
-      const response = await httpService.post('/llm/consulta-general', {
-        query: queryWithContext,
-        top_k: topK,
-        has_context: !!conversationContext
+      // Usar el endpoint sin streaming de RAG compatible
+      const response = await httpService.post('/rag/consulta-general-simple', {
+        query: queryWithContext,  // Mantener 'query' para compatibilidad
+        top_k: topK
       });
 
       return response;
