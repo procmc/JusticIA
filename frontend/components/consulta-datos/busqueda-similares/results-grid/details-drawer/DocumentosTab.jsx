@@ -5,10 +5,10 @@ import {
   CardBody,
   Spinner
 } from '@heroui/react';
-import { IoDocument, IoDownload, IoEye, IoFolderOpen } from 'react-icons/io5';
+import { IoDocument, IoDownload, IoFolderOpen } from 'react-icons/io5';
 import downloadService from '../../../../../services/downloadService';
 
-const DocumentosTab = ({ selectedCase, onDocumentCountChange }) => {
+const DocumentosTab = ({ selectedCase }) => {
   const [documents, setDocuments] = useState([]);
   const [downloadingDoc, setDownloadingDoc] = useState(null);
 
@@ -18,13 +18,10 @@ const DocumentosTab = ({ selectedCase, onDocumentCountChange }) => {
       setDocuments([]);
       return;
     }
-    // Usar los datos adaptados por similarityService.js
+
     const documentosArray = selectedCase?.documents;
     setDocuments(documentosArray || []);
-    if (onDocumentCountChange) {
-      onDocumentCountChange(documentosArray ? documentosArray.length : 0);
-    }
-  }, [selectedCase, onDocumentCountChange]);
+  }, [selectedCase]);
 
   // Función para descargar documento individual
   const handleDownloadDocument = async (doc) => {
@@ -35,15 +32,6 @@ const DocumentosTab = ({ selectedCase, onDocumentCountChange }) => {
       console.error('Error descargando documento:', error);
     } finally {
       setDownloadingDoc(null);
-    }
-  };
-
-  // Función para ver documento
-  const handleViewDocument = async (doc) => {
-    try {
-      await downloadService.viewFile(doc.filePath);
-    } catch (error) {
-      console.error('Error abriendo documento:', error);
     }
   };
 
@@ -85,16 +73,6 @@ const DocumentosTab = ({ selectedCase, onDocumentCountChange }) => {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="light"
-                      color="primary"
-                      startContent={<IoEye className="w-3 h-3" />}
-                      onPress={() => handleViewDocument(doc)}
-                      className="text-xs px-2"
-                    >
-                      Ver
-                    </Button>
                     <Button
                       size="sm"
                       variant="light"
