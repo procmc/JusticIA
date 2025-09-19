@@ -5,14 +5,14 @@ from typing import List, Dict, Any
 from langchain_core.documents import Document
 
 
-def format_documents_context(docs: List[Document], max_docs: int = 12, max_chars_per_doc: int = 800) -> str:
+def format_documents_context(docs: List[Document], max_docs: int = 15, max_chars_per_doc: int = 1000) -> str:
     """
     Formatea documentos para el contexto del LLM - Optimizado para información detallada de expedientes
     
     Args:
         docs: Lista de documentos de LangChain
-        max_docs: Número máximo de documentos a incluir (12 para análisis completo)
-        max_chars_per_doc: Caracteres máximos por documento (800 para información detallada)
+        max_docs: Número máximo de documentos a incluir (15 para análisis completo)
+        max_chars_per_doc: Caracteres máximos por documento (1000 para información muy detallada)
     
     Returns:
         Contexto formateado como string con información completa
@@ -33,19 +33,19 @@ def format_documents_context(docs: List[Document], max_docs: int = 12, max_chars
         tipo_documento = doc.metadata.get("tipo_documento", "Sin tipo")
         relevancia = doc.metadata.get("relevance_score", 0)
         
-        # Más contenido para información detallada
+        # MÁS contenido para información MUY detallada
         content = doc.page_content
         if len(content) > max_chars_per_doc:
             # Truncar de manera inteligente, buscando el final de una oración
             truncated = content[:max_chars_per_doc]
             last_period = truncated.rfind('.')
-            if last_period > max_chars_per_doc - 100:  # Si hay un punto cerca del final
+            if last_period > max_chars_per_doc - 150:  # Buscar más lejos para más contenido
                 content = truncated[:last_period + 1] + "..."
             else:
                 content = truncated + "..."
         
         context_parts.append(
-            f"**📋 EXPEDIENTE {i} - INFORMACIÓN DETALLADA**\n"
+            f"**📋 EXPEDIENTE {i} - INFORMACIÓN COMPLETA**\n"
             f"🔢 Número de Expediente: {expediente}\n"
             f"⚖️ Materia Judicial: {materia}\n"
             f"🏛️ Sede Judicial: {sede_judicial}\n"
@@ -53,7 +53,7 @@ def format_documents_context(docs: List[Document], max_docs: int = 12, max_chars
             f"📅 Fecha: {fecha}\n"
             f"📁 Archivo Fuente: {archivo}\n"
             f"🎯 Relevancia: {relevancia:.2f}\n"
-            f"📝 **CONTENIDO COMPLETO:**\n{content}\n"
+            f"📝 **CONTENIDO DETALLADO:**\n{content}\n"
         )
     
     return "\n" + "="*80 + "\n".join(context_parts) + "\n" + "="*80
@@ -72,12 +72,44 @@ def extract_document_sources(docs: List[Document]) -> List[Dict[str, Any]]:
             "fecha": doc.metadata.get("fecha", ""),
             "tipo_documento": doc.metadata.get("tipo_documento", ""),
             "relevancia": doc.metadata.get("relevance_score", 0),
-            "fragmento_completo": _truncate_text_smart(doc.page_content, 500),  # Más información
+            "fragmento_completo": _truncate_text_smart(doc.page_content, 600),  # MÁS información
             "resumen": _extract_summary(doc.page_content),  # Nuevo: resumen inteligente
             "palabras_clave": _extract_keywords(doc.page_content)  # Nuevo: palabras clave
         }
         fuentes.append(fuente)
     return fuentes
+
+# Función para detectar solicitudes de más información
+def should_use_detailed_format(query: str) -> bool:
+    """
+    Detecta si la consulta solicita información detallada
+    """
+    detailed_keywords = [
+        'más información', 'mas información', 'más detalles', 'mas detalles',
+        'qué más', 'que mas', 'información adicional', 'detalles adicionales',
+        'profundizar', 'ampliar', 'extender', 'completo', 'detallado',
+        'todo lo que sabes', 'toda la información', 'información completa',
+        'más datos', 'mas datos', 'información específica', 'específico', 'detalladamente',
+        'en detalle', 'desglosar', 'desglose', 'pormenores', 'pormenorizado','general'
+    ]
+    
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in detailed_keywords)
+
+# Función inteligente que selecciona el formato según la consulta
+def format_context_intelligent(docs: List[Document], query: str = "") -> str:
+    """
+    Selecciona automáticamente el formato más apropiado según la consulta
+    """
+    if should_use_detailed_format(query):
+        # Usar formato MUY detallado para solicitudes específicas
+        return format_documents_context(docs, max_docs=15, max_chars_per_doc=1200)
+    elif len(docs) <= 3:
+        # Para pocos documentos, mostrar todo el contenido
+        return format_documents_context(docs, max_docs=5, max_chars_per_doc=1000)
+    else:
+        # Formato estándar pero generoso
+        return format_context_compact(docs, max_docs=12)
 
 def extract_unique_expedientes(docs: List[Document]) -> List[str]:
     """
@@ -303,13 +335,13 @@ def extract_document_sources_fast(docs: List[Document]) -> List[Dict[str, Any]]:
         fuentes.append(fuente)
     return fuentes
 
-def format_context_compact(docs: List[Document], max_docs: int = 10) -> str:
+def format_context_compact(docs: List[Document], max_docs: int = 12) -> str:
     """
     Versión "compacta" pero con información sustancial para expedientes
     
     Args:
         docs: Lista de documentos de LangChain
-        max_docs: Número máximo de documentos a incluir (10 para información completa)
+        max_docs: Número máximo de documentos a incluir (12 para información completa)
     
     Returns:
         Contexto con información detallada pero organizada
@@ -327,13 +359,13 @@ def format_context_compact(docs: List[Document], max_docs: int = 10) -> str:
         tipo_doc = doc.metadata.get("tipo_documento", "Sin tipo")
         relevancia = doc.metadata.get("relevance_score", 0)
         
-        # Aumentar significativamente el contenido: 500 caracteres
-        content = _truncate_text_smart(doc.page_content, 500)
+        # Aumentar SIGNIFICATIVAMENTE el contenido: 700 caracteres
+        content = _truncate_text_smart(doc.page_content, 700)
         
         # Header más informativo
         header = f"**📋 EXPEDIENTE {i}: {exp}**"
         metadata_line = f"⚖️ {materia} | 🏛️ {sede} | 📅 {fecha} | 📄 {tipo_doc} | 🎯 Rel: {relevancia:.2f}"
         
-        context_parts.append(f"{header}\n{metadata_line}\n\n📝 **Contenido:**\n{content}")
+        context_parts.append(f"{header}\n{metadata_line}\n\n📝 **Contenido Detallado:**\n{content}")
     
     return "\n\n" + "="*60 + "\n\n".join(context_parts) + "\n\n" + "="*60
