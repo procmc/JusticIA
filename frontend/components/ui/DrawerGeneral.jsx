@@ -40,7 +40,7 @@ const DrawerGeneral = ({
                 {(onClose) => (
                     <>
                         <DrawerHeader className="flex flex-col gap-1 text-azulOscuro border-b border-gray-200">
-                            <h2 className="text-xl font-semibold">{titulo}</h2>
+                            <h2 className="text-md font-semibold">{titulo}</h2>
                         </DrawerHeader>
                         
                         <DrawerBody className="custom-scrollbar p-6">
