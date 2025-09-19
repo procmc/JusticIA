@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar } from '@heroui/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,9 +6,19 @@ import remarkGfm from 'remark-gfm';
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
   const isWarning = message.isWarning || false;
+  
+  // Estado para forzar re-renderizado cuando sea necesario
+  const [forceRender, setForceRender] = useState(0);
+
+  // Efecto para manejar renderizado inconsistente - forzar actualización cuando el texto cambia
+  useEffect(() => {
+    if (!isUser && message.text && message.renderKey) {
+      setForceRender(prev => prev + 1);
+    }
+  }, [message.text, message.renderKey, isUser]);
 
   // Componente personalizado para renderizar Markdown con estilos
-  const MarkdownRenderer = ({ content }) => {
+  const MarkdownRenderer = ({ content, forceKey }) => {
     if (!content) return null;
 
     // Componentes personalizados para elementos Markdown
@@ -145,6 +155,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
     return (
       <div className="markdown-content">
         <ReactMarkdown 
+          key={`markdown-${forceKey}-${content.length}`} // Key única para forzar re-renderizado
           remarkPlugins={[remarkGfm]}
           components={components}
         >
@@ -203,7 +214,10 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
             {isUser ? (
               <span>{message.text}</span>
             ) : (
-              <MarkdownRenderer content={message.text} />
+              <MarkdownRenderer 
+                content={message.text} 
+                forceKey={forceRender}
+              />
             )}
             {isStreaming && !isUser && !message.text && (
               <div className="inline-flex items-center space-x-1 align-baseline">

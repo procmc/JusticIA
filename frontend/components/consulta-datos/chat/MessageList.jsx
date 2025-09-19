@@ -85,7 +85,7 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
             <div className="space-y-0">
               {messages.map((message, index) => (
                 <MessageBubble
-                  key={index}
+                  key={`message-${index}-${message.renderKey || message.timestamp || index}`}
                   message={message}
                   isUser={message.isUser}
                   isStreaming={index === streamingMessageIndex}

@@ -90,21 +90,26 @@ const ConsultaChat = () => {
         setIsTyping(false);
         currentRequestRef.current = null;
         
-        // Actualizar el mensaje del asistente con la respuesta completa
-        setMessages(prevMessages => {
-          const updatedMessages = [...prevMessages];
-          if (updatedMessages[messageIndex]) {
-            updatedMessages[messageIndex] = {
-              ...updatedMessages[messageIndex],
-              text: resultado.respuesta || 'No se recibió respuesta del servidor.',
-              timestamp: new Date().toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            };
-          }
-          return updatedMessages;
-        });
+        // Forzar un pequeño delay para evitar problemas de renderizado inconsistente
+        setTimeout(() => {
+          // Actualizar el mensaje del asistente con la respuesta completa
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: resultado.respuesta || 'No se recibió respuesta del servidor.',
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                // Agregar una key única para forzar re-renderizado
+                renderKey: Date.now()
+              };
+            }
+            return updatedMessages;
+          });
+        }, 100); // Delay de 100ms para asegurar renderizado correcto
         
         // Guardar la conversación en el contexto
         if (resultado.respuesta?.trim()) {
