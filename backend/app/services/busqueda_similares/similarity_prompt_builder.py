@@ -3,12 +3,11 @@ Constructor de prompts específicos para servicios de similitud y resúmenes.
 Separado del servicio principal para mejor organización y mantenimiento.
 """
 
-from app.services.RAG.prompt_builder import create_justicia_prompt
-
 
 def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> str:
     """
     Construye prompt especializado para resúmenes de expedientes legales.
+    INDEPENDIENTE del sistema RAG para evitar interferencias de formato.
     
     Args:
         contexto: Contexto de documentos formateado
@@ -17,37 +16,32 @@ def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> s
     Returns:
         Prompt completo optimizado para resúmenes legales en español
     """
-    pregunta = f"Genera un resumen estructurado completo del expediente {numero_expediente}"
     
-    # Usar create_justicia_prompt como base
-    prompt_base = create_justicia_prompt(
-        pregunta=pregunta,
-        context=contexto,
-        conversation_context=""
-    )
-    
-    # Agregar instrucciones específicas para resúmenes legales
-    prompt_resumen = prompt_base + """
+    # Prompt completamente independiente sin usar create_justicia_prompt
+    prompt_resumen = f"""Eres un especialista en análisis de expedientes legales de Costa Rica.
 
-INSTRUCCIONES ESPECÍFICAS PARA RESUMEN LEGAL:
+CONTEXTO DEL EXPEDIENTE:
+{contexto}
 
-Debes responder ÚNICAMENTE en ESPAÑOL y en formato JSON válido exacto:
+EXPEDIENTE A ANALIZAR: {numero_expediente}
 
-{
-    "resumen": "Descripción detallada del caso legal, incluyendo hechos principales, partes involucradas, tipo de procedimiento, estado procesal y aspectos jurídicos relevantes",
-    "palabras_clave": ["término legal 1", "término legal 2", "término legal 3", "término legal 4", "término legal 5", "término legal 6"],
-    "factores_similitud": ["Factor jurídico 1", "Factor procesal 2", "Factor doctrinal 3", "Factor legal 4", "Factor procesal 5"],
-    "conclusion": "Análisis jurídico de las perspectivas del caso, fortalezas legales, debilidades procesales y conclusiones profesionales"
-}
+Tu tarea es analizar el expediente legal y generar un resumen estructurado en formato JSON.
 
-REGLAS ESPECÍFICAS PARA DOCUMENTOS LEGALES:
-- El resumen debe ser detallado y profesional (máximo 400 palabras para casos complejos)
-- Las palabras clave deben incluir términos jurídicos específicos, tipos procesales, y conceptos legales relevantes (6-8 palabras)
-- Los factores de similitud deben identificar elementos jurídicos únicos: tipo de proceso, materias legales, precedentes aplicables, etc.
-- La conclusión debe incluir análisis jurídico profesional sobre viabilidad, riesgos procesales y perspectivas legales
-- Identifica claramente: tipo de proceso (PN, CV, AM, etc.), materias jurídicas involucradas, y estatus procesal
-- SIEMPRE responde en ESPAÑOL - nunca en inglés ni otros idiomas
-- Responde ÚNICAMENTE con el JSON, sin texto adicional antes o después"""
+Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
+
+{{
+    "resumen": "Descripción completa del caso",
+    "palabras_clave": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5", "palabra6"],
+    "factores_similitud": ["factor1", "factor2", "factor3", "factor4", "factor5"],
+    "conclusion": "Análisis jurídico completo del expediente"
+}}
+
+REGLAS ESPECÍFICAS:
+- El resumen debe incluir hechos principales, partes involucradas, tipo de procedimiento (máximo 200 palabras)
+- 6 palabras clave específicas del ámbito jurídico costarricense
+- 5 factores de similitud relevantes para encontrar casos similares
+- La conclusión DEBE ser un análisis jurídico detallado que incluya: situación procesal actual, fortalezas del caso, posibles riesgos, y perspectivas legales (mínimo 50 palabras)
+- Todo en español, respuesta SOLO en JSON válido"""
 
     return prompt_resumen
 
