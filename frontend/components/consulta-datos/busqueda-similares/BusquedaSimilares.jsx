@@ -69,12 +69,6 @@ const BusquedaSimilares = () => {
         );
       }
 
-      console.log('🔍 Iniciando búsqueda:', {
-        modo: searchModeSpanish,
-        query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
-        umbral: similarityThreshold[0] / 100
-      });
-
       // Llamar al servicio
       const results = await similarityService.searchSimilarCases({
         searchMode: searchModeSpanish,
@@ -94,11 +88,6 @@ const BusquedaSimilares = () => {
             timeout: 4000
           }
         );
-
-        console.log('✅ Búsqueda completada:', {
-          total_resultados: results.totalResults,
-          casos_mostrados: results.similarCases?.length || 0
-        });
       } else {
         setSearchResults([]);
       }
@@ -123,7 +112,6 @@ const BusquedaSimilares = () => {
 
   // Función para ver detalles
   const handleViewDetails = (caseData) => {
-    console.log('🔍 BusquedaSimilares - caseData seleccionado:', caseData);
     setSelectedCase(caseData);
     onOpen();
   };

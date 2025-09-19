@@ -5,6 +5,8 @@ Servicio principal de búsqueda de similares unificado con vectorstore.
 import logging
 import time
 from typing import List, Dict, Any
+from langchain_core.documents import Document
+
 from app.schemas.similarity_schemas import (
     SimilaritySearchRequest,
     RespuestaBusquedaSimilitud,
@@ -15,10 +17,18 @@ from app.schemas.similarity_schemas import (
 from .documentos.documento_service import DocumentoService
 from .documentos.documento_retrieval_service import DocumentoRetrievalService
 from app.embeddings.embeddings import get_embeddings
-from app.llm.llm_service import consulta_simple, get_llm
+from app.llm.llm_service import get_llm
+
+# Importar módulos RAG para consistencia
+from app.services.RAG.retriever import JusticIARetriever
+
+# Importar constructor de prompts específico para similarity
+from .similarity_prompt_builder import (
+    create_similarity_summary_prompt,
+    create_similarity_search_context
+)
 
 logger = logging.getLogger(__name__)
-
 
 class SimilarityService:
     """Servicio principal para búsqueda de casos legales similares unificado."""
@@ -59,21 +69,35 @@ class SimilarityService:
     async def _buscar_por_descripcion(
         self, request: SimilaritySearchRequest
     ) -> List[Dict[str, Any]]:
-        """Busca casos similares por descripción usando vectorstore unificado."""
+        """Busca casos similares por descripción usando LangChain Retriever como RAG."""
         if not request.texto_consulta:
             raise ValueError("texto_consulta es requerido")
 
-        embeddings_service = await self._get_embeddings_service()
-        query_vector = await embeddings_service.aembed_query(request.texto_consulta)
+        # Usar el mismo retriever que RAG para consistencia
+        retriever = JusticIARetriever(top_k=request.limite or 30)
+        
+        # Obtener documentos como LangChain Documents
+        docs = await retriever._aget_relevant_documents(request.texto_consulta)
+        
+        # Filtrar por umbral de similitud si se especifica
+        if request.umbral_similitud > 0:
+            docs = [doc for doc in docs if doc.metadata.get("similarity_score", 0) >= request.umbral_similitud]
 
-        # Usar vectorstore unificado
-        from app.vectorstore.vectorstore import search_by_vector
-
-        similar_docs = await search_by_vector(
-            query_vector=query_vector,
-            top_k=request.limite or 30,
-            score_threshold=request.umbral_similitud,
-        )
+        # Convertir LangChain Documents al formato esperado por documento_retrieval_service
+        similar_docs = []
+        for doc in docs:
+            # Usar más caracteres para documentos legales (500 en lugar de 200)
+            preview_chars = 500
+            content_preview = doc.page_content[:preview_chars] + "..." if len(doc.page_content) > preview_chars else doc.page_content
+            
+            similar_docs.append({
+                "id": doc.metadata.get("id_documento", ""),
+                "expedient_id": doc.metadata.get("expediente_numero", ""),
+                "document_name": doc.metadata.get("archivo", ""),
+                "content_preview": content_preview,
+                "similarity_score": doc.metadata.get("similarity_score", 0.0),
+                "metadata": doc.metadata
+            })
 
         return await self.documento_retrieval_service.procesar_casos_similares(
             similar_docs
@@ -100,28 +124,20 @@ class SimilarityService:
         )
 
     async def generate_case_summary(self, numero_expediente: str) -> RespuestaGenerarResumen:
-        """Genera un resumen de IA para un expediente específico."""
+        """Genera un resumen de IA para un expediente específico usando arquitectura RAG."""
         start_time = time.time()
         
         try:
-            # 1. Buscar todos los documentos del expediente
-            from app.vectorstore.vectorstore import get_expedient_documents
+            logger.info(f"Iniciando generación de resumen para expediente: {numero_expediente}")
             
-            documentos = await get_expedient_documents(numero_expediente)
+            # 1. Obtener documentos del expediente
+            docs_expediente = await self._obtener_documentos_expediente(numero_expediente)
             
-            if not documentos:
-                raise ValueError(f"No se encontraron documentos para el expediente {numero_expediente}")
+            # 2. Crear contexto para el LLM
+            contexto_completo = await self._crear_contexto_resumen(docs_expediente)
             
-            # 2. Construir contexto completo del expediente
-            contexto_completo = self._construir_contexto_expediente(documentos, numero_expediente)
-            
-            # 3. Generar resumen con IA usando el modelo rápido
-            prompt = self._construir_prompt_resumen(contexto_completo, numero_expediente)
-            
-            # Usar el LLM rápido específico para resúmenes
-            fast_llm = await get_llm(fast=True)
-            respuesta_llm = fast_llm.invoke(prompt)
-            respuesta_content = getattr(respuesta_llm, "content", str(respuesta_llm))
+            # 3. Generar respuesta con LLM
+            respuesta_content = await self._generar_respuesta_llm(contexto_completo, numero_expediente)
             
             # 4. Parsear respuesta de IA
             resumen_ia = self._parsear_respuesta_ia(respuesta_content)
@@ -130,7 +146,7 @@ class SimilarityService:
             
             return RespuestaGenerarResumen(
                 numero_expediente=numero_expediente,
-                total_documentos_analizados=len(documentos),
+                total_documentos_analizados=len(docs_expediente),
                 resumen_ia=resumen_ia,
                 tiempo_generacion_segundos=round(end_time - start_time, 2)
             )
@@ -139,46 +155,99 @@ class SimilarityService:
             logger.error(f"Error generando resumen para expediente {numero_expediente}: {e}")
             raise
 
-    def _construir_contexto_expediente(self, documentos: List[Any], numero_expediente: str) -> str:
-        """Construye el contexto completo del expediente a partir de los documentos."""
-        contexto = f"EXPEDIENTE: {numero_expediente}\n\n"
-        contexto += "DOCUMENTOS DEL EXPEDIENTE:\n"
-        contexto += "=" * 50 + "\n\n"
-        
-        for i, doc in enumerate(documentos, 1):
-            metadata = doc.metadata if hasattr(doc, 'metadata') else {}
-            contenido = doc.page_content if hasattr(doc, 'page_content') else str(doc)
+    async def _obtener_documentos_expediente(self, numero_expediente: str) -> List[Document]:
+        """Obtiene documentos del expediente usando retriever o fallback a BD."""
+        try:
+            # Estrategia principal: usar retriever
+            retriever = JusticIARetriever(top_k=50)
+            logger.info("Retriever inicializado correctamente")
             
-            nombre_archivo = metadata.get('CT_Nombre_archivo', f'Documento {i}')
-            contexto += f"DOCUMENTO {i}: {nombre_archivo}\n"
-            contexto += "-" * 40 + "\n"
-            contexto += f"{contenido}\n\n"
+            query_expediente = f"expediente {numero_expediente} documentos contenido"
+            logger.info(f"Query para búsqueda: {query_expediente}")
+            
+            docs = await retriever._aget_relevant_documents(query_expediente)
+            logger.info(f"Documentos obtenidos del retriever: {len(docs)}")
+            
+            # Filtrar solo documentos de este expediente específico
+            docs_expediente = [
+                doc for doc in docs 
+                if doc.metadata.get("expediente_numero") == numero_expediente
+            ]
+            
+            if docs_expediente:
+                logger.info(f"Documentos filtrados para expediente {numero_expediente}: {len(docs_expediente)}")
+                return docs_expediente
+            else:
+                logger.warning("No se encontraron documentos en retriever, usando fallback")
+                return await self._obtener_documentos_fallback(numero_expediente)
+                
+        except Exception as e:
+            logger.error(f"Error con retriever/Milvus: {e}")
+            return await self._obtener_documentos_fallback(numero_expediente)
+
+    async def _obtener_documentos_fallback(self, numero_expediente: str) -> List[Document]:
+        """Estrategia de fallback: obtener documentos directamente de la BD."""
+        logger.info("Intentando fallback con documento_service")
         
-        return contexto
+        expediente_data = await self.documento_service.obtener_expediente_completo(
+            numero_expediente, incluir_documentos=True
+        )
+        
+        if not expediente_data or not expediente_data.get("documents"):
+            raise ValueError(f"No se encontraron documentos para el expediente {numero_expediente}")
+        
+        # Convertir documentos a formato LangChain Document
+        docs = []
+        for doc_data in expediente_data["documents"]:
+            content = doc_data.get("content_preview", "") or doc_data.get("content", "")
+            if content.strip():
+                doc = Document(
+                    page_content=content,
+                    metadata={
+                        "expediente_numero": numero_expediente,
+                        "archivo": doc_data.get("document_name", ""),
+                        "id_documento": doc_data.get("id", ""),
+                    }
+                )
+                docs.append(doc)
+        
+        logger.info(f"Fallback exitoso: {len(docs)} documentos desde BD")
+        return docs
 
-    def _construir_prompt_resumen(self, contexto: str, numero_expediente: str) -> str:
-        """Construye el prompt para el LLM que generará el resumen estructurado."""
-        return f"""Eres un asistente legal especializado en análisis de expedientes judiciales. 
+    async def _crear_contexto_resumen(self, docs_expediente: List[Document]) -> str:
+        """Crea el contexto optimizado para documentos legales."""
+        try:
+            contexto_completo = create_similarity_search_context(
+                docs_expediente, 
+                max_docs=20,  # Más documentos para resumen completo
+                max_chars_per_doc=800  # Más caracteres para documentos legales
+            )
+            logger.info(f"Contexto creado con {len(contexto_completo)} caracteres")
+            return contexto_completo
+        except Exception as e:
+            logger.error(f"Error creando contexto: {e}")
+            raise ValueError(f"Error procesando documentos: {e}")
 
-Analiza el siguiente expediente completo y genera un resumen estructurado en el formato JSON EXACTO que se muestra a continuación.
-
-{contexto}
-
-Debes responder ÚNICAMENTE con un JSON válido en el siguiente formato, sin texto adicional:
-
-{{
-    "resumen": "Descripción detallada del caso, incluyendo los hechos principales, las partes involucradas, y el tipo de procedimiento legal",
-    "palabras_clave": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5"],
-    "factores_similitud": ["Factor legal 1", "Factor legal 2", "Factor legal 3", "Factor legal 4"],
-    "conclusion": "Análisis de las perspectivas del caso y conclusiones principales"
-}}
-
-IMPORTANTE:
-- El resumen debe ser comprensivo pero conciso (máximo 300 palabras)
-- Las palabras clave deben ser términos legales relevantes (5-8 palabras)
-- Los factores de similitud deben ser aspectos legales específicos que caracterizan el caso
-- La conclusión debe evaluar las fortalezas del caso y perspectivas legales
-- Responde SOLO con el JSON, sin explicaciones adicionales"""
+    async def _generar_respuesta_llm(self, contexto_completo: str, numero_expediente: str) -> str:
+        """Genera respuesta usando el LLM."""
+        try:
+            # Crear prompt especializado
+            prompt = create_similarity_summary_prompt(contexto_completo, numero_expediente)
+            logger.info("Prompt creado correctamente")
+            
+            # Obtener LLM 
+            llm = await get_llm()
+            logger.info("LLM obtenido correctamente")
+            
+            respuesta_llm = await llm.ainvoke(prompt)
+            respuesta_content = getattr(respuesta_llm, "content", str(respuesta_llm))
+            logger.info(f"Respuesta del LLM obtenida: {len(respuesta_content)} caracteres")
+            
+            return respuesta_content
+            
+        except Exception as e:
+            logger.error(f"Error con LLM: {e}")
+            raise ValueError(f"Error de conexión con Ollama: {e}")
 
     def _parsear_respuesta_ia(self, respuesta_raw: str) -> ResumenIA:
         """Parsea la respuesta del LLM y la convierte en objeto ResumenIA."""
@@ -187,20 +256,37 @@ IMPORTANTE:
         
         # Log para debug
         logger.info(f"Respuesta cruda del LLM (primeros 200 chars): {respuesta_raw[:200]}")
+        logger.info(f"Respuesta cruda del LLM (últimos 100 chars): {respuesta_raw[-100:]}")
         
         try:
             # Limpiar la respuesta básica
             respuesta_limpia = respuesta_raw.strip()
             
-            # Buscar JSON simple - patrón más básico y robusto
+            # Intentar encontrar JSON completo primero
             json_match = re.search(r'\{[^{}]*"resumen"[^{}]*"palabras_clave"[^{}]*"factores_similitud"[^{}]*"conclusion"[^{}]*\}', 
                                  respuesta_limpia, re.DOTALL)
             
             if not json_match:
-                # Intentar patrón más amplio
-                json_match = re.search(r'\{.*?"resumen".*?\}', respuesta_limpia, re.DOTALL)
-            
-            if json_match:
+                # Intentar reparar JSON incompleto
+                logger.warning("JSON completo no encontrado, intentando reparar...")
+                json_reparado = self._intentar_reparar_json(respuesta_limpia)
+                if json_reparado:
+                    json_str = json_reparado
+                    logger.info(f"JSON extraído/reparado: {json_str}")
+                    
+                    # Intentar parsear el JSON
+                    datos = json.loads(json_str)
+                    
+                    return ResumenIA(
+                        resumen=datos.get("resumen", "No se pudo generar resumen"),
+                        palabras_clave=datos.get("palabras_clave", []),
+                        factores_similitud=datos.get("factores_similitud", []),
+                        conclusion=datos.get("conclusion", "No se pudo generar conclusión")
+                    )
+                else:
+                    logger.warning("No se pudo reparar el JSON")
+                    return self._crear_resumen_fallback(respuesta_raw)
+            else:
                 json_str = json_match.group()
                 logger.info(f"JSON extraído: {json_str}")
                 
@@ -213,9 +299,6 @@ IMPORTANTE:
                     factores_similitud=datos.get("factores_similitud", []),
                     conclusion=datos.get("conclusion", "No se pudo generar conclusión")
                 )
-            else:
-                logger.warning("No se encontró patrón JSON válido en la respuesta")
-                return self._crear_resumen_fallback(respuesta_raw)
                 
         except json.JSONDecodeError as e:
             logger.error(f"Error JSON decode: {e}")
@@ -223,12 +306,68 @@ IMPORTANTE:
         except Exception as e:
             logger.error(f"Error general parseando respuesta IA: {e}")
             return self._crear_resumen_fallback(respuesta_raw)
+
+    def _intentar_reparar_json(self, respuesta: str) -> str:
+        """Intenta reparar JSON incompleto añadiendo campos faltantes."""
+        import json
+        try:
+            # Buscar inicio del JSON
+            inicio_json = respuesta.find('{')
+            if inicio_json == -1:
+                return ""
+                
+            json_parte = respuesta[inicio_json:]
+            
+            # Verificar si tiene al menos el resumen
+            if '"resumen"' not in json_parte:
+                return ""
+            
+            # Intentar cerrar JSON incompleto de forma inteligente
+            json_reparado = json_parte
+            
+            # Si no termina con }, intentar cerrarlo
+            if not json_reparado.rstrip().endswith('}'):
+                # Contar llaves abiertas vs cerradas
+                abiertas = json_reparado.count('{')
+                cerradas = json_reparado.count('}')
+                
+                # Si falta cerrar, agregar campos por defecto y cerrar
+                if abiertas > cerradas:
+                    # Verificar qué campos faltan y agregarlos
+                    if '"palabras_clave"' not in json_reparado:
+                        json_reparado += ', "palabras_clave": ["Análisis Legal", "Expediente Judicial", "Procedimiento Legal", "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"]'
+                    
+                    if '"factores_similitud"' not in json_reparado:
+                        json_reparado += ', "factores_similitud": ["Contenido del expediente legal", "Documentación procesal oficial", "Tipo de procedimiento judicial", "Materias jurídicas involucradas", "Contexto procesal específico"]'
+                    
+                    if '"conclusion"' not in json_reparado:
+                        json_reparado += ', "conclusion": "Se requiere análisis manual adicional para conclusiones jurídicas específicas"'
+                    
+                    # Cerrar JSON
+                    json_reparado += '}'
+            
+            # Verificar que el JSON sea válido
+            json.loads(json_reparado)
+            logger.info("JSON reparado exitosamente")
+            return json_reparado
+            
+        except Exception as e:
+            logger.error(f"Error reparando JSON: {e}")
+            return ""
     
     def _crear_resumen_fallback(self, respuesta_raw: str) -> ResumenIA:
-        """Crea un resumen de fallback cuando no se puede parsear JSON."""
+        """Crea un resumen de fallback cuando no se puede parsear JSON - optimizado para español."""
         return ResumenIA(
-            resumen=respuesta_raw[:500] if respuesta_raw else "No se pudo generar resumen automático",
-            palabras_clave=["Análisis Legal", "Expediente Judicial", "Procedimiento"],
-            factores_similitud=["Contenido del expediente", "Documentación legal"],
-            conclusion="Se requiere análisis manual adicional para conclusiones específicas"
+            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del expediente",
+            palabras_clave=[
+                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
+                "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
+            ],
+            factores_similitud=[
+                "Contenido del expediente legal", 
+                "Documentación procesal oficial",
+                "Tipo de procedimiento judicial",
+                "Materias jurídicas involucradas"
+            ],
+            conclusion="Se requiere análisis manual adicional para conclusiones jurídicas específicas y recomendaciones legales detalladas"
         )
