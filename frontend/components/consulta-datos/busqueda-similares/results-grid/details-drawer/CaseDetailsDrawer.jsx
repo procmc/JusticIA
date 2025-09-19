@@ -19,10 +19,12 @@ const CaseDetailsModal = ({
   getSimilarityColor
 }) => {
   const [selectedTab, setSelectedTab] = useState("resumen");
-  const [documentCount, setDocumentCount] = useState(0);
   
   // Estados para generación de resumen IA - organizados por expediente
   const [aiSummaries, setAiSummaries] = useState({}); // { expedienteNumber: { summary, stats, isGenerating } }
+  
+  // Calcular documentCount directamente sin estado
+  const documentCount = selectedCase?.documents?.length || selectedCase?.totalDocuments || 0;
   
   // Calcular datos del expediente (puede ser null)
   const numeroExpediente = selectedCase?.expedientNumber || selectedCase?.expedient || selectedCase?.expedientId;
@@ -33,7 +35,6 @@ const CaseDetailsModal = ({
   useEffect(() => {
     if (numeroExpediente) {
       setSelectedTab("resumen");
-      setDocumentCount(0); // Resetear contador al cambiar expediente
     }
   }, [numeroExpediente]);
 
@@ -114,7 +115,7 @@ const CaseDetailsModal = ({
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Similitud</p>
-                <p className="text-lg font-semibold text-green-700">{selectedCase.similarity}%</p>
+                <p className="text-lg font-semibold text-green-700">{selectedCase.similarityPercentage}%</p>
               </div>
             </div>
           </div>
@@ -130,7 +131,7 @@ const CaseDetailsModal = ({
               tabList: "w-full relative rounded-none p-0 border-b border-gray-200",
               cursor: "w-full bg-primary-500",
               tab: "max-w-fit px-4 h-12",
-              tabContent: "group-data-[selected=true]:text-primary-600 font-medium"
+              tabContent: "group-data-[selected=true]:text-primary-600 font-medium text-gray-500",
             }}
           >
             <Tab
@@ -165,12 +166,12 @@ const CaseDetailsModal = ({
               title={
                 <div className="flex items-center gap-2">
                   <IoDocument className="w-4 h-4" />
-                  <span>Documentos (5)</span>
+                  <span>Documentos ({documentCount})</span>
                 </div>
               }
             >
               <div className="pt-6">
-                <DocumentosTab selectedCase={selectedCase} onDocumentCountChange={setDocumentCount} />
+                <DocumentosTab selectedCase={selectedCase} />
               </div>
             </Tab>
           </Tabs>

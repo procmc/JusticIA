@@ -72,7 +72,7 @@ const ResumenTab = ({
         color="primary"
         variant="solid"
         size="lg"
-        startContent={!isGeneratingResumen ? <IoSparkles className="w-5 h-5" /> : null}
+        startContent={!isGeneratingResumen ? <IoSparkles className="w-4 h-4" /> : null}
         onPress={handleGenerateResumen}
         isLoading={isGeneratingResumen}
         isDisabled={isGeneratingResumen}
@@ -122,7 +122,7 @@ const ResumenTab = ({
                   size="sm"
                   variant="flat"
                   color="primary"
-                  startContent={<IoRefresh className="w-3 h-3" />}
+                  startContent={!isGeneratingResumen ? <IoRefresh className="w-3 h-3" /> : null}
                   onPress={handleGenerateResumen}
                   isLoading={isGeneratingResumen}
                   isDisabled={isGeneratingResumen}

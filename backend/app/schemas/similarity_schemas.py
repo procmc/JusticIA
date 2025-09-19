@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Union
 from pydantic import BaseModel, Field, validator
 
 
@@ -27,7 +27,7 @@ class SimilaritySearchRequest(BaseModel):
 
 class DocumentoCoincidente(BaseModel):
     """Documento coincidente"""
-    CN_Id_documento: Optional[int] = None
+    CN_Id_documento: Optional[Union[int, str]] = None  # Acepta tanto UUID (str) como int
     CT_Nombre_archivo: str
     puntuacion_similitud: float
     url_descarga: str
@@ -37,7 +37,7 @@ class DocumentoCoincidente(BaseModel):
 class CasoSimilar(BaseModel):
     """Expediente similar encontrado"""
     expediente_id: str
-    CN_Id_expediente: Optional[int] = None
+    CN_Id_expediente: Optional[Union[int, str]] = None  # Acepta tanto int como str
     CT_Num_expediente: str
     puntuacion_similitud: float
     documentos_coincidentes: List[DocumentoCoincidente]
