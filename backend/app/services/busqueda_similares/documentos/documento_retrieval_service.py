@@ -4,6 +4,7 @@ Servicio para procesar documentos coincidentes.
 
 import logging
 import os
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from app.services.busqueda_similares.documentos.documento_service import (
     DocumentoService,
@@ -75,11 +76,14 @@ class DocumentoRetrievalService:
                     
                     if not ruta_archivo:
                         # Fallback: construir ruta basada en estructura estándar
-                        ruta_archivo = os.path.join(os.getcwd(), "uploads", expedient_id, document_name)
+                        # Usar la misma lógica que FileManagementService para consistencia
+                        backend_root = Path(__file__).resolve().parent.parent.parent.parent
+                        ruta_archivo = str(backend_root / "uploads" / expedient_id / document_name)
                         
                 except Exception as e:
                     # En caso de error, usar ruta de fallback
-                    ruta_archivo = os.path.join(os.getcwd(), "uploads", expedient_id, document_name)
+                    backend_root = Path(__file__).resolve().parent.parent.parent.parent
+                    ruta_archivo = str(backend_root / "uploads" / expedient_id / document_name)
                     logger.error(f"Error obteniendo ruta de BD para {document_name}: {e}")
 
                 documentos_coincidentes.append(

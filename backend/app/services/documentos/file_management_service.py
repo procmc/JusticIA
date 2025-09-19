@@ -19,7 +19,10 @@ class FileManagementService:
     """Servicio centralizado para manejo de archivos (subida y descarga)"""
     
     def __init__(self):
-        self.BASE_UPLOAD_DIR = Path("uploads")
+        # Asegurar que uploads esté siempre en la raíz del proyecto backend
+        # Desde app/services/documentos/file_management_service.py subir 4 niveles hasta backend/
+        current_dir = Path(__file__).resolve().parent.parent.parent.parent
+        self.BASE_UPLOAD_DIR = current_dir / "uploads"
     
     def _ensure_directory_exists(self, directory: Path) -> None:
         """Crea el directorio si no existe"""
@@ -89,11 +92,14 @@ class FileManagementService:
                 raise HTTPException(status_code=500, detail="Error: archivo guardado está vacío")
             
             # Retornar información completa del archivo
+            project_root = Path(__file__).resolve().parent.parent.parent.parent  # Raíz del backend
+            relative_path = filepath.relative_to(project_root)
+            
             return {
                 "filename": unique_filename,
                 "original_filename": file.filename,
                 "filepath": str(filepath),
-                "relative_path": str(filepath.relative_to(os.getcwd())),
+                "relative_path": str(relative_path),
                 "content_type": file.content_type,
                 "size_bytes": len(content),
                 "content": content  # Devolver contenido para procesamiento posterior
