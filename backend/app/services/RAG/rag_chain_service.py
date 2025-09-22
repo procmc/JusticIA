@@ -42,7 +42,13 @@ class RAGChainService:
             
             if not docs:
                 async def empty_generator():
-                    yield "data: No se encontró información relevante en la base de datos para responder tu consulta.\n\n"
+                    import json
+                    error_data = {
+                        "type": "error",
+                        "content": "No se encontró información relevante en la base de datos para responder tu consulta.",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
                 
                 return StreamingResponse(
                     empty_generator(),
@@ -52,6 +58,7 @@ class RAGChainService:
                         "Connection": "keep-alive",
                         "Access-Control-Allow-Origin": "*",
                         "Access-Control-Allow-Headers": "*",
+                        "X-Accel-Buffering": "no",
                     }
                 )
             
@@ -67,23 +74,62 @@ class RAGChainService:
 
             # Función generadora para streaming
             async def event_generator():
+                import json
+                import asyncio
+                
                 try:
                     # Verificar que el LLM esté disponible
                     if self.llm is None:
                         raise Exception("LLM no inicializado correctamente")
+                    
+                    # Enviar metadatos de inicio
+                    start_data = {
+                        "type": "start",
+                        "content": "",
+                        "metadata": {
+                            "query": pregunta,
+                            "docs_found": len(docs)
+                        },
+                        "done": False
+                    }
+                    yield f"data: {json.dumps(start_data, ensure_ascii=False)}\n\n"
                         
                     chunk_count = 0
                     async for chunk in self.llm.astream(prompt_text):
-                        content = getattr(chunk, 'content', str(chunk))
-                        if content and content.strip():
-                            chunk_count += 1
-                            yield f"data: {content}\n\n"
+                        if hasattr(chunk, 'content') and chunk.content:
+                            content = str(chunk.content)
+                            
+                            # Solo enviar contenido no vacío
+                            if content:
+                                chunk_count += 1
+                                chunk_data = {
+                                    "type": "chunk",
+                                    "content": content,
+                                    "done": False
+                                }
+                                yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                                
+                                # Pequeña pausa para renderizado suave
+                                await asyncio.sleep(0.01)
+                    
+                    # Enviar señal de finalización
+                    done_data = {
+                        "type": "done",
+                        "content": "",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
                             
                     logger.info(f"Streaming completado con {chunk_count} chunks")
                             
                 except Exception as e:
                     logger.error(f"Error durante streaming RAG: {e}")
-                    yield f"data: Error: {str(e)}\n\n"
+                    error_data = {
+                        "type": "error",
+                        "content": f"Error: {str(e)}",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
             
             return StreamingResponse(
                 event_generator(),
@@ -93,6 +139,7 @@ class RAGChainService:
                     "Connection": "keep-alive",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
+                    "X-Accel-Buffering": "no",
                 }
             )
             
@@ -100,7 +147,13 @@ class RAGChainService:
             logger.error(f"Error en consulta general streaming RAG: {e}")
             
             async def error_generator():
-                yield f"data: Error procesando consulta: {str(e)}\n\n"
+                import json
+                error_data = {
+                    "type": "error",
+                    "content": f"Error procesando consulta: {str(e)}",
+                    "done": True
+                }
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
             
             return StreamingResponse(
                 error_generator(),
@@ -110,6 +163,7 @@ class RAGChainService:
                     "Connection": "keep-alive",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
+                    "X-Accel-Buffering": "no",
                 }
             )
 
