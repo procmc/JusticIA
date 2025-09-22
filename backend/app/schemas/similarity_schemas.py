@@ -30,7 +30,6 @@ class DocumentoCoincidente(BaseModel):
     CN_Id_documento: Optional[Union[int, str]] = None  # Acepta tanto UUID (str) como int
     CT_Nombre_archivo: str
     puntuacion_similitud: float
-    url_descarga: str
     CT_Ruta_archivo: str
 
 
@@ -50,6 +49,8 @@ class RespuestaBusquedaSimilitud(BaseModel):
     modo_busqueda: str
     total_resultados: int
     casos_similares: List[CasoSimilar]
+    tiempo_busqueda_segundos: float = Field(..., description="Tiempo de búsqueda en segundos")
+    precision_promedio: float = Field(..., description="Precisión promedio de los resultados (0-100%)")
 
 
 class GenerateResumenRequest(BaseModel):

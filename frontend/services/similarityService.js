@@ -25,13 +25,6 @@ class SimilarityService {
 
       // Preparar payload para el backend (mapear a campos en español)
       const payload = this._buildBackendPayload({ searchMode, query, limit, threshold });
-      
-      console.log('🔍 Enviando búsqueda de similares:', {
-        modo_busqueda: payload.modo_busqueda,
-        query_length: query?.length || 0,
-        limite: payload.limite,
-        umbral: payload.umbral_similitud
-      });
 
       // Hacer llamada al backend
       const response = await httpService.post('/similarity/search', payload);
@@ -129,6 +122,11 @@ class SimilarityService {
         searchCriteria: backendResponse.criterio_busqueda,
         searchMode: backendResponse.modo_busqueda,
         totalResults: backendResponse.total_resultados,
+        // Nuevas estadísticas
+        searchStats: {
+          searchTime: backendResponse.tiempo_busqueda_segundos || 0,
+          averagePrecision: backendResponse.precision_promedio || 0
+        },
         similarCases: (backendResponse.casos_similares || []).map(caso => ({
           // IDs y básicos
           id: caso.CN_Id_expediente, // ID real de BD
@@ -145,7 +143,6 @@ class SimilarityService {
             name: doc.CT_Nombre_archivo, // Nombre del archivo
             similarity: doc.puntuacion_similitud,
             similarityPercentage: Math.round(doc.puntuacion_similitud * 100),
-            downloadUrl: doc.url_descarga,
             filePath: doc.CT_Ruta_archivo
           })),
           
@@ -220,17 +217,9 @@ class SimilarityService {
         throw new Error('Número de expediente no puede estar vacío');
       }
 
-      console.log('🤖 Generando resumen de IA para expediente:', expedienteTrimmed);
-
       // Hacer llamada al backend
       const response = await httpService.post('/similarity/generate-summary', {
         numero_expediente: expedienteTrimmed
-      });
-
-      console.log('✅ Resumen generado exitosamente:', {
-        expediente: response.numero_expediente,
-        documentos_analizados: response.total_documentos_analizados,
-        tiempo_generacion: response.tiempo_generacion_segundos
       });
 
       return {
@@ -244,7 +233,7 @@ class SimilarityService {
       };
 
     } catch (error) {
-      console.error('❌ Error generando resumen de IA:', error);
+      console.error('Error generando resumen de IA:', error);
       
       // Manejo de errores específicos
       const handledError = this._handleError(error);

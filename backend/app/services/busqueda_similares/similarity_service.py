@@ -47,6 +47,8 @@ class SimilarityService:
         self, request: SimilaritySearchRequest
     ) -> RespuestaBusquedaSimilitud:
         """Busca casos legales similares según el modo especificado."""
+        start_time = time.time()
+        
         try:
             if request.modo_busqueda == "descripcion":
                 casos_similares = await self._buscar_por_descripcion(request)
@@ -55,11 +57,25 @@ class SimilarityService:
                 casos_similares = await self._buscar_por_expediente(request)
                 criterio_busqueda = request.numero_expediente
 
+            end_time = time.time()
+            tiempo_busqueda = round(end_time - start_time, 2)
+            
+            # Calcular precisión promedio
+            if casos_similares:
+                precision_promedio = round(
+                    sum(caso.get('puntuacion_similitud', 0) for caso in casos_similares) / len(casos_similares) * 100, 
+                    1
+                )
+            else:
+                precision_promedio = 0.0
+
             return RespuestaBusquedaSimilitud(
                 criterio_busqueda=criterio_busqueda,
                 modo_busqueda=request.modo_busqueda,
                 total_resultados=len(casos_similares),
                 casos_similares=casos_similares,
+                tiempo_busqueda_segundos=tiempo_busqueda,
+                precision_promedio=precision_promedio
             )
 
         except Exception as e:
