@@ -20,6 +20,7 @@ const BusquedaSimilares = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [searchStats, setSearchStats] = useState(null); // Estadísticas de búsqueda
   const [selectedCase, setSelectedCase] = useState(null);
   const [searchError, setSearchError] = useState(null);
   
@@ -79,6 +80,7 @@ const BusquedaSimilares = () => {
 
       if (results) {
         setSearchResults(results.similarCases || []);
+        setSearchStats(results.searchStats || null); // Guardar estadísticas
         
         // Mostrar notificación de éxito
         Toast.success(
@@ -90,12 +92,14 @@ const BusquedaSimilares = () => {
         );
       } else {
         setSearchResults([]);
+        setSearchStats(null);
       }
 
     } catch (error) {
       console.error('❌ Error en búsqueda:', error);
       setSearchError(error.message);
       setSearchResults([]);
+      setSearchStats(null); // Limpiar estadísticas en caso de error
       
       // Mostrar notificación de error
       Toast.error(
@@ -191,6 +195,7 @@ const BusquedaSimilares = () => {
                   resultsCount={filteredResults.length}
                   similarityThreshold={similarityThreshold}
                   setSimilarityThreshold={setSimilarityThreshold}
+                  searchStats={searchStats}
                 />
 
                 {/* Contenido de Resultados */}

@@ -92,7 +92,6 @@ class DocumentoRetrievalService:
                         or doc_metadata.get("CN_Id_documento"),  # ID real de BD
                         "CT_Nombre_archivo": document_name,
                         "puntuacion_similitud": doc.get("similarity_score"),
-                        "url_descarga": f"/api/documents/{expedient_id}/{document_name}",
                         "CT_Ruta_archivo": ruta_archivo,
                     }
                 )

@@ -5,7 +5,8 @@ import { IoDocuments, IoCheckmarkCircle } from 'react-icons/io5';
 const ResultsHeader = ({
   resultsCount,
   similarityThreshold,
-  setSimilarityThreshold
+  setSimilarityThreshold,
+  searchStats
 }) => {
   return (
     <>
@@ -36,12 +37,16 @@ const ResultsHeader = ({
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <span className="text-xs text-gray-500">Tiempo:</span>
-                    <span className="text-xs font-medium text-gray-700">1.2s</span>
+                    <span className="text-xs font-medium text-gray-700">
+                      {searchStats?.searchTime ? `${searchStats.searchTime}s` : '--'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="text-xs text-gray-500">Precisión:</span>
-                    <span className="text-xs font-medium text-gray-700">92%</span>
+                    <span className="text-xs font-medium text-gray-700">
+                      {searchStats?.averagePrecision ? `${searchStats.averagePrecision}%` : '--'}
+                    </span>
                   </div>
                 </div>
               </div>
