@@ -77,47 +77,85 @@ const ConsultaChat = () => {
     // Obtener el contexto de conversación formateado
     const conversationContext = getFormattedContext();
     
-    // ======= MODO SIN STREAMING PARA PRUEBAS =======
+    // ======= MODO STREAMING MEJORADO =======
     try {
-      const resultado = await consultaService.consultaGeneralNoStreaming(
+      await consultaService.consultaGeneralStreaming(
         text,
+        (chunk) => {
+          // Callback para cada chunk recibido
+          if (currentRequestRef.current?.active) {
+            setMessages(prevMessages => {
+              const updatedMessages = [...prevMessages];
+              if (updatedMessages[messageIndex]) {
+                updatedMessages[messageIndex] = {
+                  ...updatedMessages[messageIndex],
+                  text: (updatedMessages[messageIndex].text || '') + chunk
+                };
+              }
+              return updatedMessages;
+            });
+          }
+        },
+        () => {
+          // Callback cuando termina el streaming
+          if (currentRequestRef.current?.active) {
+            setStreamingMessageIndex(null);
+            setIsTyping(false);
+            currentRequestRef.current = null;
+            
+            // Asignar timestamp al finalizar
+            setMessages(prevMessages => {
+              const updatedMessages = [...prevMessages];
+              if (updatedMessages[messageIndex]) {
+                updatedMessages[messageIndex] = {
+                  ...updatedMessages[messageIndex],
+                  timestamp: new Date().toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                };
+              }
+              return updatedMessages;
+            });
+            
+            // Guardar la conversación en el contexto
+            const finalMessage = messages[messageIndex];
+            if (finalMessage?.text?.trim()) {
+              addToContext(text, finalMessage.text.trim());
+            }
+          }
+        },
+        (error) => {
+          // Callback para errores
+          console.error('Error en streaming RAG:', error);
+          if (currentRequestRef.current?.active) {
+            setStreamingMessageIndex(null);
+            setIsTyping(false);
+            currentRequestRef.current = null;
+            
+            setMessages(prevMessages => {
+              const updatedMessages = [...prevMessages];
+              if (updatedMessages[messageIndex]) {
+                updatedMessages[messageIndex] = {
+                  ...updatedMessages[messageIndex],
+                  text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+                  isError: true,
+                  timestamp: new Date().toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                };
+              }
+              return updatedMessages;
+            });
+          }
+        },
         5, // topK
         conversationContext
       );
 
-      if (currentRequestRef.current?.active) {
-        setStreamingMessageIndex(null);
-        setIsTyping(false);
-        currentRequestRef.current = null;
-        
-        // Forzar un pequeño delay para evitar problemas de renderizado inconsistente
-        setTimeout(() => {
-          // Actualizar el mensaje del asistente con la respuesta completa
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                text: resultado.respuesta || 'No se recibió respuesta del servidor.',
-                timestamp: new Date().toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }),
-                // Agregar una key única para forzar re-renderizado
-                renderKey: Date.now()
-              };
-            }
-            return updatedMessages;
-          });
-        }, 100); // Delay de 100ms para asegurar renderizado correcto
-        
-        // Guardar la conversación en el contexto
-        if (resultado.respuesta?.trim()) {
-          addToContext(text, resultado.respuesta.trim());
-        }
-      }
     } catch (error) {
-      console.error('Error en la consulta sin streaming:', error);
+      console.error('Error en la consulta streaming:', error);
       if (currentRequestRef.current?.active) {
         setStreamingMessageIndex(null);
         setIsTyping(false);
@@ -141,7 +179,7 @@ const ConsultaChat = () => {
         });
       }
     }
-    // ======= FIN MODO SIN STREAMING =======
+    // ======= FIN MODO STREAMING =======
   };
 
   return (

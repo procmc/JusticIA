@@ -55,3 +55,8 @@ async def debug_milvus():
 async def test_streaming():
     """Servir la página de test de streaming"""
     return FileResponse("test_streaming.html")
+
+@app.get("/test-ollama")
+async def test_ollama():
+    """Servir la página de test de Ollama directo"""
+    return FileResponse("test_ollama_direct.html")
