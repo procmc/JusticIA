@@ -70,7 +70,7 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
             temp_filepath = f"uploads/{CT_Num_expediente}/{file.filename}"
             
             result = await process_single_file_with_content(
-                file, content, temp_filepath, CT_Num_expediente, expediente, db
+                file, content, temp_filepath, CT_Num_expediente, expediente, db, progress_tracker
             )
             archivos_procesados.append(result)
             
@@ -191,7 +191,8 @@ async def process_single_file_with_content(
     filepath: str, 
     CT_Num_expediente: str, 
     expediente=None, 
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
+    progress_tracker: Optional[ProgressTracker] = None
 ) -> FileUploadResponse:
     """
     Procesa un solo archivo que ya fue guardado en disco.
@@ -217,7 +218,7 @@ async def process_single_file_with_content(
         tipo_archivo = detected_type.mime if detected_type else file.content_type or "application/octet-stream"
         
         # Extraer texto según el tipo
-        texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo)
+        texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker)
         
         if not texto_extraido.strip():
             raise ValueError("No se pudo extraer texto del archivo")
@@ -357,11 +358,11 @@ async def process_single_file_with_content(
             error_detalle=str(e)
         )
 
-async def extract_text_from_file(content: bytes, filename: str, content_type: str) -> str:
+async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None) -> str:
     """
     Extrae texto de diferentes tipos de archivos:
     - MP3: Transcripción con Whisper
-    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika
+    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika con fallback OCR para PDFs
     """
     file_extension = Path(filename).suffix.lower()
     
@@ -369,7 +370,7 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     if file_extension == '.mp3':
         return await extract_text_from_audio_whisper(content, filename)
     
-    # Los demás formatos con Tika
+    # Los demás formatos con Tika (con fallback OCR para PDFs)
     try:
         from tika import parser
         import chardet
@@ -407,6 +408,21 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
                 raise ValueError("Respuesta inesperada de Tika")
                 
             texto = parsed.get('content', '') or ''
+        
+        # Para PDFs, verificar si necesitamos fallback OCR
+        if file_extension == '.pdf':
+            try:
+                from ..ocr_processing.easyocr_service import extract_text_with_ocr_fallback
+                # Aplicar OCR como fallback si el texto es insuficiente
+                texto = await extract_text_with_ocr_fallback(content, filename, content_type, texto, progress_tracker)
+            except ImportError:
+                logger.warning(f"OCR no disponible para {filename}. Instalar con 'pip install easyocr pdf2image pillow'")
+                # Continuar solo con texto de Tika
+                pass
+            except Exception as e:
+                logger.warning(f"OCR falló para {filename}: {str(e)}. Usando solo texto de Tika")
+                # Continuar solo con texto de Tika
+                pass
         
         if not texto or not texto.strip():
             raise ValueError("No se pudo extraer texto del archivo")
