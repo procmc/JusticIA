@@ -85,8 +85,10 @@ async def get_llm():
                 base_url=OLLAMA_BASE_URL,
                 temperature=LLM_TEMPERATURE,
                 streaming=True,
-                keep_alive=LLM_KEEP_ALIVE,  
-                request_timeout=LLM_REQUEST_TIMEOUT,  
+                keep_alive=LLM_KEEP_ALIVE,
+                request_timeout=LLM_REQUEST_TIMEOUT,
+                reasoning=False,
+                
                 model_kwargs={
                     "num_ctx": LLM_NUM_CTX,
                     "num_predict": LLM_NUM_PREDICT,
@@ -95,6 +97,7 @@ async def get_llm():
                     "repeat_penalty": LLM_REPEAT_PENALTY,
                     "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
                 },
+
             )
         return _llm
 
