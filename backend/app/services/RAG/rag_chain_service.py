@@ -34,15 +34,31 @@ class RAGChainService:
             # Preparar consulta con contexto si existe
             query_with_context = f"{conversation_context}\n\n{pregunta.strip()}" if conversation_context else pregunta.strip()
             
-            # Crear retriever para búsqueda general
-            retriever = JusticIARetriever(top_k=top_k)
+            # Crear retriever para búsqueda general con parámetros optimizados
+            from .context_formatter import calculate_optimal_retrieval_params
+            
+            # Calcular parámetros óptimos basados en la consulta
+            optimal_params = calculate_optimal_retrieval_params(
+                len(query_with_context), 
+                context_importance="high"  # Usar alta importancia para evitar alucinaciones
+            )
+            
+            # Usar top_k optimizado
+            effective_top_k = min(optimal_params["top_k"], top_k)
+            retriever = JusticIARetriever(top_k=effective_top_k)
             
             # Obtener documentos relevantes
             docs = await retriever._aget_relevant_documents(query_with_context)
             
             if not docs:
                 async def empty_generator():
-                    yield "data: No se encontró información relevante en la base de datos para responder tu consulta.\n\n"
+                    import json
+                    error_data = {
+                        "type": "error",
+                        "content": "No se encontró información relevante en la base de datos para responder tu consulta.",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
                 
                 return StreamingResponse(
                     empty_generator(),
@@ -52,11 +68,21 @@ class RAGChainService:
                         "Connection": "keep-alive",
                         "Access-Control-Allow-Origin": "*",
                         "Access-Control-Allow-Headers": "*",
+                        "X-Accel-Buffering": "no",
                     }
                 )
             
-            # Preparar contexto optimizado para el LLM usando módulo
-            context = format_documents_context(docs)
+            # Usar contexto EXTENDIDO que aprovecha chunks completos del módulo de ingesta
+            from .context_formatter import format_documents_context_adaptive
+            context = format_documents_context_adaptive(
+                docs, 
+                query=pregunta, 
+                context_importance="high"
+            )
+            
+            # Log de mejoras en contexto
+            context_chars = len(context)
+            logger.info(f"Contexto extendido generado: {context_chars:,} caracteres de {len(docs)} chunks (promedio: {context_chars//len(docs):,} chars/chunk)")
             
             # Crear prompt unificado
             prompt_text = create_justicia_prompt(
@@ -67,23 +93,62 @@ class RAGChainService:
 
             # Función generadora para streaming
             async def event_generator():
+                import json
+                import asyncio
+                
                 try:
                     # Verificar que el LLM esté disponible
                     if self.llm is None:
                         raise Exception("LLM no inicializado correctamente")
+                    
+                    # Enviar metadatos de inicio
+                    start_data = {
+                        "type": "start",
+                        "content": "",
+                        "metadata": {
+                            "query": pregunta,
+                            "docs_found": len(docs)
+                        },
+                        "done": False
+                    }
+                    yield f"data: {json.dumps(start_data, ensure_ascii=False)}\n\n"
                         
                     chunk_count = 0
                     async for chunk in self.llm.astream(prompt_text):
-                        content = getattr(chunk, 'content', str(chunk))
-                        if content and content.strip():
-                            chunk_count += 1
-                            yield f"data: {content}\n\n"
+                        if hasattr(chunk, 'content') and chunk.content:
+                            content = str(chunk.content)
+                            
+                            # Solo enviar contenido no vacío
+                            if content:
+                                chunk_count += 1
+                                chunk_data = {
+                                    "type": "chunk",
+                                    "content": content,
+                                    "done": False
+                                }
+                                yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                                
+                                # Pequeña pausa para renderizado suave
+                                await asyncio.sleep(0.01)
+                    
+                    # Enviar señal de finalización
+                    done_data = {
+                        "type": "done",
+                        "content": "",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
                             
                     logger.info(f"Streaming completado con {chunk_count} chunks")
                             
                 except Exception as e:
                     logger.error(f"Error durante streaming RAG: {e}")
-                    yield f"data: Error: {str(e)}\n\n"
+                    error_data = {
+                        "type": "error",
+                        "content": f"Error: {str(e)}",
+                        "done": True
+                    }
+                    yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
             
             return StreamingResponse(
                 event_generator(),
@@ -93,6 +158,7 @@ class RAGChainService:
                     "Connection": "keep-alive",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
+                    "X-Accel-Buffering": "no",
                 }
             )
             
@@ -100,7 +166,13 @@ class RAGChainService:
             logger.error(f"Error en consulta general streaming RAG: {e}")
             
             async def error_generator():
-                yield f"data: Error procesando consulta: {str(e)}\n\n"
+                import json
+                error_data = {
+                    "type": "error",
+                    "content": f"Error procesando consulta: {str(e)}",
+                    "done": True
+                }
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
             
             return StreamingResponse(
                 error_generator(),
@@ -110,16 +182,25 @@ class RAGChainService:
                     "Connection": "keep-alive",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
+                    "X-Accel-Buffering": "no",
                 }
             )
 
     async def consulta_general(self, pregunta: str, top_k: int = 15) -> Dict[str, Any]:
-        """Consulta general en todos los expedientes usando RAG Chain"""
+        """Consulta general en todos los expedientes usando RAG Chain con contexto extendido"""
         try:
             await self._initialize_components()
             
-            # Crear retriever para búsqueda general
-            retriever = JusticIARetriever(top_k=top_k)
+            # Calcular parámetros óptimos
+            from .context_formatter import calculate_optimal_retrieval_params
+            optimal_params = calculate_optimal_retrieval_params(
+                len(pregunta), 
+                context_importance="high"
+            )
+            
+            # Crear retriever para búsqueda general con parámetros optimizados
+            effective_top_k = min(optimal_params["top_k"], top_k)
+            retriever = JusticIARetriever(top_k=effective_top_k)
             
             # Obtener documentos relevantes
             docs = await retriever._aget_relevant_documents(pregunta)
@@ -131,8 +212,17 @@ class RAGChainService:
                     "fuentes": []
                 }
             
-            # Preparar contexto para el LLM usando módulo
-            context = format_documents_context(docs)
+            # Usar contexto EXTENDIDO también para método sin streaming
+            from .context_formatter import format_documents_context_adaptive
+            context = format_documents_context_adaptive(
+                docs, 
+                query=pregunta, 
+                context_importance="high"
+            )
+            
+            # Log de mejoras en contexto (sin streaming)
+            context_chars = len(context)
+            logger.info(f"Contexto extendido generado (sin streaming): {context_chars:,} caracteres de {len(docs)} chunks")
             
             # Asegurar que el LLM esté inicializado
             if not self.llm:

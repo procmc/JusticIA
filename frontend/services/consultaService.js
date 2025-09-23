@@ -64,25 +64,47 @@ class ConsultaService {
             if (currentRequest.cancelled) break;
             
             if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              
-              if (data === '[DONE]') {
-                if (!completed && !currentRequest.cancelled) {
-                  onComplete?.();
-                  completed = true;
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'start') {
+                  console.log('Streaming RAG iniciado:', data.metadata);
+                } else if (data.type === 'chunk' && data.content) {
+                  onChunk(data.content);
+                } else if (data.type === 'done') {
+                  if (!completed && !currentRequest.cancelled) {
+                    onComplete?.();
+                    completed = true;
+                  }
+                  return;
+                } else if (data.type === 'error') {
+                  if (!currentRequest.cancelled) {
+                    onError?.(new Error(data.content));
+                  }
+                  return;
                 }
-                return;
-              }
-              
-              if (data.startsWith('Error:')) {
-                if (!currentRequest.cancelled) {
-                  onError?.(new Error(data));
+              } catch (parseError) {
+                // Fallback para formato de texto plano (compatibilidad)
+                const data = line.slice(6);
+                
+                if (data === '[DONE]') {
+                  if (!completed && !currentRequest.cancelled) {
+                    onComplete?.();
+                    completed = true;
+                  }
+                  return;
                 }
-                return;
-              }
-              
-              if (data.trim() && !currentRequest.cancelled) {
-                onChunk?.(data);
+                
+                if (data.startsWith('Error:')) {
+                  if (!currentRequest.cancelled) {
+                    onError?.(new Error(data));
+                  }
+                  return;
+                }
+                
+                if (data.trim() && !currentRequest.cancelled) {
+                  onChunk?.(data);
+                }
               }
             }
           }
