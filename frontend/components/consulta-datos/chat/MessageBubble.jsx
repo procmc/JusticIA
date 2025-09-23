@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Avatar } from '@heroui/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import TypingIndicator from './TypingIndicator';
 
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
@@ -220,13 +221,8 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
               />
             )}
             {isStreaming && !isUser && !message.text && (
-              <div className="inline-flex items-center space-x-1 align-baseline">
-                <div className="flex space-x-1 items-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-                </div>
-                <span className="text-gray-500 text-sm ml-2">Escribiendo...</span>
+              <div className="w-full">
+                <TypingIndicator compact={true} />
               </div>
             )}
           </div>
