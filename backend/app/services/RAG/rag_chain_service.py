@@ -34,8 +34,18 @@ class RAGChainService:
             # Preparar consulta con contexto si existe
             query_with_context = f"{conversation_context}\n\n{pregunta.strip()}" if conversation_context else pregunta.strip()
             
-            # Crear retriever para búsqueda general
-            retriever = JusticIARetriever(top_k=top_k)
+            # Crear retriever para búsqueda general con parámetros optimizados
+            from .context_formatter import calculate_optimal_retrieval_params
+            
+            # Calcular parámetros óptimos basados en la consulta
+            optimal_params = calculate_optimal_retrieval_params(
+                len(query_with_context), 
+                context_importance="high"  # Usar alta importancia para evitar alucinaciones
+            )
+            
+            # Usar top_k optimizado
+            effective_top_k = min(optimal_params["top_k"], top_k)
+            retriever = JusticIARetriever(top_k=effective_top_k)
             
             # Obtener documentos relevantes
             docs = await retriever._aget_relevant_documents(query_with_context)
@@ -62,8 +72,17 @@ class RAGChainService:
                     }
                 )
             
-            # Preparar contexto optimizado para el LLM usando módulo
-            context = format_documents_context(docs)
+            # Usar contexto EXTENDIDO que aprovecha chunks completos del módulo de ingesta
+            from .context_formatter import format_documents_context_adaptive
+            context = format_documents_context_adaptive(
+                docs, 
+                query=pregunta, 
+                context_importance="high"
+            )
+            
+            # Log de mejoras en contexto
+            context_chars = len(context)
+            logger.info(f"Contexto extendido generado: {context_chars:,} caracteres de {len(docs)} chunks (promedio: {context_chars//len(docs):,} chars/chunk)")
             
             # Crear prompt unificado
             prompt_text = create_justicia_prompt(
@@ -168,12 +187,20 @@ class RAGChainService:
             )
 
     async def consulta_general(self, pregunta: str, top_k: int = 15) -> Dict[str, Any]:
-        """Consulta general en todos los expedientes usando RAG Chain"""
+        """Consulta general en todos los expedientes usando RAG Chain con contexto extendido"""
         try:
             await self._initialize_components()
             
-            # Crear retriever para búsqueda general
-            retriever = JusticIARetriever(top_k=top_k)
+            # Calcular parámetros óptimos
+            from .context_formatter import calculate_optimal_retrieval_params
+            optimal_params = calculate_optimal_retrieval_params(
+                len(pregunta), 
+                context_importance="high"
+            )
+            
+            # Crear retriever para búsqueda general con parámetros optimizados
+            effective_top_k = min(optimal_params["top_k"], top_k)
+            retriever = JusticIARetriever(top_k=effective_top_k)
             
             # Obtener documentos relevantes
             docs = await retriever._aget_relevant_documents(pregunta)
@@ -185,8 +212,17 @@ class RAGChainService:
                     "fuentes": []
                 }
             
-            # Preparar contexto para el LLM usando módulo
-            context = format_documents_context(docs)
+            # Usar contexto EXTENDIDO también para método sin streaming
+            from .context_formatter import format_documents_context_adaptive
+            context = format_documents_context_adaptive(
+                docs, 
+                query=pregunta, 
+                context_importance="high"
+            )
+            
+            # Log de mejoras en contexto (sin streaming)
+            context_chars = len(context)
+            logger.info(f"Contexto extendido generado (sin streaming): {context_chars:,} caracteres de {len(docs)} chunks")
             
             # Asegurar que el LLM esté inicializado
             if not self.llm:
