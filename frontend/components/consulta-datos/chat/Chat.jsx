@@ -183,22 +183,32 @@ const ConsultaChat = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Botón sutil de nuevo chat - solo mostrar si hay contexto */}
-      {hasContext && (
-        <div className="px-4 py-3 flex justify-end">
-          <button
-            onClick={() => {
-              clearContext();
-              setMessages([]); // También limpiar mensajes visuales
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200 border border-gray-200 hover:border-gray-300"
-            title="Iniciar nueva conversación"
+    <div className="h-full flex flex-col bg-white relative">
+      {/* Botón elegante y discreto de nuevo chat */}
+      {messages.length > 0 && (
+        <button
+          onClick={() => {
+            clearContext();
+            setMessages([]);
+          }}
+          className="absolute top-3 right-3 z-20 group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+          title="Nueva conversación"
+        >
+          <svg 
+            className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
           >
-            
-            Nuevo chat
-          </button>
-        </div>
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={1.5} 
+              d="M12 4v16m8-8H4" 
+            />
+          </svg>
+          <span className="font-medium hidden sm:block">Nueva</span>
+        </button>
       )}
       
       {/* Chat Area - Sin header para más espacio */}
