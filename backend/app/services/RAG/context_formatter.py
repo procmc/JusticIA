@@ -5,6 +5,68 @@ from typing import List, Dict, Any
 from langchain_core.documents import Document
 
 
+def format_documents_context_extended(docs: List[Document], max_docs: int = 5, use_full_chunks: bool = True) -> str:
+    """
+    Formateo EXTENDIDO que aprovecha al máximo el chunking del módulo de ingesta.
+    Usa chunks completos de 7000 caracteres cada uno para evitar alucinaciones.
+    
+    Args:
+        docs: Lista de documentos de LangChain (chunks de 7000 chars c/u)
+        max_docs: Número máximo de chunks a incluir (5 = ~35,000 caracteres, balance óptimo)
+        use_full_chunks: Si True, usa chunks completos sin truncar
+    
+    Returns:
+        Contexto formateado con información completa de chunks
+    """
+    if not docs:
+        return "No hay información disponible."
+    
+    context_parts = []
+    docs_to_use = docs[:min(len(docs), max_docs)]
+    
+    total_chars = 0
+    for i, doc in enumerate(docs_to_use, 1):
+        # Extraer metadatos del chunk
+        expediente = doc.metadata.get("numero_expediente", doc.metadata.get("expediente_numero", "Sin expediente"))
+        archivo = doc.metadata.get("nombre_archivo", doc.metadata.get("archivo", "Sin archivo"))
+        tipo_documento = doc.metadata.get("tipo_documento", "documento")
+        indice_chunk = doc.metadata.get("indice_chunk", i-1)
+        total_chunks = doc.metadata.get("meta", {}).get("total_chunks", "desconocido")
+        pagina_inicio = doc.metadata.get("pagina_inicio", "N/A")
+        pagina_fin = doc.metadata.get("pagina_fin", "N/A")
+        chunk_length = doc.metadata.get("meta", {}).get("chunk_length", len(doc.page_content))
+        relevancia = doc.metadata.get("relevance_score", 0)
+        
+        # Usar contenido completo del chunk (sin truncar)
+        content = doc.page_content
+        if not use_full_chunks and len(content) > 6000:
+            # Solo truncar si se solicita explícitamente
+            truncated = content[:6000]
+            last_period = truncated.rfind('.')
+            if last_period > 5500:
+                content = truncated[:last_period + 1] + "...[TRUNCADO]"
+            else:
+                content = truncated + "...[TRUNCADO]"
+        
+        total_chars += len(content)
+        
+        context_parts.append(
+            f"**📋 DOCUMENTO {i}/{len(docs_to_use)} - CHUNK {indice_chunk+1}/{total_chunks}**\n"
+            f"🔢 Expediente: {expediente}\n"
+            f"📄 Archivo: {archivo}\n"
+            f"📑 Tipo: {tipo_documento}\n"
+            f"📍 Páginas: {pagina_inicio}-{pagina_fin}\n"
+            f"📊 Tamaño chunk: {chunk_length:,} caracteres\n"
+            f"🎯 Relevancia: {relevancia:.3f}\n"
+            f"📝 **CONTENIDO COMPLETO DEL CHUNK:**\n{content}\n"
+        )
+    
+    header = f"**🔍 CONTEXTO EXTENDIDO - {len(docs_to_use)} CHUNKS ({total_chars:,} caracteres)**\n"
+    separator = "\n" + "="*100 + "\n"
+    
+    return header + separator.join(context_parts) + separator
+
+
 def format_documents_context(docs: List[Document], max_docs: int = 15, max_chars_per_doc: int = 1000) -> str:
     """
     Formatea documentos para el contexto del LLM - Optimizado para información detallada de expedientes
@@ -58,6 +120,69 @@ def format_documents_context(docs: List[Document], max_docs: int = 15, max_chars
     
     return "\n" + "="*80 + "\n".join(context_parts) + "\n" + "="*80
 
+def calculate_optimal_retrieval_params(query_length: int, context_importance: str = "high") -> Dict[str, int]:
+    """
+    Calcula parámetros óptimos de recuperación basado en la consulta y importancia del contexto.
+    
+    Args:
+        query_length: Longitud de la consulta en caracteres
+        context_importance: "low", "medium", "high", "maximum"
+    
+    Returns:
+        Dict con parámetros optimizados: top_k, max_docs_context, target_chars
+    """
+    # Configuraciones OPTIMIZADAS para mejor relevancia y menos ruido
+    configs = {
+        "low": {"base_top_k": 3, "max_docs": 3, "target_chars": 21000},      # Consultas muy específicas
+        "medium": {"base_top_k": 4, "max_docs": 4, "target_chars": 28000},   # Consultas normales  
+        "high": {"base_top_k": 5, "max_docs": 5, "target_chars": 35000},     # Consultas complejas
+        "maximum": {"base_top_k": 6, "max_docs": 6, "target_chars": 42000}   # Análisis exhaustivo
+    }
+    
+    config = configs.get(context_importance, configs["high"])
+    
+    # Ajustar top_k basado en longitud de consulta
+    if query_length > 500:  # Consulta muy específica
+        top_k = config["base_top_k"] + 2
+    elif query_length > 200:  # Consulta detallada
+        top_k = config["base_top_k"] + 1
+    else:  # Consulta simple
+        top_k = config["base_top_k"]
+    
+    return {
+        "top_k": min(top_k, 15),  # Límite máximo
+        "max_docs_context": config["max_docs"],
+        "target_chars": config["target_chars"]
+    }
+
+
+def format_documents_context_adaptive(docs: List[Document], query: str = "", context_importance: str = "high") -> str:
+    """
+    Formateo adaptativo que ajusta automáticamente los parámetros según la consulta.
+    Combina el chunking del módulo de ingesta con parámetros inteligentes.
+    
+    Args:
+        docs: Lista de documentos de LangChain
+        query: Consulta original (para ajustar parámetros)
+        context_importance: Nivel de importancia del contexto
+    
+    Returns:
+        Contexto formateado de manera óptima
+    """
+    if not docs:
+        return "No hay información disponible."
+    
+    # Calcular parámetros óptimos
+    params = calculate_optimal_retrieval_params(len(query), context_importance)
+    
+    # Usar formateo extendido con parámetros calculados
+    return format_documents_context_extended(
+        docs, 
+        max_docs=params["max_docs_context"], 
+        use_full_chunks=True
+    )
+
+
 def extract_document_sources(docs: List[Document]) -> List[Dict[str, Any]]:
     """
     Extrae información completa de fuentes para referencias detalladas
@@ -72,7 +197,7 @@ def extract_document_sources(docs: List[Document]) -> List[Dict[str, Any]]:
             "fecha": doc.metadata.get("fecha", ""),
             "tipo_documento": doc.metadata.get("tipo_documento", ""),
             "relevancia": doc.metadata.get("relevance_score", 0),
-            "fragmento_completo": _truncate_text_smart(doc.page_content, 600),  # MÁS información
+            "fragmento_completo": _truncate_text_smart(doc.page_content, 1000),  # MÁS información
             "resumen": _extract_summary(doc.page_content),  # Nuevo: resumen inteligente
             "palabras_clave": _extract_keywords(doc.page_content)  # Nuevo: palabras clave
         }
@@ -103,10 +228,10 @@ def format_context_intelligent(docs: List[Document], query: str = "") -> str:
     """
     if should_use_detailed_format(query):
         # Usar formato MUY detallado para solicitudes específicas
-        return format_documents_context(docs, max_docs=15, max_chars_per_doc=1200)
-    elif len(docs) <= 3:
+        return format_documents_context(docs, max_docs=15, max_chars_per_doc=1500)
+    elif len(docs) <= 5:
         # Para pocos documentos, mostrar todo el contenido
-        return format_documents_context(docs, max_docs=5, max_chars_per_doc=1000)
+        return format_documents_context(docs, max_docs=5, max_chars_per_doc=2000)
     else:
         # Formato estándar pero generoso
         return format_context_compact(docs, max_docs=12)
