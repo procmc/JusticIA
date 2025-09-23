@@ -36,6 +36,10 @@ faster-whisper>=0.10.0  # faster-whisper para transcripción de audio optimizada
 pydub>=0.25.1  # Manipulación de archivos de audio
 ffmpeg-python>=0.2.0  # FFmpeg wrapper para conversión de audio
 
+# OCR para documentos escaneados (fallback cuando Tika no puede extraer texto)
+easyocr>=1.7.0  # OCR multiplataforma para imágenes y documentos escaneados
+pymupdf>=1.23.0  # Conversión de PDF a imágenes para OCR (multiplataforma, solo pip)
+
 # Milvus SDK (2.5.x o superior)
 protobuf>=5.27.2,<6.0.0
 pymilvus>=2.5.14,<2.7
