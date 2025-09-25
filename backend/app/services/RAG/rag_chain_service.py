@@ -29,7 +29,19 @@ class RAGChainService:
     async def consulta_general_streaming(self, pregunta: str, top_k: int = 15, conversation_context: str = ""):
         """Consulta general con streaming usando RAG Chain optimizado"""
         try:
-            await self._initialize_components()
+            # Decidir qué tipo de LLM usar según si hay contexto de conversación
+            logger.info(f"🔍 RAG SERVICE - conversation_context recibido: '{conversation_context[:100]}...'" if conversation_context else "🔍 RAG SERVICE - conversation_context VACÍO")
+            
+            if conversation_context and conversation_context.strip():
+                # Hay contexto de conversación - usar LLM con memoria
+                await self._initialize_components()
+                llm_to_use = self.llm
+                logger.info("✅ Usando LLM con contexto de conversación mantenido")
+            else:
+                # No hay contexto - usar LLM fresco sin memoria
+                from app.llm.llm_service import get_fresh_llm
+                llm_to_use = await get_fresh_llm()
+                logger.info("🆕 Usando LLM fresco sin contexto previo - Nueva instancia creada")
             
             # Preparar consulta con contexto si existe
             query_with_context = f"{conversation_context}\n\n{pregunta.strip()}" if conversation_context else pregunta.strip()
@@ -98,7 +110,7 @@ class RAGChainService:
                 
                 try:
                     # Verificar que el LLM esté disponible
-                    if self.llm is None:
+                    if llm_to_use is None:
                         raise Exception("LLM no inicializado correctamente")
                     
                     # Enviar metadatos de inicio
@@ -114,7 +126,7 @@ class RAGChainService:
                     yield f"data: {json.dumps(start_data, ensure_ascii=False)}\n\n"
                         
                     chunk_count = 0
-                    async for chunk in self.llm.astream(prompt_text):
+                    async for chunk in llm_to_use.astream(prompt_text):
                         if hasattr(chunk, 'content') and chunk.content:
                             content = str(chunk.content)
                             

@@ -1,5 +1,6 @@
 import asyncio
 import re
+import logging
 from langchain_ollama import ChatOllama
 from app.config.config import (
     OLLAMA_MODEL, OLLAMA_BASE_URL,
@@ -7,6 +8,8 @@ from app.config.config import (
     LLM_NUM_CTX, LLM_NUM_PREDICT, LLM_TOP_K, LLM_TOP_P, LLM_REPEAT_PENALTY
 )
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 _llm = None
 _llm_lock = asyncio.Lock()
@@ -100,6 +103,52 @@ async def get_llm():
 
             )
         return _llm
+
+
+async def get_fresh_llm():
+    """
+    Crear una nueva instancia de LLM sin contexto previo.
+    Útil para consultas que NO deberían tener memoria de conversaciones anteriores.
+    
+    IMPORTANTE: Cada llamada crea una instancia completamente nueva,
+    garantizando que no hay memoria de conversaciones previas.
+    """
+    fresh_llm = ChatOllama(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_BASE_URL,
+        temperature=LLM_TEMPERATURE,
+        streaming=True,
+        keep_alive="0s",  # Inmediatamente liberar memoria después de usar
+        request_timeout=LLM_REQUEST_TIMEOUT,
+        reasoning=False,
+        
+        model_kwargs={
+            "num_ctx": LLM_NUM_CTX,
+            "num_predict": LLM_NUM_PREDICT,
+            "top_k": LLM_TOP_K,
+            "top_p": LLM_TOP_P,
+            "repeat_penalty": LLM_REPEAT_PENALTY,
+            "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
+        }
+    )
+    
+    return fresh_llm
+
+
+async def clear_llm_context():
+    """
+    Limpiar el contexto de la instancia global del LLM.
+    Esto fuerza al modelo a "olvidar" todas las conversaciones anteriores.
+    """
+    global _llm
+    if _llm is not None:
+        try:
+            # Forzar que Ollama libere la memoria del modelo
+            await _llm.ainvoke("") # Mensaje vacío para limpiar
+            _llm = None  # Destruir la instancia actual
+        except Exception as e:
+            logger.warning(f"Error limpiando contexto LLM: {e}")
+            _llm = None
 
 
 async def consulta_simple(pregunta: str):

@@ -1,11 +1,27 @@
+/**
+ * @deprecated Este hook ha sido reemplazado por useChatContext.js
+ * 
+ * PROBLEMA IDENTIFICADO:
+ * - Usa sessionStorage que persiste en recargas de página
+ * - No se limpia automáticamente en navegación/logout
+ * - Causa problemas de contexto no deseado
+ * 
+ * USAR EN SU LUGAR: hooks/conversacion/useChatContext.js
+ */
+
+// Este archivo se mantiene solo para evitar errores de importación
+// TODO: Eliminar cuando se confirme que no se usa en ningún lugar
+
+console.warn(
+  'DEPRECATED: useConversationContext está obsoleto. Usar useChatContext en su lugar.'
+);
+
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 
-/**
- * Hook personalizado para manejar el contexto de conversación
- * Almacena el historial de mensajes en sessionStorage vinculado al usuario
- */
 export const useConversationContext = () => {
+  console.error('useConversationContext está deprecado. Usar useChatContext de hooks/conversacion/useChatContext.js');
+  
   const { data: session } = useSession();
   const [contextHistory, setContextHistory] = useState([]);
 
@@ -15,22 +31,9 @@ export const useConversationContext = () => {
     return `justicia_context_${userId}`;
   }, [session]);
 
-  // Cargar contexto al inicializar
+  // NO cargar contexto automáticamente - este es el problema
   useEffect(() => {
-    const loadContext = () => {
-      try {
-        const stored = sessionStorage.getItem(getContextKey());
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setContextHistory(parsed);
-        }
-      } catch (error) {
-        console.error('Error cargando contexto:', error);
-        setContextHistory([]);
-      }
-    };
-
-    loadContext();
+    console.warn('Hook deprecado useConversationContext en uso - migrar a useChatContext');
   }, [getContextKey]);
 
   // Agregar nuevo intercambio al contexto

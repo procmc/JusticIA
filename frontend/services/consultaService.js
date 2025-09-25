@@ -17,17 +17,23 @@ class ConsultaService {
     this.currentRequest = { id: requestId, cancelled: false };
     const currentRequest = this.currentRequest;
     try {
-      // Preparar la consulta con contexto si existe
-      const queryWithContext = conversationContext 
-        ? `${conversationContext}\n\n${query.trim()}`
+      // Preparar la consulta con contexto SOLO si realmente existe y no está vacío
+      const hasRealContext = Boolean(conversationContext && conversationContext.trim().length > 0);
+      const queryWithContext = hasRealContext 
+        ? `${conversationContext.trim()}\n\n${query.trim()}`
         : query.trim();
+
+      // Validar que el payload esté correcto antes de enviar
+      if (!queryWithContext || queryWithContext.trim().length === 0) {
+        throw new Error('La consulta no puede estar vacía');
+      }
 
       // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
       const response = await httpService.postStream('/rag/consulta-general-stream', {
         query: queryWithContext,
         top_k: topK,
-        has_context: !!conversationContext
-      });
+        has_context: hasRealContext
+      }, 30000); // 30 segundos timeout
 
       if (currentRequest.cancelled) {
         console.log('Request cancelada antes de procesar');
@@ -127,29 +133,7 @@ class ConsultaService {
     }
   }
 
-  // Método SIN streaming para pruebas
-  async consultaGeneralNoStreaming(query, topK = 30, conversationContext = '') {
-    try {
-      // Preparar la consulta con contexto si existe
-      const queryWithContext = conversationContext 
-        ? `${conversationContext}\n\n${query.trim()}`
-        : query.trim();
 
-      console.log('Consulta sin streaming:', queryWithContext);
-
-      // Usar el endpoint sin streaming de RAG compatible
-      const response = await httpService.post('/rag/consulta-general-simple', {
-        query: queryWithContext,  // Mantener 'query' para compatibilidad
-        top_k: topK
-      });
-
-      return response;
-
-    } catch (error) {
-      console.error('Error en consulta sin streaming:', error);
-      throw error;
-    }
-  }
 }
 
 export default new ConsultaService();

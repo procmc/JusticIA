@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import consultaService from '../../../services/consultaService';
-import { useConversationContext } from '../../../hooks/conversacion/useConversationContext';
+import { useChatContext } from '../../../hooks/conversacion/useChatContext';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -14,14 +14,15 @@ const ConsultaChat = () => {
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
 
-  // Hook para manejar el contexto de conversación
+  // Hook para manejar el contexto de conversación (corregido)
   const { 
     addToContext, 
     getFormattedContext, 
     clearContext, 
     hasContext,
-    getContextStats 
-  } = useConversationContext();
+    getContextStats,
+    startNewConversation 
+  } = useChatContext();
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -74,8 +75,8 @@ const ConsultaChat = () => {
     setStreamingMessageIndex(messageIndex);
     setIsTyping(false);
 
-    // Obtener el contexto de conversación formateado
-    const conversationContext = getFormattedContext();
+    // Obtener el contexto de conversación formateado SOLO si realmente hay contexto
+    const conversationContext = hasContext ? getFormattedContext() : '';
     
     // ======= MODO STREAMING MEJORADO =======
     try {
@@ -155,29 +156,43 @@ const ConsultaChat = () => {
       );
 
     } catch (error) {
-      console.error('Error en la consulta streaming:', error);
-      if (currentRequestRef.current?.active) {
-        setStreamingMessageIndex(null);
-        setIsTyping(false);
-        currentRequestRef.current = null;
-        
-        // Mostrar mensaje de error
-        setMessages(prevMessages => {
-          const updatedMessages = [...prevMessages];
-          if (updatedMessages[messageIndex]) {
-            updatedMessages[messageIndex] = {
-              ...updatedMessages[messageIndex],
-              text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-              isError: true,
-              timestamp: new Date().toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            };
+      console.error('❌ Error en handleSendMessage:', error);
+      console.error('❌ Error tipo:', typeof error);
+      console.error('❌ Error nombre:', error.name);
+      console.error('❌ Error mensaje:', error.message);
+      
+      // Limpiar estado
+      setStreamingMessageIndex(null);
+      setIsTyping(false);
+      currentRequestRef.current = null;
+      
+      // Mostrar mensaje de error específico
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages];
+        if (updatedMessages[messageIndex]) {
+          let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta.';
+          
+          // Manejar diferentes tipos de error
+          const errorText = typeof error === 'string' ? error : (error.message || error.toString() || 'Error desconocido');
+          
+          if (errorText.includes('No se puede conectar con el servidor backend')) {
+            errorMessage = '🔌 **Error de Conexión**\n\nNo se puede conectar con el servidor backend. Por favor verifica que:\n\n• El servidor backend esté ejecutándose en el puerto 8000\n• Ollama esté activo en el puerto 11434\n• No haya problemas de red\n\nIntenta nuevamente en unos momentos.';
+          } else if (errorText.includes('Failed to fetch')) {
+            errorMessage = '🔌 **Error de Red**\n\nNo se puede conectar con el servidor. Verifica tu conexión y que los servicios estén activos.';
           }
-          return updatedMessages;
-        });
-      }
+          
+          updatedMessages[messageIndex] = {
+            ...updatedMessages[messageIndex],
+            text: errorMessage,
+            isError: true,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+        }
+        return updatedMessages;
+      });
     }
     // ======= FIN MODO STREAMING =======
   };
@@ -188,7 +203,7 @@ const ConsultaChat = () => {
       {messages.length > 0 && (
         <button
           onClick={() => {
-            clearContext();
+            startNewConversation();
             setMessages([]);
           }}
           className="absolute top-3 right-3 z-20 group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
