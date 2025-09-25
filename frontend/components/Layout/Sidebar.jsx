@@ -8,6 +8,7 @@ import { LogoutIcon } from "../icons";
 import { menuItems } from "../../data/menuitems";
 import { useSession, signOut } from "next-auth/react";
 import { Tooltip } from "@heroui/tooltip";
+import { clearAllChatContext } from "../../utils/chatContextUtils";
 
 const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   const [isMobile, setIsMobile] = useState(false);
@@ -17,6 +18,9 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
 
   const handleLogout = async () => {
     try {
+      // Limpiar contexto de chat usando utilidad centralizada
+      clearAllChatContext();
+
       await signOut({ 
         callbackUrl: '/auth/login',
         redirect: true 

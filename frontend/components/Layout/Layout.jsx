@@ -3,9 +3,13 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { UserButton } from "./UserButton";
 import DynamicBreadcrumbs from "./DynamicBreadcrumbs";
+import { useChatContextCleanup } from "../../hooks/conversacion/useChatContextCleanup";
 
 const Layout = ({ children }) => {
   const [toggleCollapse, setToggleCollapse] = useState(false);
+  
+  // Hook para limpieza automática del contexto de chat
+  useChatContextCleanup();
 
   return (
     <div className="h-screen flex w-full overflow-hidden">

@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import DrawerGeneral from "../ui/DrawerGeneral";
 import CambiarContraseña from "@/components/auth/cambioContraseña/CambiarContraseña";
+import { clearAllChatContext } from "../../utils/chatContextUtils";
 
 export function UserButton() {
     const { data: session, status } = useSession();
@@ -60,6 +61,9 @@ export function UserButton() {
 
     const handleLogout = useCallback(async () => {
         try {
+            // Limpiar contexto de chat usando utilidad centralizada
+            clearAllChatContext();
+            
             await signOut({ 
                 callbackUrl: '/auth/login',
                 redirect: true 

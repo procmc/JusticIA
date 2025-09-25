@@ -85,14 +85,23 @@ async def consulta_general_stream_endpoint(request: ConsultaGeneralRequest):
         
         print(f"Consulta general RAG streaming optimizada: {request.query}")
         
-        # Extraer contexto de conversación si está presente
+        # Extraer contexto de conversación SOLO si realmente está presente
         conversation_context = ""
-        query_parts = request.query.split('\n\n')
-        if len(query_parts) > 1 and request.has_context:
-            conversation_context = query_parts[0]
-            actual_query = query_parts[-1]
-        else:
-            actual_query = request.query
+        actual_query = request.query
+        
+        if request.has_context and request.query.strip():
+            query_parts = request.query.split('\n\n')
+            if len(query_parts) > 1:
+                # Verificar que la primera parte sea realmente un contexto válido
+                potential_context = query_parts[0].strip()
+                if potential_context and "HISTORIAL DE CONVERSACIÓN PREVIA:" in potential_context:
+                    conversation_context = potential_context
+                    actual_query = query_parts[-1].strip()
+                else:
+                    # No hay contexto real, usar toda la consulta
+                    actual_query = request.query.strip()
+        
+        print(f"Procesado - Query: '{actual_query}', Contexto: {'SÍ' if conversation_context else 'NO'}")
         
         # Usar el servicio RAG optimizado con streaming
         rag_service = await get_rag_service()
