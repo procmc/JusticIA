@@ -12,9 +12,7 @@ class ConsultaGeneralRequest(BaseModel):
     top_k: int = 30
     has_context: bool = False
 
-
 router = APIRouter(prefix="/rag", tags=["RAG - Consultas Inteligentes"])
-
 
 @router.post("/consulta-general-stream")
 async def consulta_general_rag_stream(
@@ -59,45 +57,6 @@ async def consulta_general_rag_stream(
 
     except Exception as e:
         logger.error(f"Error en consulta general RAG streaming: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Error procesando consulta: {str(e)}"
-        )
-
-
-@router.post("/consulta-general-simple")
-async def consulta_general_rag_simple(
-    request: ConsultaGeneralRequest, rag_service=Depends(get_rag_service)
-):
-    """
-    Endpoint no-streaming optimizado con RAG Chain.
-    Compatible con el frontend actual para consultas sin streaming.
-    """
-    try:
-        if not request.query.strip():
-            raise HTTPException(
-                status_code=400, detail="La consulta no puede estar vacía"
-            )
-
-        logger.info(f"Consulta general RAG simple: {request.query}")
-
-        # Usar el servicio RAG optimizado
-        resultado = await rag_service.consulta_general(
-            pregunta=request.query, top_k=min(request.top_k, 8)
-        )
-
-        if "error" in resultado:
-            raise HTTPException(status_code=500, detail=resultado["error"])
-
-        # Adaptar formato de respuesta para el frontend
-        return {
-            "respuesta": resultado["respuesta"],
-            "documentos_encontrados": resultado.get("total_documentos", 0),
-            "sources": resultado.get("fuentes", []),
-            "query_original": request.query,
-        }
-
-    except Exception as e:
-        logger.error(f"Error en consulta general RAG simple: {e}")
         raise HTTPException(
             status_code=500, detail=f"Error procesando consulta: {str(e)}"
         )
