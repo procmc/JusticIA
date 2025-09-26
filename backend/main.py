@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import logging
 from app.vectorstore.vectorstore import get_client
 from app.routes import ingesta, llm, usuarios, archivos, email, auth, similarity, rag
 from app.db import database
@@ -11,6 +12,10 @@ from app.utils.hf_model import ensure_model_available
 
 # Crear app sin lifespan primero
 app = FastAPI(title="JusticIA API")
+
+# Configuración de logging básica para que logger.info/debug se vea en consola
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 
 # Inicializar vectorstore en el evento startup
 @app.on_event("startup")
