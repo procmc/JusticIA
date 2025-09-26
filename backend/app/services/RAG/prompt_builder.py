@@ -38,6 +38,8 @@ def create_justicia_prompt(pregunta: str, context: str = "", conversation_contex
     
     # Historial si existe
     if conversation_context:
+        print(f"📋 Contexto recibido en prompt_builder: {len(conversation_context)} caracteres")
+        print(f"📋 Primeros 200 caracteres del contexto: {conversation_context[:200]}...")
         prompt_parts.append(f"HISTORIAL DE CONVERSACIÓN PREVIA:\n{conversation_context}")
     
     # Expedientes solo para consultas no-saludo con validación

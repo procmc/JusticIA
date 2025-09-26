@@ -20,15 +20,26 @@ class RAGChainService:
         self.retriever = None
 
     async def consulta_general_streaming(self, pregunta: str, top_k: int = 15, conversation_context: str = ""):
-        # Preparar consulta con contexto de conversación si existe
-        query_with_context = f"{conversation_context}\n\n{pregunta.strip()}" if conversation_context else pregunta.strip()
+        # SEPARACIÓN CRÍTICA: Usar SOLO la pregunta actual para buscar en la BD
+        # El contexto de conversación se usa únicamente para generar la respuesta
+        search_query = pregunta.strip()
+        
+        print(f"🔍 BÚSQUEDA EN BD: '{search_query}' (sin contexto histórico)")
+        print(f"📋 CONTEXTO HISTÓRICO: {'SÍ' if conversation_context else 'NO'} ({len(conversation_context)} chars)")
 
-        # Calcular parámetros de retrieval
-        optimal_params = calculate_optimal_retrieval_params(len(query_with_context), context_importance="high")
+        # Calcular parámetros de retrieval basado en la pregunta actual
+        optimal_params = calculate_optimal_retrieval_params(len(search_query), context_importance="high")
         effective_top_k = min(optimal_params.get("top_k", top_k), top_k)
 
         retriever = JusticIARetriever(top_k=effective_top_k)
-        docs = await retriever._aget_relevant_documents(query_with_context)
+        # USAR SOLO LA PREGUNTA ACTUAL PARA LA BÚSQUEDA VECTORIAL
+        docs = await retriever._aget_relevant_documents(search_query)
+        
+        print(f"📄 DOCUMENTOS ENCONTRADOS: {len(docs)} documentos para '{search_query}'")
+        if docs:
+            for i, doc in enumerate(docs[:3]):  # Mostrar solo los primeros 3
+                preview = doc.page_content[:100].replace('\n', ' ')
+                print(f"   {i+1}. {preview}...")
 
         if not docs:
             async def empty_generator():

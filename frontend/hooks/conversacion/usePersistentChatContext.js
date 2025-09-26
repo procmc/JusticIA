@@ -148,14 +148,21 @@ export const usePersistentChatContext = () => {
         const context = loadConversationContext(latestConversation.id);
         setContextHistory(context);
         
-        console.log(`Contexto cargado para conversación ${latestConversation.id}:`, context.length, 'mensajes');
+        console.log(`🔄 Contexto cargado para conversación ${latestConversation.id}:`, {
+          mensajes: context.length,
+          contextPreview: context.map(entry => ({
+            userPreview: entry.userMessage.substring(0, 50) + '...',
+            responseLength: entry.assistantResponse.length,
+            timestamp: entry.timestamp
+          }))
+        });
       } else {
         // Crear nueva conversación si no hay ninguna
         const newConvId = generateConversationId();
         setConversationId(newConvId);
         setContextHistory([]);
         
-        console.log('Nueva conversación creada:', newConvId);
+        console.log('🆕 Nueva conversación creada:', newConvId);
       }
       
       setIsLoading(false);
@@ -187,7 +194,19 @@ export const usePersistentChatContext = () => {
       // Guardar en localStorage
       saveConversationContext(conversationId, limited);
       
-      console.log(`Contexto actualizado para conversación ${conversationId}:`, limited.length, 'intercambios');
+      console.log(`💾 Contexto actualizado para conversación ${conversationId}:`, {
+        intercambiosTotal: limited.length,
+        nuevoIntercambio: {
+          userMessage: newEntry.userMessage.substring(0, 100) + '...',
+          assistantResponseLength: newEntry.assistantResponse.length,
+          assistantPreview: newEntry.assistantResponse.substring(0, 200) + '...'
+        },
+        todosLosIntercambios: limited.map(entry => ({
+          id: entry.id,
+          userPreview: entry.userMessage.substring(0, 50) + '...',
+          responseLength: entry.assistantResponse.length
+        }))
+      });
       
       return limited;
     });
@@ -208,23 +227,29 @@ export const usePersistentChatContext = () => {
       contextLines.push(`\n[Intercambio ${index + 1}]`);
       contextLines.push(`Usuario: ${entry.userMessage}`);
       
-      // Mantener más contexto del asistente, especialmente listas y detalles importantes
-      const response = entry.assistantResponse.length > 2000 
-        ? entry.assistantResponse.substring(0, 2000) + '...[respuesta truncada]'
+      // Mantener mucho más contexto del asistente para preservar listas y datos importantes
+      // Aumentamos significativamente el límite para evitar perder información crucial
+      const response = entry.assistantResponse.length > 10000
+        ? entry.assistantResponse.substring(0, 10000) + '...[respuesta truncada - contenido adicional disponible]'
         : entry.assistantResponse;
       
       contextLines.push(`Asistente: ${response}`);
     });
 
+    contextLines.push('\n---\nNUEVA CONSULTA:');
+    
     const formattedContext = contextLines.join('\n');
-    console.log('🔄 Contexto formateado para envío:', {
+    console.log('🔄 Contexto formateado para envío al backend:', {
       historyLength: contextHistory.length,
       recentHistoryLength: recentHistory.length,
       contextSize: formattedContext.length,
-      preview: formattedContext.substring(0, 200) + '...'
+      preview: formattedContext.substring(0, 300) + '...',
+      intercambiosIncluidos: recentHistory.map(entry => ({
+        userMessage: entry.userMessage.substring(0, 50) + '...',
+        responseLength: entry.assistantResponse.length,
+        responseTruncated: entry.assistantResponse.length > 10000
+      }))
     });
-    
-    contextLines.push('\n---\nNUEVA CONSULTA:');
     
     return formattedContext;
   }, [contextHistory]);
