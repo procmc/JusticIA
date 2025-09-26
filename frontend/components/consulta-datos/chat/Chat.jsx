@@ -110,7 +110,7 @@ const ConsultaChat = () => {
             setIsTyping(false);
             currentRequestRef.current = null;
             
-            // Asignar timestamp al finalizar
+            // Asignar timestamp y guardar contexto en una sola operación
             setMessages(prevMessages => {
               const updatedMessages = [...prevMessages];
               if (updatedMessages[messageIndex]) {
@@ -121,20 +121,19 @@ const ConsultaChat = () => {
                     minute: '2-digit'
                   })
                 };
+                
+                // Guardar en el contexto inmediatamente cuando tenemos el mensaje completo
+                const finalMessage = updatedMessages[messageIndex];
+                if (finalMessage?.text?.trim()) {
+                  console.log('💾 Guardando en contexto:', {
+                    userMessage: text,
+                    assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
+                    length: finalMessage.text.trim().length
+                  });
+                  addToContext(text, finalMessage.text.trim());
+                }
               }
               return updatedMessages;
-            });
-            
-            // Guardar la conversación en el contexto después de completar
-            setMessages(prevMessages => {
-              const finalMessage = prevMessages[messageIndex];
-              if (finalMessage?.text?.trim()) {
-                // Usar setTimeout para asegurar que el contexto se guarde después del setState
-                setTimeout(() => {
-                  addToContext(text, finalMessage.text.trim());
-                }, 0);
-              }
-              return prevMessages; // No modificamos, solo leemos
             });
           }
         },
