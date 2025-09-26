@@ -15,6 +15,9 @@ export const ThemeProvider = ({ children }) => {
 
   // Cargar tema desde localStorage al inicializar
   useEffect(() => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined') return;
+    
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       setIsDark(savedTheme === 'dark');
@@ -27,6 +30,9 @@ export const ThemeProvider = ({ children }) => {
 
   // Aplicar tema al documento
   useEffect(() => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined') return;
+    
     if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');

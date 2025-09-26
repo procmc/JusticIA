@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
+import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
-import { useChatContext } from '../../../hooks/conversacion/useChatContext';
+import { usePersistentChatContext } from '../../../hooks/conversacion/usePersistentChatContext';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -13,16 +14,21 @@ const ConsultaChat = () => {
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
+  
+  // Estado para el modal de historial
+  const [showHistory, setShowHistory] = useState(false);
 
-  // Hook para manejar el contexto de conversación (corregido)
+  // Hook para manejar el contexto de conversación con persistencia mejorada
   const { 
     addToContext, 
     getFormattedContext, 
-    clearContext, 
+    clearCurrentConversation, 
     hasContext,
     getContextStats,
-    startNewConversation 
-  } = useChatContext();
+    startNewConversation,
+    conversationId,
+    isLoading: isContextLoading
+  } = usePersistentChatContext();
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -119,11 +125,17 @@ const ConsultaChat = () => {
               return updatedMessages;
             });
             
-            // Guardar la conversación en el contexto
-            const finalMessage = messages[messageIndex];
-            if (finalMessage?.text?.trim()) {
-              addToContext(text, finalMessage.text.trim());
-            }
+            // Guardar la conversación en el contexto después de completar
+            setMessages(prevMessages => {
+              const finalMessage = prevMessages[messageIndex];
+              if (finalMessage?.text?.trim()) {
+                // Usar setTimeout para asegurar que el contexto se guarde después del setState
+                setTimeout(() => {
+                  addToContext(text, finalMessage.text.trim());
+                }, 0);
+              }
+              return prevMessages; // No modificamos, solo leemos
+            });
           }
         },
         (error) => {
@@ -199,18 +211,39 @@ const ConsultaChat = () => {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Botón elegante y discreto de nuevo chat */}
-      {messages.length > 0 && (
+      {/* Indicador de contexto mejorado */}
+      {hasContext && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-green-600 bg-green-50/80 border border-green-200/50 rounded-full shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="font-medium">
+            Contexto activo ({getContextStats().totalInteractions} intercambios)
+          </span>
+          {conversationId && (
+            <span className="text-green-500 font-mono text-xs">
+              ID: {conversationId.split('_').pop()}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Indicador de carga del contexto */}
+      {isContextLoading && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 bg-blue-50/80 border border-blue-200/50 rounded-full shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-spin"></div>
+          <span className="font-medium">Cargando contexto...</span>
+        </div>
+      )}
+
+      {/* Controles de chat */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        {/* Botón de historial */}
         <button
-          onClick={() => {
-            startNewConversation();
-            setMessages([]);
-          }}
-          className="absolute top-3 right-3 z-20 group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
-          title="Nueva conversación"
+          onClick={() => setShowHistory(true)}
+          className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+          title="Ver historial de conversaciones"
         >
           <svg 
-            className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
+            className="w-3.5 h-3.5" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -219,12 +252,39 @@ const ConsultaChat = () => {
               strokeLinecap="round" 
               strokeLinejoin="round" 
               strokeWidth={1.5} 
-              d="M12 4v16m8-8H4" 
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
             />
           </svg>
-          <span className="font-medium hidden sm:block">Nueva</span>
+          <span className="font-medium hidden sm:block">Historial</span>
         </button>
-      )}
+
+        {/* Botón elegante y discreto de nuevo chat */}
+        {messages.length > 0 && (
+          <button
+            onClick={() => {
+              startNewConversation();
+              setMessages([]);
+            }}
+            className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+            title="Nueva conversación"
+          >
+            <svg 
+              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={1.5} 
+                d="M12 4v16m8-8H4" 
+              />
+            </svg>
+            <span className="font-medium hidden sm:block">Nueva</span>
+          </button>
+        )}
+      </div>
       
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -243,6 +303,13 @@ const ConsultaChat = () => {
           setSearchScope={setSearchScope}
         />
       </div>
+
+      {/* Modal de historial de conversaciones */}
+      <ConversationHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        onConversationSelect={() => setMessages([])} // Limpiar mensajes UI al cambiar conversación
+      />
     </div>
   );
 };
