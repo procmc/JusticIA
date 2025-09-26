@@ -14,6 +14,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-mpnet-base-v2")
 # Configuración Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
 
 # Configuración Whisper para transcripción de audio
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
@@ -37,7 +38,7 @@ JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
 # Configuración LLM
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "10m")
-LLM_REQUEST_TIMEOUT = int(os.getenv("LLM_REQUEST_TIMEOUT", "120"))
+LLM_REQUEST_TIMEOUT = int(os.getenv("LLM_REQUEST_TIMEOUT", "600"))
 LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "2048"))
 LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1024"))
 LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))

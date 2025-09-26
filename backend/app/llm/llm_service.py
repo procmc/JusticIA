@@ -98,7 +98,6 @@ async def get_llm():
                     "top_k": LLM_TOP_K,
                     "top_p": LLM_TOP_P,
                     "repeat_penalty": LLM_REPEAT_PENALTY,
-                    "stop": ["<think>", "</think>", "<|thinking|>", "</|thinking|>"]
                 },
 
             )
