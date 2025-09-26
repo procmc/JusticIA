@@ -91,7 +91,7 @@ async def get_llm():
                 keep_alive=LLM_KEEP_ALIVE,
                 request_timeout=LLM_REQUEST_TIMEOUT,
                 reasoning=False,
-                
+                headers={"Authorization": OLLAMA_API_KEY},
                 model_kwargs={
                     "num_ctx": LLM_NUM_CTX,
                     "num_predict": LLM_NUM_PREDICT,
