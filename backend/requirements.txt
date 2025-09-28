@@ -53,6 +53,10 @@ python-dotenv==1.0.1
 # Monitoreo del sistema
 psutil>=5.9.0        # Para detectar recursos del sistema (CPU, RAM, etc.)
 
+# Tareas asíncronas y cola de trabajo
+celery>=5.3.0
+redis>=5.0.0
+
 # Envío de correos electrónicos
 fastapi-mail>=1.4.1  # Biblioteca para envío de correos con FastAPI
 aiosmtplib>=3.0.0    # Cliente SMTP asíncrono

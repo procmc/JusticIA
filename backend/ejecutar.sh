@@ -198,7 +198,21 @@ install_python_dependencies_and_run() {
 		"$PIP_BIN" install uvicorn || warn "Fallo al instalar uvicorn"
 	fi
 
-	info "Lanzando servidor: uvicorn main:app --reload (usando el venv)"
+	info "Verificando y arrancando Redis..."
+	if ! command -v redis-server >/dev/null 2>&1; then
+		warn "Redis no está instalado. Instalando redis-server."
+		install_pkg redis-server || err "No se pudo instalar redis-server"
+	fi
+	if ! pgrep -x "redis-server" >/dev/null 2>&1; then
+		info "Arrancando redis-server en segundo plano."
+		redis-server &
+		sleep 2
+	else
+		info "redis-server ya está corriendo."
+	fi
+
+	info "Lanzando Celery worker y servidor Uvicorn (usando el venv)"
+	"$VENV_DIR/bin/celery" -A celery_app worker --loglevel=info &
 	# Ejecutar el servidor con el python del venv (esto bloqueará hasta que se detenga)
 	exec "$PY_BIN" -m uvicorn main:app --reload
 }
