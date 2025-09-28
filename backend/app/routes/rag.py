@@ -35,18 +35,43 @@ async def consulta_general_rag_stream(
         actual_query = request.query
         
         if request.has_context and request.query.strip():
-            query_parts = request.query.split("\n\n")
-            if len(query_parts) > 1:
-                # Verificar que la primera parte sea realmente un contexto válido
-                potential_context = query_parts[0].strip()
-                if potential_context and "HISTORIAL DE CONVERSACIÓN PREVIA:" in potential_context:
-                    conversation_context = potential_context
-                    actual_query = query_parts[-1].strip()
+            # Buscar el separador específico que usa el frontend
+            separator = "\n\n---\nNUEVA CONSULTA:"
+            if separator in request.query:
+                parts = request.query.split(separator)
+                if len(parts) == 2:
+                    potential_context = parts[0].strip()
+                    if potential_context and "HISTORIAL DE CONVERSACIÓN PREVIA:" in potential_context:
+                        conversation_context = potential_context
+                        actual_query = parts[1].strip()
+                        logger.info(f"✅ Contexto extraído correctamente, query separada")
+                    else:
+                        actual_query = request.query.strip()
+                        logger.info(f"❌ No se encontró contexto válido con el separador")
                 else:
-                    # No hay contexto real, usar toda la consulta
                     actual_query = request.query.strip()
+                    logger.info(f"❌ Separador encontrado pero partes incorrectas: {len(parts)}")
+            else:
+                # Fallback al método anterior para compatibilidad
+                query_parts = request.query.split("\n\n")
+                if len(query_parts) > 1:
+                    potential_context = query_parts[0].strip()
+                    if potential_context and "HISTORIAL DE CONVERSACIÓN PREVIA:" in potential_context:
+                        conversation_context = potential_context
+                        actual_query = query_parts[-1].strip()
+                        logger.info(f"✅ Contexto extraído con método fallback")
+                    else:
+                        actual_query = request.query.strip()
+                        logger.info(f"❌ Fallback - no se encontró contexto válido")
+                else:
+                    actual_query = request.query.strip()
+                    logger.info(f"❌ No hay partes suficientes para extraer contexto")
         
         logger.info(f"Procesado - Query: '{actual_query}', Contexto: {'SÍ' if conversation_context else 'NO'}")
+        if conversation_context:
+            logger.info(f"📋 Contexto completo ({len(conversation_context)} chars): {conversation_context[:300]}...")
+        else:
+            logger.info("📋 Sin contexto de conversación")
 
         # Usar el servicio RAG optimizado con streaming
         return await rag_service.consulta_general_streaming(

@@ -13,7 +13,8 @@ const CustomTextarea = ({
   maxRows = 10,
   // Props para alcance de búsqueda
   searchScope = 'general',
-  setSearchScope
+  setSearchScope,
+  consultedExpediente = null
 }) => {
   const textareaRef = useRef(null);
 
@@ -103,7 +104,11 @@ const CustomTextarea = ({
           >
             <textarea
               ref={textareaRef}
-              placeholder="En que puedo ayudarte..."
+              placeholder={
+                searchScope === 'expediente' && !consultedExpediente 
+                  ? "Ingresa el número de expediente (ej: 2022-097794-3873-PN) para comenzar..."
+                  : "En que puedo ayudarte..."
+              }
               value={value}
               onChange={handleInput}
               rows={1}
@@ -159,46 +164,61 @@ const CustomTextarea = ({
       </div>
 
       {/* Barra de alcance debajo del textarea - estilo equilibrado */}
-      <div className="flex items-center justify-between px-2 py-1">
-        <div className="flex items-center gap-5">
-          <Checkbox
-            isSelected={searchScope === 'general'}
-            onValueChange={(checked) => checked && setSearchScope && setSearchScope('general')}
-            size="md"
-            classNames={{
-              wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
-              icon: "text-white",
-              label: "text-sm font-medium text-gray-700"
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <IoGlobe className="w-4 h-4 text-primario" />
-              <span>Búsqueda general</span>
-            </div>
-          </Checkbox>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-2 py-1">
+          <div className="flex items-center gap-5">
+            <Checkbox
+              isSelected={searchScope === 'general'}
+              onValueChange={(checked) => checked && setSearchScope && setSearchScope('general')}
+              size="md"
+              classNames={{
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                icon: "text-white",
+                label: "text-sm font-medium text-gray-700"
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <IoGlobe className="w-4 h-4 text-primario" />
+                <span>Búsqueda general</span>
+              </div>
+            </Checkbox>
 
-          <Checkbox
-            isSelected={searchScope === 'expediente'}
-            onValueChange={(checked) => checked && setSearchScope && setSearchScope('expediente')}
-            size="md"
-            classNames={{
-              wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
-              icon: "text-white",
-              label: "text-sm font-medium text-gray-700"
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <IoDocument className="w-4 h-4 text-primario" />
-              <span>Por expediente específico</span>
-            </div>
-          </Checkbox>
+            <Checkbox
+              isSelected={searchScope === 'expediente'}
+              onValueChange={(checked) => checked && setSearchScope && setSearchScope('expediente')}
+              size="md"
+              classNames={{
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                icon: "text-white",
+                label: "text-sm font-medium text-gray-700"
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <IoDocument className="w-4 h-4 text-primario" />
+                <span>Por expediente específico</span>
+              </div>
+            </Checkbox>
+          </div>
+          
+          {/* Contador de caracteres en el lado derecho */}
+          {value.length > 0 && (
+            <span className="text-xs text-gray-500">
+              {value.length} caracteres
+            </span>
+          )}
         </div>
-        
-        {/* Contador de caracteres en el lado derecho */}
-        {value.length > 0 && (
-          <span className="text-xs text-gray-500">
-            {value.length} caracteres
-          </span>
+
+        {/* Información sobre expediente consultado */}
+        {searchScope === 'expediente' && consultedExpediente && (
+          <div className="px-2">
+            <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+              <IoDocument className="w-4 h-4 text-blue-600" />
+              <span>Consultando expediente: <strong>{consultedExpediente}</strong></span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Todas las consultas serán sobre este expediente. Para consultar otro, cambia a "Búsqueda general".
+            </p>
+          </div>
         )}
       </div>
     </div>

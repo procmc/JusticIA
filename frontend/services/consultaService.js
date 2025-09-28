@@ -134,6 +134,8 @@ class ConsultaService {
   }
 
 
+
+
 }
 
 export default new ConsultaService();

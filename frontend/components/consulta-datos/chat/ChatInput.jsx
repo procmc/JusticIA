@@ -7,7 +7,8 @@ const ChatInput = ({
   isDisabled = false,
   isLoading = false,
   searchScope = 'general',
-  setSearchScope
+  setSearchScope,
+  consultedExpediente = null
 }) => {
   const [inputValue, setInputValue] = useState('');
 
@@ -36,6 +37,7 @@ const ChatInput = ({
           maxRows={6}
           searchScope={searchScope}
           setSearchScope={setSearchScope}
+          consultedExpediente={consultedExpediente}
         />
       </div>
     </div>

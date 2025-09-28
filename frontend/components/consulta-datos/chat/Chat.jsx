@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
+import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
-import { useChatContext } from '../../../hooks/conversacion/useChatContext';
+import { usePersistentChatContext } from '../../../hooks/conversacion/usePersistentChatContext';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -13,16 +14,41 @@ const ConsultaChat = () => {
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
+  const [consultedExpediente, setConsultedExpediente] = useState(null); // Para rastrear el expediente consultado
 
-  // Hook para manejar el contexto de conversación (corregido)
+  // Función personalizada para cambiar el scope y limpiar cuando sea necesario
+  const handleSearchScopeChange = (newScope) => {
+    if (newScope !== searchScope) {
+      // Si cambiamos de modo, limpiar la conversación
+      setMessages([]);
+      setConsultedExpediente(null);
+      clearCurrentConversation();
+      
+      setSearchScope(newScope);
+    }
+  };
+
+  // Función para detectar si un texto es un número de expediente
+  const isExpedienteNumber = (text) => {
+    // Patrón típico de expedientes: YYYY-NNNNNN-NNNN-XX
+    const expedientePattern = /^\d{4}-\d{6}-\d{4}-[A-Z]{2}$/;
+    return expedientePattern.test(text.trim());
+  };
+  
+  // Estado para el modal de historial
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Hook para manejar el contexto de conversación con persistencia mejorada
   const { 
     addToContext, 
     getFormattedContext, 
-    clearContext, 
+    clearCurrentConversation, 
     hasContext,
     getContextStats,
-    startNewConversation 
-  } = useChatContext();
+    startNewConversation,
+    conversationId,
+    isLoading: isContextLoading
+  } = usePersistentChatContext();
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -36,6 +62,47 @@ const ConsultaChat = () => {
   };
 
   const handleSendMessage = async (text) => {
+    // Si estamos en modo expediente específico
+    if (searchScope === 'expediente') {
+      // Si no tenemos expediente consultado, verificar si el texto es un número de expediente
+      if (!consultedExpediente) {
+        if (isExpedienteNumber(text)) {
+          // El usuario ingresó un número de expediente
+          setConsultedExpediente(text.trim());
+          
+          // Crear mensaje del usuario indicando que se estableció el expediente
+          const userMessage = {
+            text: `Establecer consulta para expediente: ${text.trim()}`,
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            scope: searchScope,
+            expedienteNumber: text.trim()
+          };
+          
+          // Crear mensaje del asistente confirmando
+          const assistantMessage = {
+            text: `✅ **Expediente establecido:** ${text.trim()}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+          
+          setMessages(prev => [...prev, userMessage, assistantMessage]);
+          return;
+        } else {
+          // No es un número de expediente válido
+          alert('Para consultas por expediente específico, primero debes ingresar un número de expediente válido (formato: YYYY-NNNNNN-NNNN-XX, ej: 2022-097794-3873-PN)');
+          return;
+        }
+      }
+      // Si ya tenemos expediente consultado, continuar con la consulta normal
+    }
+    
     // Cancelar cualquier request anterior
     if (currentRequestRef.current) {
       stopStreamingRef.current = true;
@@ -53,7 +120,8 @@ const ConsultaChat = () => {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      scope: searchScope
+      scope: searchScope,
+      expedienteNumber: searchScope === 'expediente' ? consultedExpediente : null
     };
 
     // Agregar mensaje del usuario
@@ -80,77 +148,96 @@ const ConsultaChat = () => {
     
     // ======= MODO STREAMING MEJORADO =======
     try {
-      await consultaService.consultaGeneralStreaming(
-        text,
-        (chunk) => {
-          // Callback para cada chunk recibido
-          if (currentRequestRef.current?.active) {
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  text: (updatedMessages[messageIndex].text || '') + chunk
-                };
-              }
-              return updatedMessages;
-            });
-          }
-        },
-        () => {
-          // Callback cuando termina el streaming
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
-            
-            // Asignar timestamp al finalizar
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  timestamp: new Date().toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                };
-              }
-              return updatedMessages;
-            });
-            
-            // Guardar la conversación en el contexto
-            const finalMessage = messages[messageIndex];
-            if (finalMessage?.text?.trim()) {
-              addToContext(text, finalMessage.text.trim());
+      // Definir callbacks comunes para ambos tipos de consulta
+      const onChunk = (chunk) => {
+        // Callback para cada chunk recibido
+        if (currentRequestRef.current?.active) {
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: (updatedMessages[messageIndex].text || '') + chunk
+              };
             }
-          }
-        },
-        (error) => {
-          // Callback para errores
-          console.error('Error en streaming RAG:', error);
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
-            
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-                  isError: true,
-                  timestamp: new Date().toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                };
+            return updatedMessages;
+          });
+        }
+      };
+
+      const onComplete = () => {
+        // Callback cuando termina el streaming
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+          
+          // Asignar timestamp y guardar contexto en una sola operación
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              };
+              
+              // Guardar en el contexto inmediatamente cuando tenemos el mensaje completo
+              const finalMessage = updatedMessages[messageIndex];
+              if (finalMessage?.text?.trim()) {
+                console.log('💾 Guardando en contexto:', {
+                  userMessage: text,
+                  assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
+                  length: finalMessage.text.trim().length
+                });
+                addToContext(text, finalMessage.text.trim());
               }
-              return updatedMessages;
-            });
-          }
-        },
+            }
+            return updatedMessages;
+          });
+        }
+      };
+
+      const onError = (error) => {
+        // Callback para errores
+        console.error('Error en streaming RAG:', error);
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+          
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+                isError: true,
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              };
+            }
+            return updatedMessages;
+          });
+        }
+      };
+
+      // Preparar la query según el tipo de búsqueda
+      let finalQuery = text;
+      if (searchScope === 'expediente' && consultedExpediente) {
+        finalQuery = `Consulta específica sobre el expediente ${consultedExpediente}: ${text}`;
+      }
+
+      // Usar siempre el endpoint general con la query modificada
+      await consultaService.consultaGeneralStreaming(
+        finalQuery,
+        onChunk,
+        onComplete,
+        onError,
         5, // topK
         conversationContext
       );
@@ -199,18 +286,39 @@ const ConsultaChat = () => {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Botón elegante y discreto de nuevo chat */}
-      {messages.length > 0 && (
+      {/* Indicador de contexto mejorado */}
+      {hasContext && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-green-600 bg-green-50/80 border border-green-200/50 rounded-full shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="font-medium">
+            Contexto activo ({getContextStats().totalInteractions} intercambios)
+          </span>
+          {conversationId && (
+            <span className="text-green-500 font-mono text-xs">
+              ID: {conversationId.split('_').pop()}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Indicador de carga del contexto */}
+      {isContextLoading && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 bg-blue-50/80 border border-blue-200/50 rounded-full shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-spin"></div>
+          <span className="font-medium">Cargando contexto...</span>
+        </div>
+      )}
+
+      {/* Controles de chat */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        {/* Botón de historial */}
         <button
-          onClick={() => {
-            startNewConversation();
-            setMessages([]);
-          }}
-          className="absolute top-3 right-3 z-20 group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
-          title="Nueva conversación"
+          onClick={() => setShowHistory(true)}
+          className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+          title="Ver historial de conversaciones"
         >
           <svg 
-            className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
+            className="w-3.5 h-3.5" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -219,12 +327,39 @@ const ConsultaChat = () => {
               strokeLinecap="round" 
               strokeLinejoin="round" 
               strokeWidth={1.5} 
-              d="M12 4v16m8-8H4" 
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
             />
           </svg>
-          <span className="font-medium hidden sm:block">Nueva</span>
+          <span className="font-medium hidden sm:block">Historial</span>
         </button>
-      )}
+
+        {/* Botón elegante y discreto de nuevo chat */}
+        {messages.length > 0 && (
+          <button
+            onClick={() => {
+              startNewConversation();
+              setMessages([]);
+            }}
+            className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+            title="Nueva conversación"
+          >
+            <svg 
+              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={1.5} 
+                d="M12 4v16m8-8H4" 
+              />
+            </svg>
+            <span className="font-medium hidden sm:block">Nueva</span>
+          </button>
+        )}
+      </div>
       
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -240,9 +375,17 @@ const ConsultaChat = () => {
           isDisabled={false} // El chat siempre está disponible
           isLoading={isTyping || streamingMessageIndex !== null}
           searchScope={searchScope}
-          setSearchScope={setSearchScope}
+          setSearchScope={handleSearchScopeChange}
+          consultedExpediente={consultedExpediente}
         />
       </div>
+
+      {/* Modal de historial de conversaciones */}
+      <ConversationHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        onConversationSelect={() => setMessages([])} // Limpiar mensajes UI al cambiar conversación
+      />
     </div>
   );
 };
