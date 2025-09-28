@@ -14,6 +14,26 @@ const ConsultaChat = () => {
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
+  const [consultedExpediente, setConsultedExpediente] = useState(null); // Para rastrear el expediente consultado
+
+  // Función personalizada para cambiar el scope y limpiar cuando sea necesario
+  const handleSearchScopeChange = (newScope) => {
+    if (newScope !== searchScope) {
+      // Si cambiamos de modo, limpiar la conversación
+      setMessages([]);
+      setConsultedExpediente(null);
+      clearCurrentConversation();
+      
+      setSearchScope(newScope);
+    }
+  };
+
+  // Función para detectar si un texto es un número de expediente
+  const isExpedienteNumber = (text) => {
+    // Patrón típico de expedientes: YYYY-NNNNNN-NNNN-XX
+    const expedientePattern = /^\d{4}-\d{6}-\d{4}-[A-Z]{2}$/;
+    return expedientePattern.test(text.trim());
+  };
   
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
@@ -42,6 +62,47 @@ const ConsultaChat = () => {
   };
 
   const handleSendMessage = async (text) => {
+    // Si estamos en modo expediente específico
+    if (searchScope === 'expediente') {
+      // Si no tenemos expediente consultado, verificar si el texto es un número de expediente
+      if (!consultedExpediente) {
+        if (isExpedienteNumber(text)) {
+          // El usuario ingresó un número de expediente
+          setConsultedExpediente(text.trim());
+          
+          // Crear mensaje del usuario indicando que se estableció el expediente
+          const userMessage = {
+            text: `Establecer consulta para expediente: ${text.trim()}`,
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            scope: searchScope,
+            expedienteNumber: text.trim()
+          };
+          
+          // Crear mensaje del asistente confirmando
+          const assistantMessage = {
+            text: `✅ **Expediente establecido:** ${text.trim()}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+          
+          setMessages(prev => [...prev, userMessage, assistantMessage]);
+          return;
+        } else {
+          // No es un número de expediente válido
+          alert('Para consultas por expediente específico, primero debes ingresar un número de expediente válido (formato: YYYY-NNNNNN-NNNN-XX, ej: 2022-097794-3873-PN)');
+          return;
+        }
+      }
+      // Si ya tenemos expediente consultado, continuar con la consulta normal
+    }
+    
     // Cancelar cualquier request anterior
     if (currentRequestRef.current) {
       stopStreamingRef.current = true;
@@ -59,7 +120,8 @@ const ConsultaChat = () => {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      scope: searchScope
+      scope: searchScope,
+      expedienteNumber: searchScope === 'expediente' ? consultedExpediente : null
     };
 
     // Agregar mensaje del usuario
@@ -86,82 +148,96 @@ const ConsultaChat = () => {
     
     // ======= MODO STREAMING MEJORADO =======
     try {
+      // Definir callbacks comunes para ambos tipos de consulta
+      const onChunk = (chunk) => {
+        // Callback para cada chunk recibido
+        if (currentRequestRef.current?.active) {
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: (updatedMessages[messageIndex].text || '') + chunk
+              };
+            }
+            return updatedMessages;
+          });
+        }
+      };
+
+      const onComplete = () => {
+        // Callback cuando termina el streaming
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+          
+          // Asignar timestamp y guardar contexto en una sola operación
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              };
+              
+              // Guardar en el contexto inmediatamente cuando tenemos el mensaje completo
+              const finalMessage = updatedMessages[messageIndex];
+              if (finalMessage?.text?.trim()) {
+                console.log('💾 Guardando en contexto:', {
+                  userMessage: text,
+                  assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
+                  length: finalMessage.text.trim().length
+                });
+                addToContext(text, finalMessage.text.trim());
+              }
+            }
+            return updatedMessages;
+          });
+        }
+      };
+
+      const onError = (error) => {
+        // Callback para errores
+        console.error('Error en streaming RAG:', error);
+        if (currentRequestRef.current?.active) {
+          setStreamingMessageIndex(null);
+          setIsTyping(false);
+          currentRequestRef.current = null;
+          
+          setMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            if (updatedMessages[messageIndex]) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
+                isError: true,
+                timestamp: new Date().toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              };
+            }
+            return updatedMessages;
+          });
+        }
+      };
+
+      // Preparar la query según el tipo de búsqueda
+      let finalQuery = text;
+      if (searchScope === 'expediente' && consultedExpediente) {
+        finalQuery = `Consulta específica sobre el expediente ${consultedExpediente}: ${text}`;
+      }
+
+      // Usar siempre el endpoint general con la query modificada
       await consultaService.consultaGeneralStreaming(
-        text,
-        (chunk) => {
-          // Callback para cada chunk recibido
-          if (currentRequestRef.current?.active) {
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  text: (updatedMessages[messageIndex].text || '') + chunk
-                };
-              }
-              return updatedMessages;
-            });
-          }
-        },
-        () => {
-          // Callback cuando termina el streaming
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
-            
-            // Asignar timestamp y guardar contexto en una sola operación
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  timestamp: new Date().toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                };
-                
-                // Guardar en el contexto inmediatamente cuando tenemos el mensaje completo
-                const finalMessage = updatedMessages[messageIndex];
-                if (finalMessage?.text?.trim()) {
-                  console.log('💾 Guardando en contexto:', {
-                    userMessage: text,
-                    assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
-                    length: finalMessage.text.trim().length
-                  });
-                  addToContext(text, finalMessage.text.trim());
-                }
-              }
-              return updatedMessages;
-            });
-          }
-        },
-        (error) => {
-          // Callback para errores
-          console.error('Error en streaming RAG:', error);
-          if (currentRequestRef.current?.active) {
-            setStreamingMessageIndex(null);
-            setIsTyping(false);
-            currentRequestRef.current = null;
-            
-            setMessages(prevMessages => {
-              const updatedMessages = [...prevMessages];
-              if (updatedMessages[messageIndex]) {
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-                  isError: true,
-                  timestamp: new Date().toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                };
-              }
-              return updatedMessages;
-            });
-          }
-        },
+        finalQuery,
+        onChunk,
+        onComplete,
+        onError,
         5, // topK
         conversationContext
       );
@@ -299,7 +375,8 @@ const ConsultaChat = () => {
           isDisabled={false} // El chat siempre está disponible
           isLoading={isTyping || streamingMessageIndex !== null}
           searchScope={searchScope}
-          setSearchScope={setSearchScope}
+          setSearchScope={handleSearchScopeChange}
+          consultedExpediente={consultedExpediente}
         />
       </div>
 
