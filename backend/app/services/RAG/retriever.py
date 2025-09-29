@@ -23,12 +23,39 @@ class JusticIARetriever(BaseRetriever):
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
         """Obtiene documentos relevantes de Milvus"""
         try:
+            # Detectar si la query incluye un número de expediente específico
+            import re
+            expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+            expediente_match = re.search(expediente_pattern, query)
+            
+            # Ajustar parámetros de búsqueda según el tipo de consulta
+            if expediente_match:
+                # Para consultas de expedientes específicos, ser más permisivo
+                # pero aumentar top_k para obtener más información
+                score_threshold = 0.1
+                effective_top_k = max(self.top_k, 20)  # Al menos 20 documentos
+                logger.info(f"Búsqueda específica para expediente: {expediente_match.group()}")
+            else:
+                # Para consultas generales, mantener threshold más alto
+                score_threshold = 0.3
+                effective_top_k = self.top_k
+            
             # Usar la función de búsqueda del vectorstore central
-            similar_docs = await search_by_text(
-                query_text=query,
-                top_k=self.top_k,
-                score_threshold=0.0
-            )
+            if expediente_match:
+                # Para expedientes específicos, usar filtro directo
+                similar_docs = await search_by_text(
+                    query_text=query,
+                    top_k=effective_top_k,
+                    score_threshold=score_threshold,
+                    expediente_filter=expediente_match.group()
+                )
+            else:
+                # Para consultas generales, búsqueda semántica normal
+                similar_docs = await search_by_text(
+                    query_text=query,
+                    top_k=effective_top_k,
+                    score_threshold=score_threshold
+                )
             
             # Convertir a formato LangChain Document
             documents = []

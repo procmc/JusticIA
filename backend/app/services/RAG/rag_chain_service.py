@@ -19,7 +19,7 @@ class RAGChainService:
     def __init__(self):
         self.retriever = None
 
-    async def consulta_general_streaming(self, pregunta: str, top_k: int = 15, conversation_context: str = ""):
+    async def consulta_general_streaming(self, pregunta: str, top_k: int = 15, conversation_context: str = "", expediente_filter: str = ""):
         # SEPARACIÓN CRÍTICA: Usar SOLO la pregunta actual para buscar en la BD
         # El contexto de conversación se usa únicamente para generar la respuesta
         search_query = pregunta.strip()
@@ -32,7 +32,13 @@ class RAGChainService:
         effective_top_k = min(optimal_params.get("top_k", top_k), top_k)
 
         retriever = JusticIARetriever(top_k=effective_top_k)
-        # USAR SOLO LA PREGUNTA ACTUAL PARA LA BÚSQUEDA VECTORIAL
+        
+        # Si hay filtro de expediente, agregarlo a la consulta para que el retriever lo detecte
+        if expediente_filter and expediente_filter.strip():
+            search_query = f"Expediente {expediente_filter.strip()}: {search_query}"
+            print(f"🎯 BÚSQUEDA FILTRADA POR EXPEDIENTE: {expediente_filter}")
+        
+        # USAR LA PREGUNTA (posiblemente con expediente) PARA LA BÚSQUEDA VECTORIAL
         docs = await retriever._aget_relevant_documents(search_query)
         
         print(f"📄 DOCUMENTOS ENCONTRADOS: {len(docs)} documentos para '{search_query}'")
