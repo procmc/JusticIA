@@ -58,6 +58,52 @@ class RAGChainService:
 
         # Delegar el streaming al módulo LLM (que debe devolver un StreamingResponse)
         return await llm_consulta_streaming(prompt_text)
+    
+    async def responder_solo_con_contexto(self, pregunta: str, conversation_context: str = ""):
+        """
+        Responde usando SOLO el contexto de conversación previo, sin buscar en la BD.
+        Usado cuando se detecta que la pregunta se refiere exclusivamente al contexto previo.
+        """
+        print(f"📚 RESPONDIENDO SOLO CON CONTEXTO PREVIO")
+        print(f"❌ Sin búsqueda en BD para: '{pregunta}'")
+        print(f"📋 Usando contexto histórico: {len(conversation_context)} chars")
+        
+        if not conversation_context:
+            async def no_context_generator():
+                import json
+                error_data = {
+                    "type": "error", 
+                    "content": "No hay contexto previo disponible para responder esta consulta.",
+                    "done": True
+                }
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+            
+            return StreamingResponse(no_context_generator(), media_type="text/event-stream")
+        
+        # Crear prompt que usa SOLO el contexto de conversación
+        prompt_context_only = f"""Eres JusticIA, un asistente especializado en derecho costarricense.
+
+El usuario te está haciendo una pregunta sobre información que ya discutimos previamente en esta conversación.
+
+HISTORIAL DE LA CONVERSACIÓN:
+{conversation_context}
+
+NUEVA PREGUNTA DEL USUARIO:
+{pregunta}
+
+INSTRUCCIONES:
+- Responde ÚNICAMENTE basándote en la información del historial de conversación anterior
+- NO busques información nueva ni inventes datos
+- Si la pregunta se refiere a "el primer caso", "el segundo expediente", etc., identifica claramente a cuál te refieres del historial
+- Si no tienes suficiente información en el historial, explica qué información específica te falta
+- Mantén el tono profesional y preciso
+
+Respuesta:"""
+
+        print(f"🎯 Prompt para contexto only: {len(prompt_context_only)} chars")
+        
+        # Usar el LLM solo con el contexto de conversación
+        return await llm_consulta_streaming(prompt_context_only)
 
 _rag_service = None
 

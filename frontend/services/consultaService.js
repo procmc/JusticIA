@@ -5,7 +5,7 @@ class ConsultaService {
     this.currentRequest = null;
   }
 
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30, conversationContext = '') {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30, conversationContext = '', expedienteNumber = null) {
     // Cancelar request anterior si existe
     if (this.currentRequest) {
       console.log('Cancelando consulta anterior...');
@@ -19,21 +19,36 @@ class ConsultaService {
     try {
       // Preparar la consulta con contexto SOLO si realmente existe y no está vacío
       const hasRealContext = Boolean(conversationContext && conversationContext.trim().length > 0);
+      
+      // Si hay número de expediente, incluirlo en la consulta
+      let finalQuery = query.trim();
+      if (expedienteNumber) {
+        finalQuery = `Consulta sobre expediente ${expedienteNumber}: ${query.trim()}`;
+      }
+      
       const queryWithContext = hasRealContext 
-        ? `${conversationContext.trim()}\n\n${query.trim()}`
-        : query.trim();
+        ? `${conversationContext.trim()}\n\n${finalQuery}`
+        : finalQuery;
 
       // Validar que el payload esté correcto antes de enviar
       if (!queryWithContext || queryWithContext.trim().length === 0) {
         throw new Error('La consulta no puede estar vacía');
       }
 
-      // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
-      const response = await httpService.postStream('/rag/consulta-general-stream', {
+      // Preparar el payload con información del expediente si está disponible
+      const payload = {
         query: queryWithContext,
         top_k: topK,
         has_context: hasRealContext
-      }, 30000); // 30 segundos timeout
+      };
+
+      // Agregar número de expediente al payload si está disponible
+      if (expedienteNumber) {
+        payload.expediente_number = expedienteNumber;
+      }
+
+      // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
+      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 30000); // 30 segundos timeout
 
       if (currentRequest.cancelled) {
         console.log('Request cancelada antes de procesar');
@@ -132,9 +147,6 @@ class ConsultaService {
       }
     }
   }
-
-
-
 
 }
 

@@ -3,7 +3,7 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
-import { usePersistentChatContext } from '../../../hooks/conversacion/usePersistentChatContext';
+import { useChatContext } from '../../../hooks/conversacion/useChatContext';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -22,9 +22,22 @@ const ConsultaChat = () => {
       // Si cambiamos de modo, limpiar la conversación
       setMessages([]);
       setConsultedExpediente(null);
-      clearCurrentConversation();
+      clearContext();
       
       setSearchScope(newScope);
+      
+      // Mostrar mensaje de bienvenida específico para el modo expediente
+      if (newScope === 'expediente') {
+        const welcomeMessage = {
+          text: `**🔍 Modo: Consulta por Expediente Específico**\n\nPara comenzar, necesito que ingreses un número de expediente válido.\n\n**Formato:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nUna vez que ingreses el número, podrás hacer cualquier consulta específica sobre ese expediente.\n\n💡 **Tip:** Si quieres hacer consultas generales sobre temas legales, cambia a "Búsqueda general".`,
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+        setMessages([welcomeMessage]);
+      }
     }
   };
 
@@ -38,17 +51,18 @@ const ConsultaChat = () => {
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
 
-  // Hook para manejar el contexto de conversación con persistencia mejorada
+  // Hook para manejar el contexto de conversación (versión corregida sin persistencia problemática)
   const { 
     addToContext, 
     getFormattedContext, 
-    clearCurrentConversation, 
+    clearContext, 
     hasContext,
     getContextStats,
-    startNewConversation,
-    conversationId,
-    isLoading: isContextLoading
-  } = usePersistentChatContext();
+    startNewConversation
+  } = useChatContext();
+
+  // DEBUG: Log del estado del contexto (comentado para reducir ruido)
+  // console.log('🔍 Estado del contexto en Chat.jsx:', { hasContext, contextStats: getContextStats() });
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -93,10 +107,36 @@ const ConsultaChat = () => {
           };
           
           setMessages(prev => [...prev, userMessage, assistantMessage]);
+          
+          // Guardar también en el contexto para mantener la historia
+          addToContext(
+            `Establecer consulta para expediente: ${text.trim()}`,
+            `Expediente ${text.trim()} establecido correctamente. Ahora puedes hacer cualquier consulta sobre este expediente.`
+          );
+          
           return;
         } else {
-          // No es un número de expediente válido
-          alert('Para consultas por expediente específico, primero debes ingresar un número de expediente válido (formato: YYYY-NNNNNN-NNNN-XX, ej: 2022-097794-3873-PN)');
+          // No es un número de expediente válido - responder como asistente
+          const userMessage = {
+            text: text,
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            scope: searchScope
+          };
+          
+          const assistantMessage = {
+            text: `Para realizar consultas sobre un expediente específico, necesito que ingreses un número de expediente válido.\n\n**Formato esperado:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de arriba.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          };
+          
+          setMessages(prev => [...prev, userMessage, assistantMessage]);
           return;
         }
       }
@@ -144,7 +184,14 @@ const ConsultaChat = () => {
     setIsTyping(false);
 
     // Obtener el contexto de conversación formateado SOLO si realmente hay contexto
+    const contextStats = getContextStats();
     const conversationContext = hasContext ? getFormattedContext() : '';
+    console.log('📤 DEBUG CONTEXTO - Enviando al backend:', { 
+      hasContext, 
+      contextLength: conversationContext.length,
+      contextStats: contextStats,
+      contextPreview: conversationContext.substring(0, 200) + '...'
+    });
     
     // ======= MODO STREAMING MEJORADO =======
     try {
@@ -172,7 +219,7 @@ const ConsultaChat = () => {
           setIsTyping(false);
           currentRequestRef.current = null;
           
-          // Asignar timestamp y guardar contexto en una sola operación
+          // Primero asignar timestamp
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             if (updatedMessages[messageIndex]) {
@@ -184,7 +231,7 @@ const ConsultaChat = () => {
                 })
               };
               
-              // Guardar en el contexto inmediatamente cuando tenemos el mensaje completo
+              // Guardar en el contexto DESPUÉS de actualizar los mensajes
               const finalMessage = updatedMessages[messageIndex];
               if (finalMessage?.text?.trim()) {
                 console.log('💾 Guardando en contexto:', {
@@ -192,7 +239,13 @@ const ConsultaChat = () => {
                   assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
                   length: finalMessage.text.trim().length
                 });
-                addToContext(text, finalMessage.text.trim());
+                
+                // Usar setTimeout para asegurar que se ejecute después del render
+                setTimeout(() => {
+                  console.log('🔧 Llamando addToContext con:', { text, responseLength: finalMessage.text.trim().length });
+                  addToContext(text, finalMessage.text.trim());
+                  console.log('✅ addToContext ejecutado, nuevo estado:', getContextStats());
+                }, 50);
               }
             }
             return updatedMessages;
@@ -226,20 +279,15 @@ const ConsultaChat = () => {
         }
       };
 
-      // Preparar la query según el tipo de búsqueda
-      let finalQuery = text;
-      if (searchScope === 'expediente' && consultedExpediente) {
-        finalQuery = `Consulta específica sobre el expediente ${consultedExpediente}: ${text}`;
-      }
-
-      // Usar siempre el endpoint general con la query modificada
+      // Usar siempre el endpoint general, pero pasar el expediente como parámetro separado
       await consultaService.consultaGeneralStreaming(
-        finalQuery,
+        text,
         onChunk,
         onComplete,
         onError,
         5, // topK
-        conversationContext
+        conversationContext,
+        searchScope === 'expediente' ? consultedExpediente : null // pasar expediente como parámetro
       );
 
     } catch (error) {
@@ -293,21 +341,10 @@ const ConsultaChat = () => {
           <span className="font-medium">
             Contexto activo ({getContextStats().totalInteractions} intercambios)
           </span>
-          {conversationId && (
-            <span className="text-green-500 font-mono text-xs">
-              ID: {conversationId.split('_').pop()}
-            </span>
-          )}
         </div>
       )}
 
-      {/* Indicador de carga del contexto */}
-      {isContextLoading && (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 bg-blue-50/80 border border-blue-200/50 rounded-full shadow-sm backdrop-blur-sm">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-spin"></div>
-          <span className="font-medium">Cargando contexto...</span>
-        </div>
-      )}
+      {/* El hook useChatContext no requiere indicador de carga ya que es instantáneo */}
 
       {/* Controles de chat */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
