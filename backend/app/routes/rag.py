@@ -92,11 +92,25 @@ async def consulta_general_rag_stream(
             )
         else:
             logger.info("🔍 Usando búsqueda en BD + contexto")
+            
+            # Extraer número de expediente de la consulta si existe
+            import re
+            expediente_filter = ""
+            expediente_pattern = r'(?:Consulta sobre expediente|Expediente)\s+(\d{4}-\d{6}-\d{4}-[A-Z]{2})'
+            expediente_match = re.search(expediente_pattern, actual_query)
+            
+            if expediente_match:
+                expediente_filter = expediente_match.group(1)
+                # Limpiar la consulta removiendo la referencia al expediente
+                actual_query = re.sub(r'Consulta sobre expediente\s+\d{4}-\d{6}-\d{4}-[A-Z]{2}:\s*', '', actual_query)
+                logger.info(f"🎯 Expediente específico detectado: {expediente_filter}")
+            
             # Usar el servicio RAG completo con búsqueda
             return await rag_service.consulta_general_streaming(
                 pregunta=actual_query,
-                top_k=min(request.top_k, 6),  # Optimizado para streaming rápido
+                top_k=min(request.top_k, 30),  # Aumentado para expedientes específicos
                 conversation_context=conversation_context,
+                expediente_filter=expediente_filter
             )
 
     except Exception as e:
