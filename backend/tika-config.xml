@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+  <parsers>
+    <parser class="org.apache.tika.parser.ocr.TesseractOCRParser">
+      <params>
+        <param name="language" type="string" value="spa"/>
+      </params>
+    </parser>
+  </parsers>
+</properties>
