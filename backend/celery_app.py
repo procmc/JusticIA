@@ -2,8 +2,8 @@ from celery import Celery
 
 celery_app = Celery(
     'justicia_backend',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/1',
+    broker='redis://redis:6379/0',
+    backend='redis://redis:6379/1',
 )
 
 celery_app.conf.update(

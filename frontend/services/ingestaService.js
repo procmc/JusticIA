@@ -4,34 +4,24 @@
 
 import httpService from './httpService';
 
+
 /**
- * Subir archivos a un expediente (modo asíncrono con IDs individuales)
+ * Subir archivos a un expediente (ahora solo usa celery_task_id)
  */
 const subirArchivos = async (expediente, archivos) => {
   const formData = new FormData();
-  
-  // Agregar expediente
   formData.append('CT_Num_expediente', expediente);
-  
-  // Agregar archivos
   for (let i = 0; i < archivos.length; i++) {
     formData.append('files', archivos[i]);
   }
-
+  // La respuesta tendrá celery_task_ids
   return httpService.post('/ingesta/archivos', formData);
 };
 
 /**
- * Consultar estado de un archivo individual (legacy)
+ * Consultar progreso granular de una tarea Celery
  */
-const consultarEstadoArchivo = async (fileProcessId) => {
-  return httpService.get(`/ingesta/status/${fileProcessId}`);
-};
-
-/**
- * Consultar progreso granular de una tarea (nuevo endpoint)
- */
-const consultarProgresoDetallado = async (taskId) => {
+const consultarProgresoTarea = async (taskId) => {
   return httpService.get(`/ingesta/progress/${taskId}`);
 };
 
@@ -139,8 +129,6 @@ const cancelarProcesamiento = async (fileProcessId) => {
 
 export default {
   subirArchivos,
-  consultarEstadoArchivo,
-  consultarProgresoDetallado,
   consultarEstadoArchivos,
   cancelarProcesamiento
 };
