@@ -147,7 +147,7 @@ async def search_by_vector(
 
 
 async def search_by_text(
-    query_text: str, top_k: int = 20, score_threshold: float = 0.0
+    query_text: str, top_k: int = 20, score_threshold: float = 0.0, expediente_filter: str = None
 ) -> List[Dict[str, Any]]:
     """
     Búsqueda semántica directa con texto.
@@ -157,6 +157,7 @@ async def search_by_text(
         query_text: Texto de consulta
         top_k: Máximo de resultados
         score_threshold: Umbral de similitud mínimo
+        expediente_filter: Si se proporciona, filtra solo documentos de este expediente
 
     Returns:
         Lista de documentos similares
@@ -164,19 +165,57 @@ async def search_by_text(
     try:
         vectorstore = await get_langchain_vectorstore()
 
-        # Búsqueda semántica automática
-        results = vectorstore.similarity_search(query=query_text, k=top_k)
+        # Si hay filtro de expediente, usar búsqueda híbrida
+        if expediente_filter:
+            logger.info(f"Búsqueda específica en expediente: {expediente_filter}")
+            # Buscar todos los documentos del expediente específico
+            client = await get_client()
+            
+            # Primero obtener todos los documentos del expediente
+            logger.info(f"Buscando documentos para expediente: {expediente_filter}")
+            expediente_docs = client.query(
+                collection_name=COLLECTION_NAME,
+                filter=f'numero_expediente == "{expediente_filter}"',
+                output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto"],
+                limit=100  # Límite alto para obtener todos los documentos del expediente
+            )
+            logger.info(f"Documentos encontrados para expediente {expediente_filter}: {len(expediente_docs) if expediente_docs else 0}")
+            
+            if not expediente_docs:
+                logger.warning(f"No se encontraron documentos para expediente: {expediente_filter}")
+                return []
+            
+            # Crear resultados con alta relevancia para documentos del expediente específico
+            formatted_results = []
+            for i, doc in enumerate(expediente_docs):
+                similarity_score = 0.9 - (i * 0.01)  # Score alto decreciente
+                formatted_result = {
+                    "id": doc.get("id_chunk", ""),
+                    "expedient_id": doc.get("numero_expediente", ""),
+                    "document_name": doc.get("nombre_archivo", ""),
+                    "content_preview": doc.get("texto", ""),
+                    "similarity_score": similarity_score,
+                }
+                if similarity_score >= score_threshold:
+                    formatted_results.append(formatted_result)
+            
+            logger.info(f"Búsqueda por expediente específico: {len(formatted_results)} resultados")
+            return formatted_results
+        
+        else:
+            # Búsqueda semántica normal
+            results = vectorstore.similarity_search(query=query_text, k=top_k)
 
-        # Formatear resultados
-        formatted_results = []
-        for i, doc in enumerate(results):
-            similarity_score = _calculate_similarity_score(doc, i, len(results))
+            # Formatear resultados
+            formatted_results = []
+            for i, doc in enumerate(results):
+                similarity_score = _calculate_similarity_score(doc, i, len(results))
 
-            if similarity_score >= score_threshold:
-                formatted_results.append(_format_document_result(doc, similarity_score))
+                if similarity_score >= score_threshold:
+                    formatted_results.append(_format_document_result(doc, similarity_score))
 
-        logger.info(f"Búsqueda semántica: {len(formatted_results)} resultados")
-        return formatted_results
+            logger.info(f"Búsqueda semántica: {len(formatted_results)} resultados")
+            return formatted_results
 
     except Exception as e:
         logger.error(f"Error en búsqueda semántica: {e}")

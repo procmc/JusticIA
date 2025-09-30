@@ -60,9 +60,9 @@ export const useChatContext = () => {
     };
 
     setContextHistory(prev => {
-      // Mantener solo los últimos 8 intercambios para contexto eficiente
+      // Mantener solo los últimos 10 intercambios para contexto eficiente
       const updated = [...prev, newEntry];
-      const limited = updated.slice(-8);
+      const limited = updated.slice(-10);
       
       console.log(`Contexto actualizado: ${limited.length} intercambios`, {
         sessionKey: newEntry.sessionKey,
@@ -87,19 +87,16 @@ export const useChatContext = () => {
     console.log('📝 Formateando contexto con', contextHistory.length, 'entradas');
     const contextLines = ['HISTORIAL DE CONVERSACIÓN PREVIA:'];
     
-    // Usar los últimos 5 intercambios para no sobrecargar el contexto
-    const recentHistory = contextHistory.slice(-5);
+    // Usar los últimos 3 intercambios para mantener contexto completo sin sobrecargar
+    const recentHistory = contextHistory.slice(-3);
     
     recentHistory.forEach((entry, index) => {
       contextLines.push(`\n[Intercambio ${index + 1}]`);
       contextLines.push(`Usuario: ${entry.userMessage}`);
       
-      // Limitar la respuesta del asistente para mantener el contexto manejable
-      const response = entry.assistantResponse.length > 300 
-        ? entry.assistantResponse.substring(0, 300) + '...'
-        : entry.assistantResponse;
-      
-      contextLines.push(`Asistente: ${response}`);
+      // Guardar la respuesta completa del asistente para mantener todo el contexto
+      // Especialmente importante para respuestas con múltiples expedientes
+      contextLines.push(`Asistente: ${entry.assistantResponse}`);
     });
     
     contextLines.push('\n---\nNUEVA CONSULTA:');
