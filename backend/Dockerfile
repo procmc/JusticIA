@@ -17,24 +17,27 @@ RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
-
 WORKDIR /app
 
-# Copiar solo los archivos necesarios al contenedor
+# Copiar solo requirements.txt primero para aprovechar la caché
 COPY requirements.txt /app/
+
+# Crear el entorno virtual fuera de /app para evitar sobrescritura por volumen
+RUN python3.11 -m venv /venv \
+    && /venv/bin/pip install --upgrade pip setuptools wheel \
+    && /venv/bin/pip install -r /app/requirements.txt \
+    && ls -l /venv/bin/python \
+    && /venv/bin/python --version
+
+ENV PATH="/venv/bin:$PATH"
+# Descargar el JAR de Tika automáticamente (ajusta la versión si es necesario)
+RUN curl -L -o /app/tika-server.jar https://repo1.maven.org/maven2/org/apache/tika/tika-server/2.9.0/tika-server-2.9.0.jar
+
+# Copiar el resto del código fuente (esto invalida la caché solo si el código cambia)
 COPY . /app/
-
-# Crear el entorno virtual y verificar el binario
-RUN python3.11 -m venv /app/.venv \
-    && /app/.venv/bin/pip install --upgrade pip setuptools wheel \
-    && /app/.venv/bin/pip install -r /app/requirements.txt \
-    && ls -l /app/.venv/bin/python \
-    && /app/.venv/bin/python --version
-
-ENV PATH="/app/.venv/bin:$PATH"
 
 # Exponer el puerto del backend
 EXPOSE 8000
 
 # Comando para iniciar el backend
-CMD ["/app/.venv/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["/venv/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

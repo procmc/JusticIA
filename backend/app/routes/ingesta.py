@@ -1,17 +1,13 @@
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Request
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-# Imports temporalmente como strings para evitar dependencias circulares durante desarrollo
-# from app.services.ingesta.async_processing.background_tasks import (
-#     procesar_archivo_individual_en_background, 
-#     get_task_progress,
-#     cleanup_old_tasks
-# )
 from app.db.database import get_db
 from app.auth.jwt_auth import require_role
 from app.services.documentos.file_management_service import file_management_service
 import uuid
 import logging
+from celery.result import AsyncResult
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -36,22 +32,37 @@ async def get_process_status(process_id: str):
     return process_status_store[process_id]
 
 
+
+# Endpoint para consultar progreso de una tarea Celery (simple)
 @router.get("/progress/{task_id}")
+async def consultar_progreso_tarea(task_id: str):
+    """
+    Consulta el estado y progreso de una tarea Celery por su ID.
+    """
+    result = AsyncResult(task_id)
+    response = {
+        "task_id": task_id,
+        "state": result.state,
+        "info": result.info if result.info else {},
+        "ready": result.ready(),
+        "successful": result.successful(),
+    }
+    return response
+
+# Endpoint para consultar progreso detallado (nuevo sistema)
+@router.get("/progress-detailed/{task_id}")
 async def get_task_progress_detailed(task_id: str):
     """
     Consulta el progreso granular y detallado de una tarea.
     Utiliza el nuevo sistema de ProgressTracker para información completa.
     """
     from app.services.ingesta.async_processing.background_tasks import get_task_progress
-    
     progress_data = get_task_progress(task_id)
-    
     if not progress_data:
         raise HTTPException(
             status_code=404,
             detail=f"Tarea {task_id} no encontrada"
         )
-    
     return progress_data
 
 
@@ -105,42 +116,20 @@ async def ingestar_archivos(
             status_code=400, detail="Debe proporcionar al menos un archivo"
         )
     
-    # Procesar cada archivo individualmente
-    file_process_ids = []
-    
+    # Procesar cada archivo individualmente usando Celery
+    celery_task_ids = []
+    from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
     for file in files:
-        # Generar ID único para este archivo
-        file_process_id = str(uuid.uuid4())
-        file_process_ids.append(file_process_id)
-        
-        # Guardar archivo usando el nuevo servicio y obtener contenido
         try:
             archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
-            
-            # Guardar estado inicial para este archivo
-            process_status_store[file_process_id] = {
-                "status": "iniciando",
-                "progress": 0,
-                "message": f"Archivo {archivo_info['filename']} guardado, iniciando procesamiento",
-                "expediente": CT_Num_expediente,
-                "filename": archivo_info['filename']
-            }
-            
-            # Crear función wrapper para este archivo con contenido ya leído
-            def crear_wrapper(fid, exp, archivo_data):
-                def ejecutar_procesamiento_individual():
-                    from app.services.ingesta.async_processing.background_tasks import procesar_archivo_con_contenido_en_background
-                    procesar_archivo_con_contenido_en_background(
-                        fid, exp, archivo_data, db, process_status_store
-                    )
-                return ejecutar_procesamiento_individual
-            
-            # Ejecutar procesamiento individual en segundo plano
-            wrapper = crear_wrapper(file_process_id, CT_Num_expediente, archivo_info)
-            background_tasks.add_task(wrapper)
-            
+            celery_task = procesar_archivo_celery.delay(
+                str(uuid.uuid4()),
+                CT_Num_expediente,
+                archivo_info,
+                str(db.bind.url)
+            )
+            celery_task_ids.append(celery_task.id)
         except Exception as e:
-            # Crear mensaje de error más amigable para el usuario
             error_message = "Error al guardar el archivo"
             if "subpath" in str(e).lower() or "relative" in str(e).lower():
                 error_message = "Error de configuración de directorio"
@@ -148,20 +137,17 @@ async def ingestar_archivos(
                 error_message = "Sin permisos para guardar el archivo"
             elif "space" in str(e).lower() or "disk" in str(e).lower():
                 error_message = "Espacio insuficiente en disco"
-            
             logger.error(f"Error guardando archivo {file.filename}: {e}")
-            process_status_store[file_process_id] = {
+            celery_task_ids.append({
                 "status": "error",
-                "progress": 0,
                 "message": f"{error_message}: {file.filename}",
-                "expediente": CT_Num_expediente,
                 "filename": file.filename
-            }
+            })
     
-    # Devolver lista de IDs de archivos
+    # Devolver lista de IDs de tareas Celery
     return {
         "message": f"{len(files)} archivos enviados para procesamiento",
-        "file_process_ids": file_process_ids,
+        "celery_task_ids": celery_task_ids,
         "expediente": CT_Num_expediente,
         "total_files": len(files)
     }
