@@ -1,0 +1,24 @@
+# Dockerfile para Apache Tika con soporte OCR (Tesseract)
+FROM ubuntu:22.04
+
+# Instalar Java y dependencias OCR
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-17-jre-headless \
+    tesseract-ocr libtesseract-dev libleptonica-dev \
+    tesseract-ocr-eng tesseract-ocr-spa \
+    poppler-utils imagemagick ghostscript \
+    curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Descargar el JAR de Tika
+RUN curl -fL -o /app/tika-server.jar https://repo1.maven.org/maven2/org/apache/tika/tika-server-standard/2.8.0/tika-server-standard-2.8.0.jar \
+    && ls -lh /app/tika-server.jar
+
+# Copiar la configuración personalizada de Tika
+COPY tika-config.xml /app/tika-config.xml
+
+EXPOSE 9998
+
+CMD ["java", "-jar", "/app/tika-server.jar", "--config=/app/tika-config.xml", "--host=0.0.0.0", "--port=9998"]

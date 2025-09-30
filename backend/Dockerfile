@@ -6,7 +6,7 @@ FROM ubuntu:22.04
 # Instalar dependencias del sistema y Python 3.11
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 python3.11-venv python3.11-distutils python3.11-dev python3-pip \
-    openjdk-17-jre-headless ffmpeg git curl build-essential \
+    ffmpeg git curl build-essential \
     ca-certificates gnupg apt-transport-https unzip htop \
     && rm -rf /var/lib/apt/lists/*
 
@@ -30,8 +30,7 @@ RUN python3.11 -m venv /venv \
     && /venv/bin/python --version
 
 ENV PATH="/venv/bin:$PATH"
-# Descargar el JAR de Tika automáticamente (ajusta la versión si es necesario)
-RUN curl -L -o /app/tika-server.jar https://repo1.maven.org/maven2/org/apache/tika/tika-server/2.9.0/tika-server-2.9.0.jar
+
 
 # Copiar el resto del código fuente (esto invalida la caché solo si el código cambia)
 COPY . /app/

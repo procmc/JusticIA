@@ -15,20 +15,16 @@ services:
       - PYTHONUNBUFFERED=1
     depends_on:
       - redis
-    restart: unless-stopped
-
-  frontend:
+      - tika
+  tika:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile.tika
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
+      - "9998:9998"
+    restart: unless-stopped
     environment:
       - NODE_ENV=development
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     ports:
