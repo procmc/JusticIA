@@ -1,9 +1,10 @@
 from celery import Celery
+from app.config.config import REDIS_URL
 
 celery_app = Celery(
     'justicia_backend',
-    broker='redis://redis:6379/0',
-    backend='redis://redis:6379/1',
+    broker=f'{REDIS_URL}/0',
+    backend=f'{REDIS_URL}/1',
 )
 
 celery_app.conf.update(
@@ -13,3 +14,7 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
 )
+
+# Importar las tareas para registrarlas en el worker
+# IMPORTANTE: Esta importación debe estar DESPUÉS de la configuración de celery_app
+from app.services.ingesta.async_processing import celery_tasks

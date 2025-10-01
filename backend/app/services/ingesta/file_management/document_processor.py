@@ -23,6 +23,7 @@ from app.services.documentos.file_management_service import file_management_serv
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
 from ..async_processing.progress_tracker import ProgressTracker
+from ..tika_service import TikaService
 
 async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None, progress_tracker: Optional[ProgressTracker] = None) -> FileProcessingStatus:
     """
@@ -362,7 +363,9 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     """
     Extrae texto de diferentes tipos de archivos:
     - MP3: Transcripción con Whisper
-    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika con fallback OCR para PDFs
+    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika Server con Tesseract OCR integrado
+    
+    Nota: Tika Server tiene Tesseract OCR configurado para extraer texto de PDFs escaneados automáticamente.
     """
     file_extension = Path(filename).suffix.lower()
     
@@ -370,9 +373,8 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     if file_extension == '.mp3':
         return await extract_text_from_audio_whisper(content, filename)
     
-    # Los demás formatos con Tika (con fallback OCR para PDFs)
+    # Los demás formatos con Tika Server (con OCR integrado)
     try:
-        from tika import parser
         import chardet
         
         # Para archivos .txt, detectar codificación y manejar directamente
@@ -386,60 +388,46 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
             if encoding and confidence > 0.7:
                 try:
                     texto = content.decode(encoding)
-                    print(f"Archivo {filename}: codificación detectada {encoding} (confianza: {confidence:.2f})")
+                    logger.info(f"Archivo {filename}: codificación detectada {encoding} (confianza: {confidence:.2f})")
                 except UnicodeDecodeError:
                     # Fallback a UTF-8 con manejo de errores
                     texto = content.decode('utf-8', errors='replace')
-                    print(f"Archivo {filename}: fallback a UTF-8 con reemplazo de errores")
+                    logger.info(f"Archivo {filename}: fallback a UTF-8 con reemplazo de errores")
             else:
                 # Intentar UTF-8 primero, luego Latin-1 como fallback
                 try:
                     texto = content.decode('utf-8')
-                    print(f"Archivo {filename}: usando UTF-8")
+                    logger.info(f"Archivo {filename}: usando UTF-8")
                 except UnicodeDecodeError:
                     texto = content.decode('latin-1')
-                    print(f"Archivo {filename}: usando Latin-1 como fallback")
+                    logger.info(f"Archivo {filename}: usando Latin-1 como fallback")
         else:
-            # Para otros formatos, usar Tika con configuración de codificación
-            parsed = parser.from_buffer(content, headers={'Content-Type': 'application/octet-stream'})
+            # Para otros formatos, usar Tika Server con OCR integrado
+            tika_service = TikaService()
             
-            # Extraer el texto - Tika devuelve un dict
-            if not isinstance(parsed, dict):
-                raise ValueError("Respuesta inesperada de Tika")
-                
-            texto = parsed.get('content', '') or ''
-        
-        # Para PDFs, verificar si necesitamos fallback OCR
-        if file_extension == '.pdf':
-            try:
-                from ..ocr_processing.easyocr_service import extract_text_with_ocr_fallback
-                # Aplicar OCR como fallback si el texto es insuficiente
-                texto = await extract_text_with_ocr_fallback(content, filename, content_type, texto, progress_tracker)
-            except ImportError:
-                logger.warning(f"OCR no disponible para {filename}. Instalar con 'pip install easyocr pdf2image pillow'")
-                # Continuar solo con texto de Tika
-                pass
-            except Exception as e:
-                logger.warning(f"OCR falló para {filename}: {str(e)}. Usando solo texto de Tika")
-                # Continuar solo con texto de Tika
-                pass
+            # Tika Server tiene Tesseract OCR configurado automáticamente
+            # Para PDFs y documentos escaneados, el OCR se aplica automáticamente
+            texto = tika_service.extract_text(
+                content=content,
+                filename=filename,
+                enable_ocr=True  # Habilitar OCR para todos los documentos
+            )
         
         if not texto or not texto.strip():
             raise ValueError("No se pudo extraer texto del archivo")
         
-        # Validar que no hay caracteres corruptos
+        # Validar que no hay caracteres corruptos (problema de encoding)
         if any(char in texto for char in ['茅', '谩', '帽', '贸', 'iacute', 'aacute']):
-            print(f"ADVERTENCIA: Detectados caracteres corruptos en {filename}")
-            print(f"   Muestra: {texto[:100]}...")
+            logger.warning(f"Detectados caracteres corruptos en {filename}. Muestra: {texto[:100]}...")
         
         # Limpiar el texto (remover espacios excesivos, saltos de línea múltiples)
         texto_limpio = ' '.join(texto.split())
         
+        logger.info(f"Texto extraído exitosamente de {filename} ({len(texto_limpio)} caracteres)")
         return texto_limpio
         
-    except ImportError:
-        raise ValueError("Apache Tika no está disponible. Verificar instalación de Java y Tika.")
     except Exception as e:
+        logger.error(f"Error extrayendo texto de {filename}: {str(e)}")
         raise ValueError(f"Error extrayendo texto de {filename}: {str(e)}")
 
 async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:

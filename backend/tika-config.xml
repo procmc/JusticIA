@@ -1,9 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <properties>
+  <!-- 
+    Configuración de Tika Server con OCR integrado 
+    - PDFParser: Extrae texto de PDFs normales
+    - TesseractOCRParser: Aplica OCR a imágenes y PDFs escaneados
+  -->
   <parsers>
+    <!-- Parser por defecto para PDFs (extrae texto embebido) -->
+    <parser class="org.apache.tika.parser.pdf.PDFParser">
+      <params>
+        <!-- Habilitar extracción de texto embebido -->
+        <param name="extractInlineImages" type="bool">true</param>
+        <param name="sortByPosition" type="bool">true</param>
+        <!-- Configurar estrategia de OCR: auto (solo si no hay texto) -->
+        <param name="ocrStrategy" type="string">auto</param>
+      </params>
+    </parser>
+    
+    <!-- Parser de OCR con Tesseract para imágenes y PDFs escaneados -->
     <parser class="org.apache.tika.parser.ocr.TesseractOCRParser">
       <params>
-        <param name="language" type="string" value="spa"/>
+        <!-- Idioma por defecto: español -->
+        <param name="language" type="string">spa+eng</param>
+        <!-- Habilitar OCR -->
+        <param name="enableOCR" type="bool">true</param>
+        <!-- Calidad de imagen para OCR -->
+        <param name="density" type="int">300</param>
+        <param name="depth" type="int">4</param>
+        <param name="colorspace" type="string">gray</param>
       </params>
     </parser>
   </parsers>
