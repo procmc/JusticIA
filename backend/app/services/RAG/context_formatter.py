@@ -114,6 +114,7 @@ def format_documents_context(docs: List[Document], max_docs: int = 15, max_chars
             f"📄 Tipo de Documento: {tipo_documento}\n"
             f"📅 Fecha: {fecha}\n"
             f"📁 Archivo Fuente: {archivo}\n"
+            
             f"🎯 Relevancia: {relevancia:.2f}\n"
             f"📝 **CONTENIDO DETALLADO:**\n{content}\n"
         )
