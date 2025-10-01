@@ -141,22 +141,27 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
           // Procesar respuesta según el tipo (granular vs legacy)
           if (isGranular) {
-            // Nuevo sistema de progreso granular
+            // Nuevo sistema de progreso granular (estados en español desde backend)
             finalStatus = statusData.status;
             progressValue = statusData.progress || 0;
             messageText = statusData.message || '';
 
-            // Mapear estados del nuevo sistema
-            if (finalStatus === 'completed') {
+            // Estados ya vienen en español: pendiente, procesando, completado, fallido, cancelado
+            if (finalStatus === 'completado') {
               reachedTerminal = true;
-              finalStatus = 'completado';
               progressValue = 100;
-            } else if (finalStatus === 'failed') {
+            } else if (finalStatus === 'fallido') {
               reachedTerminal = true;
               finalStatus = 'error';
               progressValue = 0;
-            } else if (finalStatus === 'processing') {
-              finalStatus = 'procesando';
+            } else if (finalStatus === 'cancelado') {
+              reachedTerminal = true;
+              finalStatus = 'error';
+              progressValue = 0;
+            } else if (finalStatus === 'procesando') {
+              // Mantener como está
+            } else if (finalStatus === 'pendiente') {
+              // Mantener como está
             }
           } else {
             // Sistema legacy
@@ -201,7 +206,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
                 return { ...base, status: 'error', progress: 0, message: msg };
               }
 
-              // Estados en progreso
+              // Estados en progreso (pendiente o procesando)
               return { ...base, status: 'uploading' };
             }
             return f;
@@ -355,14 +360,16 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
 
           const resultado = await ingestaService.subirArchivos(expediente, archivosReales);
 
-          // Asignar IDs individuales a cada archivo
-          if (resultado && resultado.file_process_ids) {
+          // Asignar IDs individuales a cada archivo (task_ids de Celery)
+          const taskIds = resultado?.task_ids || resultado?.file_process_ids || [];
+          
+          if (taskIds.length > 0) {
             updateFiles(prev => prev.map(f => {
               const fileIndex = expedienteFiles.findIndex(ef => ef.id === f.id);
-              if (fileIndex !== -1 && fileIndex < resultado.file_process_ids.length) {
+              if (fileIndex !== -1 && fileIndex < taskIds.length) {
                 return {
                   ...f,
-                  fileProcessId: resultado.file_process_ids[fileIndex],
+                  fileProcessId: taskIds[fileIndex],
                   progress: 10,
                   message: 'Procesando...'
                 };
@@ -370,7 +377,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
               return f;
             }));
             // Iniciar polling para cada archivo
-            iniciarPollingArchivos(expedienteFiles, resultado.file_process_ids);
+            iniciarPollingArchivos(expedienteFiles, taskIds);
           }
 
         } catch (error) {
