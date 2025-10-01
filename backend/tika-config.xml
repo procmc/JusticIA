@@ -4,7 +4,25 @@
     Configuración de Tika Server con OCR integrado 
     - PDFParser: Extrae texto de PDFs normales
     - TesseractOCRParser: Aplica OCR a imágenes y PDFs escaneados
+    - taskTimeoutMillis: 900000ms = 15 minutos para archivos pesados con OCR
   -->
+  
+  <!-- Configuración del servidor con timeouts extendidos -->
+  <server>
+    <params>
+      <!-- Puerto del servidor -->
+      <port>9998</port>
+      <!-- Timeout de 15 minutos (900000ms) para archivos pesados con OCR -->
+      <taskTimeoutMillis>900000</taskTimeoutMillis>
+      <!-- Timeout mínimo permitido para requests individuales -->
+      <minimumTimeoutMillis>30000</minimumTimeoutMillis>
+      <!-- Verificar estado cada 5 segundos -->
+      <taskPulseMillis>5000</taskPulseMillis>
+      <!-- Máximo de archivos en cola -->
+      <maxFiles>100</maxFiles>
+    </params>
+  </server>
+  
   <parsers>
     <!-- Parser por defecto para PDFs (extrae texto embebido) -->
     <parser class="org.apache.tika.parser.pdf.PDFParser">

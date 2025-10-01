@@ -43,8 +43,15 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
             )
             
             # Verificar resultado (el tracker ya fue actualizado en process_uploaded_files)
+            # IMPORTANTE: Verificar tanto procesados_exitosamente > 0 como status="success"
             if resultado_completo.procesados_exitosamente > 0:
                 archivo_resultado = resultado_completo.archivos_procesados[0]
+                
+                # Verificar que realmente fue exitoso (no un error disfrazado)
+                if archivo_resultado.status != "success":
+                    error_msg = archivo_resultado.message or "Error en procesamiento"
+                    progress_manager.schedule_task_cleanup(task_id, delay_minutes=3)
+                    raise Exception(error_msg)
                 progress_manager.schedule_task_cleanup(task_id, delay_minutes=5)
                 
                 # Liberar memoria
