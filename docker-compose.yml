@@ -47,7 +47,8 @@ services:
       - "9998:9998"
     restart: unless-stopped
     environment:
-      - TIKA_SERVER_OPTS=-Xmx512m -Xms256m
+      # Memoria dinámica: mín 256MB, máx 2GB (para OCR pesado en VM)
+      - TIKA_SERVER_OPTS=-Xms256m -Xmx2048m
 
   redis:
     image: redis:7-alpine
