@@ -5,12 +5,12 @@ Centraliza todo el procesamiento de documentos y conversión de audio a texto.
 Estructura:
 - audio_transcription/    # Transcripción de audio con Whisper
 - file_management/        # Procesamiento y almacenamiento de documentos  
-- async_processing/       # Tareas en segundo plano
+- async_processing/       # Tareas en segundo plano con Celery
 
 Uso recomendado:
 - from app.services.ingesta.audio_transcription.whisper_service import audio_processor
 - from app.services.ingesta.file_management.document_processor import process_uploaded_files
-- from app.services.ingesta.async_processing.background_tasks import procesar_archivo_individual_en_background
+- from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
 """
 
 __all__ = [

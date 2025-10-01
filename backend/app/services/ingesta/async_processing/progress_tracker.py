@@ -1,321 +1,273 @@
 """
-Servicio de seguimiento de progreso para tareas de larga duración.
-Permite reportar progreso granular y manejar errores de forma robusta.
+Servicio de seguimiento de progreso para tareas de procesamiento.
+Sistema simplificado que se integra con Celery.
+Usa Redis como almacenamiento compartido entre procesos.
 """
 import logging
-from typing import Dict, Optional, Callable, Any
+import json
+import redis
+import os
+from typing import Dict, Optional, Any
 from datetime import datetime
 from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-class TaskStatus(Enum):
+# Obtener URL de Redis desde variable de entorno (compatible con Docker)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+# Conexión Redis compartida (mismo Redis que usa Celery)
+redis_client = redis.Redis.from_url(
+    REDIS_URL,
+    decode_responses=True  # Decodificar strings automáticamente
+)
+
+class EstadoTarea(Enum):
     """Estados posibles de una tarea."""
-    PENDING = "pending"          # Esperando inicio
-    INITIALIZING = "initializing" # Inicializando recursos
-    PROCESSING = "processing"    # En proceso
-    COMPLETED = "completed"      # Completado exitosamente
-    FAILED = "failed"           # Falló con error
-    CANCELLED = "cancelled"     # Cancelado por usuario
+    PENDIENTE = "pendiente"
+    PROCESANDO = "procesando"
+    COMPLETADO = "completado"
+    FALLIDO = "fallido"
+    CANCELADO = "cancelado"
+
 
 class ProgressTracker:
     """
     Tracker de progreso granular para tareas de procesamiento.
-    Permite reportar progreso detallado en tiempo real.
+    Almacena progreso en Redis para compartir entre procesos (backend y celery-worker).
     """
     
     def __init__(self, task_id: str, total_steps: int = 100):
         self.task_id = task_id
         self.total_steps = total_steps
-        self.current_step = 0
-        self.status = TaskStatus.PENDING
-        self.message = "Tarea iniciada"
-        self.start_time = datetime.now()
-        self.end_time = None
-        self.error_details = None
-        self.progress_history = []
-        self.metadata = {}
+        self.redis_key = f"task_progress:{task_id}"
         
-    def update_progress(self, step: int, message: str, metadata: Optional[Dict] = None):
-        """Actualiza el progreso de la tarea."""
-        self.current_step = min(step, self.total_steps)
-        self.message = message
-        self.status = TaskStatus.PROCESSING
-        
-        if metadata:
-            self.metadata.update(metadata)
-            
-        # Guardar historial
-        progress_entry = {
-            "step": self.current_step,
-            "percentage": self.get_percentage(),
-            "message": message,
-            "timestamp": datetime.now(),
-            "metadata": metadata or {}
+        # Inicializar estado en Redis
+        initial_state = {
+            "task_id": task_id,
+            "total_steps": total_steps,
+            "current_step": 0,
+            "status": EstadoTarea.PENDIENTE.value,
+            "message": "Iniciando...",
+            "start_time": datetime.now().isoformat(),
+            "end_time": None,
+            "error_details": None
         }
-        self.progress_history.append(progress_entry)
-        
-        logger.info(f"[{self.task_id}] Progreso: {self.get_percentage():.1f}% - {message}")
-        
-    def set_status(self, status: TaskStatus, message: Optional[str] = None, error_details: Optional[str] = None):
-        """Establece el estado de la tarea."""
-        self.status = status
-        if message:
-            self.message = message
-        if error_details:
-            self.error_details = error_details
-            
-        if status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
-            self.end_time = datetime.now()
-            
-        logger.info(f"[{self.task_id}] Estado: {status.value} - {self.message}")
-        
-    def mark_completed(self, message: str = "Tarea completada exitosamente"):
-        """Marca la tarea como completada."""
-        self.current_step = self.total_steps
-        self.set_status(TaskStatus.COMPLETED, message)
-        
-    def mark_failed(self, error_message: str, error_details: Optional[str] = None):
-        """Marca la tarea como fallida."""
-        self.set_status(TaskStatus.FAILED, error_message, error_details)
-        
-    def mark_cancelled(self, message: str = "Tarea cancelada por el usuario"):
-        """Marca la tarea como cancelada."""
-        self.set_status(TaskStatus.CANCELLED, message)
-        
-    def is_cancelled(self) -> bool:
-        """Verifica si la tarea ha sido cancelada."""
-        return self.status == TaskStatus.CANCELLED
-        
-    def should_continue(self) -> bool:
-        """Verifica si la tarea debe continuar procesando."""
-        return self.status not in [TaskStatus.CANCELLED, TaskStatus.FAILED, TaskStatus.COMPLETED]
-        
-    def get_percentage(self) -> float:
-        """Obtiene el porcentaje de progreso actual."""
-        if self.total_steps == 0:
-            return 0.0
-        return (self.current_step / self.total_steps) * 100
-        
-    def get_elapsed_time(self) -> float:
-        """Obtiene el tiempo transcurrido en segundos."""
-        end_time = self.end_time or datetime.now()
-        return (end_time - self.start_time).total_seconds()
-        
-    def get_status_dict(self) -> Dict[str, Any]:
-        """Obtiene el estado completo como diccionario."""
+        redis_client.setex(
+            self.redis_key,
+            3600,  # TTL de 1 hora
+            json.dumps(initial_state)
+        )
+        logger.info(f"[{self.task_id}] Tracker creado en Redis")
+    
+    def _get_state(self) -> Dict[str, Any]:
+        """Obtiene el estado actual desde Redis."""
+        data = redis_client.get(self.redis_key)
+        if data:
+            return json.loads(data)
+        # Si no existe, retornar estado por defecto
         return {
             "task_id": self.task_id,
-            "status": self.status.value,
-            "progress": self.get_percentage(),
-            "current_step": self.current_step,
             "total_steps": self.total_steps,
-            "message": self.message,
-            "start_time": self.start_time.isoformat(),
-            "end_time": self.end_time.isoformat() if self.end_time else None,
-            "elapsed_seconds": self.get_elapsed_time(),
-            "error_details": self.error_details,
-            "metadata": self.metadata,
-            "is_complete": self.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]
+            "current_step": 0,
+            "status": EstadoTarea.PENDIENTE.value,
+            "message": "Iniciando...",
+            "start_time": datetime.now().isoformat(),
+            "end_time": None,
+            "error_details": None
         }
+    
+    def _save_state(self, state: Dict[str, Any]):
+        """Guarda el estado en Redis."""
+        redis_client.setex(
+            self.redis_key,
+            3600,  # TTL de 1 hora
+            json.dumps(state)
+        )
+        
+    def update_progress(self, step: int, message: str):
+        """Actualiza el progreso de la tarea en Redis."""
+        state = self._get_state()
+        state["current_step"] = min(step, self.total_steps)
+        state["message"] = message
+        state["status"] = EstadoTarea.PROCESANDO.value
+        self._save_state(state)
+        
+        progress = (state["current_step"] / self.total_steps) * 100
+        logger.info(f"[{self.task_id}] Progreso: {progress:.1f}% - {message}")
+        
+    def mark_completed(self, message: str = "Tarea completada exitosamente"):
+        """Marca la tarea como completada en Redis."""
+        state = self._get_state()
+        state["current_step"] = self.total_steps
+        state["status"] = EstadoTarea.COMPLETADO.value
+        state["message"] = message
+        state["end_time"] = datetime.now().isoformat()
+        self._save_state(state)
+        logger.info(f"[{self.task_id}] Estado: {state['status']} - {message}")
+        
+    def mark_failed(self, error_message: str, error_details: Optional[str] = None):
+        """Marca la tarea como fallida en Redis."""
+        state = self._get_state()
+        state["status"] = EstadoTarea.FALLIDO.value
+        state["message"] = error_message
+        state["error_details"] = error_details
+        state["end_time"] = datetime.now().isoformat()
+        self._save_state(state)
+        logger.error(f"[{self.task_id}] Error: {error_message}")
+        
+    def mark_cancelled(self, message: str = "Tarea cancelada por el usuario"):
+        """Marca la tarea como cancelada en Redis."""
+        state = self._get_state()
+        state["status"] = EstadoTarea.CANCELADO.value
+        state["message"] = message
+        state["end_time"] = datetime.now().isoformat()
+        self._save_state(state)
+        logger.info(f"[{self.task_id}] Cancelado: {message}")
+        
+    def get_percentage(self) -> float:
+        """Obtiene el porcentaje de progreso actual desde Redis."""
+        state = self._get_state()
+        if state["total_steps"] == 0:
+            return 0.0
+        return (state["current_step"] / state["total_steps"]) * 100
+        
+    def get_elapsed_time(self) -> float:
+        """Obtiene el tiempo transcurrido en segundos desde Redis."""
+        state = self._get_state()
+        start_time = datetime.fromisoformat(state["start_time"])
+        if state["end_time"]:
+            end_time = datetime.fromisoformat(state["end_time"])
+        else:
+            end_time = datetime.now()
+        return (end_time - start_time).total_seconds()
+        
+    def is_finished(self) -> bool:
+        """Verifica si la tarea ha finalizado."""
+        state = self._get_state()
+        return state["status"] in [EstadoTarea.COMPLETADO.value, EstadoTarea.FALLIDO.value, EstadoTarea.CANCELADO.value]
+        
+    def get_status_dict(self) -> Dict[str, Any]:
+        """Obtiene el estado completo como diccionario desde Redis."""
+        state = self._get_state()
+        return {
+            "task_id": state["task_id"],
+            "status": state["status"],
+            "progress": round((state["current_step"] / state["total_steps"]) * 100, 1),
+            "message": state["message"],
+            "error_details": state["error_details"],
+            "elapsed_seconds": round(self.get_elapsed_time(), 2),
+            "is_finished": self.is_finished()
+        }
+
 
 class ProgressManager:
     """
     Gestor global de progreso para múltiples tareas.
-    Almacena y gestiona el progreso de todas las tareas activas.
+    Consulta Redis directamente para obtener estado compartido entre procesos.
     """
     
-    def __init__(self):
-        self.tasks: Dict[str, ProgressTracker] = {}
-        self.completed_task_history: Dict[str, Dict] = {}  # 🆕 Historial de tareas completadas
-        self.max_history_size = 100  # 🆕 Límite más conservador
-        self.history_cleanup_threshold = 120  # 🆕 Limpiar cuando llegue a 120
-        
     def create_tracker(self, task_id: str, total_steps: int = 100) -> ProgressTracker:
-        """Crea un nuevo tracker de progreso."""
+        """Crea un nuevo tracker de progreso (se guarda en Redis)."""
         tracker = ProgressTracker(task_id, total_steps)
-        self.tasks[task_id] = tracker
         logger.info(f"Creado tracker para tarea {task_id} con {total_steps} pasos")
         return tracker
         
     def get_tracker(self, task_id: str) -> Optional[ProgressTracker]:
-        """Obtiene un tracker existente."""
-        return self.tasks.get(task_id)
-        
-    def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Obtiene el estado de una tarea."""
-        # Primero buscar en tareas activas
-        tracker = self.get_tracker(task_id)
-        if tracker:
-            return tracker.get_status_dict()
-            
-        # 🆕 Si no está activa, buscar en historial de completadas
-        if task_id in self.completed_task_history:
-            entry = self.completed_task_history[task_id]
-            
-            # Expandir datos compactos
-            status_map = {'c': 'completed', 'f': 'failed', 'p': 'processing'}
-            full_status = status_map.get(entry["s"], entry["s"])
-            
-            return {
-                "task_id": task_id,
-                "status": full_status,
-                "progress": 100 if entry["ok"] else 0,
-                "message": entry["msg"],
-                "is_complete": True,
-                "was_auto_cleaned": True,
-                "auto_cleaned_at": datetime.fromtimestamp(entry["at"]).isoformat()
-            }
-            
-        # Si no está ni activa ni en historial, realmente no existe
+        """
+        Obtiene un tracker existente.
+        Crea una instancia que leerá desde Redis.
+        """
+        redis_key = f"task_progress:{task_id}"
+        if redis_client.exists(redis_key):
+            # Crear instancia que apuntará a los datos en Redis
+            tracker = ProgressTracker.__new__(ProgressTracker)
+            tracker.task_id = task_id
+            tracker.redis_key = redis_key
+            # Obtener total_steps desde Redis
+            state = json.loads(redis_client.get(redis_key))
+            tracker.total_steps = state.get("total_steps", 100)
+            return tracker
         return None
         
-    def remove_completed_tasks(self, max_age_hours: int = 24):
-        """Limpia tareas completadas antiguas."""
-        current_time = datetime.now()
-        to_remove = []
+    def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Obtiene el estado de una tarea directamente desde Redis."""
+        redis_key = f"task_progress:{task_id}"
+        data = redis_client.get(redis_key)
+        if data:
+            state = json.loads(data)
+            # Calcular progreso
+            progress = 0.0
+            if state.get("total_steps", 0) > 0:
+                progress = (state.get("current_step", 0) / state["total_steps"]) * 100
+            
+            # Calcular tiempo transcurrido
+            start_time = datetime.fromisoformat(state["start_time"])
+            if state.get("end_time"):
+                end_time = datetime.fromisoformat(state["end_time"])
+            else:
+                end_time = datetime.now()
+            elapsed = (end_time - start_time).total_seconds()
+            
+            return {
+                "task_id": state["task_id"],
+                "status": state["status"],
+                "progress": round(progress, 1),
+                "message": state["message"],
+                "error_details": state.get("error_details"),
+                "elapsed_seconds": round(elapsed, 2),
+                "is_finished": state["status"] in ["completado", "fallido", "cancelado"]
+            }
+        return None
         
-        for task_id, tracker in self.tasks.items():
-            if (tracker.status in [TaskStatus.COMPLETED, TaskStatus.FAILED] and 
-                tracker.end_time and 
-                (current_time - tracker.end_time).total_seconds() > max_age_hours * 3600):
-                to_remove.append(task_id)
-                
-        for task_id in to_remove:
-            del self.tasks[task_id]
-            logger.info(f"Removida tarea completada: {task_id}")
+    def remove_task(self, task_id: str):
+        """Elimina una tarea de Redis."""
+        redis_key = f"task_progress:{task_id}"
+        redis_client.delete(redis_key)
+        logger.info(f"Tarea eliminada de Redis: {task_id}")
             
     def schedule_task_cleanup(self, task_id: str, delay_minutes: int = 5):
         """
-        Programa la eliminación automática de una tarea después de completarse.
-        
-        Args:
-            task_id: ID de la tarea a limpiar
-            delay_minutes: Minutos a esperar antes de limpiar
+        Programa la eliminación automática de una tarea después de N minutos.
+        Como usamos TTL en Redis, esto es opcional pero útil para limpieza temprana.
         """
         import threading
         import time
         
         def delayed_cleanup():
-            time.sleep(delay_minutes * 60)  # Convertir minutos a segundos
-            if task_id in self.tasks:
-                tracker = self.tasks[task_id]
-                if tracker.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
-                    # 🆕 Guardar resumen MÍNIMO en historial antes de eliminar
-                    self.completed_task_history[task_id] = {
-                        "s": tracker.status.value[:1],  # Solo primera letra: 'c', 'f', etc.
-                        "ok": tracker.status == TaskStatus.COMPLETED,  # Boolean más eficiente
-                        "msg": tracker.message[:50] if tracker.message else "",  # Máximo 50 chars
-                        "at": int(datetime.now().timestamp())  # Timestamp entero más eficiente
-                    }
-                    
-                    # 🆕 Limpieza inteligente del historial
-                    self._cleanup_history_if_needed()
-                    
-                    del self.tasks[task_id]
-                    logger.info(f"Auto-limpieza: Removida tarea {task_id} después de {delay_minutes} minutos")
+            time.sleep(delay_minutes * 60)
+            self.remove_task(task_id)
         
-        # Ejecutar limpieza en hilo separado para no bloquear
         cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
         cleanup_thread.start()
         
-    def _cleanup_history_if_needed(self):
-        """
-        Limpia el historial cuando excede el umbral para mantener memoria controlada.
-        """
-        if len(self.completed_task_history) >= self.history_cleanup_threshold:
-            current_time = int(datetime.now().timestamp())
-            
-            # Ordenar por timestamp (más antiguos primero)
-            sorted_items = sorted(
-                self.completed_task_history.items(), 
-                key=lambda x: x[1]["at"]
-            )
-            
-            # Eliminar los más antiguos, dejando solo max_history_size
-            items_to_remove = len(sorted_items) - self.max_history_size
-            if items_to_remove > 0:
-                for task_id, _ in sorted_items[:items_to_remove]:
-                    del self.completed_task_history[task_id]
-                
-                logger.info(f"Limpieza de historial: Eliminadas {items_to_remove} entradas antiguas. "
-                           f"Historial actual: {len(self.completed_task_history)} entradas")
-                           
-    def _cleanup_old_history_entries(self, max_age_hours: int = 1):
-        """
-        Limpia entradas del historial más antiguas que X horas.
-        """
-        current_time = int(datetime.now().timestamp())
-        max_age_seconds = max_age_hours * 3600
-        
-        to_remove = []
-        for task_id, entry in self.completed_task_history.items():
-            if current_time - entry["at"] > max_age_seconds:
-                to_remove.append(task_id)
-        
-        for task_id in to_remove:
-            del self.completed_task_history[task_id]
-            
-        if to_remove:
-            logger.info(f"Limpieza por edad: Eliminadas {len(to_remove)} entradas antiguas del historial")
-        
-    def remove_task_immediately(self, task_id: str):
-        """
-        Elimina una tarea inmediatamente del almacén.
-        
-        Args:
-            task_id: ID de la tarea a eliminar
-        """
-        if task_id in self.tasks:
-            del self.tasks[task_id]
-            logger.info(f"Tarea eliminada inmediatamente: {task_id}")
-            
     def get_task_count(self) -> Dict[str, int]:
         """
-        Obtiene estadísticas de tareas en memoria.
-        
-        Returns:
-            Diccionario con conteos por estado
+        Obtiene estadísticas de tareas activas en Redis.
         """
+        # Buscar todas las claves de tareas
+        keys = redis_client.keys("task_progress:*")
+        
         stats = {
-            "total_active": len(self.tasks),
-            "total_in_history": len(self.completed_task_history),
-            "history_limit": self.max_history_size,
-            "history_usage_percent": round((len(self.completed_task_history) / self.max_history_size) * 100, 1),
-            "pending": 0,
-            "processing": 0,
-            "completed": 0,
-            "failed": 0,
-            "cancelled": 0
+            "total_activas": len(keys),
+            "pendiente": 0,
+            "procesando": 0,
+            "completado": 0,
+            "fallido": 0,
+            "cancelado": 0
         }
         
-        # Contar tareas activas
-        for tracker in self.tasks.values():
-            stats[tracker.status.value] += 1
+        for key in keys:
+            data = redis_client.get(key)
+            if data:
+                state = json.loads(data)
+                estado = state.get("status", "pendiente")
+                if estado in stats:
+                    stats[estado] += 1
             
         return stats
-        
-    def start_periodic_cleanup(self):
-        """
-        Inicia limpieza periódica del historial cada 30 minutos.
-        """
-        import threading
-        import time
-        
-        def periodic_cleanup():
-            while True:
-                time.sleep(30 * 60)  # 30 minutos
-                try:
-                    self._cleanup_old_history_entries(max_age_hours=1)
-                except Exception as e:
-                    logger.error(f"Error en limpieza periódica: {e}")
-        
-        cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
-        cleanup_thread.start()
-        logger.info("Limpieza periódica del historial iniciada (cada 30 minutos)")
+
 
 # Instancia global del gestor de progreso
 progress_manager = ProgressManager()
 
-# 🆕 Iniciar limpieza periódica al importar el módulo
-progress_manager.start_periodic_cleanup()

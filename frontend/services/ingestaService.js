@@ -44,7 +44,7 @@ const consultarEstadoArchivos = async (fileProcessIds) => {
     
     try {
       // Intentar primero el nuevo endpoint de progreso
-      const response = await consultarProgresoDetallado(id);
+      const response = await consultarProgresoTarea(id);
       const result = {
         fileProcessId: id,
         success: true,

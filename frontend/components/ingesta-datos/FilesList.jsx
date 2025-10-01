@@ -3,7 +3,7 @@
  * Versión simplificada con spinner y botón de cancelar
  */
 import React from 'react';
-import { Card, CardHeader, CardBody, Divider, Chip, Input, Spinner, Button, Tooltip } from '@heroui/react';
+import { Card, CardHeader, CardBody, Divider, Chip, Input, Spinner, Button, Tooltip, Progress } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiFolder, FiXCircle } from 'react-icons/fi';
 import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
@@ -87,13 +87,30 @@ const FilesList = ({
                         )}
                       </div>
 
-                      {/* Spinner para archivos en procesamiento */}
+                      {/* Barra de progreso para archivos en procesamiento */}
                       {file.status === 'uploading' && (
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Spinner size="sm" color="primary" />
-                          <span className="text-sm text-gray-600">
-                            {file.message || 'Procesando archivo...'}
-                          </span>
+                        <div className="space-y-2 mt-2">
+                          {/* Línea superior: Spinner + Mensaje + Porcentaje */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Spinner size="sm" color="primary" />
+                              <span className="text-sm text-gray-600">
+                                {file.message || 'Procesando archivo...'}
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-blue-600">
+                              {Math.round(file.progress || 0)}%
+                            </span>
+                          </div>
+                          
+                          {/* Barra de progreso visual */}
+                          <Progress 
+                            value={file.progress || 0}
+                            color="primary"
+                            size="sm"
+                            className="w-full"
+                            aria-label="Progreso de procesamiento"
+                          />
                         </div>
                       )}
 

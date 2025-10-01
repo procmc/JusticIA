@@ -34,6 +34,7 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
         files: Lista de archivos a procesar
         CT_Num_expediente: Número de expediente validado
         db: Sesión de BD (requerida para almacenamiento completo)
+        progress_tracker: Tracker para reportar progreso granular
         
     Returns:
         FileProcessingStatus: Estado del procesamiento con detalles
@@ -41,9 +42,22 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     archivos_procesados = []
     archivos_con_error = []
     
+    # Progreso: Inicio (5%)
+    if progress_tracker:
+        filename = files[0].filename if files else "archivo"
+        progress_tracker.update_progress(5, f"Iniciando procesamiento de {filename}")
+    
+    # Progreso: Preparación (10%)
+    if progress_tracker:
+        progress_tracker.update_progress(10, "Preparando entorno de procesamiento")
+    
     # 1. Buscar o crear expediente en BD (requerido para almacenamiento)
     if db:
         try:
+            # Progreso: Verificando expediente (15%)
+            if progress_tracker:
+                progress_tracker.update_progress(15, f"Verificando expediente {CT_Num_expediente}")
+            
             expediente_service = ExpedienteService()
             expediente = await expediente_service.buscar_o_crear_expediente(db, CT_Num_expediente)
         except Exception as e:
@@ -52,6 +66,10 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     else:
         logger.info(f"Sin sesión BD - procesamiento sin almacenamiento")
         expediente = None
+    
+    # Progreso: Listo para procesar (20%)
+    if progress_tracker:
+        progress_tracker.update_progress(20, "Iniciando procesamiento del archivo")
     
     # 2. Procesar cada archivo (solo se almacena en vectorstore si hay BD)
     for file in files:
@@ -83,6 +101,13 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
                 formatos_permitidos=ALLOWED_EXTENSIONS
             )
             archivos_con_error.append(error)
+    
+    # Progreso: Finalizado (100%)
+    if progress_tracker and archivos_procesados:
+        progress_tracker.mark_completed("Archivo procesado exitosamente")
+    elif progress_tracker and archivos_con_error:
+        error_msg = archivos_con_error[0].razon if archivos_con_error else "Error desconocido"
+        progress_tracker.mark_failed(f"Error: {error_msg}")
     
     return FileProcessingStatus(
         total_archivos=len(files),
@@ -214,6 +239,10 @@ async def process_single_file_with_content(
         if not file.filename:
             raise ValueError("El archivo debe tener un nombre")
         
+        # Progreso: Inicio del procesamiento (25%)
+        if progress_tracker:
+            progress_tracker.update_progress(25, f"Extrayendo texto de {file.filename}")
+        
         # Detectar tipo de archivo usando filetype
         detected_type = filetype.guess(content)
         tipo_archivo = detected_type.mime if detected_type else file.content_type or "application/octet-stream"
@@ -223,6 +252,10 @@ async def process_single_file_with_content(
         
         if not texto_extraido.strip():
             raise ValueError("No se pudo extraer texto del archivo")
+        
+        # Progreso: Texto extraído (45%)
+        if progress_tracker:
+            progress_tracker.update_progress(45, f"Texto extraído: {len(texto_extraido)} caracteres")
         
         # Inicializar variables
         ruta_archivo = None
@@ -241,6 +274,10 @@ async def process_single_file_with_content(
             expediente_service = ExpedienteService()
             
             try:
+                # Progreso: Creando documento en BD (50%)
+                if progress_tracker:
+                    progress_tracker.update_progress(50, "Registrando documento en base de datos")
+                
                 # 1. Crear documento en BD con estado "Pendiente" (sin commit)
                 extension = Path(file.filename).suffix.lower()
                 documento_creado = await expediente_service.crear_documento(
@@ -272,6 +309,10 @@ async def process_single_file_with_content(
                     "ruta_archivo": ruta_archivo
                 })
                 
+                # Progreso: Generando embeddings (60%)
+                if progress_tracker:
+                    progress_tracker.update_progress(60, "Generando embeddings vectoriales")
+                
                 # 5. Almacenar en Milvus con IDs reales
                 await store_in_vectorstore(
                     texto=texto_extraido, 
@@ -281,6 +322,10 @@ async def process_single_file_with_content(
                     id_documento=documento_creado.CN_Id_documento  # ID real del documento
                 )
                 logger.info(f"Almacenado en vectorstore exitosamente")
+                
+                # Progreso: Finalizando (85%)
+                if progress_tracker:
+                    progress_tracker.update_progress(85, "Almacenando en vectorstore")
                 
                 # 6. Actualizar estado a "Procesado" si todo salió bien
                 await expediente_service.actualizar_estado_documento(
