@@ -29,16 +29,18 @@ sentence-transformers>=2.2.0  # Para generar embeddings de texto
 httpx>=0.24.0
 
 # Procesamiento de documentos y audio para ingesta
-tika>=3.1.0  # Apache Tika para extraer texto de documentos (última versión)
+# NOTA: Apache Tika se ejecuta como servidor Docker (ver Dockerfile.tika)
+# No es necesaria la librería tika-python ya que usamos HTTP API directamente
 chardet>=5.0.0  # Detección automática de codificación de caracteres
 filetype>=1.2.0  # Detección de tipos de archivo pura Python (alternativa a python-magic)
+requests>=2.31.0  # Cliente HTTP para comunicación con Tika Server
 faster-whisper>=0.10.0  # faster-whisper para transcripción de audio optimizada
 pydub>=0.25.1  # Manipulación de archivos de audio
 ffmpeg-python>=0.2.0  # FFmpeg wrapper para conversión de audio
 
-# OCR para documentos escaneados (fallback cuando Tika no puede extraer texto)
-easyocr>=1.7.0  # OCR multiplataforma para imágenes y documentos escaneados
-pymupdf>=1.23.0  # Conversión de PDF a imágenes para OCR (multiplataforma, solo pip)
+# OCR integrado en Tika Server con Tesseract
+# NOTA: EasyOCR ha sido reemplazado por Tesseract OCR integrado en Tika Server Docker
+# Tesseract es más rápido, ligero y está configurado con idiomas español e inglés
 
 # Milvus SDK (2.5.x o superior)
 protobuf>=5.27.2,<6.0.0

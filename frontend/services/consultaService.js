@@ -48,7 +48,7 @@ class ConsultaService {
       }
 
       // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
-      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 30000); // 30 segundos timeout
+      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 300000); // 300 segundos timeout
 
       if (currentRequest.cancelled) {
         console.log('Request cancelada antes de procesar');

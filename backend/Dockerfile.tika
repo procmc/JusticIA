@@ -21,4 +21,7 @@ COPY tika-config.xml /app/tika-config.xml
 
 EXPOSE 9998
 
-CMD ["java", "-jar", "/app/tika-server.jar", "--config=/app/tika-config.xml", "--host=0.0.0.0", "--port=9998"]
+# CMD optimizado para PC con poca RAM (8GB)
+# -Xmx256m: Máximo 256MB de heap
+# -Xms128m: Inicial 128MB de heap
+CMD ["sh", "-c", "java ${TIKA_SERVER_OPTS:--Xmx256m -Xms128m} -jar /app/tika-server.jar --config=/app/tika-config.xml --host=0.0.0.0 --port=9998"]

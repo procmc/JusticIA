@@ -19,6 +19,12 @@ OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
 # Configuración Whisper para transcripción de audio
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 
+# Configuración Redis para Celery
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+# Configuración Tika para procesamiento de documentos
+TIKA_SERVER_URL = os.getenv("TIKA_SERVER_URL", "http://localhost:9998")
+
 # Configuración SQL Server
 SQL_SERVER_HOST = os.getenv("SQL_SERVER_HOST", "")
 SQL_SERVER_PORT = os.getenv("SQL_SERVER_PORT", "1433")

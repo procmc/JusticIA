@@ -21,6 +21,7 @@ async def startup_event():
         # Bloqueamos el arranque hasta que el modelo esté asegurado para evitar
         # que el servidor atienda peticiones sin embeddings disponibles.
         ok = await asyncio.to_thread(ensure_model_available, model_id)
+        
         if not ok:
             # Lanzar excepción para que uvicorn muestre fallo en el arranque
             raise RuntimeError(

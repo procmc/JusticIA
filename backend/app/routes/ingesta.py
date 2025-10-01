@@ -125,8 +125,7 @@ async def ingestar_archivos(
             celery_task = procesar_archivo_celery.delay(
                 str(uuid.uuid4()),
                 CT_Num_expediente,
-                archivo_info,
-                str(db.bind.url)
+                archivo_info
             )
             celery_task_ids.append(celery_task.id)
         except Exception as e:
