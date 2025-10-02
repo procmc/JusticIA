@@ -39,9 +39,9 @@ async def store_in_vectorstore(
     Returns:
         List: IDs de los documentos almacenados
     """
-    # Configurar text splitter para chunks más grandes que preserven mejor el contexto
+    # Configurar text splitter con chunks que respeten el límite de Milvus (8192 chars)
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=12000,     # Tamaño mayor para preservar más contexto legal
+        chunk_size=7000,      # Seguro bajo límite de 8192 con margen para metadata
         chunk_overlap=500,    # Mayor overlap para mantener continuidad
         length_function=len,
         separators=["\n\n", "\n", ". ", " ", ""]  # Separadores en orden de preferencia
@@ -64,7 +64,7 @@ async def store_in_vectorstore(
     
     for i, chunk_text in enumerate(chunks):
         # Calcular páginas aproximadas para este chunk
-        inicio_char = i * (7000 - 200)  # Tamaño chunk menos overlap
+        inicio_char = i * (7000 - 500)  # chunk_size menos overlap
         fin_char = inicio_char + len(chunk_text)
         
         pagina_inicio = max(1, (inicio_char // caracteres_por_pagina) + 1)
