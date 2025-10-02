@@ -7,6 +7,9 @@ ALLOWED_FILE_TYPES = {
     'text/plain': ['.txt'],
     'audio/mpeg': ['.mp3'],
     'audio/mp3': ['.mp3'],
+    'audio/wav': ['.wav'],
+    'audio/x-wav': ['.wav'],
+    'audio/wave': ['.wav'],
     'audio/ogg': ['.ogg'],
     'application/ogg': ['.ogg'],
     'audio/mp4': ['.m4a'],
@@ -17,7 +20,7 @@ ALLOWED_FILE_TYPES = {
 MAX_FILE_SIZE = 1024 * 1024 * 1024
 
 # Extensiones permitidas
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.mp3', '.ogg', '.m4a']
+ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.mp3', '.wav', '.ogg', '.m4a']
 
 # Mapeo de extensiones a códigos numéricos para Milvus
 FILE_TYPE_CODES = {
@@ -27,6 +30,7 @@ FILE_TYPE_CODES = {
     '.docx': 4,
     '.rtf': 5,
     '.mp3': 6,
-    '.ogg': 7,
-    '.m4a': 8
+    '.wav': 7,
+    '.ogg': 8,
+    '.m4a': 9
 }
