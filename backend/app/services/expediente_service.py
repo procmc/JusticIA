@@ -5,6 +5,7 @@ from app.db.models.estado_procesamiento import T_Estado_procesamiento
 from app.repositories.expediente_repository import ExpedienteRepository
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.estado_procesamiento_repository import EstadoProcesamientoRepository
+from app.config.file_config import ALLOWED_EXTENSIONS
 from datetime import datetime
 from typing import Optional, List
 import os
@@ -104,10 +105,9 @@ class ExpedienteService:
         if not tipo_archivo or not tipo_archivo.strip():
             raise Exception("El tipo de archivo no puede estar vacío")
         
-        # Validar extensión permitida
-        extensiones_permitidas = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.mp3']
-        if not any(tipo_archivo.lower().endswith(ext) for ext in extensiones_permitidas):
-            raise Exception(f"Tipo de archivo '{tipo_archivo}' no permitido")
+        # Validar extensión permitida (usar configuración centralizada)
+        if not any(tipo_archivo.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
+            raise Exception(f"Tipo de archivo '{tipo_archivo}' no permitido. Permitidos: {', '.join(ALLOWED_EXTENSIONS)}")
         
         try:
             # Obtener estado inicial "Pendiente"
