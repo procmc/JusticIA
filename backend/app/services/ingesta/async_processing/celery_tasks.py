@@ -1,4 +1,5 @@
 from celery_app import celery_app
+from celery.exceptions import Terminated, SoftTimeLimitExceeded
 from sqlalchemy.orm import sessionmaker
 from app.db.database import engine, SessionLocal  # Reutilizar engine global configurado
 from app.services.ingesta.async_processing.progress_tracker import progress_manager
@@ -27,6 +28,19 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
     tracker = progress_manager.create_tracker(task_id, total_steps=100)
     
     try:
+        # Verificar si la tarea fue revocada antes de empezar
+        # Usar AsyncResult para verificar el estado de la tarea
+        from celery.result import AsyncResult
+        task_result = AsyncResult(task_id, app=celery_app)
+        
+        if task_result.state == 'REVOKED':
+            logger.info(f"Tarea {task_id} fue cancelada antes de comenzar")
+            tracker.mark_cancelled("Cancelado antes de iniciar")
+            return {
+                "status": "cancelado",
+                "message": "Tarea cancelada por el usuario"
+            }
+        
         # Recrear objeto UploadFile desde bytes
         file_buffer = BytesIO(archivo_data["content"])
         file_obj = UploadFile(file=file_buffer, filename=archivo_data["filename"])
@@ -82,6 +96,31 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
         finally:
             # Cerrar solo la sesión (no el engine porque es global)
             db.close()
+    
+    except Terminated:
+        # Excepción específica de Celery cuando se revoca con terminate=True
+        logger.warning(f"Tarea {task_id} terminada forzosamente (SIGTERM)")
+        tracker.mark_cancelled("Procesamiento interrumpido por cancelación")
+        progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
+        
+        # Liberar memoria
+        if 'file_buffer' in locals():
+            del file_buffer
+        if 'content' in archivo_data:
+            del archivo_data["content"]
+        
+        return {
+            "status": "cancelado",
+            "message": "Tarea cancelada por el usuario"
+        }
+    
+    except SoftTimeLimitExceeded:
+        # Timeout de tarea (si se configura)
+        error_msg = f"Timeout procesando {archivo_data['filename']}"
+        logger.error(error_msg)
+        tracker.mark_failed(error_msg, "Tiempo límite excedido")
+        progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
+        raise
             
     except Exception as e:
         error_msg = f"Error crítico procesando {archivo_data['filename']}: {str(e)}"

@@ -7,6 +7,7 @@ from app.auth.jwt_auth import require_role
 from app.services.documentos.file_management_service import file_management_service
 import logging
 from celery.result import AsyncResult
+from celery_app import celery_app
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -145,3 +146,70 @@ async def ingestar_archivos(
         "expediente": CT_Num_expediente,
         "total_files": len(files)
     }
+
+
+@router.post("/cancel/{task_id}")
+async def cancelar_tarea(task_id: str):
+    """
+    Cancela una tarea de procesamiento de archivo en ejecución.
+    
+    - Revoca la tarea en Celery (termina la ejecución)
+    - Marca como cancelado en ProgressTracker
+    - Limpia recursos asociados
+    
+    Returns:
+        Dict con información de cancelación
+    """
+    from app.services.ingesta.async_processing.progress_tracker import progress_manager
+    
+    try:
+        logger.info(f"Intentando cancelar tarea: {task_id}")
+        
+        # 1. Verificar si la tarea existe en ProgressTracker
+        progress = progress_manager.get_status(task_id)
+        
+        if not progress:
+            # Tarea no existe o ya finalizó
+            result = AsyncResult(task_id, app=celery_app)
+            if result.state in ['SUCCESS', 'FAILURE', 'REVOKED']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La tarea ya finalizó con estado: {result.state}"
+                )
+        
+        # 2. Verificar si ya está en estado terminal
+        if progress and progress.get("status") in ["completado", "fallido", "cancelado"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"La tarea ya está en estado terminal: {progress.get('status')}"
+            )
+        
+        # 3. Revocar la tarea en Celery (terminar ejecución forzosamente)
+        # terminate=True envía SIGTERM al worker para detener la tarea
+        celery_app.control.revoke(task_id, terminate=True, signal='SIGTERM')
+        logger.info(f"Tarea {task_id} revocada en Celery")
+        
+        # 4. Marcar como cancelado en ProgressTracker
+        progress_manager.mark_task_cancelled(task_id, "Cancelado por el usuario")
+        logger.info(f"Tarea {task_id} marcada como cancelada en ProgressTracker")
+        
+        return {
+            "success": True,
+            "message": "Tarea cancelada exitosamente",
+            "task_id": task_id,
+            "status": "cancelado",
+            "details": {
+                "revoked_in_celery": True,
+                "marked_in_tracker": True
+            }
+        }
+        
+    except HTTPException:
+        # Re-lanzar excepciones HTTP
+        raise
+    except Exception as e:
+        logger.error(f"Error cancelando tarea {task_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al cancelar la tarea: {str(e)}"
+        )
