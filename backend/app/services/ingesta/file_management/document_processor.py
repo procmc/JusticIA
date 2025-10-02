@@ -435,16 +435,8 @@ async def process_single_file_with_content(
         
     except Exception as e:
         logger.error(f"Error en procesamiento de archivo: {str(e)}")
-        return FileUploadResponse(
-            status="error",
-            message="Error procesando archivo (transacciones revertidas)",
-            file_id=file_id,
-            expediente=CT_Num_expediente,
-            nombre_archivo=file.filename,
-            tipo_archivo=file.content_type or "unknown",
-            fecha_procesamiento=datetime.now(),
-            error_detalle=str(e)
-        )
+        # Lanzar excepción para que se maneje correctamente en process_uploaded_files
+        raise ValueError(f"Error procesando archivo (transacciones revertidas): {str(e)}")
 
 async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> str:
     """
