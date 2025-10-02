@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import { ScrollShadow } from '@heroui/react';
@@ -58,10 +59,13 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
               <div className="text-center max-w-full sm:max-w-lg mx-auto px-2 sm:px-4">
                 {/* Imagen del bot de inicio */}
                 <div className="mb-6 flex justify-center">
-                  <img
+                  <Image
                     src="/botInicio.png"
                     alt="JusticIA Bot"
+                    width={192}
+                    height={192}
                     className="w-32 h-32 sm:w-48 sm:h-48 object-contain"
+                    priority
                   />
                 </div>
 

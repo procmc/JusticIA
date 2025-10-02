@@ -218,7 +218,7 @@ const CustomTextarea = ({
               <span>Consultando expediente: <strong>{consultedExpediente}</strong></span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Todas las consultas serán sobre este expediente. Para consultar otro, cambia a "Búsqueda general".
+              Todas las consultas serán sobre este expediente. Para consultar otro, cambia a &quot;Búsqueda general&quot;.
             </p>
           </div>
         )}
