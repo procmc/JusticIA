@@ -37,7 +37,9 @@ const getAuthHeaders = async () => {
  */
 const createTimeoutController = (timeout = DEFAULT_TIMEOUT) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error('Request timeout')); // Razón clara para el abort
+  }, timeout);
   
   return { controller, timeoutId };
 };
@@ -59,13 +61,34 @@ const apiRequest = async (url, options = {}) => {
       // Obtener headers de autenticación
       const authHeaders = await getAuthHeaders();
       
+      // Determinar qué signal usar
+      let finalSignal = controller.signal;
+      
+      // Si hay un signal externo, necesitamos escuchar ambos
+      if (options.signal) {
+        // Listener para el signal externo: aborta el timeout controller
+        const abortHandler = () => {
+          clearTimeout(timeoutId);
+          controller.abort();
+        };
+        
+        options.signal.addEventListener('abort', abortHandler, { once: true });
+        
+        // Si el signal externo ya está abortado, abortar inmediatamente
+        if (options.signal.aborted) {
+          clearTimeout(timeoutId);
+          controller.abort();
+        }
+      }
+      
       const fetchOptions = {
         ...options,
         headers: {
           ...authHeaders,
           ...options.headers,
         },
-        signal: controller.signal
+        // Usar el signal del timeout (que ahora también escucha el signal externo)
+        signal: finalSignal
       };
       
       // Eliminar opciones personalizadas que no son parte de fetch
@@ -220,7 +243,7 @@ const put = (url, data = null, options = {}) => {
 /**
  * POST request para streaming (SSE - Server Sent Events)
  */
-const postStream = async (url, data = null, timeout = 120000) => {
+const postStream = async (url, data = null, timeout = 120000, options = {}) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   
   let timeoutId;
@@ -232,7 +255,23 @@ const postStream = async (url, data = null, timeout = 120000) => {
     const controller = new AbortController();
     timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const options = {
+    // Si hay un signal externo, escucharlo para abortar también el timeout
+    if (options.signal) {
+      const abortHandler = () => {
+        clearTimeout(timeoutId);
+        controller.abort();
+      };
+      
+      options.signal.addEventListener('abort', abortHandler, { once: true });
+      
+      // Si el signal externo ya está abortado, abortar inmediatamente
+      if (options.signal.aborted) {
+        clearTimeout(timeoutId);
+        controller.abort();
+      }
+    }
+    
+    const fetchOptions = {
       method: 'POST',
       headers: {
         ...authHeaders,
@@ -244,11 +283,11 @@ const postStream = async (url, data = null, timeout = 120000) => {
 
     console.log('Realizando petición HTTP streaming:', {
       url: fullUrl,
-      method: options.method,
+      method: fetchOptions.method,
       timeout: `${timeout}ms`
     });
 
-    const response = await fetch(fullUrl, options);
+    const response = await fetch(fullUrl, fetchOptions);
     clearTimeout(timeoutId);
 
     if (!response.ok) {

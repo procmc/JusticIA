@@ -8,6 +8,7 @@
 export const ErrorTypes = {
   NETWORK: 'network',
   TIMEOUT: 'timeout',
+  CANCELLED: 'cancelled', // Nueva categoría para cancelaciones manuales
   SERVER: 'server',
   CLIENT: 'client',
   VALIDATION: 'validation',
@@ -22,6 +23,7 @@ export const ErrorTypes = {
 const RETRY_CONFIG = {
   [ErrorTypes.NETWORK]: { max: 3, delay: 1000, backoff: 2 },
   [ErrorTypes.TIMEOUT]: { max: 2, delay: 2000, backoff: 1.5 },
+  [ErrorTypes.CANCELLED]: { max: 0, delay: 0, backoff: 1 }, // NO reintentar cancelaciones
   [ErrorTypes.SERVER]: { max: 2, delay: 1500, backoff: 2 },
   [ErrorTypes.CLIENT]: { max: 0, delay: 0, backoff: 1 },
   [ErrorTypes.AUTH]: { max: 0, delay: 0, backoff: 1 },
@@ -54,6 +56,7 @@ const TECHNICAL_PATTERNS = [
 const USER_FRIENDLY_MESSAGES = {
   [ErrorTypes.NETWORK]: 'No se puede conectar con el servidor. Verifica tu conexión a internet.',
   [ErrorTypes.TIMEOUT]: 'La solicitud está tardando demasiado. Por favor, intenta nuevamente.',
+  [ErrorTypes.CANCELLED]: 'Operación cancelada por el usuario.',
   [ErrorTypes.SERVER]: 'Error en el servidor. Por favor, intenta nuevamente más tarde.',
   [ErrorTypes.CLIENT]: 'Error en la solicitud. Verifica los datos e intenta nuevamente.',
   [ErrorTypes.VALIDATION]: 'Los datos proporcionados no son válidos.',
@@ -67,7 +70,17 @@ export function classifyError(error, status = null) {
     return ErrorTypes.NETWORK;
   }
   
-  if (error.name === 'AbortError' || error.message.includes('timeout')) {
+  // Diferenciar entre AbortError real (cancelación manual) y timeout
+  if (error.name === 'AbortError') {
+    // Si el mensaje menciona timeout, es un timeout real
+    if (error.message && error.message.toLowerCase().includes('timeout')) {
+      return ErrorTypes.TIMEOUT;
+    }
+    // Si no, es una cancelación manual
+    return ErrorTypes.CANCELLED;
+  }
+  
+  if (error.message && error.message.includes('timeout')) {
     return ErrorTypes.TIMEOUT;
   }
   

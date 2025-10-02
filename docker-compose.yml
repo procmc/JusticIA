@@ -17,6 +17,12 @@ services:
       - redis
       - tika
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6G  # Modelo embeddings (~3GB) + overhead FastAPI
+        reservations:
+          memory: 2G
 
   # Worker de Celery para procesamiento asíncrono (compatible PC local y VM)
   celery-worker:

@@ -2,23 +2,19 @@ import httpService from './httpService';
 
 class SimilarityService {
   constructor() {
-    this.currentRequest = null;
+    this.abortController = null; // AbortController para cancelar requests
   }
 
   async searchSimilarCases({ searchMode, query, limit = 30, threshold = 0.3 }) {
-    // Crear nueva request
-    const requestId = Date.now();
-    
     try {
-      // Cancelar request anterior si existe
-      if (this.currentRequest) {
+      // Cancelar búsqueda anterior si existe
+      if (this.abortController) {
         console.log('Cancelando búsqueda anterior...');
-        this.currentRequest.cancelled = true;
+        this.abortController.abort();
       }
 
-      // Configurar nueva request
-      this.currentRequest = { id: requestId, cancelled: false };
-      const currentRequest = this.currentRequest;
+      // Crear nuevo AbortController para esta búsqueda
+      this.abortController = new AbortController();
 
       // Validar parámetros de entrada
       this._validateSearchParams({ searchMode, query, limit, threshold });
@@ -26,14 +22,11 @@ class SimilarityService {
       // Preparar payload para el backend (mapear a campos en español)
       const payload = this._buildBackendPayload({ searchMode, query, limit, threshold });
 
-      // Hacer llamada al backend
-      const response = await httpService.post('/similarity/search', payload);
-
-      // Verificar si la request fue cancelada
-      if (currentRequest.cancelled) {
-        console.log('Request cancelada después de respuesta');
-        return null;
-      }
+      // Hacer llamada al backend con signal para cancelación y timeout extendido
+      const response = await httpService.post('/similarity/search', payload, {
+        signal: this.abortController.signal,
+        timeout: 60000 // 60 segundos (primera búsqueda puede tardar con warm-up)
+      });
 
       // Adaptar respuesta del backend al formato del frontend
       const adaptedResults = this._adaptBackendResponse(response);
@@ -41,23 +34,28 @@ class SimilarityService {
       return adaptedResults;
 
     } catch (error) {
-      if (this.currentRequest && !this.currentRequest.cancelled) {
-        console.error('Error en búsqueda de similares:', error);
-        throw this._handleError(error);
+      // Si fue abortado, no es un error real
+      if (error.name === 'AbortError') {
+        console.log('Búsqueda cancelada por el usuario');
+        return null;
       }
-      return null;
+      
+      console.error('Error en búsqueda de similares:', error);
+      throw this._handleError(error);
     } finally {
-      if (this.currentRequest?.id === requestId) {
-        this.currentRequest = null;
-      }
+      // Limpiar referencia al controller
+      this.abortController = null;
     }
   }
 
+  /**
+   * Cancelar búsqueda en progreso
+   */
   cancelSearch() {
-    if (this.currentRequest) {
+    if (this.abortController) {
       console.log('Cancelando búsqueda de similares...');
-      this.currentRequest.cancelled = true;
-      this.currentRequest = null;
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 

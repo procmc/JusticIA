@@ -2,20 +2,19 @@ import httpService from './httpService';
 
 class ConsultaService {
   constructor() {
-    this.currentRequest = null;
+    this.abortController = null; // AbortController para cancelar streaming
   }
 
   async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30, conversationContext = '', expedienteNumber = null) {
-    // Cancelar request anterior si existe
-    if (this.currentRequest) {
+    // Cancelar consulta anterior si existe
+    if (this.abortController) {
       console.log('Cancelando consulta anterior...');
-      this.currentRequest.cancelled = true;
+      this.abortController.abort();
     }
 
-    // Crear nueva request
-    const requestId = Date.now();
-    this.currentRequest = { id: requestId, cancelled: false };
-    const currentRequest = this.currentRequest;
+    // Crear nuevo AbortController para esta consulta
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
     try {
       // Preparar la consulta con contexto SOLO si realmente existe y no está vacío
       const hasRealContext = Boolean(conversationContext && conversationContext.trim().length > 0);
@@ -48,12 +47,9 @@ class ConsultaService {
       }
 
       // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
-      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 300000); // 300 segundos timeout
-
-      if (currentRequest.cancelled) {
-        console.log('Request cancelada antes de procesar');
-        return;
-      }
+      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 300000, {
+        signal
+      }); // 300 segundos timeout
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -62,18 +58,14 @@ class ConsultaService {
       let completed = false;
 
       try {
-        while (true && !currentRequest.cancelled) {
+        while (true) {
           const { done, value } = await reader.read();
           
           if (done) {
-            if (!completed && !currentRequest.cancelled) {
+            if (!completed) {
               onComplete?.();
               completed = true;
             }
-            break;
-          }
-
-          if (currentRequest.cancelled) {
             break;
           }
 
@@ -82,8 +74,6 @@ class ConsultaService {
           buffer = lines.pop() || ''; // Mantener la línea incompleta
 
           for (const line of lines) {
-            if (currentRequest.cancelled) break;
-            
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
@@ -93,15 +83,13 @@ class ConsultaService {
                 } else if (data.type === 'chunk' && data.content) {
                   onChunk(data.content);
                 } else if (data.type === 'done') {
-                  if (!completed && !currentRequest.cancelled) {
+                  if (!completed) {
                     onComplete?.();
                     completed = true;
                   }
                   return;
                 } else if (data.type === 'error') {
-                  if (!currentRequest.cancelled) {
-                    onError?.(new Error(data.content));
-                  }
+                  onError?.(new Error(data.content));
                   return;
                 }
               } catch (parseError) {
@@ -109,7 +97,7 @@ class ConsultaService {
                 const data = line.slice(6);
                 
                 if (data === '[DONE]') {
-                  if (!completed && !currentRequest.cancelled) {
+                  if (!completed) {
                     onComplete?.();
                     completed = true;
                   }
@@ -117,13 +105,11 @@ class ConsultaService {
                 }
                 
                 if (data.startsWith('Error:')) {
-                  if (!currentRequest.cancelled) {
-                    onError?.(new Error(data));
-                  }
+                  onError?.(new Error(data));
                   return;
                 }
                 
-                if (data.trim() && !currentRequest.cancelled) {
+                if (data.trim()) {
                   onChunk?.(data);
                 }
               }
@@ -132,19 +118,31 @@ class ConsultaService {
         }
       } finally {
         reader.releaseLock();
-        if (this.currentRequest === currentRequest) {
-          this.currentRequest = null;
-        }
       }
 
     } catch (error) {
-      if (!currentRequest.cancelled) {
-        console.error('Error en consulta streaming:', error);
-        onError?.(error);
+      // Si fue abortado, no es un error real
+      if (error.name === 'AbortError') {
+        console.log('Consulta cancelada por el usuario');
+        return;
       }
-      if (this.currentRequest === currentRequest) {
-        this.currentRequest = null;
-      }
+      
+      console.error('Error en consulta streaming:', error);
+      onError?.(error);
+    } finally {
+      // Limpiar referencia al controller
+      this.abortController = null;
+    }
+  }
+
+  /**
+   * Cancelar consulta en progreso
+   */
+  cancelConsulta() {
+    if (this.abortController) {
+      console.log('Cancelando consulta en progreso...');
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 

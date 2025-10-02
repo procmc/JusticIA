@@ -559,7 +559,12 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str, cancel_
         logger.info(f"Transcripción completada: {len(texto)} caracteres")
         return texto
         
-    except ImportError:
-        raise ValueError("OpenAI Whisper no está disponible. Instalar con 'pip install openai-whisper'")
+    except ImportError as e:
+        logger.error(f"Error de importación en transcripción de audio: {e}")
+        if 'faster_whisper' in str(e).lower():
+            raise ValueError("faster-whisper no está disponible. Instalar con 'pip install faster-whisper'")
+        else:
+            raise ValueError(f"Error de dependencia en transcripción de audio: {str(e)}")
     except Exception as e:
+        logger.error(f"Error transcribiendo audio {filename}: {str(e)}")
         raise ValueError(f"Error transcribiendo audio {filename}: {str(e)}")
