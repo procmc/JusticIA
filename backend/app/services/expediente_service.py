@@ -107,7 +107,8 @@ class ExpedienteService:
         
         # Validar extensión permitida (usar configuración centralizada)
         if not any(tipo_archivo.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
-            raise Exception(f"Tipo de archivo '{tipo_archivo}' no permitido. Permitidos: {', '.join(ALLOWED_EXTENSIONS)}")
+            # Mensaje amigable para el usuario sin lista completa
+            raise Exception(f"El formato {tipo_archivo} no es compatible. Use PDF, Word, audio (MP3/WAV) o texto.")
         
         try:
             # Obtener estado inicial "Pendiente"

@@ -96,10 +96,11 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
                     }
                 }
             else:
-                error_msg = "Error en procesamiento"
+                # Usar el mensaje de error original sin agregar prefijos
+                error_msg = "Error desconocido en procesamiento"
                 if resultado_completo.archivos_con_error:
                     archivo_error = resultado_completo.archivos_con_error[0]
-                    error_msg = f"Error en procesamiento: {archivo_error.error}"
+                    error_msg = archivo_error.error  # Ya contiene el mensaje completo
                 
                 # El tracker ya fue marcado como fallido en process_uploaded_files
                 progress_manager.schedule_task_cleanup(task_id, delay_minutes=3)

@@ -120,11 +120,16 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
                 logger.info(f"Error en procesamiento de archivo: {str(e)}")
                 raise  # Propagar la excepción de cancelación
             
-            # Para otros errores, registrarlos como errores normales
+            # Para otros errores, registrarlos con el mensaje original
+            error_msg = str(e)
+            # Limpiar mensajes encadenados (evitar "Error procesando archivo (transacciones revertidas): mensaje")
+            if "Error procesando archivo (transacciones revertidas):" in error_msg:
+                error_msg = error_msg.split("Error procesando archivo (transacciones revertidas):")[-1].strip()
+            
             error = FileValidationError(
-                error="Error de procesamiento",
+                error=error_msg,  # Usar mensaje original como error principal
                 archivo=file.filename or "archivo_sin_nombre",
-                razon=str(e),
+                razon=error_msg,  # Mantener consistencia
                 formatos_permitidos=ALLOWED_EXTENSIONS
             )
             archivos_con_error.append(error)
@@ -435,8 +440,8 @@ async def process_single_file_with_content(
         
     except Exception as e:
         logger.error(f"Error en procesamiento de archivo: {str(e)}")
-        # Lanzar excepción para que se maneje correctamente en process_uploaded_files
-        raise ValueError(f"Error procesando archivo (transacciones revertidas): {str(e)}")
+        # Re-lanzar la excepción original sin modificar el mensaje
+        raise
 
 async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> str:
     """
