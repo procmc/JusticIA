@@ -39,34 +39,7 @@ export const useFileUpload = () => {
     }
   }, [expedienteNumero]); // Solo cuando cambia el expediente
 
-  // Manejadores de drag & drop
-  const handleDrag = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    handleFiles(droppedFiles);
-  }, []);
-
-  const handleChange = useCallback((e) => {
-    e.preventDefault();
-    const selectedFiles = Array.from(e.target.files);
-    handleFiles(selectedFiles);
-  }, []);
-
-  // Manejar archivos nuevos
+  // Manejar archivos nuevos (definir ANTES de los handlers que lo usan)
   const handleFiles = useCallback((newFiles) => {
     // Validar extensiones permitidas
     const validFiles = newFiles.filter(file => {
@@ -136,6 +109,38 @@ export const useFileUpload = () => {
       return currentFiles; // No hay archivos para agregar
     });
   }, [allowedTypes]); // Solo allowedTypes como dependencia
+
+  // Manejadores de drag & drop (definir DESPUÉS de handleFiles)
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    handleFiles(droppedFiles);
+  }, [handleFiles]);
+
+  const handleChange = useCallback((e) => {
+    e.preventDefault();
+    const selectedFiles = Array.from(e.target.files);
+    handleFiles(selectedFiles);
+    
+    // Resetear el input para permitir seleccionar el mismo archivo nuevamente
+    if (e.target) {
+      e.target.value = '';
+    }
+  }, [handleFiles]);
 
   // Funciones de gestión
   const removeFile = useCallback((fileId) => {

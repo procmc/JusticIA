@@ -150,7 +150,7 @@ const FilesList = ({
                           variant="light"
                           color="danger"
                           isIconOnly
-                          onPress={() => cancelFileProcessing(file.id, file.fileProcessId)}
+                          onPress={() => cancelFileProcessing(file.id, file.fileProcessId, file.name)}
                           className="hover:bg-red-50"
                         >
                           <FiXCircle className="w-4 h-4" />

@@ -167,6 +167,15 @@ class ProgressManager:
     Consulta Redis directamente para obtener estado compartido entre procesos.
     """
     
+    def __init__(self, ttl_seconds: int = 3600):
+        """
+        Inicializa el gestor de progreso.
+        
+        Args:
+            ttl_seconds: Tiempo de vida (TTL) para los datos en Redis (por defecto 1 hora)
+        """
+        self.ttl_seconds = ttl_seconds
+    
     def create_tracker(self, task_id: str, total_steps: int = 100) -> ProgressTracker:
         """Crea un nuevo tracker de progreso (se guarda en Redis)."""
         tracker = ProgressTracker(task_id, total_steps)
