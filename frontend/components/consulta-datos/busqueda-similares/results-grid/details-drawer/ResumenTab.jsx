@@ -34,16 +34,21 @@ const ResumenTab = ({
     try {
       const result = await similarityService.generateCaseSummary(numeroExpediente);
       
+      // Validación defensiva de la respuesta
+      if (!result) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
       setAiSummary({
-        resumen: result.resumen,
-        palabrasClave: result.palabrasClave,
-        factoresSimilitud: result.factoresSimilitud,
-        conclusion: result.conclusion
+        resumen: result.resumen || 'No se pudo generar el resumen',
+        palabrasClave: Array.isArray(result.palabrasClave) ? result.palabrasClave : [],
+        factoresSimilitud: Array.isArray(result.factoresSimilitud) ? result.factoresSimilitud : [],
+        conclusion: result.conclusion || 'No se pudo generar la conclusión'
       });
 
       setGenerationStats({
-        totalDocumentos: result.totalDocumentosAnalizados,
-        tiempoGeneracion: result.tiempoGeneracionSegundos
+        totalDocumentos: result.totalDocumentosAnalizados || 0,
+        tiempoGeneracion: result.tiempoGeneracionSegundos || 0
       });
 
       Toast.success('¡Éxito!', 'Resumen de IA generado exitosamente');
