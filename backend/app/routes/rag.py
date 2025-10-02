@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from app.services.RAG.rag_chain_service import get_rag_service
 from app.services.context_analyzer import context_analyzer
+from app.utils.security_validator import validate_user_input, context_manager
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,36 @@ async def consulta_general_rag_stream(
             raise HTTPException(
                 status_code=400, detail="La consulta no puede estar vacía"
             )
+        
+        # Validación de seguridad
+        security_result = validate_user_input(request.query)
+        
+        if security_result.should_block:
+            # Retornar respuesta de seguridad como streaming
+            async def security_response():
+                response_data = {
+                    "type": "chunk", 
+                    "content": security_result.response_override,
+                    "done": False
+                }
+                yield f"data: {json.dumps(response_data, ensure_ascii=False)}\n\n"
+                
+                done_data = {"type": "done", "content": "", "done": True}
+                yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
+            
+            return StreamingResponse(
+                security_response(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
+        
+        # Usar texto sanitizado
+        query_to_use = security_result.sanitized_text if security_result.sanitized_text else request.query
 
         logger.info(f"Consulta general RAG streaming: {request.query}")
 
@@ -47,7 +80,7 @@ async def consulta_general_rag_stream(
                         actual_query = parts[1].strip()
                         logger.info(f"✅ Contexto extraído correctamente, query separada")
                     else:
-                        actual_query = request.query.strip()
+                        actual_query = query_to_use.strip()
                         logger.info(f"❌ No se encontró contexto válido con el separador")
                 else:
                     actual_query = request.query.strip()
@@ -67,6 +100,13 @@ async def consulta_general_rag_stream(
                 else:
                     actual_query = request.query.strip()
                     logger.info(f"❌ No hay partes suficientes para extraer contexto")
+        
+        # Truncar contexto si es demasiado largo
+        if conversation_context:
+            original_length = len(conversation_context)
+            conversation_context = context_manager.truncate_context(conversation_context, query_to_use)
+            if len(conversation_context) < original_length:
+                logger.info(f"📏 Contexto truncado de {original_length} a {len(conversation_context)} caracteres")
         
         logger.info(f"Procesado - Query: '{actual_query}', Contexto: {'SÍ' if conversation_context else 'NO'}")
         if conversation_context:
