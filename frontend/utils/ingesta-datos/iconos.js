@@ -16,29 +16,34 @@ export const getFileIcon = (type) => {
   }
 };
 
-// Iconos por estado
+// Iconos por estado (estados en español)
 export const getStatusIcon = (status) => {
   switch (status) {
-    case 'success':
+    case 'completado':
       return <FiCheck className="w-5 h-5 text-green-500" />;
-    case 'error':
+    case 'fallido':
+    case 'cancelado':
       return <FiAlertCircle className="w-5 h-5 text-red-500" />;
-    case 'uploading':
+    case 'procesando':
+    case 'pendiente':
       return <FiLoader className="w-5 h-5 text-blue-500 animate-spin" />;
     default:
       return null;
   }
 };
 
-// Colores por estado
+// Colores por estado (estados en español)
 export const getStatusColor = (status) => {
   switch (status) {
-    case 'success':
+    case 'completado':
       return 'success';
-    case 'error':
+    case 'fallido':
+    case 'cancelado':
       return 'danger';
-    case 'uploading':
+    case 'procesando':
       return 'primary';
+    case 'pendiente':
+      return 'warning';
     default:
       return 'default';
   }

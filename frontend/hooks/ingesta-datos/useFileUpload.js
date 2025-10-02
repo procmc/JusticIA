@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getAllowedFileExtensions } from '@/utils/ingesta-datos/ingestaUtils';
+import Toast from '@/components/ui/CustomAlert';
 
 /**
  * Hook unificado para manejo de archivos con compatibilidad total del componente original
@@ -31,41 +32,14 @@ export const useFileUpload = () => {
     
     if (expedienteTrimmed) {
       setFilesArray(prev => prev.map(file => 
-        file.status === 'pending' 
+        file.status === 'pendiente' 
           ? { ...file, expediente: expedienteTrimmed }
           : file
       ));
     }
   }, [expedienteNumero]); // Solo cuando cambia el expediente
 
-  // Manejadores de drag & drop
-  const handleDrag = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    handleFiles(droppedFiles);
-  }, []);
-
-  const handleChange = useCallback((e) => {
-    e.preventDefault();
-    const selectedFiles = Array.from(e.target.files);
-    handleFiles(selectedFiles);
-  }, []);
-
-  // Manejar archivos nuevos
+  // Manejar archivos nuevos (definir ANTES de los handlers que lo usan)
   const handleFiles = useCallback((newFiles) => {
     // Validar extensiones permitidas
     const validFiles = newFiles.filter(file => {
@@ -75,20 +49,30 @@ export const useFileUpload = () => {
 
     // Usar setFilesArray con función para acceder al estado actual
     setFilesArray(currentFiles => {
-      // Validar límite de 10 archivos usando el estado actual
-      const currentFileCount = currentFiles.filter(f => f.status !== 'removed').length;
-      const maxFiles = 10;
-      const availableSlots = maxFiles - currentFileCount;
+      // Contar solo archivos activos (pendiente, procesando)
+      // No contar: completado, fallido, cancelado
+      const activeFiles = currentFiles.filter(f => 
+        f.status === 'pendiente' || f.status === 'procesando'
+      );
+      const activeFileCount = activeFiles.length;
+      const maxActiveFiles = 10;
+      const availableSlots = maxActiveFiles - activeFileCount;
       
       if (availableSlots <= 0) {
-        alert(`Ya tienes el máximo de ${maxFiles} archivos. Elimina algunos antes de agregar más.`);
-        return currentFiles; // No cambiar el estado
+        Toast.warning(
+          'Límite de archivos alcanzado',
+          `Ya tienes ${maxActiveFiles} archivos en proceso. Espera a que terminen o cancélalos para agregar más.`
+        );
+        return currentFiles;
       }
       
       const filesToAdd = validFiles.slice(0, availableSlots);
       
       if (validFiles.length > availableSlots) {
-        alert(`Solo se pueden agregar ${availableSlots} archivos más. Se agregaron los primeros ${filesToAdd.length} archivos.`);
+        Toast.info(
+          'Archivos limitados',
+          `Solo se agregaron ${filesToAdd.length} de ${validFiles.length} archivos. Tienes ${availableSlots} espacios disponibles.`
+        );
       }
 
       if (filesToAdd.length > 0) {
@@ -101,7 +85,7 @@ export const useFileUpload = () => {
           name: file.name,
           size: file.size,
           type: file.type.startsWith('audio/') ? 'audio' : 'document',
-          status: 'pending',
+          status: 'pendiente',
           expediente: currentExpediente,
           progress: 0,
           message: '',
@@ -126,6 +110,38 @@ export const useFileUpload = () => {
     });
   }, [allowedTypes]); // Solo allowedTypes como dependencia
 
+  // Manejadores de drag & drop (definir DESPUÉS de handleFiles)
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    handleFiles(droppedFiles);
+  }, [handleFiles]);
+
+  const handleChange = useCallback((e) => {
+    e.preventDefault();
+    const selectedFiles = Array.from(e.target.files);
+    handleFiles(selectedFiles);
+    
+    // Resetear el input para permitir seleccionar el mismo archivo nuevamente
+    if (e.target) {
+      e.target.value = '';
+    }
+  }, [handleFiles]);
+
   // Funciones de gestión
   const removeFile = useCallback((fileId) => {
     setFilesArray(prev => prev.filter(f => f.id !== fileId));
@@ -146,13 +162,13 @@ export const useFileUpload = () => {
   }, []);
 
   // Estados calculados
-  const pendingFiles = filesArray.filter(f => f.status === 'pending').length;
-  const successFiles = filesArray.filter(f => f.status === 'success').length;
-  const errorFiles = filesArray.filter(f => f.status === 'error').length;
+  const pendingFiles = filesArray.filter(f => f.status === 'pendiente').length;
+  const successFiles = filesArray.filter(f => f.status === 'completado').length;
+  const errorFiles = filesArray.filter(f => f.status === 'fallido' || f.status === 'cancelado').length;
   
   // Calcular archivos sin expediente
   const filesWithoutExpediente = filesArray.filter(f => {
-    return f.status === 'pending' && (!f.expediente || f.expediente.trim() === '');
+    return f.status === 'pendiente' && (!f.expediente || f.expediente.trim() === '');
   }).length;
 
   // Crear objeto files con dragActive y métodos de array

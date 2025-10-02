@@ -18,12 +18,12 @@ services:
       - tika
     restart: unless-stopped
 
-  # Worker de Celery para procesamiento asíncrono (optimizado para desarrollo con 3GB WSL)
+  # Worker de Celery para procesamiento asíncrono (compatible PC local y VM)
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=250000 --pool=solo
+    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=3000000 --pool=prefork
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads
@@ -57,7 +57,9 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # Memoria aumentada: 256MB → 1GB para manejar archivos grandes y embeddings
+    # Policy: allkeys-lru elimina claves menos usadas cuando se llena
+    command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
 
 volumes:
   redis_data:
