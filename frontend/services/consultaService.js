@@ -118,6 +118,10 @@ class ConsultaService {
         }
       } finally {
         reader.releaseLock();
+        // Limpiar timeout del streaming
+        if (response._clearTimeout) {
+          response._clearTimeout();
+        }
       }
 
     } catch (error) {
