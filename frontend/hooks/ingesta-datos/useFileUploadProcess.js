@@ -142,21 +142,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           localStatus = 'procesando';
         }
         
-        if (status === 'completado' || ready === true) {
-          localStatus = 'completado';
-          localProgress = 100;
-          localMessage = message || 'Procesado exitosamente';
-          
-          updateFiles(prev => prev.map(f => 
-            f.id === fileId 
-              ? { ...f, status: localStatus, progress: localProgress, message: localMessage }
-              : f
-          ));
-          
-          stopPolling(taskId);
-          return;
-        }
-        
+        // Verificar estados terminales en orden: primero errores, luego éxito
         if (status === 'fallido' || status === 'cancelado') {
           localStatus = status; // Mantener 'fallido' o 'cancelado' tal cual
           localProgress = 0;
@@ -179,6 +165,21 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           updateFiles(prev => prev.map(f => 
             f.id === fileId 
               ? { ...f, status: localStatus, progress: localProgress, message: sanitized }
+              : f
+          ));
+          
+          stopPolling(taskId);
+          return;
+        }
+        
+        if (status === 'completado' || (ready === true && status !== 'fallido' && status !== 'cancelado')) {
+          localStatus = 'completado';
+          localProgress = 100;
+          localMessage = message || 'Procesado exitosamente';
+          
+          updateFiles(prev => prev.map(f => 
+            f.id === fileId 
+              ? { ...f, status: localStatus, progress: localProgress, message: localMessage }
               : f
           ));
           

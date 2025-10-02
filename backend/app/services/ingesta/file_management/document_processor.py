@@ -441,7 +441,7 @@ async def process_single_file_with_content(
 async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> str:
     """
     Extrae texto de diferentes tipos de archivos:
-    - MP3: Transcripción con Whisper
+    - Audio (MP3, WAV, OGG, M4A): Transcripción con Whisper
     - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika Server con Tesseract OCR integrado
     
     Nota: Tika Server tiene Tesseract OCR configurado para extraer texto de PDFs escaneados automáticamente.
@@ -453,7 +453,7 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
         cancel_check()
     
     # Archivos de audio se procesan con Whisper
-    if file_extension == '.mp3':
+    if file_extension in ['.mp3', '.wav', '.ogg', '.m4a']:
         return await extract_text_from_audio_whisper(content, filename, cancel_check)
     
     # Los demás formatos con Tika Server (con OCR integrado)
