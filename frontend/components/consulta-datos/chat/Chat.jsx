@@ -4,6 +4,7 @@ import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
 import { useChatContext } from '../../../hooks/conversacion/useChatContext';
+import { validarFormatoExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -42,11 +43,7 @@ const ConsultaChat = () => {
   };
 
   // Función para detectar si un texto es un número de expediente
-  const isExpedienteNumber = (text) => {
-    // Patrón típico de expedientes: YYYY-NNNNNN-NNNN-XX
-    const expedientePattern = /^\d{4}-\d{6}-\d{4}-[A-Z]{2}$/;
-    return expedientePattern.test(text.trim());
-  };
+  const isExpedienteNumber = validarFormatoExpediente;
   
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
