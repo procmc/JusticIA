@@ -82,47 +82,13 @@ class DynamicJusticIARetriever(BaseRetriever):
                 expediente_resuelto = expediente_match.group()
                 logger.info(f"✅ DYNAMIC RETRIEVER - EXPEDIENTE DIRECTO: {expediente_resuelto}")
             elif tiene_referencia_contextual and self.conversation_context:
-                # SIMPLIFICADO: Extraer SOLO de la última respuesta del asistente
-                logger.info(f"🔄 DYNAMIC RETRIEVER - ANALIZANDO ÚLTIMA RESPUESTA")
-                
-                # Buscar la última respuesta del asistente en el contexto
-                lines = self.conversation_context.split('\n')
-                ultima_respuesta_asistente = ""
-                
-                for i in range(len(lines) - 1, -1, -1):  # Buscar de atrás hacia adelante
-                    if lines[i].startswith('Asistente:'):
-                        # Capturar esta línea y las siguientes hasta encontrar otra línea que empiece con "Usuario:"
-                        respuesta_lines = [lines[i][11:]]  # Quitar "Asistente: "
-                        for j in range(i + 1, len(lines)):
-                            if lines[j].startswith('Usuario:'):
-                                break
-                            respuesta_lines.append(lines[j])
-                        ultima_respuesta_asistente = '\n'.join(respuesta_lines)
-                        break
-                
-                logger.info(f"📄 ÚLTIMA RESPUESTA ENCONTRADA: {len(ultima_respuesta_asistente)} chars")
-                
-                if ultima_respuesta_asistente:
-                    # Extraer expedientes SOLO de la última respuesta
-                    expedientes_ultima_respuesta = re.findall(expediente_pattern, ultima_respuesta_asistente)
-                    logger.info(f"📋 EXPEDIENTES EN ÚLTIMA RESPUESTA: {expedientes_ultima_respuesta}")
-                    
-                    if expedientes_ultima_respuesta:
-                        # Resolver referencia basada en posición en la lista
-                        if 'primer' in query.lower() or 'primero' in query.lower():
-                            expediente_resuelto = expedientes_ultima_respuesta[0]
-                            logger.info(f"✅ PRIMER EXPEDIENTE RESUELTO: {expediente_resuelto}")
-                        elif 'ultimo' in query.lower() or 'última' in query.lower() or 'final' in query.lower():
-                            expediente_resuelto = expedientes_ultima_respuesta[-1] 
-                            logger.info(f"✅ ÚLTIMO EXPEDIENTE RESUELTO: {expediente_resuelto}")
-                        else:
-                            # Por defecto, usar el último mencionado
-                            expediente_resuelto = expedientes_ultima_respuesta[-1]
-                            logger.info(f"✅ EXPEDIENTE POR DEFECTO: {expediente_resuelto}")
-                    else:
-                        logger.warning(f"❌ NO SE ENCONTRARON EXPEDIENTES EN LA ÚLTIMA RESPUESTA")
+                # Extraer expedientes del contexto
+                expedientes_en_contexto = re.findall(expediente_pattern, self.conversation_context)
+                if expedientes_en_contexto:
+                    expediente_resuelto = expedientes_en_contexto[-1]  # Usar el más reciente
+                    logger.info(f"✅ DYNAMIC RETRIEVER - EXPEDIENTE DEL CONTEXTO: {expediente_resuelto}")
                 else:
-                    logger.warning(f"❌ NO SE ENCONTRÓ ÚLTIMA RESPUESTA DEL ASISTENTE")
+                    logger.warning(f"❌ DYNAMIC RETRIEVER - REFERENCIA CONTEXTUAL SIN EXPEDIENTE IDENTIFICABLE")
             
             # PASO 4: Si se resolvió un expediente, usar modo EXPEDIENTE COMPLETO
             if expediente_resuelto:
@@ -188,59 +154,7 @@ class DynamicJusticIARetriever(BaseRetriever):
             logger.error(f"❌ DYNAMIC RETRIEVER - Error general: {e}")
             return []
     
-    def _resolve_contextual_expedient_reference(self, query: str, context: str) -> Optional[str]:
-        """
-        Resuelve referencias contextuales como 'el último expediente', 'el primer expediente'
-        basándose en la última respuesta del asistente en el contexto.
-        """
-        query_lower = query.lower()
-        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
-        
-        try:
-            # Dividir el contexto en mensajes
-            if "Usuario:" in context and "Asistente:" in context:
-                # Encontrar la última respuesta del asistente
-                asistente_parts = context.split("Asistente:")
-                if len(asistente_parts) > 1:
-                    ultima_respuesta = asistente_parts[-1]
-                    
-                    # Extraer expedientes de la última respuesta en orden
-                    expedientes_en_respuesta = re.findall(expediente_pattern, ultima_respuesta)
-                    
-                    if expedientes_en_respuesta:
-                        logger.info(f"📋 RESOLVER CONTEXTO - Expedientes en última respuesta: {expedientes_en_respuesta}")
-                        
-                        # Resolver según el tipo de referencia
-                        if re.search(r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado PRIMER expediente")
-                            return expedientes_en_respuesta[0]
-                        elif re.search(r'\b(?:el\s+)?último\s+(?:expediente|caso)\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado ÚLTIMO expediente")
-                            return expedientes_en_respuesta[-1]
-                        elif re.search(r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado ÚLTIMO expediente (más reciente)")
-                            return expedientes_en_respuesta[-1]
-                        else:
-                            # Para otras referencias, usar el más reciente mencionado
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Referencia general, usando último mencionado")
-                            return expedientes_en_respuesta[-1]
-            
-            # Fallback: buscar en todo el contexto
-            expedientes_generales = re.findall(expediente_pattern, context)
-            if expedientes_generales:
-                logger.info(f"📋 RESOLVER CONTEXTO - Fallback a contexto general: {expedientes_generales[-1]}")
-                return expedientes_generales[-1]
-                
-        except Exception as e:
-            logger.error(f"❌ RESOLVER CONTEXTO - Error: {e}")
-        
-        return None
-
     def _get_relevant_documents(self, query: str) -> List[Document]:
         """Método síncrono requerido por BaseRetriever"""
         import asyncio
         return asyncio.run(self._aget_relevant_documents(query))
-
-
-# Alias para compatibilidad hacia atrás con otros módulos
-JusticIARetriever = DynamicJusticIARetriever
