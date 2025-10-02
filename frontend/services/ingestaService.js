@@ -1,134 +1,67 @@
 /**
- * Servicio para subida de archivos con soporte para progreso granular
+ * Servicio simplificado para ingesta de archivos con Celery
  */
 
 import httpService from './httpService';
 
-
 /**
- * Subir archivos a un expediente (ahora solo usa celery_task_id)
+ * Subir archivos a un expediente
+ * @returns {Promise<{task_ids: string[], expediente: string}>}
  */
 const subirArchivos = async (expediente, archivos) => {
   const formData = new FormData();
   formData.append('CT_Num_expediente', expediente);
+  
   for (let i = 0; i < archivos.length; i++) {
     formData.append('files', archivos[i]);
   }
-  // La respuesta tendrá celery_task_ids
+  
   return httpService.post('/ingesta/archivos', formData);
 };
 
 /**
- * Consultar progreso granular de una tarea Celery
+ * Consultar progreso de una tarea Celery
+ * @returns {Promise<{task_id: string, status: string, progress: number, message: string, ready: boolean}>}
  */
 const consultarProgresoTarea = async (taskId) => {
   return httpService.get(`/ingesta/progress/${taskId}`);
 };
 
 /**
- * Consultar estado de múltiples archivos (legacy con fallback a nuevo sistema)
- * Optimizado con caché temporal para evitar consultas excesivas
+ * Consultar estado de múltiples tareas en paralelo
+ * @returns {Promise<Array<{taskId: string, success: boolean, data: object}>>}
  */
-const consultarEstadoArchivos = async (fileProcessIds) => {
-  // Caché temporal para evitar consultas duplicadas inmediatas
-  const cache = consultarEstadoArchivos._cache || (consultarEstadoArchivos._cache = new Map());
-  const cacheTimeout = 1000; // 1 segundo de caché
-  const now = Date.now();
-  
-  const promesas = fileProcessIds.map(async (id) => {
-    // Verificar caché
-    const cached = cache.get(id);
-    if (cached && (now - cached.timestamp) < cacheTimeout) {
-      return cached.result;
-    }
-    
+const consultarEstadoArchivos = async (taskIds) => {
+  const promesas = taskIds.map(async (taskId) => {
     try {
-      // Intentar primero el nuevo endpoint de progreso
-      const response = await consultarProgresoTarea(id);
-      const result = {
-        fileProcessId: id,
+      const data = await consultarProgresoTarea(taskId);
+      return {
+        taskId,
         success: true,
-        data: response,
-        isGranular: true
+        data
       };
-      
-      // Guardar en caché solo si es exitoso
-      cache.set(id, { result, timestamp: now });
-      return result;
     } catch (error) {
-      // Si es 404, no hacer fallback inmediatamente para evitar spam
-      if (error?.response?.status === 404) {
-        const result = {
-          fileProcessId: id,
-          success: false,
-          data: null,
-          error: error,
-          isGranular: false,
-          is404: true
-        };
-        
-        // Caché más corto para 404s para reintentarlo pronto
-        cache.set(id, { result, timestamp: now - (cacheTimeout * 0.7) });
-        return result;
-      }
-      
-      // Fallback al endpoint legacy para otros errores
-      try {
-        const response = await consultarEstadoArchivo(id);
-        const result = {
-          fileProcessId: id,
-          success: true,
-          data: response,
-          isGranular: false
-        };
-        
-        cache.set(id, { result, timestamp: now });
-        return result;
-      } catch (legacyError) {
-        const result = {
-          fileProcessId: id,
-          success: false,
-          data: null,
-          error: legacyError,
-          isGranular: false
-        };
-        
-        // No cachear errores persistentes
-        return result;
-      }
+      return {
+        taskId,
+        success: false,
+        error: error.message || 'Error consultando estado'
+      };
     }
   });
   
-  const resultados = await Promise.allSettled(promesas);
-  
-  // Limpiar caché antiguo periódicamente
-  if (cache.size > 50 || Math.random() < 0.1) {
-    for (const [key, value] of cache.entries()) {
-      if (now - value.timestamp > cacheTimeout * 5) {
-        cache.delete(key);
-      }
-    }
-  }
-  
-  return resultados.map((resultado, index) => ({
-    fileProcessId: fileProcessIds[index],
-    success: resultado.status === 'fulfilled' && resultado.value.success,
-    data: resultado.status === 'fulfilled' ? resultado.value.data : null,
-    error: resultado.status === 'rejected' ? resultado.reason : resultado.value?.error,
-    isGranular: resultado.status === 'fulfilled' ? resultado.value.isGranular : false,
-    is404: resultado.status === 'fulfilled' ? resultado.value.is404 : false
-  }));
+  return Promise.all(promesas);
 };
 
 /**
- * Cancelar procesamiento de un archivo
+ * Cancelar procesamiento de una tarea (si el backend lo soporta)
  */
-const cancelarProcesamiento = async (fileProcessId) => {
-  return httpService.post(`/ingesta/cancel/${fileProcessId}`);
+const cancelarProcesamiento = async (taskId) => {
+  return httpService.post(`/ingesta/cancel/${taskId}`);
 };
 
 export default {
   subirArchivos,
+  consultarProgresoTarea,
   consultarEstadoArchivos,
   cancelarProcesamiento
 };

@@ -25,7 +25,7 @@ from app.db.database import get_db
 from ..async_processing.progress_tracker import ProgressTracker
 from ..tika_service import TikaService
 
-async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None, progress_tracker: Optional[ProgressTracker] = None) -> FileProcessingStatus:
+async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> FileProcessingStatus:
     """
     Procesa una lista de archivos subidos para un expediente específico.
     Solo almacena en vectorstore si se puede crear registro en BD (transaccional).
@@ -35,6 +35,7 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
         CT_Num_expediente: Número de expediente validado
         db: Sesión de BD (requerida para almacenamiento completo)
         progress_tracker: Tracker para reportar progreso granular
+        cancel_check: Función opcional para verificar si se canceló la tarea
         
     Returns:
         FileProcessingStatus: Estado del procesamiento con detalles
@@ -42,10 +43,18 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     archivos_procesados = []
     archivos_con_error = []
     
+    # Verificar cancelación al inicio
+    if cancel_check:
+        cancel_check()
+    
     # Progreso: Inicio (5%)
     if progress_tracker:
         filename = files[0].filename if files else "archivo"
         progress_tracker.update_progress(5, f"Iniciando procesamiento de {filename}")
+    
+    # Verificar cancelación
+    if cancel_check:
+        cancel_check()
     
     # Progreso: Preparación (10%)
     if progress_tracker:
@@ -54,6 +63,10 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     # 1. Buscar o crear expediente en BD (requerido para almacenamiento)
     if db:
         try:
+            # Verificar cancelación
+            if cancel_check:
+                cancel_check()
+            
             # Progreso: Verificando expediente (15%)
             if progress_tracker:
                 progress_tracker.update_progress(15, f"Verificando expediente {CT_Num_expediente}")
@@ -67,6 +80,10 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
         logger.info(f"Sin sesión BD - procesamiento sin almacenamiento")
         expediente = None
     
+    # Verificar cancelación
+    if cancel_check:
+        cancel_check()
+    
     # Progreso: Listo para procesar (20%)
     if progress_tracker:
         progress_tracker.update_progress(20, "Iniciando procesamiento del archivo")
@@ -74,6 +91,10 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
     # 2. Procesar cada archivo (solo se almacena en vectorstore si hay BD)
     for file in files:
         try:
+            # Verificar cancelación antes de cada archivo
+            if cancel_check:
+                cancel_check()
+            
             # Validar archivo
             validation_error = validate_file(file)
             if validation_error:
@@ -89,11 +110,17 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
             temp_filepath = f"uploads/{CT_Num_expediente}/{file.filename}"
             
             result = await process_single_file_with_content(
-                file, content, temp_filepath, CT_Num_expediente, expediente, db, progress_tracker
+                file, content, temp_filepath, CT_Num_expediente, expediente, db, progress_tracker, cancel_check
             )
             archivos_procesados.append(result)
             
         except Exception as e:
+            # Si es una excepción de cancelación, propagarla inmediatamente
+            if "cancelada" in str(e).lower() or "terminated" in str(e).lower():
+                logger.info(f"Error en procesamiento de archivo: {str(e)}")
+                raise  # Propagar la excepción de cancelación
+            
+            # Para otros errores, registrarlos como errores normales
             error = FileValidationError(
                 error="Error de procesamiento",
                 archivo=file.filename or "archivo_sin_nombre",
@@ -218,7 +245,8 @@ async def process_single_file_with_content(
     CT_Num_expediente: str, 
     expediente=None, 
     db: Optional[Session] = None,
-    progress_tracker: Optional[ProgressTracker] = None
+    progress_tracker: Optional[ProgressTracker] = None,
+    cancel_check: Optional[callable] = None
 ) -> FileUploadResponse:
     """
     Procesa un solo archivo que ya fue guardado en disco.
@@ -231,10 +259,16 @@ async def process_single_file_with_content(
         CT_Num_expediente: Número del expediente
         expediente: Objeto expediente (opcional)
         db: Sesión de BD (opcional)
+        progress_tracker: Tracker de progreso (opcional)
+        cancel_check: Función para verificar cancelación (opcional)
     """
     file_id = str(uuid.uuid4())
     
     try:
+        # Verificar cancelación al inicio
+        if cancel_check:
+            cancel_check()
+        
         # Validar nombre de archivo primero
         if not file.filename:
             raise ValueError("El archivo debe tener un nombre")
@@ -243,12 +277,20 @@ async def process_single_file_with_content(
         if progress_tracker:
             progress_tracker.update_progress(25, f"Extrayendo texto de {file.filename}")
         
+        # Verificar cancelación
+        if cancel_check:
+            cancel_check()
+        
         # Detectar tipo de archivo usando filetype
         detected_type = filetype.guess(content)
         tipo_archivo = detected_type.mime if detected_type else file.content_type or "application/octet-stream"
         
         # Extraer texto según el tipo
-        texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker)
+        texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker, cancel_check)
+        
+        # Verificar cancelación después de extracción
+        if cancel_check:
+            cancel_check()
         
         if not texto_extraido.strip():
             raise ValueError("No se pudo extraer texto del archivo")
@@ -404,7 +446,7 @@ async def process_single_file_with_content(
             error_detalle=str(e)
         )
 
-async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None) -> str:
+async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> str:
     """
     Extrae texto de diferentes tipos de archivos:
     - MP3: Transcripción con Whisper
@@ -414,9 +456,13 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     """
     file_extension = Path(filename).suffix.lower()
     
+    # Verificar cancelación antes de procesar
+    if cancel_check:
+        cancel_check()
+    
     # Archivos de audio se procesan con Whisper
     if file_extension == '.mp3':
-        return await extract_text_from_audio_whisper(content, filename)
+        return await extract_text_from_audio_whisper(content, filename, cancel_check)
     
     # Los demás formatos con Tika Server (con OCR integrado)
     try:
@@ -475,12 +521,16 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
         logger.error(f"Error extrayendo texto de {filename}: {str(e)}")
         raise ValueError(f"Error extrayendo texto de {filename}: {str(e)}")
 
-async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
+async def extract_text_from_audio_whisper(content: bytes, filename: str, cancel_check: Optional[callable] = None) -> str:
     """
     Transcribe audio MP3 usando faster-whisper optimizado.
     Sistema secuencial inteligente: intenta directo primero, chunks si es necesario.
     """
     try:
+        # Verificar cancelación al inicio
+        if cancel_check:
+            cancel_check()
+        
         from ..audio_transcription.whisper_service import audio_processor
         from app.config.audio_config import AUDIO_CONFIG
         
@@ -492,8 +542,16 @@ async def extract_text_from_audio_whisper(content: bytes, filename: str) -> str:
         logger.debug(f"Chunks si archivo >= {AUDIO_CONFIG.enable_chunking_threshold_mb} MB o falla directo")
         logger.debug(f"Procesamiento: SECUENCIAL OPTIMIZADO (sin paralelismo)")
         
+        # Verificar cancelación antes de transcribir
+        if cancel_check:
+            cancel_check()
+        
         # Usar el procesador de audio optimizado
-        texto = await audio_processor.transcribe_audio_direct(content, filename)
+        texto = await audio_processor.transcribe_audio_direct(content, filename, cancel_check)
+        
+        # Verificar cancelación después de transcribir
+        if cancel_check:
+            cancel_check()
         
         if not texto.strip():
             raise ValueError("No se pudo transcribir el audio")

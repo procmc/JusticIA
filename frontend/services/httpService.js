@@ -1,9 +1,21 @@
 /**
- * Servicio HTTP simple para la aplicación
+ * Servicio HTTP robusto con manejo avanzado de errores
  */
 import { getSession } from 'next-auth/react';
+import {
+  classifyError,
+  sanitizeErrorMessage,
+  parseErrorResponse,
+  createStructuredError,
+  logError,
+  fetchWithRetry,
+  ErrorTypes
+} from '@/utils/fetchErrorHandler';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Configuración global
+const DEFAULT_TIMEOUT = 30000; // 30 segundos
 
 /**
  * Obtener headers con autenticación automática
@@ -21,116 +33,196 @@ const getAuthHeaders = async () => {
 };
 
 /**
- * Wrapper simple para fetch con manejo básico de errores y auth automática
+ * Crear controller para timeout
+ */
+const createTimeoutController = (timeout = DEFAULT_TIMEOUT) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  return { controller, timeoutId };
+};
+
+/**
+ * Wrapper robusto para fetch con manejo avanzado de errores
  */
 const apiRequest = async (url, options = {}) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const timeout = options.timeout || DEFAULT_TIMEOUT;
+  const enableRetry = options.retry !== false; // Por defecto true
+  const context = options.context || 'API';
   
-  try {
-    // Obtener headers de autenticación
-    const authHeaders = await getAuthHeaders();
+  // Función fetch principal
+  const executeFetch = async () => {
+    const { controller, timeoutId } = createTimeoutController(timeout);
     
-    const response = await fetch(fullUrl, {
-      ...options,
-      headers: {
-        ...authHeaders,
-        ...options.headers,
-      },
+    try {
+      // Obtener headers de autenticación
+      const authHeaders = await getAuthHeaders();
+      
+      const fetchOptions = {
+        ...options,
+        headers: {
+          ...authHeaders,
+          ...options.headers,
+        },
+        signal: controller.signal
+      };
+      
+      // Eliminar opciones personalizadas que no son parte de fetch
+      delete fetchOptions.timeout;
+      delete fetchOptions.retry;
+      delete fetchOptions.context;
+      
+      const response = await fetch(fullUrl, fetchOptions);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Parsear mensaje de error del backend
+        const errorMessage = await parseErrorResponse(response);
+        const errorType = classifyError(null, response.status);
+        
+        // Sanitizar mensaje para el usuario
+        const userMessage = sanitizeErrorMessage(errorMessage, errorType);
+        
+        // Crear error estructurado
+        const structuredError = createStructuredError(
+          new Error(errorMessage),
+          errorType,
+          userMessage,
+          { url: fullUrl, status: response.status }
+        );
+        
+        // Log del error
+        logError(context, new Error(userMessage), {
+          url: fullUrl,
+          status: response.status,
+          originalMessage: errorMessage
+        });
+        
+        // Lanzar error con mensaje sanitizado
+        const error = new Error(userMessage);
+        error.status = response.status;
+        error.type = errorType;
+        error.details = structuredError;
+        throw error;
+      }
+
+      // Intentar parsear JSON
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      
+      return await response.text();
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      // Si es un error que ya procesamos (response.ok = false), re-lanzarlo
+      if (error.status) {
+        throw error;
+      }
+      
+      // Errores de red o timeout
+      const errorType = classifyError(error);
+      const userMessage = sanitizeErrorMessage(error.message, errorType);
+      
+      // Log del error
+      logError(context, error, { url: fullUrl });
+      
+      // Crear error estructurado
+      const structuredError = createStructuredError(
+        error,
+        errorType,
+        userMessage,
+        { url: fullUrl }
+      );
+      
+      const finalError = new Error(userMessage);
+      finalError.type = errorType;
+      finalError.details = structuredError;
+      throw finalError;
+    }
+  };
+  
+  // Ejecutar con o sin reintentos
+  if (enableRetry) {
+    return await fetchWithRetry(executeFetch, {
+      maxRetries: 2,
+      context
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Error ${response.status}`;
-      
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorData.message || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-      
-      // Asegurar que sea string
-      if (typeof errorMessage !== 'string') {
-        errorMessage = String(errorMessage);
-      }
-      
-      throw new Error(errorMessage);
-    }
-
-    // Intentar parsear JSON
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return await response.json();
-    }
-    
-    return await response.text();
-  } catch (error) {
-    console.error('API Request Error:', error.message || error.toString());
-    throw error;
+  } else {
+    return await executeFetch();
   }
 };
 
 /**
  * GET request
  */
-const get = (url, params = {}) => {
+const get = (url, params = {}, options = {}) => {
   const queryString = new URLSearchParams(params).toString();
   const fullUrl = queryString ? `${url}?${queryString}` : url;
   
   return apiRequest(fullUrl, {
     method: 'GET',
+    context: 'GET ' + url,
+    ...options
   });
 };
 
 /**
  * POST request
  */
-const post = (url, data = null) => {
-  const options = {
+const post = (url, data = null, options = {}) => {
+  const requestOptions = {
     method: 'POST',
+    context: 'POST ' + url,
+    ...options
   };
 
   if (data instanceof FormData) {
-    options.body = data;
-    // No establecer Content-Type para FormData
+    requestOptions.body = data;
+    // No establecer Content-Type para FormData (el browser lo hace automáticamente)
   } else if (data) {
-    options.headers = {
+    requestOptions.headers = {
       'Content-Type': 'application/json',
+      ...requestOptions.headers
     };
-    options.body = JSON.stringify(data);
+    requestOptions.body = JSON.stringify(data);
   }
 
-  return apiRequest(url, options);
+  return apiRequest(url, requestOptions);
 };
 
 /**
  * PUT request
  */
-const put = (url, data = null) => {
-  const options = {
+const put = (url, data = null, options = {}) => {
+  const requestOptions = {
     method: 'PUT',
+    context: 'PUT ' + url,
+    ...options
   };
 
   if (data instanceof FormData) {
-    options.body = data;
-    // No establecer Content-Type para FormData
+    requestOptions.body = data;
   } else if (data) {
-    options.headers = {
+    requestOptions.headers = {
       'Content-Type': 'application/json',
+      ...requestOptions.headers
     };
-    options.body = JSON.stringify(data);
+    requestOptions.body = JSON.stringify(data);
   }
 
-  return apiRequest(url, options);
+  return apiRequest(url, requestOptions);
 };
 
 /**
- * POST request para streaming
+ * POST request para streaming (SSE - Server Sent Events)
  */
-const postStream = async (url, data = null, timeout = 120000) => { // 2 minutos timeout
+const postStream = async (url, data = null, timeout = 120000) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   
-  // Declarar timeoutId fuera del try para que esté disponible en el catch
   let timeoutId;
   
   try {
@@ -150,80 +242,48 @@ const postStream = async (url, data = null, timeout = 120000) => { // 2 minutos 
       signal: controller.signal
     };
 
-    console.log('🌐 Realizando petición HTTP streaming:', {
+    console.log('Realizando petición HTTP streaming:', {
       url: fullUrl,
       method: options.method,
-      headers: options.headers,
-      bodySize: options.body ? options.body.length : 0,
-      bodyPreview: options.body ? options.body.substring(0, 500) : 'NO BODY'
+      timeout: `${timeout}ms`
     });
-    
-
 
     const response = await fetch(fullUrl, options);
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.log('❌ Response not ok:', response.status, response.statusText);
+      console.log('Response not ok:', response.status, response.statusText);
       
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      // Parsear error del backend
+      const errorMessage = await parseErrorResponse(response);
+      const errorType = classifyError(null, response.status);
+      const userMessage = sanitizeErrorMessage(errorMessage, errorType);
       
-      try {
-        const errorText = await response.text();
-        console.log('📄 Error response text:', errorText);
-        
-        if (errorText) {
-          try {
-            const errorData = JSON.parse(errorText);
-            // Si el error tiene detalles de validación (array), procesarlos
-            if (Array.isArray(errorData.detail)) {
-              const validationErrors = errorData.detail.map(err => 
-                `${err.loc ? err.loc.join('.') : 'campo'}: ${err.msg}`
-              ).join('; ');
-              errorMessage = `Errores de validación: ${validationErrors}`;
-            } else {
-              errorMessage = errorData.detail || errorData.message || errorText || errorMessage;
-            }
-          } catch (parseError) {
-            // Si no es JSON válido, usar el texto tal como viene
-            errorMessage = errorText || errorMessage;
-          }
-        }
-      } catch (readError) {
-        console.log('⚠️ Error leyendo response:', readError);
-      }
+      // Log del error
+      logError('POST STREAM ' + url, new Error(userMessage), {
+        url: fullUrl,
+        status: response.status,
+        originalMessage: errorMessage
+      });
       
-      console.log('🎯 Final error message:', errorMessage);
-      throw new Error(String(errorMessage));
+      throw new Error(userMessage);
     }
 
     return response; // Devolver la respuesta completa para streaming
+    
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
     
-    if (error.name === 'AbortError') {
-      console.log('Request was aborted due to timeout');
-      throw new Error('La consulta tardó demasiado tiempo. Por favor, intenta nuevamente.');
-    }
+    // Clasificar y sanitizar error
+    const errorType = classifyError(error);
+    const userMessage = sanitizeErrorMessage(error.message, errorType);
     
-    // Mejor manejo de errores de conexión
-    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-      console.error('🔌 Error de conexión con el backend:', fullUrl);
-      throw new Error(`No se puede conectar con el servidor backend (${API_BASE_URL}). Verifica que el servidor esté ejecutándose.`);
-    }
+    // Log del error
+    logError('POST STREAM ' + url, error, { url: fullUrl });
     
-    console.error('API Stream Request Error:', {
-      message: error.message,
-      name: error.name,
-      url: fullUrl,
-      error: error
-    });
-    
-    // Asegurar que siempre lanzamos un string como mensaje de error
-    const errorMessage = typeof error === 'string' ? error : (error.message || error.toString() || 'Error de conexión con el servidor');
-    throw new Error(errorMessage);
+    throw new Error(userMessage);
   }
 };
 

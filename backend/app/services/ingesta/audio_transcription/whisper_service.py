@@ -60,6 +60,7 @@ class AudioTranscriptionOrchestrator:
         return self._whisper_model
     
     async def transcribe_audio_direct(self, audio_content: bytes, filename: str, 
+                                     cancel_check: Optional[callable] = None,
                                      progress_tracker: Optional[ProgressTracker] = None) -> str:
         """
         Transcripción inteligente de audio usando estrategias modulares.
@@ -68,6 +69,10 @@ class AudioTranscriptionOrchestrator:
         temp_file_path = None
         
         try:
+            # Verificar cancelación al inicio
+            if cancel_check:
+                cancel_check()
+            
             # Paso 1: Preparación inicial (0-5%)
             if progress_tracker:
                 progress_tracker.update_progress(2, f"Iniciando procesamiento de {filename}")
@@ -75,6 +80,10 @@ class AudioTranscriptionOrchestrator:
             # Crear archivo temporal
             temp_file_path = self.audio_utils.create_temp_file(audio_content)
             file_size_mb = self.audio_utils.get_file_size_mb(audio_content)
+            
+            # Verificar cancelación
+            if cancel_check:
+                cancel_check()
             
             if progress_tracker:
                 progress_tracker.update_progress(5, f"Archivo temporal creado ({file_size_mb:.1f} MB)", 
@@ -85,6 +94,10 @@ class AudioTranscriptionOrchestrator:
             # Paso 2: Análisis del archivo (5-15%)
             if progress_tracker:
                 progress_tracker.update_progress(8, "Analizando archivo de audio")
+            
+            # Verificar cancelación
+            if cancel_check:
+                cancel_check()
             
             # Obtener duración del audio para mejor estimación de progreso
             try:

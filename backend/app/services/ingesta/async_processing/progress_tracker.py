@@ -167,6 +167,15 @@ class ProgressManager:
     Consulta Redis directamente para obtener estado compartido entre procesos.
     """
     
+    def __init__(self, ttl_seconds: int = 3600):
+        """
+        Inicializa el gestor de progreso.
+        
+        Args:
+            ttl_seconds: Tiempo de vida (TTL) para los datos en Redis (por defecto 1 hora)
+        """
+        self.ttl_seconds = ttl_seconds
+    
     def create_tracker(self, task_id: str, total_steps: int = 100) -> ProgressTracker:
         """Crea un nuevo tracker de progreso (se guarda en Redis)."""
         tracker = ProgressTracker(task_id, total_steps)
@@ -220,6 +229,32 @@ class ProgressManager:
             }
         return None
         
+    def mark_task_cancelled(self, task_id: str, message: str = "Cancelado por el usuario"):
+        """
+        Marca una tarea como cancelada en Redis.
+        Útil para cancelaciones externas (por endpoint o usuario).
+        """
+        redis_key = f"task_progress:{task_id}"
+        data = redis_client.get(redis_key)
+        
+        if data:
+            state = json.loads(data)
+            state["status"] = EstadoTarea.CANCELADO.value
+            state["message"] = message
+            state["end_time"] = datetime.now().isoformat()
+            
+            # Guardar estado actualizado en Redis con TTL
+            redis_client.setex(
+                redis_key,
+                self.ttl_seconds,
+                json.dumps(state)
+            )
+            logger.info(f"Tarea {task_id} marcada como cancelada: {message}")
+            return True
+        else:
+            logger.warning(f"No se pudo marcar como cancelada, tarea no encontrada: {task_id}")
+            return False
+    
     def remove_task(self, task_id: str):
         """Elimina una tarea de Redis."""
         redis_key = f"task_progress:{task_id}"
