@@ -18,12 +18,12 @@ services:
       - tika
     restart: unless-stopped
 
-  # Worker de Celery para procesamiento asíncrono (optimizado para desarrollo con 3GB WSL)
+  # Worker de Celery para procesamiento asíncrono (compatible PC local y VM)
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=250000 --pool=solo
+    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=3000000 --pool=solo
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads

@@ -64,8 +64,8 @@ const HeaderStats = ({
                   <span className="text-white/70 text-xs font-medium uppercase sm:hidden">Comp</span>
                 </div>
                 {files.length > 0 && (
-                  <div className="hidden sm:block px-1 py-0.5 bg-emerald-500/20 rounded-full border border-emerald-400/30 flex-shrink-0">
-                    <span className="text-emerald-200 text-xs font-bold">{Math.round((successFiles / files.length) * 100)}%</span>
+                  <div className="hidden sm:flex items-center justify-center w-11 h-6 bg-emerald-500/20 rounded-full border border-emerald-400/30 flex-shrink-0">
+                    <span className="text-emerald-200 text-xs font-bold whitespace-nowrap">{Math.round((successFiles / files.length) * 100)}%</span>
                   </div>
                 )}
               </div>
@@ -79,8 +79,8 @@ const HeaderStats = ({
                   <span className="text-white/70 text-xs font-medium uppercase sm:hidden">Err</span>
                 </div>
                 {files.length > 0 && (
-                  <div className="hidden sm:block px-1 py-0.5 bg-red-500/20 rounded-full border border-red-400/30 flex-shrink-0">
-                    <span className="text-red-200 text-xs font-bold">{Math.round((errorFiles / files.length) * 100)}%</span>
+                  <div className="hidden sm:flex items-center justify-center w-11 h-6 bg-red-500/20 rounded-full border border-red-400/30 flex-shrink-0">
+                    <span className="text-red-200 text-xs font-bold whitespace-nowrap">{Math.round((errorFiles / files.length) * 100)}%</span>
                   </div>
                 )}
               </div>

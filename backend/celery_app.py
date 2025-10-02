@@ -13,6 +13,10 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
+    # Configuración para soportar terminación de tareas
+    task_acks_late=True,  # Reconocer tareas después de completarse (permite retry)
+    worker_prefetch_multiplier=1,  # Número de tareas a prefetch por worker
+    task_track_started=True,  # Trackear cuando una tarea comienza
 )
 
 # Importar las tareas para registrarlas en el worker
