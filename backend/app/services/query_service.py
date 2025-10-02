@@ -53,16 +53,16 @@ async def handle_greeting_response(query: str) -> Dict[str, Any]:
     query_lower = query.lower().strip()
     
     if re.match(r'^(hola|hello|hi|buenos días|buenas tardes|buenas noches)', query_lower):
-        respuesta = "¡Hola! Soy JusticIA, tu asistente virtual especializado en documentos legales del Poder Judicial de Costa Rica. Estoy aquí para ayudarte con consultas sobre expedientes, casos y información jurídica. ¿En qué puedo asistirte hoy?"
+        respuesta = "¡Hola! Soy JusticBot, tu asistente virtual especializado en documentos legales del Poder Judicial de Costa Rica. Estoy aquí para ayudarte con consultas sobre expedientes, casos y información jurídica. ¿En qué puedo asistirte hoy?"
     elif re.match(r'^(¿?cómo estás\??|¿?qué tal\??)', query_lower):
         respuesta = "¡Muy bien, gracias por preguntar! Estoy aquí y listo para ayudarte con cualquier consulta sobre expedientes legales o información jurídica. ¿Hay algo específico en lo que pueda asistirte?"
     elif re.match(r'^(¿?quién eres\??|¿?qué eres\??)', query_lower):
-        respuesta = "Soy JusticIA, un asistente virtual inteligente especializado en documentos legales y jurídicos del Poder Judicial de Costa Rica. Puedo ayudarte a buscar información en expedientes, analizar casos similares y responder consultas jurídicas. ¿En qué puedo ayudarte?"
+        respuesta = "Soy JusticBot, un asistente virtual inteligente especializado en documentos legales y jurídicos del Poder Judicial de Costa Rica. Puedo ayudarte a buscar información en expedientes, analizar casos similares y responder consultas jurídicas. ¿En qué puedo ayudarte?"
     elif re.match(r'^(ayuda|help)', query_lower):
         respuesta = "¡Por supuesto! Puedo ayudarte con:\n\n• Búsqueda de expedientes específicos\n• Análisis de casos similares\n• Consultas sobre materias legales (civil, penal, laboral, etc.)\n• Información sobre procesos judiciales\n• Revisión de documentos legales\n\n¿Sobre qué tema específico te gustaría consultar?"
     else:
-        respuesta = "¡Hola! Soy JusticIA, tu asistente legal virtual. Estoy aquí para ayudarte con consultas sobre expedientes y documentos jurídicos. ¿En qué puedo asistirte?"
-    
+        respuesta = "¡Hola! Soy JusticBot, tu asistente legal virtual. Estoy aquí para ayudarte con consultas sobre expedientes y documentos jurídicos. ¿En qué puedo asistirte?"
+
     return {
         "respuesta": respuesta,
         "expedientes_consultados": 0,
