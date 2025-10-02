@@ -112,9 +112,9 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   /**
    * Iniciar polling para un archivo individual
    */
-  const startPolling = (file, taskId) => {
+  const startPolling = (fileId, taskId) => {
     // Validaciones
-    if (!taskId || !file || isTerminal(file.status)) return;
+    if (!taskId || !fileId) return;
     if (activePollings.current.has(taskId)) return; // Ya está en polling
     
     let networkRetries = 0;
@@ -148,7 +148,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           localMessage = message || 'Procesado exitosamente';
           
           updateFiles(prev => prev.map(f => 
-            f.id === file.id 
+            f.id === fileId 
               ? { ...f, status: localStatus, progress: localProgress, message: localMessage }
               : f
           ));
@@ -163,13 +163,21 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           
           const sanitized = sanitizeErrorMessage(localMessage, ErrorTypes.SERVER);
           
+          // Obtener nombre del archivo del estado actual
+          let fileName = 'Archivo';
+          setFiles(prev => {
+            const file = prev.find(f => f.id === fileId);
+            if (file) fileName = file.name;
+            return prev;
+          });
+          
           Toast.error(
             'Error en archivo',
-            `${truncateFileName(file.name)}: ${sanitized}`
+            `${truncateFileName(fileName)}: ${sanitized}`
           );
           
           updateFiles(prev => prev.map(f => 
-            f.id === file.id 
+            f.id === fileId 
               ? { ...f, status: localStatus, progress: localProgress, message: sanitized }
               : f
           ));
@@ -181,7 +189,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         // Estado en progreso - mantener estado coherente
         // No retroceder de "procesando" a "pendiente" si ya tenemos progreso
         updateFiles(prev => prev.map(f => {
-          if (f.id === file.id) {
+          if (f.id === fileId) {
             // Si ya tenemos progreso > 5%, no volver a "pendiente"
             const shouldKeepProcessing = f.progress > 5 && status === 'pendiente';
             const finalStatus = shouldKeepProcessing ? 'procesando' : localStatus;
@@ -203,13 +211,21 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         if (error.message?.includes('404') || error.status === 404) {
           const errorMsg = 'La tarea no existe o fue cancelada';
           
+          // Obtener nombre del archivo del estado actual
+          let fileName = 'Archivo';
+          setFiles(prev => {
+            const file = prev.find(f => f.id === fileId);
+            if (file) fileName = file.name;
+            return prev;
+          });
+          
           Toast.error(
             'Error de seguimiento',
-            `${truncateFileName(file.name)}: ${errorMsg}`
+            `${truncateFileName(fileName)}: ${errorMsg}`
           );
           
           updateFiles(prev => prev.map(f => 
-            f.id === file.id 
+            f.id === fileId 
               ? { ...f, status: 'fallido', progress: 0, message: errorMsg }
               : f
           ));
@@ -225,13 +241,21 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
             ErrorTypes.NETWORK
           );
           
+          // Obtener nombre del archivo del estado actual
+          let fileName = 'Archivo';
+          setFiles(prev => {
+            const file = prev.find(f => f.id === fileId);
+            if (file) fileName = file.name;
+            return prev;
+          });
+          
           Toast.error(
             'Error de conexión',
-            `No se pudo consultar el estado de ${truncateFileName(file.name)}`
+            `No se pudo consultar el estado de ${truncateFileName(fileName)}`
           );
           
           updateFiles(prev => prev.map(f => 
-            f.id === file.id 
+            f.id === fileId 
               ? { ...f, status: 'fallido', progress: 0, message: sanitized }
               : f
           ));
@@ -325,7 +349,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
               const taskId = taskIds[index];
               
               // Iniciar polling para este archivo
-              setTimeout(() => startPolling(f, taskId), 100);
+              setTimeout(() => startPolling(f.id, taskId), 100);
               
               return {
                 ...f,
@@ -388,7 +412,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         setUploading(true);
         
         activeFiles.forEach(file => {
-          startPolling(file, file.fileProcessId);
+          startPolling(file.id, file.fileProcessId);
         });
         
         console.log(`Restaurados ${activeFiles.length} archivos en progreso`);
@@ -401,65 +425,45 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   };
 
   /**
-   * Cancelar procesamiento de un archivo
+   * Cancelar procesamiento de un archivo (modo híbrido: optimista con confirmación)
    */
-  const cancelFileProcessing = async (fileId, fileProcessId) => {
+  const cancelFileProcessing = async (fileId, fileProcessId, fileName) => {
     try {
       // 1. Detener polling inmediatamente (UI responsiva)
       if (fileProcessId) {
         stopPolling(fileProcessId);
       }
       
-      // 2. Actualizar UI optimísticamente
+      // 2. Actualizar UI como cancelado (optimista)
       updateFiles(prev => prev.map(f =>
         f.id === fileId
-          ? { ...f, status: 'cancelado', progress: 0, message: 'Cancelando...' }
+          ? { ...f, status: 'cancelado', progress: 0, message: 'Cancelado' }
           : f
       ));
       
-      // 3. Intentar cancelar en backend
+      // 3. Intentar cancelar en backend con timeout de 2s
       if (fileProcessId) {
+        const cancelPromise = ingestaService.cancelarProcesamiento(fileProcessId);
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ timeout: true }), 2000));
+        
         try {
-          const response = await ingestaService.cancelarProcesamiento(fileProcessId);
+          const result = await Promise.race([cancelPromise, timeoutPromise]);
           
-          // Actualizar con mensaje del backend si la cancelación fue exitosa
-          if (response.success) {
-            updateFiles(prev => prev.map(f =>
-              f.id === fileId
-                ? { ...f, message: 'Cancelado por el usuario' }
-                : f
-            ));
-            
-            Toast.success(
-              'Cancelación exitosa',
-              'El procesamiento ha sido detenido en el servidor'
-            );
+          if (result?.timeout) {
+            console.warn(`Backend tardó >2s en responder cancelación de ${fileProcessId}, pero UI ya actualizada`);
+          } else {
+            console.log(`Cancelación confirmada por backend para ${fileProcessId}`);
           }
         } catch (error) {
           console.warn('Error cancelando en backend:', error);
-          
-          // Aunque falle el backend, mantener la cancelación en UI
-          updateFiles(prev => prev.map(f =>
-            f.id === fileId
-              ? { ...f, message: 'Cancelado (solo local)' }
-              : f
-          ));
-          
-          Toast.warning(
-            'Cancelación parcial',
-            'El archivo se detuvo en tu navegador, pero el servidor podría continuar procesándolo'
-          );
         }
-      } else {
-        Toast.warning(
-          'Procesamiento cancelado',
-          'El archivo ha sido cancelado localmente'
-        );
       }
+      
+      // 4. Mensaje simple al usuario (siempre se muestra)
+      Toast.info('Cancelado', `${truncateFileName(fileName || 'Archivo')} cancelado`);
       
     } catch (error) {
       console.error('Error cancelando:', error);
-      Toast.error('Error', 'No se pudo cancelar el procesamiento');
     }
   };
 
