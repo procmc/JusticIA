@@ -39,10 +39,10 @@ async def store_in_vectorstore(
     Returns:
         List: IDs de los documentos almacenados
     """
-    # Configurar text splitter para chunks optimizados
+    # Configurar text splitter para chunks más grandes que preserven mejor el contexto
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=7000,      # Tamaño máximo del chunk
-        chunk_overlap=200,    # Overlap entre chunks para mantener contexto
+        chunk_size=12000,     # Tamaño mayor para preservar más contexto legal
+        chunk_overlap=500,    # Mayor overlap para mantener continuidad
         length_function=len,
         separators=["\n\n", "\n", ". ", " ", ""]  # Separadores en orden de preferencia
     )

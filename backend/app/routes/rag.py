@@ -82,36 +82,39 @@ async def consulta_general_rag_stream(
         
         logger.info(f"🧠 Análisis de intención: {intent_analysis}")
         
-        # Decidir estrategia basada en la intención
-        if intent_analysis['intent'] == 'context_only' and conversation_context:
-            logger.info("📚 Usando SOLO contexto previo (sin búsqueda en BD)")
-            # Usar solo el contexto sin buscar en la base de datos
-            return await rag_service.responder_solo_con_contexto(
-                pregunta=actual_query,
-                conversation_context=conversation_context
-            )
-        else:
-            logger.info("🔍 Usando búsqueda en BD + contexto")
-            
-            # Extraer número de expediente de la consulta si existe
-            import re
-            expediente_filter = ""
-            expediente_pattern = r'(?:Consulta sobre expediente|Expediente)\s+(\d{4}-\d{6}-\d{4}-[A-Z]{2})'
-            expediente_match = re.search(expediente_pattern, actual_query)
-            
-            if expediente_match:
-                expediente_filter = expediente_match.group(1)
-                # Limpiar la consulta removiendo la referencia al expediente
-                actual_query = re.sub(r'Consulta sobre expediente\s+\d{4}-\d{6}-\d{4}-[A-Z]{2}:\s*', '', actual_query)
-                logger.info(f"🎯 Expediente específico detectado: {expediente_filter}")
-            
-            # Usar el servicio RAG completo con búsqueda
-            return await rag_service.consulta_general_streaming(
-                pregunta=actual_query,
-                top_k=min(request.top_k, 30),  # Aumentado para expedientes específicos
-                conversation_context=conversation_context,
-                expediente_filter=expediente_filter
-            )
+        # TEMPORAL: FORZAR SIEMPRE BÚSQUEDA EN BD + CONTEXTO PARA DEBUGGING
+        logger.info("🔍 FORZANDO búsqueda en BD + contexto (context_analyzer DESHABILITADO)")
+        logger.info(f"🧠 Análisis de intención (IGNORADO): {intent_analysis}")
+        
+        # Comentado temporalmente para debugging
+        # if intent_analysis['intent'] == 'context_only' and conversation_context:
+        #     logger.info("📚 Usando SOLO contexto previo (sin búsqueda en BD)")
+        #     return await rag_service.responder_solo_con_contexto(
+        #         pregunta=actual_query,
+        #         conversation_context=conversation_context
+        #     )
+        # else:
+        #     logger.info("🔍 Usando búsqueda en BD + contexto")
+        
+        # Extraer número de expediente de la consulta si existe
+        import re
+        expediente_filter = ""
+        expediente_pattern = r'(?:Consulta sobre expediente|Expediente)\s+(\d{4}-\d{6}-\d{4}-[A-Z]{2})'
+        expediente_match = re.search(expediente_pattern, actual_query)
+        
+        if expediente_match:
+            expediente_filter = expediente_match.group(1)
+            # Limpiar la consulta removiendo la referencia al expediente
+            actual_query = re.sub(r'Consulta sobre expediente\s+\d{4}-\d{6}-\d{4}-[A-Z]{2}:\s*', '', actual_query)
+            logger.info(f"🎯 Expediente específico detectado: {expediente_filter}")
+        
+        # Usar el servicio RAG completo con búsqueda
+        return await rag_service.consulta_general_streaming(
+            pregunta=actual_query,
+            top_k=min(request.top_k, 30),  # Aumentado para expedientes específicos
+            conversation_context=conversation_context,
+            expediente_filter=expediente_filter
+        )
 
     except Exception as e:
         logger.error(f"Error en consulta general RAG streaming: {e}")
