@@ -1,9 +1,13 @@
 from typing import List, Dict, Any
 from app.embeddings.embeddings import get_embedding
-from app.llm.llm_service import consulta_simple, consulta_general_streaming
-from app.vectorstore.vectorstore import search_by_vector, search_by_text
+from app.llm.llm_service import consulta_general_streaming
+from app.vectorstore.vectorstore import search_by_vector, search_by_text, get_complete_document_by_chunks
 import os
 import re
+import logging
+from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 def is_greeting_or_simple_conversation(query: str) -> bool:
     """
@@ -66,7 +70,7 @@ async def handle_greeting_response(query: str) -> Dict[str, Any]:
         "es_saludo": True
     }
 
-async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
+async def general_search(query: str, top_k: int = 30, conversation_context: str = "") -> Dict[str, Any]:
     """
     Realiza una búsqueda general en toda la base de datos.
     
@@ -82,13 +86,99 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
         if is_greeting_or_simple_conversation(query):
             return await handle_greeting_response(query)
         
-        # OPCIÓN 1: Búsqueda semántica directa (recomendada)
-        # LangChain maneja automáticamente: texto → embedding → búsqueda
-        similar_docs = await search_by_text(
-            query_text=query,
-            top_k=top_k,
-            score_threshold=0.0
-        )
+        # DETECCIÓN DE EXPEDIENTE ESPECÍFICO EN CONSULTA GENERAL
+        import re
+        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+        expedientes_detectados = re.findall(expediente_pattern, query)
+        
+        # DETECCIÓN DE REFERENCIAS CONTEXTUALES
+        referencias_contextuales = [
+            r'\b(?:el\s+)?último\s+(?:expediente|caso)\b',
+            r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', 
+            r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b',
+            r'\b(?:ese|este|dicho)\s+(?:expediente|caso)\b',
+            r'\b(?:el\s+)?(?:expediente|caso)\s+anterior\b',
+            r'\b(?:del\s+)?(?:expediente|caso)\s+mencionado\b'
+        ]
+        
+        tiene_referencia_contextual = any(re.search(patron, query.lower()) for patron in referencias_contextuales)
+        
+        # Si hay referencias contextuales pero no expedientes explícitos, intentar resolver desde contexto
+        if tiene_referencia_contextual and not expedientes_detectados and conversation_context:
+            logger.info(f"🔍 REFERENCIA CONTEXTUAL DETECTADA: {query}")
+            
+            # Resolver la referencia usando el contexto de conversación  
+            query_resuelto = _resolve_contextual_reference(query, conversation_context)
+            logger.info(f"📝 QUERY ORIGINAL: {query}")
+            logger.info(f"🎯 QUERY RESUELTO: {query_resuelto}")
+            
+            # Buscar expedientes en el query resuelto
+            expedientes_resueltos = re.findall(expediente_pattern, query_resuelto)
+            
+            if expedientes_resueltos:
+                # Usar búsqueda por expediente específico
+                similar_docs = []
+                for expediente in expedientes_resueltos:
+                    docs_expediente = await search_by_text(
+                        query_text=query,  # Usar query original para contexto
+                        top_k=100,
+                        expediente_filter=expediente
+                    )
+                    similar_docs.extend(docs_expediente)
+                    logger.info(f"✅ CONTEXTO RESUELTO - Encontrados {len(docs_expediente)} documentos para expediente {expediente}")
+            else:
+                # Fallback a búsqueda semántica amplia
+                similar_docs = await search_by_text(
+                    query_text=query_resuelto,
+                    top_k=60,
+                    score_threshold=0.0
+                )
+        elif tiene_referencia_contextual and not expedientes_detectados:
+            # Sin contexto de conversación disponible, hacer búsqueda amplia
+            logger.warning(f"🔍 REFERENCIA CONTEXTUAL SIN CONTEXTO DISPONIBLE: {query}")
+            similar_docs = await search_by_text(
+                query_text=query,
+                top_k=60,  # Buscar más documentos
+                score_threshold=0.0
+            )
+        elif expedientes_detectados:
+            # Si detectamos números de expediente, hacer búsqueda híbrida
+            logger.info(f"🎯 EXPEDIENTES DETECTADOS EN CONSULTA GENERAL: {expedientes_detectados}")
+            similar_docs = []
+            
+            for expediente in expedientes_detectados:
+                # Búsqueda directa por expediente (como en consulta específica)
+                docs_expediente = await search_by_text(
+                    query_text=query,
+                    top_k=100,  # Buscar muchos documentos del expediente
+                    expediente_filter=expediente  # Usar el filtro específico
+                )
+                similar_docs.extend(docs_expediente)
+                logger.info(f"✅ Encontrados {len(docs_expediente)} documentos para expediente {expediente}")
+            
+            # Si no encontramos nada con filtro, hacer búsqueda semántica normal
+            if not similar_docs:
+                logger.warning("❌ Búsqueda por expediente específico no encontró resultados, fallback a semántica")
+                similar_docs = await search_by_text(
+                    query_text=query,
+                    top_k=top_k,
+                    score_threshold=0.0
+                )
+        else:
+            # BÚSQUEDA SEMÁNTICA NORMAL
+            # Para casos específicos como hostigamiento laboral, aumentar significativamente top_k
+            if "hostigamiento" in query.lower() or "bitácora" in query.lower():
+                top_k_ajustado = max(top_k, 50)  # Buscar más documentos para casos complejos
+                logger.info(f"🔍 Caso específico detectado, aumentando top_k a {top_k_ajustado}")
+            else:
+                top_k_ajustado = top_k
+                
+            # LangChain maneja automáticamente: texto → embedding → búsqueda
+            similar_docs = await search_by_text(
+                query_text=query,
+                top_k=top_k_ajustado,
+                score_threshold=0.0
+            )
         
         # Si no encuentra documentos, intentar con búsqueda vectorial manual
         if not similar_docs:
@@ -108,7 +198,7 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
                 "query_original": query
             }
         
-        # 3. Preparar contexto para el LLM
+        # 3. Preparar contexto para el LLM con información enriquecida
         # Adaptar formato nuevo al formato legacy esperado por _prepare_context
         adapted_docs = []
         for doc in similar_docs:
@@ -116,11 +206,35 @@ async def general_search(query: str, top_k: int = 30) -> Dict[str, Any]:
                 "entity": {
                     "texto": doc.get("content_preview", ""),
                     "numero_expediente": doc.get("expedient_id", ""),
-                    "nombre_archivo": doc.get("document_name", "")
+                    "nombre_archivo": doc.get("document_name", ""),
+                    "id_documento": doc.get("metadata", {}).get("id_documento") if doc.get("metadata") else None
                 },
                 "distance": 1.0 - doc.get("similarity_score", 0.0)
             })
-        context = _prepare_context(adapted_docs)
+        
+        # Usar el contexto mejorado con más información
+        try:
+            context = await _prepare_context_with_complete_documents(adapted_docs)
+            logger.info(f"✅ Contexto completo generado exitosamente: {len(context)} caracteres")
+            
+            # DEBUG ESPECÍFICO para el caso de hostigamiento laboral
+            if "2022-063557-6597-LA" in context or "hostigamiento" in query.lower():
+                logger.info("🔍 CASO HOSTIGAMIENTO LABORAL - ANÁLISIS DE CONTEXTO:")
+                logger.info(f"   - ¿Contiene 'Ana Fernández'? {'Ana Fernández' in context}")
+                logger.info(f"   - ¿Contiene 'Bitácora'? {'Bitácora' in context or 'bitácora' in context}")
+                logger.info(f"   - ¿Contiene '17/01/2025'? {'17/01/2025' in context}")
+                logger.info(f"   - ¿Contiene '₡12.500.000'? {'₡12.500.000' in context}")
+                if 'bitácora' in query.lower() or 'Bitácora' in query.lower():
+                    logger.info("   - PREGUNTA ESPECÍFICA SOBRE BITÁCORA DETECTADA")
+                    if 'Bitácora' not in context and 'bitácora' not in context:
+                        logger.error("   - ❌ BITÁCORA NO ENCONTRADA EN CONTEXTO!")
+                    else:
+                        logger.info("   - ✅ BITÁCORA ENCONTRADA EN CONTEXTO")
+        except Exception as e:
+            logger.error(f"❌ Error usando contexto completo, fallback a método anterior: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            context = _prepare_context(adapted_docs)
         
         # 4. Cargar system prompt
         system_prompt = _load_system_prompt()
@@ -139,16 +253,32 @@ RESPUESTA:
 """
         
         # Log para debugging - ver qué contexto se está enviando
-        print(f"CONTEXT DEBUG - Tamaño del contexto: {len(context)} caracteres")
-        print(f"CONTEXT DEBUG - Número de documentos: {len(similar_docs)}")
+        logger.info(f"CONTEXT DEBUG - Tamaño del contexto: {len(context)} caracteres")
+        logger.info(f"CONTEXT DEBUG - Número de documentos: {len(similar_docs)}")
+        logger.info(f"CONTEXT DEBUG - Query original: {query}")
         if context:
-            print(f"CONTEXT DEBUG - Inicio del contexto: {context[:500]}")
+            logger.info(f"CONTEXT DEBUG - Inicio del contexto: {context[:800]}...")
+            # Para el caso específico de hostigamiento laboral, ver si está la información completa
+            if "hostigamiento" in query.lower() or "2022-063557-6597-LA" in context:
+                logger.info(f"CONTEXT DEBUG - CASO HOSTIGAMIENTO LABORAL DETECTADO")
+                logger.info(f"CONTEXT DEBUG - ¿Contiene 'Ana Fernández'? {'Ana Fernández' in context}")
+                logger.info(f"CONTEXT DEBUG - ¿Contiene 'Bitácora'? {'Bitácora' in context or 'bitácora' in context}")
+                logger.info(f"CONTEXT DEBUG - ¿Contiene fechas específicas? {'17/01/2025' in context}")
         else:
-            print("CONTEXT DEBUG - CONTEXTO VACÍO!")
+            logger.warning("CONTEXT DEBUG - CONTEXTO VACÍO!")
         
-        # 6. Consultar al LLM usando tu función existente
-        respuesta_llm = await consulta_simple(full_prompt)
-        respuesta = respuesta_llm.get("respuesta", "Error al generar respuesta")
+        # 6. Generar respuesta usando el LLM disponible
+        try:
+            from app.llm.llm_service import get_llm
+            llm = await get_llm()
+            
+            # Generar respuesta directa (sin streaming)
+            response = await llm.ainvoke(full_prompt)
+            respuesta = response.content if hasattr(response, 'content') else str(response)
+            
+        except Exception as e:
+            logger.error(f"Error consultando LLM: {e}")
+            respuesta = f"Se encontraron {len(similar_docs)} documentos relevantes. Consulte los detalles en las fuentes proporcionadas."
         
         # 7. Preparar respuesta final
         return {
@@ -167,11 +297,167 @@ RESPUESTA:
             "error": str(e)
         }
 
+def _extract_expedientes_from_context(context: str) -> List[str]:
+    """
+    Extrae números de expediente del contexto de conversación.
+    Retorna una lista ordenada por aparición (más reciente primero).
+    """
+    import re
+    expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+    expedientes = re.findall(expediente_pattern, context)
+    
+    # Eliminar duplicados manteniendo el orden (más reciente primero)
+    expedientes_unicos = []
+    for exp in reversed(expedientes):  # Invertir para que el más reciente esté primero
+        if exp not in expedientes_unicos:
+            expedientes_unicos.append(exp)
+    
+    return expedientes_unicos
+
+def _resolve_contextual_reference(query: str, context: str) -> str:
+    """
+    Resuelve referencias contextuales como 'el último expediente' 
+    basándose en el contexto de conversación.
+    """
+    expedientes_en_contexto = _extract_expedientes_from_context(context)
+    
+    if not expedientes_en_contexto:
+        return query  # No hay expedientes en el contexto
+    
+    query_lower = query.lower()
+    
+    # Resolver diferentes tipos de referencias
+    if re.search(r'\b(?:el\s+)?último\s+(?:expediente|caso)\b', query_lower):
+        # "el último expediente" = el más reciente mencionado
+        expediente_resuelto = expedientes_en_contexto[0]
+        return f"{query} [{expediente_resuelto}]"
+    
+    elif re.search(r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', query_lower):
+        # "el primer expediente" = el más antiguo mencionado
+        expediente_resuelto = expedientes_en_contexto[-1]
+        return f"{query} [{expediente_resuelto}]"
+    
+    elif re.search(r'\b(?:ese|este|dicho)\s+(?:expediente|caso)\b', query_lower):
+        # "ese expediente" = el más reciente mencionado
+        expediente_resuelto = expedientes_en_contexto[0]
+        return f"{query} [{expediente_resuelto}]"
+    
+    elif re.search(r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b', query_lower):
+        # "el caso más reciente" = el más nuevo mencionado
+        expediente_resuelto = expedientes_en_contexto[0]
+        return f"{query} [{expediente_resuelto}]"
+    
+    return query
+
+async def _prepare_context_with_complete_documents(documents: List[Dict[str, Any]]) -> str:
+    """
+    Prepara el contexto para el LLM recuperando documentos completos cuando sea posible.
+    Agrupa chunks por documento y presenta información más coherente y completa.
+    """
+    # Agrupar documentos por id_documento para recuperar contexto completo
+    documents_by_id = defaultdict(list)
+    
+    for doc in documents:
+        entity = doc.get("entity", {})
+        doc_id = entity.get("id_documento")
+        if doc_id:
+            documents_by_id[doc_id].append(doc)
+    
+    context_parts = []
+    processed_docs = set()
+    
+    # Procesar documentos agrupados para obtener contexto completo
+    for i, doc in enumerate(documents, 1):
+        entity = doc.get("entity", {})
+        doc_id = entity.get("id_documento")
+        numero_expediente = entity.get("numero_expediente", "")
+        nombre_archivo = entity.get("nombre_archivo", "")
+        
+        # Si ya procesamos este documento completo, saltar
+        if doc_id in processed_docs:
+            continue
+            
+        try:
+            # Intentar recuperar el documento completo
+            if doc_id:
+                complete_chunks = await get_complete_document_by_chunks(int(doc_id))
+                
+                if complete_chunks:
+                    # Combinar todos los chunks del documento en orden
+                    texto_completo = ""
+                    for chunk in complete_chunks:
+                        chunk_text = chunk.get("texto", "")
+                        if chunk_text.strip():
+                            texto_completo += chunk_text + " "
+                    
+                    # Permitir documentos mucho más largos para casos complejos como el de hostigamiento laboral
+                    if len(texto_completo) > 15000:
+                        texto_para_contexto = texto_completo[:15000] + "... [documento continúa - información adicional disponible]"
+                    else:
+                        texto_para_contexto = texto_completo.strip()
+                    
+                    # Obtener metadatos adicionales del primer chunk
+                    primer_chunk = complete_chunks[0]
+                    tipo_documento = primer_chunk.get("tipo_documento", "documento")
+                    pagina_inicio = primer_chunk.get("pagina_inicio")
+                    pagina_fin = complete_chunks[-1].get("pagina_fin") if len(complete_chunks) > 1 else primer_chunk.get("pagina_fin")
+                    
+                    # Formato enriquecido con metadatos útiles
+                    context_part = f"""
+=== DOCUMENTO {i}: {tipo_documento.upper()} ===
+Expediente: {numero_expediente}
+Archivo: {nombre_archivo}"""
+                    
+                    if pagina_inicio and pagina_fin:
+                        context_part += f"\nPáginas: {pagina_inicio}-{pagina_fin}"
+                    
+                    context_part += f"\n\nCONTENIDO COMPLETO:\n{texto_para_contexto}\n"
+                    
+                    context_parts.append(context_part)
+                    processed_docs.add(doc_id)
+                    
+                else:
+                    # Fallback al método anterior si no se puede recuperar completo
+                    texto = entity.get("texto", "")
+                    if texto.strip():
+                        texto_para_contexto = texto[:3000] + "..." if len(texto) > 3000 else texto
+                        context_part = f"""
+=== FRAGMENTO {i} ===
+Expediente: {numero_expediente}
+Archivo: {nombre_archivo}
+
+CONTENIDO:\n{texto_para_contexto}\n"""
+                        context_parts.append(context_part)
+            else:
+                # Sin id_documento, usar método anterior mejorado
+                texto = entity.get("texto", "")
+                if texto.strip():
+                    texto_para_contexto = texto[:3000] + "..." if len(texto) > 3000 else texto
+                    context_part = f"""
+=== FRAGMENTO {i} ===
+Expediente: {numero_expediente}
+
+CONTENIDO:\n{texto_para_contexto}\n"""
+                    context_parts.append(context_part)
+                    
+        except Exception as e:
+            # En caso de error, usar el método anterior como fallback
+            logger.warning(f"Error recuperando documento completo {doc_id}: {e}")
+            texto = entity.get("texto", "")
+            if texto.strip():
+                texto_para_contexto = texto[:3000] + "..." if len(texto) > 3000 else texto
+                context_part = f"""
+=== FRAGMENTO {i} ===
+Expediente: {numero_expediente}\n
+CONTENIDO:\n{texto_para_contexto}\n"""
+                context_parts.append(context_part)
+    
+    return "\n".join(context_parts)
+
 def _prepare_context(documents: List[Dict[str, Any]]) -> str:
     """
-    Prepara el contexto para el LLM a partir de los documentos encontrados.
-    Solo incluye el contenido textual relevante, sin información técnica.
-    NUNCA incluye nombres de archivos o metadatos sensibles.
+    Versión síncrona mejorada para compatibilidad con código existente.
+    Aumenta los límites de texto y mejora el formato.
     """
     context_parts = []
     
@@ -180,20 +466,22 @@ def _prepare_context(documents: List[Dict[str, Any]]) -> str:
         entity = doc.get("entity", {})
         texto = entity.get("texto", "")
         numero_expediente = entity.get("numero_expediente", "")
+        nombre_archivo = entity.get("nombre_archivo", "")
         
         # Solo incluir texto si existe
         if texto.strip():
-            # Limitar contenido si es muy largo para mantener eficiencia
-            texto_para_contexto = texto[:1500] + "..." if len(texto) > 1500 else texto
+            # Aumentar límite significativamente para casos complejos como hostigamiento laboral
+            texto_para_contexto = texto[:10000] + "... [continúa]" if len(texto) > 10000 else texto
             
-            # Formato simple sin información técnica
+            # Formato mejorado con más información
             context_part = f"""
-FRAGMENTO {i}:
-{texto_para_contexto}
-"""
-            # Solo agregar referencia al expediente si existe (sin revelar archivos específicos)
-            if numero_expediente and numero_expediente.strip():
-                context_part += f"(Del expediente: {numero_expediente})\n"
+=== DOCUMENTO {i} ===
+Expediente: {numero_expediente}"""
+            
+            if nombre_archivo:
+                context_part += f"\nArchivo: {nombre_archivo}"
+            
+            context_part += f"\n\nCONTENIDO:\n{texto_para_contexto}\n"
             
             context_parts.append(context_part)
     
@@ -201,26 +489,51 @@ FRAGMENTO {i}:
 
 def _extract_sources(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Extrae información de fuentes para mostrar al usuario.
-    NO incluye información técnica como similitud, nombres de archivos o IDs.
+    Extrae información enriquecida de fuentes para mostrar al usuario.
+    Incluye metadatos útiles manteniendo la privacidad apropiada.
     """
     sources = []
-    expedientes_vistos = set()
+    documentos_vistos = set()
     
     for doc in documents:
         entity = doc.get("entity", {})
         numero_expediente = entity.get("numero_expediente")
+        nombre_archivo = entity.get("nombre_archivo", "")
+        doc_id = entity.get("id_documento")
         
-        # Solo incluir información básica de la fuente sin duplicados
-        if numero_expediente and numero_expediente not in expedientes_vistos:
+        # Crear clave única por documento para evitar duplicados
+        doc_key = f"{numero_expediente}_{doc_id}" if doc_id else numero_expediente
+        
+        if numero_expediente and doc_key not in documentos_vistos:
+            # Determinar tipo de documento basado en el nombre del archivo
+            tipo_documento = "Documento legal"
+            if nombre_archivo:
+                nombre_lower = nombre_archivo.lower()
+                if "sentencia" in nombre_lower:
+                    tipo_documento = "Sentencia"
+                elif "resolucion" in nombre_lower or "resolución" in nombre_lower:
+                    tipo_documento = "Resolución"
+                elif "auto" in nombre_lower:
+                    tipo_documento = "Auto judicial"
+                elif "acta" in nombre_lower:
+                    tipo_documento = "Acta"
+                elif "demanda" in nombre_lower:
+                    tipo_documento = "Demanda"
+                elif "denuncia" in nombre_lower:
+                    tipo_documento = "Denuncia"
+                elif "dictamen" in nombre_lower:
+                    tipo_documento = "Dictamen"
+            
             source_info = {
                 "numero_expediente": numero_expediente,
-                "tipo_documento": "Documento legal",  # Genérico, sin especificar archivo
-                "fuente_sistema": "Sistema del Poder Judicial"
+                "tipo_documento": tipo_documento,
+                "fuente_sistema": "Sistema del Poder Judicial",
+                "tiene_documento_completo": bool(doc_id),
+                "nombre_archivo": nombre_archivo if nombre_archivo else "Documento sin nombre específico"
             }
             
             sources.append(source_info)
-            expedientes_vistos.add(numero_expediente)
+            documentos_vistos.add(doc_key)
     
     return sources
 
@@ -248,7 +561,7 @@ def _load_system_prompt() -> str:
         Si la información no está en el contexto, indica claramente que no tienes esa información."""
 
 
-async def general_search_streaming(query: str, top_k: int = 30):
+async def general_search_streaming(query: str, top_k: int = 30, conversation_context: str = ""):
     """
     Realiza una búsqueda general con streaming de respuesta.
     
@@ -299,14 +612,73 @@ async def general_search_streaming(query: str, top_k: int = 30):
                 }
             )
         
-        # 1. Búsqueda semántica directa con LangChain (solo para consultas legales)
-        similar_docs = await search_by_text(
-            query_text=query,
-            top_k=top_k,
-            score_threshold=0.0
-        )
+        # 1. DETECCIÓN DE EXPEDIENTE ESPECÍFICO EN CONSULTA GENERAL (STREAMING)
+        import re
+        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+        expedientes_detectados = re.findall(expediente_pattern, query)
         
-        # 3. Preparar contexto para el LLM
+        # DETECCIÓN DE REFERENCIAS CONTEXTUALES (STREAMING)
+        referencias_contextuales = [
+            r'\b(?:el\s+)?último\s+(?:expediente|caso)\b',
+            r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', 
+            r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b',
+            r'\b(?:ese|este|dicho)\s+(?:expediente|caso)\b',
+            r'\b(?:el\s+)?(?:expediente|caso)\s+anterior\b',
+            r'\b(?:del\s+)?(?:expediente|caso)\s+mencionado\b'
+        ]
+        
+        tiene_referencia_contextual = any(re.search(patron, query.lower()) for patron in referencias_contextuales)
+        
+        # Resolver referencias contextuales primero
+        if tiene_referencia_contextual and not expedientes_detectados and conversation_context:
+            logger.info(f"🔍 STREAMING - REFERENCIA CONTEXTUAL DETECTADA: {query}")
+            
+            query_resuelto = _resolve_contextual_reference(query, conversation_context)
+            logger.info(f"🎯 STREAMING - QUERY RESUELTO: {query_resuelto}")
+            
+            expedientes_resueltos = re.findall(expediente_pattern, query_resuelto)
+            if expedientes_resueltos:
+                expedientes_detectados = expedientes_resueltos
+        
+        if expedientes_detectados:
+            # Si detectamos números de expediente, hacer búsqueda híbrida
+            logger.info(f"🎯 STREAMING - EXPEDIENTES DETECTADOS: {expedientes_detectados}")
+            similar_docs = []
+            
+            for expediente in expedientes_detectados:
+                # Búsqueda directa por expediente (como en consulta específica)
+                docs_expediente = await search_by_text(
+                    query_text=query,
+                    top_k=100,  # Buscar muchos documentos del expediente
+                    expediente_filter=expediente  # Usar el filtro específico
+                )
+                similar_docs.extend(docs_expediente)
+                logger.info(f"✅ STREAMING - Encontrados {len(docs_expediente)} documentos para expediente {expediente}")
+            
+            # Si no encontramos nada con filtro, hacer búsqueda semántica normal
+            if not similar_docs:
+                logger.warning("❌ STREAMING - Búsqueda por expediente específico no encontró resultados, fallback a semántica")
+                similar_docs = await search_by_text(
+                    query_text=query,
+                    top_k=top_k,
+                    score_threshold=0.0
+                )
+        else:
+            # BÚSQUEDA SEMÁNTICA NORMAL
+            # Para casos específicos como hostigamiento laboral, aumentar significativamente top_k
+            if "hostigamiento" in query.lower() or "bitácora" in query.lower():
+                top_k_ajustado = max(top_k, 50)  # Buscar más documentos para casos complejos
+                logger.info(f"🔍 STREAMING - Caso específico detectado, aumentando top_k a {top_k_ajustado}")
+            else:
+                top_k_ajustado = top_k
+                
+            similar_docs = await search_by_text(
+                query_text=query,
+                top_k=top_k_ajustado,
+                score_threshold=0.0
+            )
+        
+        # 3. Preparar contexto para el LLM con información enriquecida
         if similar_docs:
             # Adaptar formato nuevo al formato legacy esperado por _prepare_context
             adapted_docs = []
@@ -315,11 +687,18 @@ async def general_search_streaming(query: str, top_k: int = 30):
                     "entity": {
                         "texto": doc.get("content_preview", ""),
                         "numero_expediente": doc.get("expedient_id", ""),
-                        "nombre_archivo": doc.get("document_name", "")
+                        "nombre_archivo": doc.get("document_name", ""),
+                        "id_documento": doc.get("metadata", {}).get("id_documento") if doc.get("metadata") else None
                     },
                     "distance": 1.0 - doc.get("similarity_score", 0.0)
                 })
-            context = _prepare_context(adapted_docs)
+            
+            # Usar el contexto mejorado con más información
+            try:
+                context = await _prepare_context_with_complete_documents(adapted_docs)
+            except Exception as e:
+                logger.warning(f"Error usando contexto completo en streaming, fallback a método anterior: {e}")
+                context = _prepare_context(adapted_docs)
         else:
             context = "No se encontraron documentos relevantes en la base de datos."
         

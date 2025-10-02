@@ -147,7 +147,7 @@ async def search_by_vector(
 
 
 async def search_by_text(
-    query_text: str, top_k: int = 20, score_threshold: float = 0.0, expediente_filter: str = None
+    query_text: str, top_k: int = 20, score_threshold: float = 0.0, expediente_filter: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Búsqueda semántica directa con texto.
@@ -221,6 +221,53 @@ async def search_by_text(
         logger.error(f"Error en búsqueda semántica: {e}")
         raise
 
+
+async def get_complete_document_by_chunks(document_id: int) -> List[Dict[str, Any]]:
+    """
+    Recupera todos los chunks de un documento específico, ordenados por índice.
+    
+    Args:
+        document_id: ID del documento en la base de datos
+        
+    Returns:
+        Lista de chunks ordenados del documento completo
+    """
+    try:
+        client = await get_client()
+        
+        # Buscar todos los chunks del documento específico
+        query_results = client.query(
+            collection_name=COLLECTION_NAME,
+            filter=f'id_documento == {document_id}',
+            output_fields=[
+                "id_chunk",
+                "texto", 
+                "indice_chunk",
+                "nombre_archivo",
+                "numero_expediente",
+                "tipo_archivo",
+                "pagina_inicio",
+                "pagina_fin",
+                "tipo_documento",
+                "fecha_carga",
+                "meta"
+            ],
+            limit=1000  # Máximo chunks por documento
+        )
+        
+        if not query_results:
+            logger.info(f"No se encontraron chunks para el documento {document_id}")
+            return []
+        
+        # Ordenar por índice de chunk para mantener el orden correcto
+        sorted_chunks = sorted(query_results, key=lambda x: x.get("indice_chunk", 0))
+        
+        logger.info(f"Recuperados {len(sorted_chunks)} chunks para documento {document_id}")
+        return sorted_chunks
+        
+    except Exception as e:
+        logger.error(f"Error recuperando documento completo {document_id}: {e}")
+        return []
 
 async def get_expedient_summary(expedient_id: str) -> str:
     """
@@ -440,7 +487,7 @@ async def get_stats() -> Dict[str, Any]:
 
 async def get_expedient_documents(expedient_id: str) -> List[Document]:
     """
-    Obtiene todos los documentos de un expediente específico usando LangChain.
+    Obtiene todos los documentos de un expediente específico usando filtro directo en Milvus.
     
     Args:
         expedient_id: ID del expediente a buscar
@@ -449,17 +496,57 @@ async def get_expedient_documents(expedient_id: str) -> List[Document]:
         Lista de objetos Document del expediente
     """
     try:
+        logger.info(f"🔍 GET_EXPEDIENT_DOCUMENTS - Buscando expediente: {expedient_id}")
+        
+        # MÉTODO 1: Usar search_by_text con filtro directo (más eficiente)
+        docs_with_filter = await search_by_text(
+            query_text="",  # Query vacía para obtener todos los documentos del expediente
+            top_k=1000,  # Alto para obtener todos los chunks
+            score_threshold=0.0,  # Sin filtro de score
+            expediente_filter=expedient_id  # Filtro directo por expediente
+        )
+        
+        if docs_with_filter:
+            logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Método 1 exitoso: {len(docs_with_filter)} documentos")
+            
+            # Convertir a objetos Document de LangChain
+            langchain_docs = []
+            for doc in docs_with_filter:
+                try:
+                    content = doc.get("content_preview", "")
+                    if content.strip():
+                        metadata = {
+                            "numero_expediente": doc.get("expedient_id", expedient_id),
+                            "id_expediente": doc.get("expedient_id", expedient_id),
+                            "archivo": doc.get("document_name", ""),
+                            "id_documento": doc.get("id", ""),
+                            "chunk_id": doc.get("id", "")
+                        }
+                        
+                        langchain_docs.append(Document(
+                            page_content=content,
+                            metadata=metadata
+                        ))
+                except Exception as e:
+                    logger.warning(f"Error procesando documento: {e}")
+                    continue
+            
+            logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Documentos LangChain creados: {len(langchain_docs)}")
+            return langchain_docs
+        
+        # MÉTODO 2: Fallback usando LangChain similarity_search
+        logger.info(f"🔄 GET_EXPEDIENT_DOCUMENTS - Usando método fallback con LangChain")
+        
         vectorstore = await get_langchain_vectorstore()
         
         # Buscar usando el número de expediente como query
-        # Esto debería devolver documentos relacionados con el expediente
         all_docs = vectorstore.similarity_search(
             query=f"expediente {expedient_id}",
-            k=500  # Buscar muchos documentos para asegurar obtener todos del expediente
+            k=500  # Buscar muchos documentos
         )
         
         if not all_docs:
-            logger.info(f"No se encontraron documentos para el expediente {expedient_id}")
+            logger.warning(f"❌ GET_EXPEDIENT_DOCUMENTS - No se encontraron documentos para {expedient_id}")
             return []
         
         # Filtrar documentos que realmente pertenecen al expediente
@@ -468,32 +555,17 @@ async def get_expedient_documents(expedient_id: str) -> List[Document]:
             metadata = doc.metadata if hasattr(doc, 'metadata') else {}
             doc_expedient = metadata.get('numero_expediente') or metadata.get('id_expediente')
             
-            if doc_expedient == expedient_id:
+            # También verificar si el expediente está en el contenido
+            if (doc_expedient == expedient_id or 
+                expedient_id in doc.page_content):
                 expedient_docs.append(doc)
         
-        # Si no encontramos documentos con filtro, intentar búsqueda más amplia
-        if not expedient_docs:
-            logger.info(f"No se encontraron documentos con filtro, intentando búsqueda más amplia")
-            
-            # Hacer una búsqueda más general
-            all_docs_broad = vectorstore.similarity_search(
-                query=expedient_id,  # Buscar solo por el ID
-                k=1000
-            )
-            
-            for doc in all_docs_broad:
-                metadata = doc.metadata if hasattr(doc, 'metadata') else {}
-                doc_expedient = metadata.get('numero_expediente') or metadata.get('id_expediente')
-                
-                if doc_expedient == expedient_id:
-                    expedient_docs.append(doc)
-        
-        logger.info(f"Encontrados {len(expedient_docs)} documentos para expediente {expedient_id}")
+        logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Método fallback: {len(expedient_docs)} documentos")
         return expedient_docs
         
     except Exception as e:
-        logger.error(f"Error obteniendo documentos del expediente {expedient_id}: {e}")
-        raise
+        logger.error(f"❌ GET_EXPEDIENT_DOCUMENTS - Error: {e}")
+        return []
 
 
 # ================================
