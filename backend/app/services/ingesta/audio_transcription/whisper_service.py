@@ -7,7 +7,7 @@ from typing import Optional
 import logging
 
 from app.config.audio_config import AUDIO_CONFIG, AudioProcessingConfig
-from ..async_processing.progress_tracker import ProgressTracker, TaskStatus
+from ..async_processing.progress_tracker import ProgressTracker
 from .audio_utils import AudioUtils
 from .direct_strategy import DirectTranscriptionStrategy
 from .chunking_strategy import ChunkingTranscriptionStrategy
