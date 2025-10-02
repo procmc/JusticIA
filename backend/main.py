@@ -5,7 +5,11 @@ from app.vectorstore.vectorstore import get_client
 from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag
 from app.db import database
 import asyncio
+import logging
 from app.utils.hf_model import ensure_model_available
+from app.embeddings.embeddings import get_embeddings
+
+logger = logging.getLogger(__name__)
 
 # Crear app sin lifespan primero
 app = FastAPI(title="JusticIA API")
@@ -15,23 +19,26 @@ app = FastAPI(title="JusticIA API")
 @app.on_event("startup")
 async def startup_event():
     """Inicializar recursos al arranque"""
-    # Intentar asegurar el modelo de embeddings en background (no bloquea el arranque)
+    # 1. Asegurar y cargar modelo de embeddings
     model_id = os.environ.get("EMBEDDING_MODEL")
     if model_id:
-        # Bloqueamos el arranque hasta que el modelo esté asegurado para evitar
-        # que el servidor atienda peticiones sin embeddings disponibles.
         ok = await asyncio.to_thread(ensure_model_available, model_id)
-        
         if not ok:
-            # Lanzar excepción para que uvicorn muestre fallo en el arranque
-            raise RuntimeError(
-                f"No se pudo descargar/asegurar el modelo de embeddings: {model_id}"
-            )
+            raise RuntimeError(f"No se pudo asegurar el modelo: {model_id}")
+    
+    # 2. Pre-cargar modelo en memoria (warm-up)
+    try:
+        embeddings = await get_embeddings()
+        await embeddings.aembed_query("test")  # Inferencia de prueba
+    except Exception as e:
+        raise RuntimeError(f"Error cargando embeddings: {e}")
+    
+    # 3. Inicializar Milvus
     try:
         await get_client()
         print("Milvus configurado correctamente")
     except Exception as e:
-        print(f"Error inicializando Milvus: {e}")
+        raise RuntimeError(f"Error inicializando Milvus: {e}")
 
 
 @app.on_event("shutdown")
