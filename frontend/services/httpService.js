@@ -1,335 +1,291 @@
 /**
- * Servicio HTTP robusto con manejo avanzado de errores
+ * httpService.js - Servicio HTTP
+ * 
+ * Filosofía: Este servicio solo maneja lo BÁSICO:
+ * - Autenticación (JWT)
+ * - Timeout (30s default, configurable)
+ * - Propagación de errores del backend SIN sanitizar
+ * 
+ * Cada servicio específico maneja:
+ * - Sus propios reintentos (si los necesita)
+ * - Sus propios AbortControllers
+ * - Sus propios mensajes de error amigables
+ * - Sus propias validaciones
  */
+
 import { getSession } from 'next-auth/react';
-import {
-  classifyError,
-  sanitizeErrorMessage,
-  parseErrorResponse,
-  createStructuredError,
-  logError,
-  fetchWithRetry,
-  ErrorTypes
-} from '@/utils/fetchErrorHandler';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-// Configuración global
-const DEFAULT_TIMEOUT = 30000; // 30 segundos
-
-/**
- * Obtener headers con autenticación automática
- */
-const getAuthHeaders = async () => {
-  const session = await getSession();
-  const headers = {};
-  
-  // Agregar token si hay sesión
-  if (session?.accessToken) {
-    headers.Authorization = `Bearer ${session.accessToken}`;
+class HttpService {
+  constructor(config = {}) {
+    this.baseURL = config.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    this.defaultTimeout = config.timeout || 30000; // 30 segundos
   }
-  
-  return headers;
-};
 
-/**
- * Crear controller para timeout
- */
-const createTimeoutController = (timeout = DEFAULT_TIMEOUT) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort(new Error('Request timeout')); // Razón clara para el abort
-  }, timeout);
-  
-  return { controller, timeoutId };
-};
-
-/**
- * Wrapper robusto para fetch con manejo avanzado de errores
- */
-const apiRequest = async (url, options = {}) => {
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  const timeout = options.timeout || DEFAULT_TIMEOUT;
-  const enableRetry = options.retry !== false; // Por defecto true
-  const context = options.context || 'API';
-  
-  // Función fetch principal
-  const executeFetch = async () => {
-    const { controller, timeoutId } = createTimeoutController(timeout);
+  /**
+   * Obtener headers con autenticación
+   */
+  async getAuthHeaders() {
+    const session = await getSession();
+    const headers = {};
     
-    try {
-      // Obtener headers de autenticación
-      const authHeaders = await getAuthHeaders();
-      
-      // Determinar qué signal usar
-      let finalSignal = controller.signal;
-      
-      // Si hay un signal externo, necesitamos escuchar ambos
-      if (options.signal) {
-        // Listener para el signal externo: aborta el timeout controller
-        const abortHandler = () => {
-          clearTimeout(timeoutId);
-          controller.abort();
-        };
-        
-        options.signal.addEventListener('abort', abortHandler, { once: true });
-        
-        // Si el signal externo ya está abortado, abortar inmediatamente
-        if (options.signal.aborted) {
-          clearTimeout(timeoutId);
-          controller.abort();
-        }
-      }
-      
-      const fetchOptions = {
-        ...options,
-        headers: {
-          ...authHeaders,
-          ...options.headers,
-        },
-        // Usar el signal del timeout (que ahora también escucha el signal externo)
-        signal: finalSignal
+    if (session?.accessToken) {
+      headers.Authorization = `Bearer ${session.accessToken}`;
+    }
+    
+    return headers;
+  }
+
+  /**
+   * Crear signal de timeout que se puede fusionar con signal externo
+   * Devuelve tanto el signal como la función cleanup
+   */
+  createTimeoutSignal(timeout, externalSignal = null) {
+    const controller = new AbortController();
+    
+    // Configurar timeout automático
+    const timeoutId = setTimeout(() => {
+      controller.abort('Request timeout');
+    }, timeout);
+
+    // Si hay un signal externo, propagarlo al controller interno
+    if (externalSignal) {
+      const onExternalAbort = () => {
+        clearTimeout(timeoutId);
+        controller.abort(externalSignal.reason || 'Request cancelled');
       };
       
-      // Eliminar opciones personalizadas que no son parte de fetch
-      delete fetchOptions.timeout;
-      delete fetchOptions.retry;
-      delete fetchOptions.context;
-      
-      const response = await fetch(fullUrl, fetchOptions);
-      clearTimeout(timeoutId);
+      if (externalSignal.aborted) {
+        onExternalAbort();
+      } else {
+        externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+    }
 
+    // Cleanup del timeout cuando termine el request
+    controller.signal.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+    }, { once: true });
+
+    // Devolver tanto el signal como función para cancelar timeout manualmente
+    return {
+      signal: controller.signal,
+      clearTimeout: () => clearTimeout(timeoutId)
+    };
+  }
+
+  /**
+   * Request HTTP básico sin reintentos ni sanitización
+   * Propaga errores del backend tal cual para que cada servicio los maneje
+   */
+  async request(url, options = {}) {
+    const { 
+      timeout = this.defaultTimeout,
+      signal: externalSignal,
+      headers = {},
+      ...fetchOptions 
+    } = options;
+
+    // Obtener token de autenticación
+    const authHeaders = await this.getAuthHeaders();
+
+    // Combinar headers
+    const finalHeaders = {
+      ...headers,
+      ...authHeaders
+    };
+
+    // Crear signal con timeout (fusionado con signal externo si existe)
+    const { signal, clearTimeout: clearTimeoutFn } = this.createTimeoutSignal(timeout, externalSignal);
+
+    // Construir URL completa
+    const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+
+    try {
+      const response = await fetch(fullUrl, {
+        ...fetchOptions,
+        headers: finalHeaders,
+        signal
+      });
+
+      // El fetch ya completó, ahora solo falta parsear el JSON
+      clearTimeoutFn();
+
+      // Si no es OK, parsear error del backend
       if (!response.ok) {
-        // Parsear mensaje de error del backend
-        const errorMessage = await parseErrorResponse(response);
-        const errorType = classifyError(null, response.status);
+        let errorMessage = `Error ${response.status}`;
+        let errorData = null;
         
-        // Sanitizar mensaje para el usuario
-        const userMessage = sanitizeErrorMessage(errorMessage, errorType);
-        
-        // Crear error estructurado
-        const structuredError = createStructuredError(
-          new Error(errorMessage),
-          errorType,
-          userMessage,
-          { url: fullUrl, status: response.status }
-        );
-        
-        // Log del error
-        logError(context, new Error(userMessage), {
-          url: fullUrl,
-          status: response.status,
-          originalMessage: errorMessage
-        });
-        
-        // Lanzar error con mensaje sanitizado
-        const error = new Error(userMessage);
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            errorData = await response.json();
+            // Extraer mensaje del backend (puede estar en message, detail, error, etc.)
+            errorMessage = errorData.message || errorData.detail || errorData.error || errorMessage;
+          } else {
+            const text = await response.text();
+            errorMessage = text || errorMessage;
+          }
+        } catch (parseError) {
+          console.warn('No se pudo parsear error del backend:', parseError);
+        }
+
+        // Crear error con información del backend (SIN SANITIZAR)
+        const error = new Error(errorMessage);
         error.status = response.status;
-        error.type = errorType;
-        error.details = structuredError;
+        error.data = errorData;
+        
         throw error;
       }
 
-      // Intentar parsear JSON
+      // Parsear respuesta exitosa
       const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         return await response.json();
       }
       
-      return await response.text();
-      
+      // Para streaming o archivos, devolver response raw
+      return response;
+
     } catch (error) {
-      clearTimeout(timeoutId);
+      // AbortError (timeout o cancelación manual)
+      if (error.name === 'AbortError') {
+        const abortError = new Error(signal.reason || 'Request aborted');
+        abortError.name = 'AbortError';
+        abortError.isTimeout = signal.reason === 'Request timeout';
+        abortError.isCancelled = !abortError.isTimeout;
+        throw abortError;
+      }
       
-      // Si es un error que ya procesamos (response.ok = false), re-lanzarlo
-      if (error.status) {
+      // Errores de red (TypeError: Failed to fetch)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const networkError = new Error('No se pudo conectar con el servidor');
+        networkError.name = 'NetworkError';
+        networkError.isNetworkError = true;
+        networkError.originalError = error;
+        throw networkError;
+      }
+      
+      // Propagar otros errores sin modificar
+      throw error;
+    }
+  }
+
+  /**
+   * GET request
+   */
+  async get(url, options = {}) {
+    return this.request(url, { ...options, method: 'GET' });
+  }
+
+  /**
+   * POST request
+   */
+  async post(url, data, options = {}) {
+    const isFormData = data instanceof FormData;
+    
+    return this.request(url, {
+      ...options,
+      method: 'POST',
+      headers: isFormData ? options.headers : { 'Content-Type': 'application/json', ...options.headers },
+      body: isFormData ? data : JSON.stringify(data)
+    });
+  }
+
+  /**
+   * PUT request
+   */
+  async put(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      body: JSON.stringify(data)
+    });
+  }
+
+  /**
+   * POST con streaming (para chat RAG)
+   * Devuelve el response raw para que el caller pueda leer el stream
+   */
+  async postStream(url, data, timeout = 300000, options = {}) {
+    const { signal: externalSignal, ...otherOptions } = options;
+
+    // Obtener headers de autenticación
+    const authHeaders = await this.getAuthHeaders();
+
+    // Crear signal con timeout largo para streaming
+    const { signal, clearTimeout: clearTimeoutFn } = this.createTimeoutSignal(timeout, externalSignal);
+
+    // Construir URL completa
+    const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+          ...otherOptions.headers
+        },
+        body: JSON.stringify(data),
+        signal
+      });
+
+      // No cancelar timeout aquí porque el stream seguirá leyendo datos
+      // El caller debe manejar el cleanup
+
+      if (!response.ok) {
+        clearTimeoutFn();
+        
+        let errorMessage = `Error ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.detail || errorMessage;
+        } catch (e) {
+          // Ignorar error de parsing
+        }
+
+        const error = new Error(errorMessage);
+        error.status = response.status;
         throw error;
       }
-      
-      // Errores de red o timeout
-      const errorType = classifyError(error);
-      const userMessage = sanitizeErrorMessage(error.message, errorType);
-      
-      // Log del error
-      logError(context, error, { url: fullUrl });
-      
-      // Crear error estructurado
-      const structuredError = createStructuredError(
-        error,
-        errorType,
-        userMessage,
-        { url: fullUrl }
-      );
-      
-      const finalError = new Error(userMessage);
-      finalError.type = errorType;
-      finalError.details = structuredError;
-      throw finalError;
-    }
-  };
-  
-  // Ejecutar con o sin reintentos
-  if (enableRetry) {
-    return await fetchWithRetry(executeFetch, {
-      maxRetries: 2,
-      context
-    });
-  } else {
-    return await executeFetch();
-  }
-};
 
-/**
- * GET request
- */
-const get = (url, params = {}, options = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  const fullUrl = queryString ? `${url}?${queryString}` : url;
-  
-  return apiRequest(fullUrl, {
-    method: 'GET',
-    context: 'GET ' + url,
-    ...options
-  });
-};
+      // Devolver response raw para streaming
+      // El caller es responsable de:
+      // 1. Leer el stream
+      // 2. Llamar clearTimeoutFn() cuando termine
+      response._clearTimeout = clearTimeoutFn;
+      return response;
 
-/**
- * POST request
- */
-const post = (url, data = null, options = {}) => {
-  const requestOptions = {
-    method: 'POST',
-    context: 'POST ' + url,
-    ...options
-  };
+    } catch (error) {
+      clearTimeoutFn();
 
-  if (data instanceof FormData) {
-    requestOptions.body = data;
-    // No establecer Content-Type para FormData (el browser lo hace automáticamente)
-  } else if (data) {
-    requestOptions.headers = {
-      'Content-Type': 'application/json',
-      ...requestOptions.headers
-    };
-    requestOptions.body = JSON.stringify(data);
-  }
-
-  return apiRequest(url, requestOptions);
-};
-
-/**
- * PUT request
- */
-const put = (url, data = null, options = {}) => {
-  const requestOptions = {
-    method: 'PUT',
-    context: 'PUT ' + url,
-    ...options
-  };
-
-  if (data instanceof FormData) {
-    requestOptions.body = data;
-  } else if (data) {
-    requestOptions.headers = {
-      'Content-Type': 'application/json',
-      ...requestOptions.headers
-    };
-    requestOptions.body = JSON.stringify(data);
-  }
-
-  return apiRequest(url, requestOptions);
-};
-
-/**
- * POST request para streaming (SSE - Server Sent Events)
- */
-const postStream = async (url, data = null, timeout = 120000, options = {}) => {
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  
-  let timeoutId;
-  
-  try {
-    // Obtener headers de autenticación
-    const authHeaders = await getAuthHeaders();
-    
-    const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    // Si hay un signal externo, escucharlo para abortar también el timeout
-    if (options.signal) {
-      const abortHandler = () => {
-        clearTimeout(timeoutId);
-        controller.abort();
-      };
-      
-      options.signal.addEventListener('abort', abortHandler, { once: true });
-      
-      // Si el signal externo ya está abortado, abortar inmediatamente
-      if (options.signal.aborted) {
-        clearTimeout(timeoutId);
-        controller.abort();
+      // Manejar errores de abort/timeout
+      if (error.name === 'AbortError') {
+        const abortError = new Error(signal.reason || 'Request aborted');
+        abortError.name = 'AbortError';
+        abortError.isTimeout = signal.reason === 'Request timeout';
+        abortError.isCancelled = !abortError.isTimeout;
+        throw abortError;
       }
+
+      // Errores de red
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const networkError = new Error('No se pudo conectar con el servidor');
+        networkError.name = 'NetworkError';
+        networkError.isNetworkError = true;
+        throw networkError;
+      }
+
+      throw error;
     }
-    
-    const fetchOptions = {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-      signal: controller.signal
-    };
-
-    console.log('Realizando petición HTTP streaming:', {
-      url: fullUrl,
-      method: fetchOptions.method,
-      timeout: `${timeout}ms`
-    });
-
-    const response = await fetch(fullUrl, fetchOptions);
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.log('Response not ok:', response.status, response.statusText);
-      
-      // Parsear error del backend
-      const errorMessage = await parseErrorResponse(response);
-      const errorType = classifyError(null, response.status);
-      const userMessage = sanitizeErrorMessage(errorMessage, errorType);
-      
-      // Log del error
-      logError('POST STREAM ' + url, new Error(userMessage), {
-        url: fullUrl,
-        status: response.status,
-        originalMessage: errorMessage
-      });
-      
-      throw new Error(userMessage);
-    }
-
-    return response; // Devolver la respuesta completa para streaming
-    
-  } catch (error) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    
-    // Clasificar y sanitizar error
-    const errorType = classifyError(error);
-    const userMessage = sanitizeErrorMessage(error.message, errorType);
-    
-    // Log del error
-    logError('POST STREAM ' + url, error, { url: fullUrl });
-    
-    throw new Error(userMessage);
   }
-};
+}
 
-export default {
-  get,
-  post,
-  put,
-  apiRequest,
-  postStream
-};
+// Exportar instancia singleton por defecto (para compatibilidad)
+const httpService = new HttpService();
+
+export default httpService;
+
+// Exportar clase para casos donde se necesite instancia personalizada
+export { HttpService };

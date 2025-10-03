@@ -1,5 +1,7 @@
 /**
- * Servicio para descargar archivos usando las rutas centralizadas en /archivos
+ * DownloadService - Servicio para descargar archivos
+ * 
+ * Maneja errores de forma amigable sin causar crashes en el frontend
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -11,53 +13,82 @@ class DownloadService {
    * @param {string} nombreArchivo - Nombre del archivo para la descarga
    * @returns {Promise<void>}
    */
-   async downloadFile(rutaArchivo, nombreArchivo) {
-     try {
-       // Agregar timestamp para evitar cache
-       const timestamp = Date.now();
-       const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}&_t=${timestamp}`;
-       
-       // Hacer petición fetch para obtener el archivo
-       const response = await fetch(url, {
-         method: 'GET',
-         cache: 'no-cache',
-         headers: {
-           'Cache-Control': 'no-cache, no-store, must-revalidate',
-           'Pragma': 'no-cache',
-           'Expires': '0'
-         }
-       });
+  async downloadFile(rutaArchivo, nombreArchivo) {
+    try {
+      // Validar parámetros
+      if (!rutaArchivo || rutaArchivo.trim() === '') {
+        throw new Error('La ruta del archivo es requerida');
+      }
 
-       if (!response.ok) {
-         throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
-       }
+      // Agregar timestamp para evitar cache
+      const timestamp = Date.now();
+      const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}&_t=${timestamp}`;
+      
+      // Hacer petición fetch para obtener el archivo
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
-       // Convertir la respuesta a blob
-       const blob = await response.blob();
+      // Manejo específico por código de error
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('El archivo no existe o fue eliminado');
+        }
+        
+        if (response.status === 403) {
+          throw new Error('No tiene permisos para descargar este archivo');
+        }
+        
+        if (response.status === 500) {
+          throw new Error('Error del servidor al procesar el archivo. Intente nuevamente.');
+        }
 
-       if (blob.size === 0) {
-         throw new Error('El archivo descargado está vacío');
-       }
+        if (response.status >= 500) {
+          throw new Error('El servidor no está disponible. Intente nuevamente en unos momentos.');
+        }
 
-       // Crear URL temporal para el blob
-       const blobUrl = window.URL.createObjectURL(blob);
+        throw new Error(`No se pudo descargar el archivo (Error ${response.status})`);
+      }
 
-       // Crear enlace de descarga
-       const a = document.createElement('a');
-       a.href = blobUrl;
-       a.download = nombreArchivo || 'archivo';
-       document.body.appendChild(a);
-       a.click();
-       document.body.removeChild(a);
+      // Convertir la respuesta a blob
+      const blob = await response.blob();
 
-       // Limpiar URL temporal
-       window.URL.revokeObjectURL(blobUrl);
-       
-     } catch (error) {
-       console.error('Error en descarga:', error);
-       throw error;
-     }
-   }
+      if (blob.size === 0) {
+        throw new Error('El archivo está vacío');
+      }
+
+      // Crear URL temporal para el blob
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Crear enlace de descarga
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = nombreArchivo || 'archivo';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Limpiar URL temporal
+      window.URL.revokeObjectURL(blobUrl);
+      
+    } catch (error) {
+      console.error('Error en descarga:', error);
+      
+      // Mensajes amigables para errores de red
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('No se pudo conectar con el servidor. Verifique su conexión a internet.');
+      }
+
+      // Propagar el error con mensaje amigable
+      throw new Error(error.message || 'Error al descargar el archivo');
+    }
+  }
 
   /**
    * Abre un archivo en una nueva pestaña para vista previa
@@ -66,14 +97,25 @@ class DownloadService {
    */
   async viewFile(rutaArchivo) {
     try {
+      // Validar parámetros
+      if (!rutaArchivo || rutaArchivo.trim() === '') {
+        throw new Error('La ruta del archivo es requerida');
+      }
+
       const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}`;
       window.open(url, '_blank');
+      
     } catch (error) {
       console.error('Error abriendo archivo:', error);
-      throw error;
+      throw new Error(error.message || 'Error al abrir el archivo');
     }
   }
 }
 
+// Exportar instancia singleton
 const downloadService = new DownloadService();
+
 export default downloadService;
+
+// Exportar clase para testing o instancias personalizadas
+export { DownloadService };

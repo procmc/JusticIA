@@ -10,7 +10,7 @@ const TypingIndicator = ({ showAvatar = true, compact = false }) => {
       setCurrentPhase(prev => (prev + 1) % phases.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [phases.length]);
 
   // Versión compacta para usar dentro de MessageBubble
   if (compact) {
