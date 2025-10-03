@@ -21,6 +21,27 @@ def is_greeting_or_simple_conversation(query: str) -> bool:
     """
     query_lower = query.lower().strip()
     
+    # IMPORTANTE: Antes de clasificar como saludo, verificar si contiene referencias contextuales
+    referencias_contextuales = [
+        r'\b(?:el\s+)?último\s+(?:expediente|caso|exp)\b',
+        r'\b(?:el\s+)?primer\s+(?:expediente|caso|exp)\b',
+        r'\b(?:el\s+)?segundo\s+(?:expediente|caso|exp)\b',
+        r'\b(?:el\s+)?tercer\s+(?:expediente|caso|exp)\b',
+        r'\b(?:ese|este|dicho)\s+(?:expediente|caso|exp)\b',
+        r'\bmás\s+información\b',
+        r'\binformación\s+del?\s+(?:expediente|caso|exp)\b',
+        r'\binformación\s+sobre\b',
+        r'\bdetalles\s+del?\s+(?:expediente|caso|exp)\b',
+        r'\bdetalles\b',
+        r'\b(?:puedes|puede)\s+darme\s+(?:más\s+)?información\b',
+        r'\b(?:dime|cuéntame)\s+(?:más\s+)?(?:sobre|del?|acerca)\b'
+    ]
+    
+    # Si contiene referencias contextuales, NO es un saludo simple
+    for pattern in referencias_contextuales:
+        if re.search(pattern, query_lower):
+            return False
+    
     # Patrones de saludos y conversación simple
     greeting_patterns = [
         r'^(hola|hello|hi|buenos días|buenas tardes|buenas noches|saludos)\.?$',
@@ -32,7 +53,7 @@ def is_greeting_or_simple_conversation(query: str) -> bool:
         r'^(test|prueba|testing)\.?$'
     ]
     
-    # Si la consulta tiene menos de 10 caracteres y coincide con patrones de saludo
+    # Solo saludos MUY específicos y cortos
     if len(query_lower) <= 15:
         for pattern in greeting_patterns:
             if re.match(pattern, query_lower):

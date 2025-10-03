@@ -130,6 +130,24 @@ class SecurityValidator:
     
     def _detect_prompt_injection(self, text: str) -> bool:
         """Detecta intentos de prompt injection"""
+        
+        # IMPORTANTE: Primero verificar si es una consulta legal legítima
+        legitimate_legal_patterns = [
+            r'\b(?:puedes|puede)\s+darme\s+(?:más\s+)?información\b',
+            r'\b(?:el\s+)?(?:primer|segundo|tercer|último)\s+(?:expediente|caso)\b',
+            r'\b(?:más|mayor)\s+(?:información|detalles)\s+(?:del?|sobre|acerca)\b',
+            r'\b(?:expediente|caso|materia|juzgado|resolución)\b',
+            r'\b(?:civil|penal|laboral|familia|comercial|administrativo)\b',
+            r'\b(?:demanda|sentencia|recurso|apelación|audiencia)\b'
+        ]
+        
+        # Si contiene patrones legales legítimos, muy probablemente NO es prompt injection
+        text_lower = text.lower()
+        for pattern in legitimate_legal_patterns:
+            if re.search(pattern, text_lower):
+                return False
+        
+        # Solo después verificar patrones de prompt injection
         for pattern in self.injection_patterns:
             if re.search(pattern, text, re.IGNORECASE):
                 return True

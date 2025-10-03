@@ -58,8 +58,7 @@ const ConsultaChat = () => {
     startNewConversation
   } = useChatContext();
 
-  // DEBUG: Log del estado del contexto (comentado para reducir ruido)
-  // console.log('🔍 Estado del contexto en Chat.jsx:', { hasContext, contextStats: getContextStats() });
+
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -75,27 +74,33 @@ const ConsultaChat = () => {
   const handleSendMessage = async (text) => {
     // Si estamos en modo expediente específico
     if (searchScope === 'expediente') {
-      // Si no tenemos expediente consultado, verificar si el texto es un número de expediente
-      if (!consultedExpediente) {
-        if (isExpedienteNumber(text)) {
-          // El usuario ingresó un número de expediente
-          setConsultedExpediente(text.trim());
+      // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
+      if (isExpedienteNumber(text)) {
+        const newExpediente = text.trim();
+        
+        // Si es un expediente diferente al actual, cambiarlo
+        if (newExpediente !== consultedExpediente) {
+          setConsultedExpediente(newExpediente);
           
-          // Crear mensaje del usuario indicando que se estableció el expediente
+          // Crear mensaje del usuario indicando que se estableció/cambió el expediente
           const userMessage = {
-            text: `Establecer consulta para expediente: ${text.trim()}`,
+            text: consultedExpediente 
+              ? `Cambiar consulta a expediente: ${newExpediente}`
+              : `Establecer consulta para expediente: ${newExpediente}`,
             isUser: true,
             timestamp: new Date().toLocaleTimeString('es-ES', {
               hour: '2-digit',
               minute: '2-digit'
             }),
             scope: searchScope,
-            expedienteNumber: text.trim()
+            expedienteNumber: newExpediente
           };
           
           // Crear mensaje del asistente confirmando
           const assistantMessage = {
-            text: `✅ **Expediente establecido:** ${text.trim()}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
+            text: consultedExpediente 
+              ? `✅ **Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
+              : `✅ **Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
             isUser: false,
             timestamp: new Date().toLocaleTimeString('es-ES', {
               hour: '2-digit',
@@ -107,35 +112,38 @@ const ConsultaChat = () => {
           
           // Guardar también en el contexto para mantener la historia
           addToContext(
-            `Establecer consulta para expediente: ${text.trim()}`,
-            `Expediente ${text.trim()} establecido correctamente. Ahora puedes hacer cualquier consulta sobre este expediente.`
+            userMessage.text,
+            assistantMessage.text
           );
           
           return;
-        } else {
-          // No es un número de expediente válido - responder como asistente
-          const userMessage = {
-            text: text,
-            isUser: true,
-            timestamp: new Date().toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            scope: searchScope
-          };
-          
-          const assistantMessage = {
-            text: `Para realizar consultas sobre un expediente específico, necesito que ingreses un número de expediente válido.\n\n**Formato esperado:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de arriba.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-          };
-          
-          setMessages(prev => [...prev, userMessage, assistantMessage]);
-          return;
         }
+        // Si es el mismo expediente, continuar con consulta normal (no hacer nada especial)
+      }
+      // Si no tenemos expediente consultado y el texto no es un número válido
+      else if (!consultedExpediente) {
+        // No es un número de expediente válido - responder como asistente
+        const userMessage = {
+          text: text,
+          isUser: true,
+          timestamp: new Date().toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          scope: searchScope
+        };
+        
+        const assistantMessage = {
+          text: `Para realizar consultas sobre un expediente específico, necesito que ingreses un número de expediente válido.\n\n**Formato esperado:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de arriba.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+        
+        setMessages(prev => [...prev, userMessage, assistantMessage]);
+        return;
       }
       // Si ya tenemos expediente consultado, continuar con la consulta normal
     }
@@ -183,12 +191,6 @@ const ConsultaChat = () => {
     // Obtener el contexto de conversación formateado SOLO si realmente hay contexto
     const contextStats = getContextStats();
     const conversationContext = hasContext ? getFormattedContext() : '';
-    console.log('📤 DEBUG CONTEXTO - Enviando al backend:', { 
-      hasContext, 
-      contextLength: conversationContext.length,
-      contextStats: contextStats,
-      contextPreview: conversationContext.substring(0, 200) + '...'
-    });
     
     // ======= MODO STREAMING MEJORADO =======
     try {
@@ -231,18 +233,7 @@ const ConsultaChat = () => {
               // Guardar en el contexto DESPUÉS de actualizar los mensajes
               const finalMessage = updatedMessages[messageIndex];
               if (finalMessage?.text?.trim()) {
-                console.log('💾 Guardando en contexto:', {
-                  userMessage: text,
-                  assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
-                  length: finalMessage.text.trim().length
-                });
-                
-                // Usar setTimeout para asegurar que se ejecute después del render
-                setTimeout(() => {
-                  console.log('🔧 Llamando addToContext con:', { text, responseLength: finalMessage.text.trim().length });
-                  addToContext(text, finalMessage.text.trim());
-                  console.log('✅ addToContext ejecutado, nuevo estado:', getContextStats());
-                }, 50);
+                addToContext(text, finalMessage.text.trim());
               }
             }
             return updatedMessages;
@@ -252,7 +243,6 @@ const ConsultaChat = () => {
 
       const onError = (error) => {
         // Callback para errores
-        console.error('Error en streaming RAG:', error);
         if (currentRequestRef.current?.active) {
           setStreamingMessageIndex(null);
           setIsTyping(false);
@@ -288,10 +278,7 @@ const ConsultaChat = () => {
       );
 
     } catch (error) {
-      console.error('❌ Error en handleSendMessage:', error);
-      console.error('❌ Error tipo:', typeof error);
-      console.error('❌ Error nombre:', error.name);
-      console.error('❌ Error mensaje:', error.message);
+      console.error('Error en handleSendMessage:', error);
       
       // Limpiar estado
       setStreamingMessageIndex(null);
