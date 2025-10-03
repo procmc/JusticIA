@@ -1,67 +1,193 @@
 /**
- * Servicio simplificado para ingesta de archivos con Celery
+ * IngestaService - Servicio para ingesta de archivos con Celery
+ * 
+ * Maneja:
+ * - Reintentos SOLO para uploads (errores de red)
+ * - Validación de parámetros
+ * - Mensajes de error específicos del contexto
+ * - NO reintenta consultas de progreso (son rápidas y se hacen en polling)
  */
 
 import httpService from './httpService';
 
-/**
- * Subir archivos a un expediente
- * @returns {Promise<{task_ids: string[], expediente: string}>}
- */
-const subirArchivos = async (expediente, archivos) => {
-  const formData = new FormData();
-  formData.append('CT_Num_expediente', expediente);
-  
-  for (let i = 0; i < archivos.length; i++) {
-    formData.append('files', archivos[i]);
+class IngestaService {
+  constructor() {
+    this.maxRetries = 2; // Solo 2 reintentos para uploads
+    this.retryDelay = 1000; // 1 segundo inicial
   }
-  
-  return httpService.post('/ingesta/archivos', formData);
-};
 
-/**
- * Consultar progreso de una tarea Celery
- * @returns {Promise<{task_id: string, status: string, progress: number, message: string, ready: boolean}>}
- */
-const consultarProgresoTarea = async (taskId) => {
-  return httpService.get(`/ingesta/progress/${taskId}`);
-};
+  /**
+   * Sleep helper para reintentos
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
-/**
- * Consultar estado de múltiples tareas en paralelo
- * @returns {Promise<Array<{taskId: string, success: boolean, data: object}>>}
- */
-const consultarEstadoArchivos = async (taskIds) => {
-  const promesas = taskIds.map(async (taskId) => {
+  /**
+   * Validar archivos antes de subir
+   */
+  validateFiles(archivos) {
+    if (!archivos || archivos.length === 0) {
+      throw new Error('Debe seleccionar al menos un archivo');
+    }
+
+    const maxFileSize = 200 * 1024 * 1024; // 200MB
+    const invalidFiles = archivos.filter(file => file.size > maxFileSize);
+    
+    if (invalidFiles.length > 0) {
+      throw new Error(`Algunos archivos exceden el límite de 200MB: ${invalidFiles.map(f => f.name).join(', ')}`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Subir archivos a un expediente con reintentos
+   * @returns {Promise<{task_ids: string[], expediente: string}>}
+   */
+  async subirArchivos(expediente, archivos) {
+    // Validar parámetros
+    if (!expediente || expediente.trim() === '') {
+      throw new Error('El número de expediente es requerido');
+    }
+
+    this.validateFiles(archivos);
+
+    // Preparar FormData
+    const formData = new FormData();
+    formData.append('CT_Num_expediente', expediente);
+    
+    for (let i = 0; i < archivos.length; i++) {
+      formData.append('files', archivos[i]);
+    }
+
+    // Intentar upload con reintentos SOLO para errores de red
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        const response = await httpService.post('/ingesta/archivos', formData, {
+          timeout: 120000 // 2 minutos para uploads grandes
+        });
+
+        return response;
+
+      } catch (error) {
+        const isLastAttempt = attempt === this.maxRetries;
+        
+        // Solo reintentar errores de red
+        if (error.isNetworkError && !isLastAttempt) {
+          console.log(`Upload fallido (intento ${attempt + 1}/${this.maxRetries + 1}), reintentando...`);
+          const delay = this.retryDelay * Math.pow(2, attempt); // Backoff exponencial
+          await this.sleep(delay);
+          continue;
+        }
+
+        // Para otros errores o último intento, propagar con mensaje amigable
+        if (error.isNetworkError) {
+          throw new Error('No se pudo conectar con el servidor. Verifique su conexión a internet.');
+        }
+
+        if (error.status === 413) {
+          throw new Error('Los archivos son demasiado grandes para ser procesados.');
+        }
+
+        if (error.status === 400) {
+          throw new Error(error.message || 'Los archivos no son válidos.');
+        }
+
+        if (error.status === 500) {
+          throw new Error('Error en el servidor al procesar los archivos. Intente nuevamente.');
+        }
+
+        // Propagar mensaje original del backend
+        throw new Error(error.message || 'Error al subir los archivos');
+      }
+    }
+  }
+
+  /**
+   * Consultar progreso de una tarea Celery
+   * NO reintenta (se usa en polling frecuente, reintentos harían lento el sistema)
+   * @returns {Promise<{task_id: string, status: string, progress: number, message: string, ready: boolean}>}
+   */
+  async consultarProgresoTarea(taskId) {
     try {
-      const data = await consultarProgresoTarea(taskId);
-      return {
-        taskId,
-        success: true,
-        data
-      };
+      return await httpService.get(`/ingesta/progress/${taskId}`, {
+        timeout: 10000 // 10 segundos (es una consulta rápida)
+      });
     } catch (error) {
+      // Si es timeout o red, devolver estado "pendiente" en lugar de error
+      // (el polling lo reintentará automáticamente)
+      if (error.isTimeout || error.isNetworkError) {
+        return {
+          task_id: taskId,
+          status: 'pendiente',
+          progress: 0,
+          message: 'Consultando estado...',
+          ready: false
+        };
+      }
+
+      // Para errores del servidor, propagar
+      if (error.status === 404) {
+        throw new Error('Tarea no encontrada. Puede que haya expirado.');
+      }
+
+      throw new Error(error.message || 'Error al consultar el progreso');
+    }
+  }
+
+  /**
+   * Consultar estado de múltiples tareas en paralelo
+   * @returns {Promise<Array<{taskId: string, success: boolean, data: object}>>}
+   */
+  async consultarEstadoArchivos(taskIds) {
+    const promesas = taskIds.map(async (taskId) => {
+      try {
+        const data = await this.consultarProgresoTarea(taskId);
+        return {
+          taskId,
+          success: true,
+          data
+        };
+      } catch (error) {
+        return {
+          taskId,
+          success: false,
+          error: error.message || 'Error consultando estado'
+        };
+      }
+    });
+    
+    return Promise.all(promesas);
+  }
+
+  /**
+   * Cancelar procesamiento de una tarea
+   * Manejo "best effort" - si falla no es crítico
+   */
+  async cancelarProcesamiento(taskId) {
+    try {
+      return await httpService.post(`/ingesta/cancel/${taskId}`, null, {
+        timeout: 5000 // 5 segundos
+      });
+    } catch (error) {
+      // Log pero no throw - cancelación es "best effort"
+      console.warn(`No se pudo cancelar la tarea ${taskId}:`, error.message);
+      
+      // Devolver respuesta indicando que se intentó cancelar
       return {
-        taskId,
-        success: false,
-        error: error.message || 'Error consultando estado'
+        task_id: taskId,
+        status: 'cancel_attempted',
+        message: 'Se intentó cancelar la tarea pero el servidor no respondió'
       };
     }
-  });
-  
-  return Promise.all(promesas);
-};
+  }
+}
 
-/**
- * Cancelar procesamiento de una tarea (si el backend lo soporta)
- */
-const cancelarProcesamiento = async (taskId) => {
-  return httpService.post(`/ingesta/cancel/${taskId}`);
-};
+// Exportar instancia singleton
+const ingestaService = new IngestaService();
 
-export default {
-  subirArchivos,
-  consultarProgresoTarea,
-  consultarEstadoArchivos,
-  cancelarProcesamiento
-};
+export default ingestaService;
+
+// Exportar clase para testing o instancias personalizadas
+export { IngestaService };

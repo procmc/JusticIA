@@ -185,9 +185,10 @@ class SimilarityService:
             logger.info(f"Documentos obtenidos del retriever: {len(docs)}")
             
             # Filtrar solo documentos de este expediente específico
+            # IMPORTANTE: el campo en Milvus es "numero_expediente", no "expediente_numero"
             docs_expediente = [
                 doc for doc in docs 
-                if doc.metadata.get("expediente_numero") == numero_expediente
+                if doc.metadata.get("numero_expediente") == numero_expediente
             ]
             
             if docs_expediente:
@@ -220,8 +221,8 @@ class SimilarityService:
                 doc = Document(
                     page_content=content,
                     metadata={
-                        "expediente_numero": numero_expediente,
-                        "archivo": doc_data.get("document_name", ""),
+                        "numero_expediente": numero_expediente,  # Consistente con Milvus
+                        "nombre_archivo": doc_data.get("document_name", ""),
                         "id_documento": doc_data.get("id", ""),
                     }
                 )
@@ -236,7 +237,7 @@ class SimilarityService:
             contexto_completo = create_similarity_search_context(
                 docs_expediente, 
                 max_docs=20,  # Más documentos para resumen completo
-                max_chars_per_doc=800  # Más caracteres para documentos legales
+                max_chars_per_doc=7000  # Más caracteres para documentos legales
             )
             logger.info(f"Contexto creado con {len(contexto_completo)} caracteres")
             return contexto_completo
@@ -250,7 +251,7 @@ class SimilarityService:
             # Crear prompt especializado
             prompt = create_similarity_summary_prompt(contexto_completo, numero_expediente)
             logger.info("Prompt creado correctamente")
-            
+        
             # Obtener LLM 
             llm = await get_llm()
             logger.info("LLM obtenido correctamente")
