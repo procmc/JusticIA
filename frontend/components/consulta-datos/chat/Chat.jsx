@@ -4,7 +4,7 @@ import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
 import { useSessionId } from '../../../hooks/conversacion/useSessionId';
-import { validarFormatoExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
+import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -70,7 +70,8 @@ const ConsultaChat = () => {
     if (searchScope === 'expediente') {
       // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
       if (isExpedienteNumber(text)) {
-        const newExpediente = text.trim();
+        // Normalizar el expediente (convertir guiones Unicode a ASCII y mayúsculas)
+        const newExpediente = normalizarExpediente(text.trim());
         
         // Si es un expediente diferente al actual, cambiarlo
         if (newExpediente !== consultedExpediente) {
