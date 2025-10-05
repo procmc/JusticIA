@@ -5,7 +5,21 @@ class ConsultaService {
     this.abortController = null; // AbortController para cancelar streaming
   }
 
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 30, conversationContext = '', expedienteNumber = null) {
+  /**
+   * Consulta con gestión de historial conversacional.
+   * 
+   * NUEVO: Usa session_id para gestión automática de historial en backend.
+   * El backend maneja la reformulación y persistencia de mensajes.
+   * 
+   * @param {string} query - Pregunta del usuario (solo la actual, sin contexto)
+   * @param {Function} onChunk - Callback para cada chunk de respuesta
+   * @param {Function} onComplete - Callback al completar
+   * @param {Function} onError - Callback en caso de error
+   * @param {number} topK - Número de documentos a recuperar (default: 15)
+   * @param {string} sessionId - ID de sesión para gestión de historial
+   * @param {string} expedienteNumber - Número de expediente (opcional)
+   */
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 15, sessionId = null, expedienteNumber = null) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
       console.log('Cancelando consulta anterior...');
@@ -15,39 +29,38 @@ class ConsultaService {
     // Crear nuevo AbortController para esta consulta
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
+    
     try {
-      // Preparar la consulta con contexto SOLO si realmente existe y no está vacío
-      const hasRealContext = Boolean(conversationContext && conversationContext.trim().length > 0);
-      
-      // Si hay número de expediente, incluirlo en la consulta
-      let finalQuery = query.trim();
-      if (expedienteNumber) {
-        finalQuery = `Consulta sobre expediente ${expedienteNumber}: ${query.trim()}`;
-      }
-      
-      const queryWithContext = hasRealContext 
-        ? `${conversationContext.trim()}\n\n${finalQuery}`
-        : finalQuery;
-
-      // Validar que el payload esté correcto antes de enviar
-      if (!queryWithContext || queryWithContext.trim().length === 0) {
+      // Validar que la consulta no esté vacía
+      if (!query || query.trim().length === 0) {
         throw new Error('La consulta no puede estar vacía');
       }
 
-      // Preparar el payload con información del expediente si está disponible
+      // Validar que haya session_id
+      if (!sessionId) {
+        throw new Error('session_id es requerido para gestión de historial');
+      }
+
+      // Preparar el payload con el nuevo formato
       const payload = {
-        query: queryWithContext,
-        top_k: topK,
-        has_context: hasRealContext
+        query: query.trim(),  // Solo la pregunta actual, sin contexto
+        session_id: sessionId,  // Backend gestiona historial con este ID
+        top_k: topK
       };
 
-      // Agregar número de expediente al payload si está disponible
+      // Agregar número de expediente si está disponible
       if (expedienteNumber) {
         payload.expediente_number = expedienteNumber;
       }
 
-      // Usar httpService.postStream para manejo de streaming con nueva ruta RAG
-      const response = await httpService.postStream('/rag/consulta-general-stream', payload, 300000, {
+      console.log('📤 Enviando consulta con historial:', {
+        query: query.substring(0, 50) + '...',
+        session_id: sessionId,
+        expediente: expedienteNumber || 'ninguno'
+      });
+
+      // Usar el nuevo endpoint con gestión de historial
+      const response = await httpService.postStream('/rag/consulta-con-historial-stream', payload, 300000, {
         signal
       }); // 300 segundos timeout
 
