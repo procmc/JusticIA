@@ -4,243 +4,152 @@ from langchain_core.documents import Document
 from app.vectorstore.vectorstore import search_by_text, get_expedient_documents
 import logging
 from pydantic import Field
-import re
 
 logger = logging.getLogger(__name__)
 
 
 class DynamicJusticIARetriever(BaseRetriever):
-    """Retriever completamente dinámico que usa el vectorstore de Milvus para JusticIA"""
+    """
+    Retriever optimizado para JusticIA con LangChain.
     
-    # Declarar campos como atributos de clase para Pydantic V2
+    RESPONSABILIDADES:
+    - Búsqueda vectorial en Milvus
+    - Filtrado por expediente específico (si se proporciona)
+    - Control de threshold y top-k
+    
+    NO maneja (lo hace LangChain):
+    - Reformulación de queries (create_history_aware_retriever)
+    - Contexto conversacional (RunnableWithMessageHistory)
+    - Referencias contextuales ("último caso", etc.) - LangChain las reformula
+    """
+    
+    # Campos Pydantic V2
     top_k: int = Field(default=10, description="Número de documentos a recuperar")
-    filters: Optional[str] = Field(default=None, description="Filtros adicionales")
-    conversation_context: str = Field(default="", description="Contexto de conversación para resolver referencias")
-    session_expedients: Optional[List[str]] = Field(default=None, description="Expedientes de la sesión")
+    similarity_threshold: float = Field(default=0.3, description="Umbral de similitud mínimo")
+    expediente_filter: Optional[str] = Field(default=None, description="Filtro por expediente específico")
     
-    def __init__(self, top_k: int = 10, filters: Optional[str] = None, conversation_context: str = "", session_expedients: Optional[List[str]] = None, **kwargs):
+    def __init__(
+        self, 
+        top_k: int = 10,
+        similarity_threshold: float = 0.3,
+        expediente_filter: Optional[str] = None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
-        # Pydantic V2 requiere que los campos se asignen explícitamente
         object.__setattr__(self, 'top_k', top_k)
-        object.__setattr__(self, 'filters', filters)
-        object.__setattr__(self, 'conversation_context', conversation_context or "")
-        object.__setattr__(self, 'session_expedients', session_expedients or [])
+        object.__setattr__(self, 'similarity_threshold', similarity_threshold)
+        object.__setattr__(self, 'expediente_filter', expediente_filter)
         
-        # DEBUG: Verificar inicialización
-        logger.info(f"🔧 DYNAMIC RETRIEVER INIT - conversation_context: {len(self.conversation_context)} chars")
-        logger.info(f"🔧 DYNAMIC RETRIEVER INIT - session_expedients: {self.session_expedients}")
-        if self.conversation_context:
-            logger.info(f"🔧 DYNAMIC RETRIEVER INIT - CONTEXTO PREVIO: {self.conversation_context[:200]}...")
+        logger.info(
+            f"DynamicJusticIARetriever inicializado - "
+            f"top_k={top_k}, threshold={similarity_threshold}, "
+            f"expediente={expediente_filter or 'None'}"
+        )
     
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
-        """Obtiene documentos relevantes de Milvus de forma completamente dinámica"""
-        logger.info(f"🔍 DYNAMIC RETRIEVER - CONSULTA RECIBIDA: '{query}'")
-        logger.info(f"🔍 DYNAMIC RETRIEVER - CONTEXTO DISPONIBLE: {len(self.conversation_context)} chars")
+        """
+        Recupera documentos relevantes de Milvus.
+        
+        NOTA: La query ya viene reformulada por create_history_aware_retriever
+        si se usa con gestión de historial. No necesitamos detectar referencias
+        contextuales manualmente.
+        """
+        print(f"\n{'='*80}")
+        print(f"🔍 RETRIEVER - Query recibida: '{query}'")
+        print(f"   - Expediente filter: {self.expediente_filter or 'None'}")
+        print(f"   - Top-K: {self.top_k}")
+        print(f"   - Threshold: {self.similarity_threshold}")
+        print(f"{'='*80}\n")
         
         try:
-            # PASO 1: Detectar expedientes en la consulta directa
-            expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
-            expediente_match = re.search(expediente_pattern, query)
+            # FLUJO 1: Expediente específico (filtro explícito)
+            if self.expediente_filter:
+                logger.info(f"Búsqueda en expediente: {self.expediente_filter}")
+                docs = await self._get_expediente_documents(self.expediente_filter)
+                print(f"✅ Retriever - Expediente: {len(docs)} documentos recuperados")
+                return docs
             
-            # PASO 2: Detectar consultas contextuales (cualquier tipo)
-            referencias_contextuales = [
-                r'\b(?:el\s+)?último\s+(?:expediente|caso)\b',
-                r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', 
-                r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b',
-                r'\b(?:ese|este|dicho)\s+(?:expediente|caso)\b',
-                r'\b(?:el\s+)?(?:expediente|caso)\s+anterior\b',
-                r'\b(?:del\s+)?(?:expediente|caso)\s+mencionado\b',
-                
-                # Consultas sobre contenido específico
-                r'\b(?:la\s+)?bitácora\b',
-                r'\bcual\s+es\s+la\s+bitácora\b',
-                r'\bbitácora\s+del\s+caso\b',
-                r'\bantecedentes\b',
-                r'\bpruebas?\b',
-                r'\bevidencia\b',
-                r'\binforme\s+pericial\b',
-                r'\bdeclaraciones?\b',
-                r'\bquien\s+es\b',
-                r'\bnombre\b',
-                r'\bactora?\b',
-                r'\bdemandad[ao]\b',
-                r'\brepresentante\b',
-                r'\bmonto\b',
-                r'\bfecha\b',
-                r'\bresoluci[oó]n\b'
-            ]
+            # FLUJO 2: Búsqueda general semántica
+            logger.info(f"Búsqueda general: query='{query[:80]}...', top_k={self.top_k}")
+            docs = await self._get_general_documents(query)
+            print(f"✅ Retriever - General: {len(docs)} documentos recuperados")
             
-            tiene_referencia_contextual = any(re.search(patron, query.lower()) for patron in referencias_contextuales)
+            if len(docs) == 0:
+                print(f"⚠️  ADVERTENCIA: Retriever no encontró documentos para: '{query}'")
             
-            logger.info(f"🔍 DYNAMIC RETRIEVER - Expediente directo: {bool(expediente_match)}")
-            logger.info(f"🔍 DYNAMIC RETRIEVER - Referencia contextual: {tiene_referencia_contextual}")
-            logger.info(f"🔍 DYNAMIC RETRIEVER - Contexto disponible: {bool(self.conversation_context)}")
+            return docs
             
-            # PASO 3: Si hay referencia contextual, resolver expediente del contexto
-            expediente_resuelto = None
-            if expediente_match:
-                expediente_resuelto = expediente_match.group()
-                logger.info(f"✅ DYNAMIC RETRIEVER - EXPEDIENTE DIRECTO: {expediente_resuelto}")
-            elif tiene_referencia_contextual and self.conversation_context:
-                # SIMPLIFICADO: Extraer SOLO de la última respuesta del asistente
-                logger.info(f"🔄 DYNAMIC RETRIEVER - ANALIZANDO ÚLTIMA RESPUESTA")
-                
-                # Buscar la última respuesta del asistente en el contexto
-                lines = self.conversation_context.split('\n')
-                ultima_respuesta_asistente = ""
-                
-                for i in range(len(lines) - 1, -1, -1):  # Buscar de atrás hacia adelante
-                    if lines[i].startswith('Asistente:'):
-                        # Capturar esta línea y las siguientes hasta encontrar otra línea que empiece con "Usuario:"
-                        respuesta_lines = [lines[i][11:]]  # Quitar "Asistente: "
-                        for j in range(i + 1, len(lines)):
-                            if lines[j].startswith('Usuario:'):
-                                break
-                            respuesta_lines.append(lines[j])
-                        ultima_respuesta_asistente = '\n'.join(respuesta_lines)
-                        break
-                
-                logger.info(f"📄 ÚLTIMA RESPUESTA ENCONTRADA: {len(ultima_respuesta_asistente)} chars")
-                
-                if ultima_respuesta_asistente:
-                    # Extraer expedientes SOLO de la última respuesta
-                    expedientes_ultima_respuesta = re.findall(expediente_pattern, ultima_respuesta_asistente)
-                    logger.info(f"📋 EXPEDIENTES EN ÚLTIMA RESPUESTA: {expedientes_ultima_respuesta}")
-                    
-                    if expedientes_ultima_respuesta:
-                        # Resolver referencia basada en posición en la lista
-                        if 'primer' in query.lower() or 'primero' in query.lower():
-                            expediente_resuelto = expedientes_ultima_respuesta[0]
-                            logger.info(f"✅ PRIMER EXPEDIENTE RESUELTO: {expediente_resuelto}")
-                        elif 'ultimo' in query.lower() or 'última' in query.lower() or 'final' in query.lower():
-                            expediente_resuelto = expedientes_ultima_respuesta[-1] 
-                            logger.info(f"✅ ÚLTIMO EXPEDIENTE RESUELTO: {expediente_resuelto}")
-                        else:
-                            # Por defecto, usar el último mencionado
-                            expediente_resuelto = expedientes_ultima_respuesta[-1]
-                            logger.info(f"✅ EXPEDIENTE POR DEFECTO: {expediente_resuelto}")
-                    else:
-                        logger.warning(f"❌ NO SE ENCONTRARON EXPEDIENTES EN LA ÚLTIMA RESPUESTA")
-                else:
-                    logger.warning(f"❌ NO SE ENCONTRÓ ÚLTIMA RESPUESTA DEL ASISTENTE")
+        except Exception as e:
+            print(f"❌ ERROR en retriever: {e}")
+            logger.error(f"Error en retriever: {e}", exc_info=True)
+            return []
+    
+    async def _get_expediente_documents(self, expediente_numero: str) -> List[Document]:
+        """Obtiene todos los documentos de un expediente específico."""
+        try:
+            # Obtener documentos completos del expediente
+            docs = await get_expedient_documents(expediente_numero)
             
-            # PASO 4: Si se resolvió un expediente, usar modo EXPEDIENTE COMPLETO
-            if expediente_resuelto:
-                logger.info(f"🚀 DYNAMIC RETRIEVER - ACTIVANDO MODO EXPEDIENTE COMPLETO: {expediente_resuelto}")
-                
-                try:
-                    # Obtener TODOS los documentos del expediente
-                    complete_docs = await get_expedient_documents(expediente_resuelto)
-                    
-                    if complete_docs:
-                        logger.info(f"✅ DYNAMIC RETRIEVER - EXPEDIENTE COMPLETO: {len(complete_docs)} documentos")
-                        logger.info(f"🚀 DYNAMIC RETRIEVER - MODO DINÁMICO: El LLM puede encontrar cualquier información")
-                        
-                        # ENFOQUE DINÁMICO: Devolver TODOS los documentos sin filtros
-                        max_docs = min(len(complete_docs), 100)  # Límite para performance
-                        return complete_docs[:max_docs]
-                    else:
-                        logger.warning(f"❌ DYNAMIC RETRIEVER - No se encontraron documentos del expediente")
-                        
-                except Exception as e:
-                    logger.error(f"❌ DYNAMIC RETRIEVER - Error obteniendo expediente completo: {e}")
+            if docs:
+                # Limitar al top_k configurado
+                result = docs[:self.top_k]
+                logger.info(f"Expediente {expediente_numero}: {len(result)} documentos recuperados")
+                return result
             
-            # PASO 5: FALLBACK - Búsqueda semántica general
-            logger.info(f"🔍 DYNAMIC RETRIEVER - MODO GENERAL: Búsqueda semántica")
-            similar_docs = await search_by_text(
+            logger.warning(f"Expediente {expediente_numero}: sin documentos")
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo expediente {expediente_numero}: {e}")
+            return []
+    
+    async def _get_general_documents(self, query: str) -> List[Document]:
+        """Búsqueda semántica general en toda la base de datos."""
+        try:
+            # Búsqueda vectorial
+            results = await search_by_text(
                 query_text=query,
                 top_k=self.top_k,
-                score_threshold=0.3
+                score_threshold=self.similarity_threshold
             )
             
-            # Convertir a formato LangChain Document si es necesario
+            # Convertir a LangChain Documents
             documents = []
-            for doc in similar_docs:
-                try:
-                    # Si ya es un objeto Document de LangChain
-                    if isinstance(doc, Document):
-                        documents.append(doc)
-                    else:
-                        # Si es un diccionario, convertir a Document
-                        texto = doc.get("content_preview", "")
-                        metadata = {
-                            "expediente_numero": doc.get("expedient_id", ""),
-                            "archivo": doc.get("document_name", ""),
-                            "id_expediente": doc.get("expedient_id", ""),
-                            "id_documento": doc.get("id", ""),
-                            "similarity_score": doc.get("similarity_score", 0.0)
-                        }
-                        
-                        if texto.strip():
-                            documents.append(Document(
-                                page_content=texto,
-                                metadata=metadata
-                            ))
-                            
-                except Exception as e:
-                    logger.warning(f"❌ DYNAMIC RETRIEVER - Error procesando documento: {e}")
-                    continue
+            for i, doc in enumerate(results):
+                if isinstance(doc, Document):
+                    documents.append(doc)
+                else:
+                    # Convertir dict a Document
+                    # Nota: content_preview ahora contiene el contenido COMPLETO (sin truncar)
+                    content = doc.get("content_preview", "")
+                    if content.strip():
+                        documents.append(Document(
+                            page_content=content,
+                            metadata={
+                                "expediente_numero": doc.get("expedient_id", ""),
+                                "archivo": doc.get("document_name", ""),
+                                "id_documento": doc.get("id", ""),
+                                "similarity_score": doc.get("similarity_score", 0.0)
+                            }
+                        ))
+                        # Debug primeros documentos
+                        if i < 2:
+                            print(f"   📄 Doc {i+1}: {len(content)} chars, expediente: {doc.get('expedient_id', 'N/A')}, similarity: {doc.get('similarity_score', 0.0):.3f}")
             
-            logger.info(f"🏁 DYNAMIC RETRIEVER - RESULTADO FINAL: {len(documents)} documentos")
+            print(f"   ✅ {len(documents)} documentos convertidos a LangChain format")
+            logger.info(f"Búsqueda general: {len(documents)} documentos recuperados")
             return documents
             
         except Exception as e:
-            logger.error(f"❌ DYNAMIC RETRIEVER - Error general: {e}")
+            logger.error(f"Error en búsqueda general: {e}")
             return []
     
-    def _resolve_contextual_expedient_reference(self, query: str, context: str) -> Optional[str]:
-        """
-        Resuelve referencias contextuales como 'el último expediente', 'el primer expediente'
-        basándose en la última respuesta del asistente en el contexto.
-        """
-        query_lower = query.lower()
-        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
-        
-        try:
-            # Dividir el contexto en mensajes
-            if "Usuario:" in context and "Asistente:" in context:
-                # Encontrar la última respuesta del asistente
-                asistente_parts = context.split("Asistente:")
-                if len(asistente_parts) > 1:
-                    ultima_respuesta = asistente_parts[-1]
-                    
-                    # Extraer expedientes de la última respuesta en orden
-                    expedientes_en_respuesta = re.findall(expediente_pattern, ultima_respuesta)
-                    
-                    if expedientes_en_respuesta:
-                        logger.info(f"📋 RESOLVER CONTEXTO - Expedientes en última respuesta: {expedientes_en_respuesta}")
-                        
-                        # Resolver según el tipo de referencia
-                        if re.search(r'\b(?:el\s+)?primer\s+(?:expediente|caso)\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado PRIMER expediente")
-                            return expedientes_en_respuesta[0]
-                        elif re.search(r'\b(?:el\s+)?último\s+(?:expediente|caso)\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado ÚLTIMO expediente")
-                            return expedientes_en_respuesta[-1]
-                        elif re.search(r'\b(?:el\s+)?(?:expediente|caso)\s+más\s+reciente\b', query_lower):
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Solicitado ÚLTIMO expediente (más reciente)")
-                            return expedientes_en_respuesta[-1]
-                        else:
-                            # Para otras referencias, usar el más reciente mencionado
-                            logger.info(f"🎯 RESOLVER CONTEXTO - Referencia general, usando último mencionado")
-                            return expedientes_en_respuesta[-1]
-            
-            # Fallback: buscar en todo el contexto
-            expedientes_generales = re.findall(expediente_pattern, context)
-            if expedientes_generales:
-                logger.info(f"📋 RESOLVER CONTEXTO - Fallback a contexto general: {expedientes_generales[-1]}")
-                return expedientes_generales[-1]
-                
-        except Exception as e:
-            logger.error(f"❌ RESOLVER CONTEXTO - Error: {e}")
-        
-        return None
-
     def _get_relevant_documents(self, query: str) -> List[Document]:
-        """Método síncrono requerido por BaseRetriever"""
+        """Método síncrono requerido por BaseRetriever."""
         import asyncio
         return asyncio.run(self._aget_relevant_documents(query))
 
 
-# Alias para compatibilidad hacia atrás con otros módulos
+
+# Alias para compatibilidad
 JusticIARetriever = DynamicJusticIARetriever

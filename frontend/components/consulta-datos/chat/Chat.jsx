@@ -3,7 +3,7 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
-import { useChatContext } from '../../../hooks/conversacion/useChatContext';
+import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 
 const ConsultaChat = () => {
@@ -20,10 +20,10 @@ const ConsultaChat = () => {
   // Función personalizada para cambiar el scope y limpiar cuando sea necesario
   const handleSearchScopeChange = (newScope) => {
     if (newScope !== searchScope) {
-      // Si cambiamos de modo, limpiar la conversación
+      // Si cambiamos de modo, limpiar la conversación e iniciar nueva sesión
       setMessages([]);
       setConsultedExpediente(null);
-      clearContext();
+      newSession();  // Generar nuevo session_id
       
       setSearchScope(newScope);
       
@@ -48,18 +48,11 @@ const ConsultaChat = () => {
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
 
-  // Hook para manejar el contexto de conversación (versión corregida sin persistencia problemática)
-  const { 
-    addToContext, 
-    getFormattedContext, 
-    clearContext, 
-    hasContext,
-    getContextStats,
-    startNewConversation
-  } = useChatContext();
+  // Hook para gestión de session_id (backend gestiona el historial automáticamente)
+  const { sessionId, newSession, isReady } = useSessionId();
 
-  // DEBUG: Log del estado del contexto (comentado para reducir ruido)
-  // console.log('🔍 Estado del contexto en Chat.jsx:', { hasContext, contextStats: getContextStats() });
+  // DEBUG: Log del session_id
+  console.log('🆔 Session ID actual:', sessionId);
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -105,11 +98,8 @@ const ConsultaChat = () => {
           
           setMessages(prev => [...prev, userMessage, assistantMessage]);
           
-          // Guardar también en el contexto para mantener la historia
-          addToContext(
-            `Establecer consulta para expediente: ${text.trim()}`,
-            `Expediente ${text.trim()} establecido correctamente. Ahora puedes hacer cualquier consulta sobre este expediente.`
-          );
+          // Backend gestionará el historial automáticamente al hacer la primera consulta
+          console.log('📋 Expediente establecido:', text.trim());
           
           return;
         } else {
@@ -180,15 +170,15 @@ const ConsultaChat = () => {
     setStreamingMessageIndex(messageIndex);
     setIsTyping(false);
 
-    // Obtener el contexto de conversación formateado SOLO si realmente hay contexto
-    const contextStats = getContextStats();
-    const conversationContext = hasContext ? getFormattedContext() : '';
-    console.log('📤 DEBUG CONTEXTO - Enviando al backend:', { 
-      hasContext, 
-      contextLength: conversationContext.length,
-      contextStats: contextStats,
-      contextPreview: conversationContext.substring(0, 200) + '...'
-    });
+    // Validar que tengamos session_id antes de continuar
+    if (!sessionId) {
+      console.error('❌ No hay session_id disponible');
+      setIsTyping(false);
+      setStreamingMessageIndex(null);
+      return;
+    }
+
+    console.log('📤 Enviando consulta con session_id:', sessionId);
     
     // ======= MODO STREAMING MEJORADO =======
     try {
@@ -216,7 +206,7 @@ const ConsultaChat = () => {
           setIsTyping(false);
           currentRequestRef.current = null;
           
-          // Primero asignar timestamp
+          // Asignar timestamp al mensaje completado
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             if (updatedMessages[messageIndex]) {
@@ -228,22 +218,8 @@ const ConsultaChat = () => {
                 })
               };
               
-              // Guardar en el contexto DESPUÉS de actualizar los mensajes
-              const finalMessage = updatedMessages[messageIndex];
-              if (finalMessage?.text?.trim()) {
-                console.log('💾 Guardando en contexto:', {
-                  userMessage: text,
-                  assistantResponse: finalMessage.text.trim().substring(0, 100) + '...',
-                  length: finalMessage.text.trim().length
-                });
-                
-                // Usar setTimeout para asegurar que se ejecute después del render
-                setTimeout(() => {
-                  console.log('🔧 Llamando addToContext con:', { text, responseLength: finalMessage.text.trim().length });
-                  addToContext(text, finalMessage.text.trim());
-                  console.log('✅ addToContext ejecutado, nuevo estado:', getContextStats());
-                }, 50);
-              }
+              // Backend guarda el historial automáticamente, no necesitamos hacer nada aquí
+              console.log('✅ Respuesta completada - Backend gestiona historial automáticamente');
             }
             return updatedMessages;
           });
@@ -276,14 +252,14 @@ const ConsultaChat = () => {
         }
       };
 
-      // Usar siempre el endpoint general, pero pasar el expediente como parámetro separado
+      // Llamar al servicio con gestión automática de historial
       await consultaService.consultaGeneralStreaming(
         text,
         onChunk,
         onComplete,
         onError,
         5, // topK
-        conversationContext,
+        sessionId,  // Backend gestiona historial con este ID
         searchScope === 'expediente' ? consultedExpediente : null // pasar expediente como parámetro
       );
 
@@ -331,17 +307,15 @@ const ConsultaChat = () => {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Indicador de contexto mejorado */}
-      {hasContext && (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-green-600 bg-green-50/80 border border-green-200/50 rounded-full shadow-sm backdrop-blur-sm">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+      {/* Indicador de sesión activa */}
+      {sessionId && messages.length > 0 && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 bg-blue-50/80 border border-blue-200/50 rounded-full shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
           <span className="font-medium">
-            Contexto activo ({getContextStats().totalInteractions} intercambios)
+            Conversación activa ({messages.filter(m => m.isUser).length} mensajes)
           </span>
         </div>
       )}
-
-      {/* El hook useChatContext no requiere indicador de carga ya que es instantáneo */}
 
       {/* Controles de chat */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
@@ -371,8 +345,9 @@ const ConsultaChat = () => {
         {messages.length > 0 && (
           <button
             onClick={() => {
-              startNewConversation();
+              newSession();  // Generar nuevo session_id
               setMessages([]);
+              setConsultedExpediente(null);  // Limpiar expediente si estaba establecido
             }}
             className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
             title="Nueva conversación"

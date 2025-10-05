@@ -487,84 +487,62 @@ async def get_stats() -> Dict[str, Any]:
 
 async def get_expedient_documents(expedient_id: str) -> List[Document]:
     """
-    Obtiene todos los documentos de un expediente específico usando filtro directo en Milvus.
+    Obtiene todos los documentos de un expediente específico usando query directa a Milvus.
     
     Args:
         expedient_id: ID del expediente a buscar
         
     Returns:
-        Lista de objetos Document del expediente
+        Lista de objetos Document del expediente ordenados por indice_chunk
     """
     try:
-        logger.info(f"🔍 GET_EXPEDIENT_DOCUMENTS - Buscando expediente: {expedient_id}")
+        logger.info(f"Buscando expediente: {expedient_id}")
         
-        # MÉTODO 1: Usar search_by_text con filtro directo (más eficiente)
-        docs_with_filter = await search_by_text(
-            query_text="",  # Query vacía para obtener todos los documentos del expediente
-            top_k=1000,  # Alto para obtener todos los chunks
-            score_threshold=0.0,  # Sin filtro de score
-            expediente_filter=expedient_id  # Filtro directo por expediente
+        client = await get_client()
+        
+        # Query directa a Milvus con filtro (más eficiente que búsqueda vectorial)
+        query_results = client.query(
+            collection_name=COLLECTION_NAME,
+            filter=f'numero_expediente == "{expedient_id}"',
+            output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "indice_chunk", "tipo_documento"],
+            limit=1000  # Límite alto para expedientes grandes
         )
         
-        if docs_with_filter:
-            logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Método 1 exitoso: {len(docs_with_filter)} documentos")
-            
-            # Convertir a objetos Document de LangChain
-            langchain_docs = []
-            for doc in docs_with_filter:
-                try:
-                    content = doc.get("content_preview", "")
-                    if content.strip():
-                        metadata = {
-                            "numero_expediente": doc.get("expedient_id", expedient_id),
-                            "id_expediente": doc.get("expedient_id", expedient_id),
-                            "archivo": doc.get("document_name", ""),
-                            "id_documento": doc.get("id", ""),
-                            "chunk_id": doc.get("id", "")
-                        }
-                        
-                        langchain_docs.append(Document(
-                            page_content=content,
-                            metadata=metadata
-                        ))
-                except Exception as e:
-                    logger.warning(f"Error procesando documento: {e}")
-                    continue
-            
-            logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Documentos LangChain creados: {len(langchain_docs)}")
-            return langchain_docs
-        
-        # MÉTODO 2: Fallback usando LangChain similarity_search
-        logger.info(f"🔄 GET_EXPEDIENT_DOCUMENTS - Usando método fallback con LangChain")
-        
-        vectorstore = await get_langchain_vectorstore()
-        
-        # Buscar usando el número de expediente como query
-        all_docs = vectorstore.similarity_search(
-            query=f"expediente {expedient_id}",
-            k=500  # Buscar muchos documentos
-        )
-        
-        if not all_docs:
-            logger.warning(f"❌ GET_EXPEDIENT_DOCUMENTS - No se encontraron documentos para {expedient_id}")
+        if not query_results:
+            logger.warning(f"Expediente {expedient_id}: sin documentos")
             return []
         
-        # Filtrar documentos que realmente pertenecen al expediente
-        expedient_docs = []
-        for doc in all_docs:
-            metadata = doc.metadata if hasattr(doc, 'metadata') else {}
-            doc_expedient = metadata.get('numero_expediente') or metadata.get('id_expediente')
-            
-            # También verificar si el expediente está en el contenido
-            if (doc_expedient == expedient_id or 
-                expedient_id in doc.page_content):
-                expedient_docs.append(doc)
+        # Ordenar por indice_chunk para mantener secuencia
+        sorted_results = sorted(query_results, key=lambda x: x.get("indice_chunk", 0))
         
-        logger.info(f"✅ GET_EXPEDIENT_DOCUMENTS - Método fallback: {len(expedient_docs)} documentos")
-        return expedient_docs
+        # Convertir a LangChain Documents
+        langchain_docs = []
+        for doc in sorted_results:
+            try:
+                content = doc.get("texto", "")
+                if content.strip():
+                    metadata = {
+                        "numero_expediente": doc.get("numero_expediente", expedient_id),
+                        "id_expediente": doc.get("numero_expediente", expedient_id),
+                        "archivo": doc.get("nombre_archivo", ""),
+                        "chunk_id": doc.get("id_chunk", ""),
+                        "indice_chunk": doc.get("indice_chunk", 0),
+                        "tipo_documento": doc.get("tipo_documento", "")
+                    }
+                    
+                    langchain_docs.append(Document(
+                        page_content=content,
+                        metadata=metadata
+                    ))
+            except Exception as e:
+                logger.warning(f"Error procesando chunk: {e}")
+                continue
+        
+        logger.info(f"Expediente {expedient_id}: {len(langchain_docs)} documentos recuperados")
+        return langchain_docs
         
     except Exception as e:
-        logger.error(f"❌ GET_EXPEDIENT_DOCUMENTS - Error: {e}")
+        logger.error(f"Error obteniendo expediente {expedient_id}: {e}")
         return []
 
 
@@ -592,7 +570,7 @@ def _format_document_result(doc: Document, similarity_score: float) -> Dict[str,
         or metadata.get("id_expediente"),
         "document_name": metadata.get("nombre_archivo"),
         "content_preview": (
-            doc.page_content[:500] if hasattr(doc, "page_content") else ""
+            doc.page_content if hasattr(doc, "page_content") else ""
         ),
         "similarity_score": similarity_score,
         "metadata": metadata,
