@@ -22,7 +22,6 @@ class ConsultaService {
   async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 15, sessionId = null, expedienteNumber = null) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
-      console.log('Cancelando consulta anterior...');
       this.abortController.abort();
     }
 
@@ -92,7 +91,7 @@ class ConsultaService {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.type === 'start') {
-                  console.log('Streaming RAG iniciado:', data.metadata);
+                  // Streaming iniciado
                 } else if (data.type === 'chunk' && data.content) {
                   onChunk(data.content);
                 } else if (data.type === 'done') {
@@ -140,10 +139,8 @@ class ConsultaService {
     } catch (error) {
       // Si fue abortado, no es un error real
       if (error.name === 'AbortError') {
-        console.log('Consulta cancelada por el usuario');
         return;
       }
-      
       console.error('Error en consulta streaming:', error);
       onError?.(error);
     } finally {
@@ -157,7 +154,6 @@ class ConsultaService {
    */
   cancelConsulta() {
     if (this.abortController) {
-      console.log('Cancelando consulta en progreso...');
       this.abortController.abort();
       this.abortController = null;
     }

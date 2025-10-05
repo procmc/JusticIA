@@ -259,12 +259,12 @@ class RAGChainService:
 El usuario te está haciendo una pregunta sobre información que ya discutimos previamente en esta conversación.
 
 HISTORIAL DE LA CONVERSACIÓN:
-{conversation_context}
+{filtered_context}
 
 NUEVA PREGUNTA DEL USUARIO:
 {pregunta}
 
-INSTRUCCIONES:
+INSTRUCCIONES CRÍTICAS:
 - Responde ÚNICAMENTE basándote en la información del historial de conversación anterior
 - NO busques información nueva ni inventes datos
 - Si la pregunta se refiere a "el primer caso", "el segundo expediente", etc., identifica claramente a cuál te refieres
