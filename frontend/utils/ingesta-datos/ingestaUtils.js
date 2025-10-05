@@ -33,9 +33,37 @@ export const validarFormatoExpediente = (expediente) => {
     return false;
   }
   
-  // Formato: entre 17 y 20 caracteres alfanuméricos (incluyendo guiones)
-  const regex = /^[A-Za-z0-9\-]{17,20}$/;
-  return regex.test(expediente.trim());
+  // Normalizar: reemplazar cualquier tipo de guion por guion ASCII normal
+  const expedienteNormalizado = expediente
+    .trim()
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-'); // Reemplazar guiones Unicode
+  
+  // Formato EXACTO: YYYY-NNNNNN-NNNN-XX
+  // - 4 dígitos (año)
+  // - guion
+  // - 6 dígitos
+  // - guion  
+  // - 4 dígitos
+  // - guion
+  // - 2 letras mayúsculas
+  const regex = /^\d{4}-\d{6}-\d{4}-[A-Z]{2}$/;
+  
+  const esValido = regex.test(expedienteNormalizado);
+    
+  return esValido;
+};
+
+// Normalizar número de expediente (convertir guiones Unicode a ASCII)
+export const normalizarExpediente = (expediente) => {
+  if (!expediente || typeof expediente !== 'string') {
+    return expediente;
+  }
+  
+  // Reemplazar todos los tipos de guiones Unicode por guion ASCII normal
+  return expediente
+    .trim()
+    .toUpperCase() // Convertir letras a mayúsculas
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-'); // Normalizar guiones
 };
 
 // Obtener todos los tipos de archivos como array (para input accept)
