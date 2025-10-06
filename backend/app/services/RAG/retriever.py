@@ -54,33 +54,25 @@ class DynamicJusticIARetriever(BaseRetriever):
         si se usa con gestión de historial. No necesitamos detectar referencias
         contextuales manualmente.
         """
-        print(f"\n{'='*80}")
-        print(f"🔍 RETRIEVER - Query recibida: '{query}'")
-        print(f"   - Expediente filter: {self.expediente_filter or 'None'}")
-        print(f"   - Top-K: {self.top_k}")
-        print(f"   - Threshold: {self.similarity_threshold}")
-        print(f"{'='*80}\n")
-        
         try:
             # FLUJO 1: Expediente específico (filtro explícito)
             if self.expediente_filter:
                 logger.info(f"Búsqueda en expediente: {self.expediente_filter}")
                 docs = await self._get_expediente_documents(self.expediente_filter)
-                print(f"✅ Retriever - Expediente: {len(docs)} documentos recuperados")
+                logger.debug(f"Expediente: {len(docs)} documentos recuperados")
                 return docs
             
             # FLUJO 2: Búsqueda general semántica
-            logger.info(f"Búsqueda general: query='{query[:80]}...', top_k={self.top_k}")
+            logger.info(f"Búsqueda general: query='{query[:100]}...', top_k={self.top_k}")
             docs = await self._get_general_documents(query)
-            print(f"✅ Retriever - General: {len(docs)} documentos recuperados")
+            logger.debug(f"General: {len(docs)} documentos recuperados")
             
             if len(docs) == 0:
-                print(f"⚠️  ADVERTENCIA: Retriever no encontró documentos para: '{query}'")
+                logger.warning(f"No se encontraron documentos para: '{query[:100]}'")
             
             return docs
             
         except Exception as e:
-            print(f"❌ ERROR en retriever: {e}")
             logger.error(f"Error en retriever: {e}", exc_info=True)
             return []
     
@@ -115,12 +107,11 @@ class DynamicJusticIARetriever(BaseRetriever):
             
             # Convertir a LangChain Documents
             documents = []
-            for i, doc in enumerate(results):
+            for doc in results:
                 if isinstance(doc, Document):
                     documents.append(doc)
                 else:
                     # Convertir dict a Document
-                    # Nota: content_preview ahora contiene el contenido COMPLETO (sin truncar)
                     content = doc.get("content_preview", "")
                     if content.strip():
                         documents.append(Document(
@@ -132,24 +123,15 @@ class DynamicJusticIARetriever(BaseRetriever):
                                 "similarity_score": doc.get("similarity_score", 0.0)
                             }
                         ))
-                        # Debug primeros documentos
-                        if i < 2:
-                            print(f"   📄 Doc {i+1}: {len(content)} chars, expediente: {doc.get('expedient_id', 'N/A')}, similarity: {doc.get('similarity_score', 0.0):.3f}")
             
-            print(f"   ✅ {len(documents)} documentos convertidos a LangChain format")
-            logger.info(f"Búsqueda general: {len(documents)} documentos recuperados")
+            logger.debug(f"Convertidos {len(documents)} documentos a formato LangChain")
             return documents
             
         except Exception as e:
-            logger.error(f"Error en búsqueda general: {e}")
+            logger.error(f"Error en búsqueda general: {e}", exc_info=True)
             return []
     
     def _get_relevant_documents(self, query: str) -> List[Document]:
         """Método síncrono requerido por BaseRetriever."""
         import asyncio
         return asyncio.run(self._aget_relevant_documents(query))
-
-
-
-# Alias para compatibilidad
-JusticIARetriever = DynamicJusticIARetriever
