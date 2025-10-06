@@ -5,6 +5,9 @@ from app.vectorstore.vectorstore import search_by_text, get_expedient_documents
 import logging
 from pydantic import Field
 
+# IMPORTANTE: Usar constantes de metadata para evitar typos
+from app.constants.metadata_fields import MetadataFields as MF
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,13 +117,14 @@ class DynamicJusticIARetriever(BaseRetriever):
                     # Convertir dict a Document
                     content = doc.get("content_preview", "")
                     if content.strip():
+                        # Usar constantes MF para metadata (consistencia total)
                         documents.append(Document(
                             page_content=content,
                             metadata={
-                                "expediente_numero": doc.get("expedient_id", ""),
-                                "archivo": doc.get("document_name", ""),
-                                "id_documento": doc.get("id", ""),
-                                "similarity_score": doc.get("similarity_score", 0.0)
+                                MF.EXPEDIENTE_NUMERO: doc.get("expedient_id", ""),
+                                MF.DOCUMENTO_NOMBRE: doc.get("document_name", ""),
+                                MF.DOCUMENTO_ID: doc.get("id", ""),
+                                MF.SIMILARITY_SCORE: doc.get("similarity_score", 0.0)
                             }
                         ))
             

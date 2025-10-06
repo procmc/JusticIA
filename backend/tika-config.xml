@@ -24,6 +24,37 @@
   </server>
   
   <parsers>
+    <!-- Parser para documentos de Microsoft Office (.docx, .xlsx, .pptx, etc.) -->
+    <parser class="org.apache.tika.parser.microsoft.ooxml.OOXMLParser">
+      <params>
+        <!-- Extraer contenido de texto -->
+        <param name="extractMacros" type="bool">false</param>
+        <param name="includeHeadersAndFooters" type="bool">true</param>
+        <param name="useSAXDocxExtractor" type="bool">true</param>
+      </params>
+    </parser>
+    
+    <!-- Parser para documentos Office antiguos (.doc, .xls, .ppt) -->
+    <parser class="org.apache.tika.parser.microsoft.OfficeParser">
+      <params>
+        <param name="extractMacros" type="bool">false</param>
+      </params>
+    </parser>
+    
+    <!-- Parser para Rich Text Format (.rtf) -->
+    <parser class="org.apache.tika.parser.rtf.RTFParser">
+      <params>
+        <!-- Extraer texto formateado -->
+      </params>
+    </parser>
+    
+    <!-- Parser para OpenDocument Format (.odt, .ods, .odp) -->
+    <parser class="org.apache.tika.parser.odf.OpenDocumentParser">
+      <params>
+        <!-- Soporta LibreOffice/OpenOffice -->
+      </params>
+    </parser>
+    
     <!-- Parser por defecto para PDFs (extrae texto embebido) -->
     <parser class="org.apache.tika.parser.pdf.PDFParser">
       <params>
