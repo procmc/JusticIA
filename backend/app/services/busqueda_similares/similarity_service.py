@@ -20,7 +20,7 @@ from app.embeddings.embeddings import get_embeddings
 from app.llm.llm_service import get_llm
 
 # Importar módulos RAG para consistencia
-from app.services.RAG.retriever import JusticIARetriever
+from app.services.RAG.retriever import DynamicJusticIARetriever
 
 # Importar constructor de prompts específico para similarity
 from .similarity_prompt_builder import (
@@ -90,14 +90,16 @@ class SimilarityService:
             raise ValueError("texto_consulta es requerido")
 
         # Usar el mismo retriever que RAG para consistencia
-        retriever = JusticIARetriever(top_k=request.limite or 30)
+        retriever = DynamicJusticIARetriever(
+            top_k=request.limite or 30,
+            similarity_threshold=request.umbral_similitud if request.umbral_similitud > 0 else 0.3
+        )
         
         # Obtener documentos como LangChain Documents
+        # El retriever ya aplica el similarity_threshold internamente
         docs = await retriever._aget_relevant_documents(request.texto_consulta)
         
-        # Filtrar por umbral de similitud si se especifica
-        if request.umbral_similitud > 0:
-            docs = [doc for doc in docs if doc.metadata.get("similarity_score", 0) >= request.umbral_similitud]
+        logger.info(f"Búsqueda por descripción: {len(docs)} documentos recuperados")
 
         # Convertir LangChain Documents al formato esperado por documento_retrieval_service
         similar_docs = []
@@ -108,8 +110,8 @@ class SimilarityService:
             
             similar_docs.append({
                 "id": doc.metadata.get("id_documento", ""),
-                "expedient_id": doc.metadata.get("expediente_numero", ""),
-                "document_name": doc.metadata.get("archivo", ""),
+                "expedient_id": doc.metadata.get("expediente_numero", ""),  # ← Campo que usa el retriever
+                "document_name": doc.metadata.get("archivo", ""),           # ← Campo que usa el retriever
                 "content_preview": content_preview,
                 "similarity_score": doc.metadata.get("similarity_score", 0.0),
                 "metadata": doc.metadata
@@ -174,25 +176,23 @@ class SimilarityService:
     async def _obtener_documentos_expediente(self, numero_expediente: str) -> List[Document]:
         """Obtiene documentos del expediente usando retriever o fallback a BD."""
         try:
-            # Estrategia principal: usar retriever
-            retriever = JusticIARetriever(top_k=50)
-            logger.info("Retriever inicializado correctamente")
+            # Estrategia principal: usar retriever con filtro directo (más eficiente)
+            retriever = DynamicJusticIARetriever(
+                top_k=50,
+                similarity_threshold=0.2,  # Más permisivo para obtener todos los docs
+                expediente_filter=numero_expediente  # Filtro directo en Milvus
+            )
+            logger.info(f"Retriever inicializado con filtro de expediente: {numero_expediente}")
             
-            query_expediente = f"expediente {numero_expediente} documentos contenido"
+            # Query simple - el filtro ya limita al expediente
+            query_expediente = f"documentos del expediente {numero_expediente}"
             logger.info(f"Query para búsqueda: {query_expediente}")
             
-            docs = await retriever._aget_relevant_documents(query_expediente)
-            logger.info(f"Documentos obtenidos del retriever: {len(docs)}")
-            
-            # Filtrar solo documentos de este expediente específico
-            # IMPORTANTE: el campo en Milvus es "numero_expediente", no "expediente_numero"
-            docs_expediente = [
-                doc for doc in docs 
-                if doc.metadata.get("numero_expediente") == numero_expediente
-            ]
+            docs_expediente = await retriever._aget_relevant_documents(query_expediente)
+            logger.info(f"Documentos obtenidos con filtro: {len(docs_expediente)}")
             
             if docs_expediente:
-                logger.info(f"Documentos filtrados para expediente {numero_expediente}: {len(docs_expediente)}")
+                logger.info(f"Documentos recuperados para expediente {numero_expediente}: {len(docs_expediente)}")
                 return docs_expediente
             else:
                 logger.warning("No se encontraron documentos en retriever, usando fallback")
