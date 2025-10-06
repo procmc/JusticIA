@@ -36,7 +36,7 @@ async def startup_event():
     # 3. Inicializar Milvus
     try:
         await get_client()
-        print("Milvus")
+        print("Milvus configurado correctamente")
     except Exception as e:
         raise RuntimeError(f"Error inicializando Milvus: {e}")
 
