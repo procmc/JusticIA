@@ -51,6 +51,8 @@ services:
       dockerfile: Dockerfile.tika
     ports:
       - "9998:9998"
+    volumes:
+      - ./backend/tika-config.xml:/app/tika-config.xml
     restart: unless-stopped
     environment:
       # Memoria dinámica: mín 256MB, máx 2GB (para OCR pesado en VM)

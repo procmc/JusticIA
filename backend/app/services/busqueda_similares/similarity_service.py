@@ -28,6 +28,9 @@ from .similarity_prompt_builder import (
     create_similarity_search_context
 )
 
+# IMPORTANTE: Usar constantes de metadata para evitar typos
+from app.constants.metadata_fields import MetadataFields as MF
+
 logger = logging.getLogger(__name__)
 
 class SimilarityService:
@@ -108,12 +111,13 @@ class SimilarityService:
             preview_chars = 500
             content_preview = doc.page_content[:preview_chars] + "..." if len(doc.page_content) > preview_chars else doc.page_content
             
+            # Usar constantes de metadata (MF) para evitar typos
             similar_docs.append({
-                "id": doc.metadata.get("id_documento", ""),
-                "expedient_id": doc.metadata.get("expediente_numero", ""),  # ← Campo que usa el retriever
-                "document_name": doc.metadata.get("archivo", ""),           # ← Campo que usa el retriever
+                "id": doc.metadata.get(MF.DOCUMENTO_ID, ""),
+                "expedient_id": doc.metadata.get(MF.EXPEDIENTE_NUMERO, ""),
+                "document_name": doc.metadata.get(MF.DOCUMENTO_NOMBRE, ""),
                 "content_preview": content_preview,
-                "similarity_score": doc.metadata.get("similarity_score", 0.0),
+                "similarity_score": doc.metadata.get(MF.SIMILARITY_SCORE, 0.0),
                 "metadata": doc.metadata
             })
 

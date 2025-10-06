@@ -44,10 +44,27 @@ const IngestaDatos = () => {
     filesWithoutExpediente
   } = useFileUpload();
 
+  // Validar formato solo cuando el usuario intenta guardar
   const isExpedienteValid = validarFormatoExpediente(expedienteNumero);
 
   const handleSaveClick = () => {
+    // Validar formato antes de mostrar modal
+    if (!isExpedienteValid) {
+      // Mostrar mensaje de error (puedes usar toast o alert)
+      alert('El formato del expediente no es válido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)');
+      return;
+    }
     setShowConfirmModal(true);
+  };
+
+  const handleConfirmUpload = () => {
+    // Doble validación antes de subir
+    if (!isExpedienteValid) {
+      alert('El formato del expediente no es válido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)');
+      setShowConfirmModal(false);
+      return;
+    }
+    uploadFiles(files);
   };
 
   // Hook para manejar el proceso de subida y polling
@@ -68,11 +85,11 @@ const IngestaDatos = () => {
   }, []);
 
   // Condiciones para deshabilitar el botón
+  // Solo validar longitud mínima (17 chars para YY-NNNNNN-NNNN-XX) mientras escribe, formato completo al guardar
   const isButtonDisabled = uploading || 
                           pendingFiles === 0 || 
                           filesWithoutExpediente > 0 || 
-                          !expedienteNumero.trim() || 
-                          !isExpedienteValid;
+                          expedienteNumero.trim().length < 17;
 
   return (
     <div className="p-6 space-y-6 mx-auto">
@@ -127,7 +144,7 @@ const IngestaDatos = () => {
       <UploadConfirmModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        onConfirm={() => uploadFiles(files)}
+        onConfirm={handleConfirmUpload}
         files={files}
         pendingFiles={pendingFiles}
         expedienteNumero={expedienteNumero}

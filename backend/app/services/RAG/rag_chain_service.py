@@ -146,8 +146,8 @@ class RAGChainService:
         logger.info(f"EXPEDIENTE - Número: {expediente_numero}")
         logger.info(f"EXPEDIENTE - Pregunta: '{pregunta}'")
         
-        # Validar formato de expediente
-        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+        # Validar formato de expediente (acepta YY-NNNNNN-NNNN-XX o YYYY-NNNNNN-NNNN-XX)
+        expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
         if not re.match(expediente_pattern, expediente_numero):
             logger.error(f"EXPEDIENTE - Formato inválido: {expediente_numero}")
             logger.info(f"EXPEDIENTE - Fallback a búsqueda general")
@@ -422,8 +422,8 @@ Respuesta:"""
         """
         logger.info(f"📂 EXPEDIENTE CON HISTORIAL - Número: {expediente_numero}")
         
-        # Validar formato
-        expediente_pattern = r'\b\d{4}-\d{6}-\d{4}-[A-Z]{2}\b'
+        # Validar formato (acepta YY-NNNNNN-NNNN-XX o YYYY-NNNNNN-NNNN-XX)
+        expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
         if not re.match(expediente_pattern, expediente_numero):
             logger.error(f"❌ Formato inválido: {expediente_numero}")
             # Fallback a general

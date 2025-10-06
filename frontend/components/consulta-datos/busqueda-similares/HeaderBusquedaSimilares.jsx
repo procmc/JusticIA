@@ -20,12 +20,20 @@ const HeaderBusquedaSimilares = ({
   isSearching = false
 }) => {
   
-  // Calcular estadísticas de búsqueda
+  // Calcular estadísticas de búsqueda basadas en similarityPercentage
   const totalResults = searchResults.length;
-  const filteredResults = searchResults.filter(result => result.similarity >= similarityThreshold[0]);
-  const highSimilarity = searchResults.filter(result => result.similarity >= 90).length;
-  const mediumSimilarity = searchResults.filter(result => result.similarity >= 70 && result.similarity < 90).length;
-  const lowSimilarity = searchResults.filter(result => result.similarity < 70).length;
+  const filteredResults = searchResults.filter(result => 
+    (result.similarityPercentage || 0) >= similarityThreshold[0]
+  );
+  const highSimilarity = searchResults.filter(result => 
+    (result.similarityPercentage || 0) >= 90
+  ).length;
+  const mediumSimilarity = searchResults.filter(result => 
+    (result.similarityPercentage || 0) >= 70 && (result.similarityPercentage || 0) < 90
+  ).length;
+  const lowSimilarity = searchResults.filter(result => 
+    (result.similarityPercentage || 0) < 70
+  ).length;
 
   // Estadísticas por defecto cuando no hay búsqueda
   const defaultStats = {

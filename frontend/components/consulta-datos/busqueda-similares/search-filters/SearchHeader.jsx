@@ -5,6 +5,7 @@ import { FiAlertCircle, FiFolder } from 'react-icons/fi';
 import { PiBroomLight } from 'react-icons/pi';
 import { Textarea } from '@/components/ui/Textarea';
 import SearchInstructions from './SearchInstructions';
+import { validarExpediente, obtenerMensajeError } from '@/utils/validation/expedienteValidator';
 
 const SearchHeader = ({
   searchMode,
@@ -25,10 +26,9 @@ const SearchHeader = ({
     } else if (searchMode === 'expedient') {
       const trimmedNumber = expedientNumber.trim();
       if (trimmedNumber.length === 0) return false;
-      
-      // Validar formato de expediente
-      const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
-      return expedientPattern.test(trimmedNumber);
+
+      // Usar validador unificado (misma lógica que ingesta)
+      return validarExpediente(trimmedNumber);
     }
     return false;
   };
@@ -37,10 +37,12 @@ const SearchHeader = ({
   const isExpedientFormatInvalid = () => {
     if (searchMode !== 'expedient') return false;
     const trimmedNumber = expedientNumber.trim();
-    if (trimmedNumber.length === 0) return false;
-    
-    const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
-    return !expedientPattern.test(trimmedNumber);
+
+    // No mostrar error si está vacío o si aún está escribiendo (menos de 17 chars para YY-NNNNNN-NNNN-XX)
+    if (trimmedNumber.length === 0 || trimmedNumber.length < 17) return false;
+
+    // Solo mostrar error si ya escribió suficientes caracteres pero el formato es inválido
+    return !validarExpediente(trimmedNumber);
   };
 
   const isButtonDisabled = !canSearch() || isSearching;
@@ -205,7 +207,7 @@ const SearchHeader = ({
                   <Input
                     label="Número de expediente"
                     labelPlacement='outside'
-                    placeholder="98-003287-0166-LA"
+                    placeholder="02-000744-0164-CI"
                     value={expedientNumber}
                     onChange={(e) => setExpedientNumber(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -214,30 +216,28 @@ const SearchHeader = ({
                     size="md"
                     isRequired
                     isInvalid={isExpedientFormatInvalid()}
-                    errorMessage={isExpedientFormatInvalid() ? "Formato inválido. Ejemplo: 2024-077074-3274-TR" : ""}
+                    errorMessage={isExpedientFormatInvalid() ? "Formato inválido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)" : ""}
                     startContent={
-                      <IoDocument className="w-4 h-4 text-gray-400" />
+                      <FiFolder className="w-4 h-4 text-gray-400" />
                     }
                     className="w-full"
                   />
                 </div>
-                
-                {/* Instrucción simple y elegante - Responsive */}
-                <div className="mb-10">
-                  <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                      <div className="flex items-center">
-                        <FiAlertCircle className="w-4 h-4 text-primary-600 mr-2 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">Formato requerido:</span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:ml-1 gap-1 sm:gap-2">
-                        <code className="px-2 py-1 bg-white rounded text-primary-600 font-mono text-xs border inline-block">
-                          AA-NNNNNN-OOOO-MM
+
+                {/* Explicación del formato (ABAJO) */}
+                <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4 rounded-r-lg">
+                  <div className="flex items-start gap-2">
+                    <FiAlertCircle className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                        <span className="font-medium">Formato requerido:</span>
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                          YY-NNNNNN-NNNN-XX
                         </code>
-                        <span className="text-xs text-gray-600 sm:text-sm">
-                          (Año-Consecutivo-Oficina-Materia)
-                        </span>
                       </div>
+                      <p className="text-xs text-gray-600 italic mt-1">
+                        * Use el formato oficial del Poder Judicial de Costa Rica
+                      </p>
                     </div>
                   </div>
                 </div>
