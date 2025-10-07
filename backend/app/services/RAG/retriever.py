@@ -12,20 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class DynamicJusticIARetriever(BaseRetriever):
-    """
-    Retriever optimizado para JusticIA con LangChain.
-    
-    RESPONSABILIDADES:
-    - Búsqueda vectorial en Milvus
-    - Filtrado por expediente específico (si se proporciona)
-    - Control de threshold y top-k
-    
-    NO maneja (lo hace LangChain):
-    - Reformulación de queries (create_history_aware_retriever)
-    - Contexto conversacional (RunnableWithMessageHistory)
-    - Referencias contextuales ("último caso", etc.) - LangChain las reformula
-    """
-    
     # Campos Pydantic V2
     top_k: int = Field(default=10, description="Número de documentos a recuperar")
     similarity_threshold: float = Field(default=0.3, description="Umbral de similitud mínimo")
@@ -50,13 +36,6 @@ class DynamicJusticIARetriever(BaseRetriever):
         )
     
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
-        """
-        Recupera documentos relevantes de Milvus.
-        
-        NOTA: La query ya viene reformulada por create_history_aware_retriever
-        si se usa con gestión de historial. No necesitamos detectar referencias
-        contextuales manualmente.
-        """
         try:
             # FLUJO 1: Expediente específico (filtro explícito)
             if self.expediente_filter:

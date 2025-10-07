@@ -1,8 +1,3 @@
-"""
-Módulo para formateo de contexto estructurado por chunks.
-Agrupa y ordena chunks por documento para mayor coherencia del LLM.
-"""
-
 from typing import List
 from langchain_core.documents import Document
 from collections import defaultdict
@@ -14,17 +9,6 @@ def format_documents_by_chunks(
     max_docs: int = 20, 
     max_chars_per_chunk: int = 800
 ) -> str:
-    """
-    Formatea documentos agrupándolos por archivo y ordenando chunks secuencialmente.
-    
-    Args:
-        docs: Lista de documentos LangChain con metadata de Milvus
-        max_docs: Máximo de chunks a incluir en total
-        max_chars_per_chunk: Máximo de caracteres por chunk individual
-        
-    Returns:
-        Contexto formateado estructurado por documentos con chunks ordenados
-    """
     if not docs:
         return "No hay información disponible."
     
@@ -39,15 +23,6 @@ def format_documents_by_chunks(
 
 
 def _group_chunks_by_document(docs: List[Document]) -> dict:
-    """
-    Agrupa chunks por documento usando id_documento + nombre_archivo.
-    
-    Args:
-        docs: Lista de documentos LangChain
-        
-    Returns:
-        Dict con clave "id_nombre" y valor lista de chunks
-    """
     docs_by_file = defaultdict(list)
     
     for doc in docs:
@@ -63,13 +38,6 @@ def _group_chunks_by_document(docs: List[Document]) -> dict:
 
 
 def _sort_chunks_within_documents(docs_by_file: dict) -> None:
-    """
-    Ordena chunks dentro de cada documento por indice_chunk.
-    Modifica el diccionario in-place.
-    
-    Args:
-        docs_by_file: Dict con documentos agrupados
-    """
     for doc_key in docs_by_file:
         docs_by_file[doc_key].sort(
             key=lambda d: d.metadata.get("indice_chunk", 0)
@@ -77,16 +45,6 @@ def _sort_chunks_within_documents(docs_by_file: dict) -> None:
 
 
 def _format_grouped_documents(docs_by_file: dict, max_chars_per_chunk: int) -> str:
-    """
-    Formatea documentos agrupados en texto estructurado para el LLM.
-    
-    Args:
-        docs_by_file: Dict con documentos agrupados y ordenados
-        max_chars_per_chunk: Máximo de caracteres por chunk
-        
-    Returns:
-        Contexto formateado como string
-    """
     context_parts = []
     doc_counter = 0
     total_chunks_shown = 0

@@ -1,10 +1,3 @@
-"""
-Session Store para gestión de conversaciones con LangChain.
-
-Proporciona almacenamiento en memoria para múltiples sesiones de chat,
-compatible con RunnableWithMessageHistory de LangChain.
-"""
-
 from typing import Dict, List, Optional, Callable
 from datetime import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -15,11 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class InMemoryChatMessageHistory(BaseChatMessageHistory):
-    """
-    Implementación de BaseChatMessageHistory para almacenamiento en memoria.
-    Compatible con RunnableWithMessageHistory de LangChain.
-    """
-    
     def __init__(self, session_id: str):
         self.session_id = session_id
         self._messages: List[BaseMessage] = []
@@ -73,17 +61,6 @@ class ConversationMetadata:
 
 
 class ConversationStore:
-    """
-    Store centralizado para gestión de múltiples conversaciones.
-    
-    Features:
-    - Almacenamiento en memoria de sesiones
-    - Índice por usuario para recuperación rápida
-    - Metadatos para UI (título, fechas, contador)
-    - Compatible con RunnableWithMessageHistory
-    - Auto-generación de títulos
-    """
-    
     def __init__(self):
         # Almacenamiento principal: {session_id: InMemoryChatMessageHistory}
         self._store: Dict[str, InMemoryChatMessageHistory] = {}
@@ -97,17 +74,6 @@ class ConversationStore:
         logger.info("ConversationStore inicializado")
     
     def get_session_history(self, session_id: str) -> BaseChatMessageHistory:
-        """
-        Obtiene o crea el historial de una sesión.
-        
-        Esta es la función que se pasa a RunnableWithMessageHistory.
-        
-        Args:
-            session_id: ID de la sesión
-            
-        Returns:
-            BaseChatMessageHistory con los mensajes de la sesión
-        """
         if session_id not in self._store:
             logger.info(f"Creando nueva sesión: {session_id}")
             self._store[session_id] = InMemoryChatMessageHistory(session_id)
@@ -186,15 +152,6 @@ class ConversationStore:
                 break
     
     def get_user_sessions(self, user_id: str) -> List[ConversationMetadata]:
-        """
-        Obtiene todas las sesiones de un usuario con sus metadatos.
-        
-        Args:
-            user_id: ID del usuario
-            
-        Returns:
-            Lista de ConversationMetadata ordenada por fecha de actualización
-        """
         session_ids = self._user_sessions.get(user_id, [])
         
         conversations = []
@@ -209,15 +166,6 @@ class ConversationStore:
         return conversations
     
     def get_session_detail(self, session_id: str) -> Optional[Dict]:
-        """
-        Obtiene el detalle completo de una sesión (metadatos + mensajes).
-        
-        Args:
-            session_id: ID de la sesión
-            
-        Returns:
-            Dict con metadata y messages, o None si no existe
-        """
         if session_id not in self._store or session_id not in self._metadata:
             return None
         
@@ -244,16 +192,6 @@ class ConversationStore:
         }
     
     def delete_session(self, session_id: str, user_id: str) -> bool:
-        """
-        Elimina una sesión y sus metadatos.
-        
-        Args:
-            session_id: ID de la sesión
-            user_id: ID del usuario (para validación)
-            
-        Returns:
-            True si se eliminó, False si no existía
-        """
         # Validar que la sesión pertenece al usuario
         if (user_id in self._user_sessions and 
             session_id in self._user_sessions[user_id]):
@@ -276,12 +214,6 @@ class ConversationStore:
         return False
     
     def clear_user_sessions(self, user_id: str):
-        """
-        Elimina todas las sesiones de un usuario.
-        
-        Args:
-            user_id: ID del usuario
-        """
         session_ids = self._user_sessions.get(user_id, []).copy()
         
         for session_id in session_ids:
@@ -300,26 +232,8 @@ class ConversationStore:
             )
         }
 
-
 # Instancia global del store
 conversation_store = ConversationStore()
 
-
 def get_session_history_func() -> Callable:
-    """
-    Retorna la función para obtener historial de sesión.
-    
-    Esta función es compatible con RunnableWithMessageHistory:
-    
-    Usage:
-        with_message_history = RunnableWithMessageHistory(
-            chain,
-            get_session_history_func(),
-            input_messages_key="input",
-            history_messages_key="chat_history",
-        )
-    
-    Returns:
-        Callable que acepta session_id y retorna BaseChatMessageHistory
-    """
     return conversation_store.get_session_history

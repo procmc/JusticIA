@@ -1,14 +1,3 @@
-"""
-LangChain Conversational Chains para JusticIA.
-
-Implementa:
-- create_history_aware_retriever: Reformulación automática de preguntas con contexto
-- create_retrieval_chain: Chain principal que combina retriever + answer generation
-- create_stuff_documents_chain: Chain para generar respuestas desde documentos
-
-Compatible con streaming y gestión de sesiones.
-"""
-
 from typing import List, Dict, Any, Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
@@ -169,7 +158,7 @@ async def create_conversational_rag_chain(
         prompt=CONTEXTUALIZE_Q_PROMPT,
     )
     
-    logger.info("✅ History-aware retriever creado")
+    logger.info("History-aware retriever creado")
     
     # 2. Document Chain: Genera respuesta desde documentos
     question_answer_chain = create_stuff_documents_chain(
@@ -177,7 +166,7 @@ async def create_conversational_rag_chain(
         prompt=ANSWER_PROMPT
     )
     
-    logger.info("✅ Question-answer chain creado")
+    logger.info("Question-answer chain creado")
     
     # 3. Retrieval Chain: Combina retriever + answer generation
     rag_chain = create_retrieval_chain(
@@ -185,7 +174,7 @@ async def create_conversational_rag_chain(
         question_answer_chain,
     )
     
-    logger.info("✅ RAG chain creado")
+    logger.info("RAG chain creado")
     
     # 4. Agregar gestión de historial si está habilitado
     if with_history:
@@ -382,10 +371,10 @@ async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[
         done_data = {"type": "done", "content": "", "done": True}
         yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
         
-        logger.info(f"✅ Streaming completado: {total_chars} caracteres")
+        logger.info(f"Streaming completado: {total_chars} caracteres")
         
     except Exception as e:
-        logger.error(f"❌ Error en streaming: {e}", exc_info=True)
+        logger.error(f"Error en streaming: {e}", exc_info=True)
         
         error_data = {
             "type": "error",
