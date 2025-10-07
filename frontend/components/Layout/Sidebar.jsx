@@ -1,11 +1,11 @@
 import classNames from "classnames";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { MdOutlineKeyboardDoubleArrowRight, MdOutlineKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { LogoutIcon } from "../icons";
-import { menuItems } from "../../data/menuitems";
+import { menuItems, filterMenuByRole } from "../../data/menuitems";
 import { useSession, signOut } from "next-auth/react";
 import { Tooltip } from "@heroui/tooltip";
 import { clearAllChatContext } from "../../utils/chatContextUtils";
@@ -15,6 +15,12 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
   const [expandedItems, setExpandedItems] = useState([]);
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Filtrar menús según el rol del usuario
+  const filteredMenuItems = useMemo(() => {
+    if (!session?.user?.role) return [];
+    return filterMenuByRole(menuItems, session.user.role);
+  }, [session?.user?.role]);
 
   const handleLogout = async () => {
     try {
@@ -147,7 +153,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
 
         <div className="flex flex-col items-start mt-10">
           {(
-            menuItems.map(({ id, icon: Icon, link, label, subItems }) => {
+            filteredMenuItems.map(({ id, icon: Icon, link, label, subItems }) => {
               const hasSubItems = subItems && subItems.length > 0;
 
               return (

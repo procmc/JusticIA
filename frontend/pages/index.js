@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 import {
   IoShield,
   IoDocument,
@@ -7,12 +9,30 @@ import {
   IoChatbubble,
   IoSettings
 } from 'react-icons/io5';
+import Toast from '@/components/ui/CustomAlert';
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Verificar si hay error de autorización en la URL
+    if (router.query.error === 'unauthorized') {
+      const requiredRoles = router.query.required ? router.query.required.split(',') : [];
+      
+      Toast.error(
+        'Acceso Denegado',
+        requiredRoles.length > 0
+          ? `No tienes permisos para acceder a esa página. Roles requeridos: ${requiredRoles.join(', ')}`
+          : 'No tienes permisos para acceder a esa página.'
+      );
+
+      // Limpiar la URL
+      router.replace('/', undefined, { shallow: true });
+    }
+  }, [router.query]);
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-white relative overflow-hidden">{/* Hero Section */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-120px)] px-6 text-center pt-24">
         <div className="max-w-5xl mx-auto">
 
