@@ -39,6 +39,7 @@ class CasoSimilar(BaseModel):
     CN_Id_expediente: Optional[Union[int, str]] = None  # Acepta tanto int como str
     CT_Num_expediente: str
     puntuacion_similitud: float
+    fecha_creacion: Optional[str] = None  # Fecha de creación del expediente (ISO format)
     documentos_coincidentes: List[DocumentoCoincidente]
     total_documentos: int
 
