@@ -3,7 +3,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 from app.services.RAG.rag_chain_service import get_rag_service
-from app.utils.security_validator import validate_user_input
 import logging
 import json
 
@@ -76,35 +75,8 @@ async def consulta_con_historial_stream(
                 detail="session_id es requerido"
             )
         
-        # Validación de seguridad
-        security_result = validate_user_input(request.query)
-        
-        if security_result.should_block:
-            # Retornar respuesta de seguridad como streaming
-            async def security_response():
-                response_data = {
-                    "type": "chunk",
-                    "content": security_result.response_override,
-                    "done": False
-                }
-                yield f"data: {json.dumps(response_data, ensure_ascii=False)}\n\n"
-                
-                done_data = {"type": "done", "content": "", "done": True}
-                yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
-            
-            return StreamingResponse(
-                security_response(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
-        
-        # Usar texto sanitizado
-        query_to_use = security_result.sanitized_text if security_result.sanitized_text else request.query
+        # Usar query directamente (sin validación de seguridad por ahora)
+        query_to_use = request.query
         
         logger.info(f"🆕 Consulta con historial - Session: {request.session_id}")
         logger.info(f"🆕 Query: {query_to_use[:100]}...")
