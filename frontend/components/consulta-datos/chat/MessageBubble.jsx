@@ -22,6 +22,24 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const MarkdownRenderer = ({ content, forceKey }) => {
     if (!content) return null;
 
+    // Preprocesar contenido para limpiar tags HTML del LLM
+    const preprocessContent = (text) => {
+      return text
+        // Reemplazar <br> y <br/> y <br /> con saltos de línea Markdown
+        .replace(/<br\s*\/?>/gi, '  \n')
+        // Reemplazar múltiples <br> consecutivos con doble salto (nuevo párrafo)
+        .replace(/(<br\s*\/?>\s*){2,}/gi, '\n\n')
+        // Eliminar otros tags HTML comunes que el LLM pueda generar
+        .replace(/<\/?strong>/gi, '**')
+        .replace(/<\/?b>/gi, '**')
+        .replace(/<\/?em>/gi, '*')
+        .replace(/<\/?i>/gi, '*')
+        // Limpiar cualquier otro tag HTML residual
+        .replace(/<[^>]+>/g, '');
+    };
+
+    const cleanContent = preprocessContent(content);
+
     // Componentes personalizados para elementos Markdown
     const components = {
       // Párrafos con justificación
@@ -160,7 +178,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
           remarkPlugins={[remarkGfm]}
           components={components}
         >
-          {content}
+          {cleanContent}
         </ReactMarkdown>
       </div>
     );

@@ -146,13 +146,14 @@ async def consulta_general_rag_stream(
             
         # 2. Si no, buscar en la consulta si menciona un expediente (modo general con referencia)
         else:
-            expediente_pattern = r'(?:Consulta sobre expediente|Expediente)\s+(\d{4}-\d{6}-\d{4}-[A-Z]{2})'
+            # Patrón actualizado: acepta YY (2 dígitos) o YYYY (4 dígitos)
+            expediente_pattern = r'(?:Consulta sobre expediente|Expediente)\s+(\d{2,4}-\d{6}-\d{4}-[A-Z]{2})'
             expediente_match = re.search(expediente_pattern, actual_query)
             
             if expediente_match:
                 expediente_filter = expediente_match.group(1)
                 # Limpiar la consulta removiendo la referencia al expediente
-                actual_query = re.sub(r'Consulta sobre expediente\s+\d{4}-\d{6}-\d{4}-[A-Z]{2}:\s*', '', actual_query)
+                actual_query = re.sub(r'Consulta sobre expediente\s+\d{2,4}-\d{6}-\d{4}-[A-Z]{2}:\s*', '', actual_query)
                 logger.info(f"🔍 MODO GENERAL con referencia a expediente: {expediente_filter}")
             else:
                 logger.info(f"🌐 MODO GENERAL sin expediente específico")

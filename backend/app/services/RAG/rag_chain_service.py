@@ -344,15 +344,7 @@ Respuesta:"""
         Consulta general usando LangChain chains con historial automático.
         Usa SmartRetrieverRouter (V2) que decide automáticamente el modo.
         """
-        print(f"\n{'='*80}")
-        print(f"🔄 CONSULTA GENERAL CON HISTORIAL")
-        print(f"   - Pregunta: '{pregunta}'")
-        print(f"   - Session ID: {session_id}")
-        print(f"   - Top-K: {top_k}")
-        print(f"{'='*80}\n")
-        
-        logger.info(f"🔄 GENERAL CON HISTORIAL - Creando chain conversacional")
-        logger.info(f"🔄 Top-K configurado: {top_k}")
+        logger.info(f"🔄 GENERAL CON HISTORIAL - Pregunta: '{pregunta[:50]}...', Session: {session_id}, Top-K: {top_k}")
         
         # Crear retriever con parámetros optimizados
         retriever = DynamicJusticIARetriever(
@@ -360,15 +352,11 @@ Respuesta:"""
             similarity_threshold=0.3
         )
         
-        logger.info(f"✅ DynamicJusticIARetriever creado")
-        
         # Crear chain conversacional
         chain = await create_conversational_rag_chain(
             retriever=retriever,
             with_history=True
         )
-        
-        logger.info(f"✅ Chain conversacional creada")
         
         # Configuración de sesión
         config = {

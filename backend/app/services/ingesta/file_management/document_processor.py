@@ -502,7 +502,11 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
             )
         
         if not texto or not texto.strip():
-            raise ValueError("No se pudo extraer texto del archivo")
+            error_msg = f"No se pudo extraer texto del archivo {filename}"
+            if file_extension:
+                error_msg += f" (Extensión: {file_extension})"
+            error_msg += ". Posibles causas: archivo corrupto, formato no soportado, o archivo protegido con contraseña."
+            raise ValueError(error_msg)
         
         # Validar que no hay caracteres corruptos (problema de encoding)
         if any(char in texto for char in ['茅', '谩', '帽', '贸', 'iacute', 'aacute']):
@@ -515,8 +519,12 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
         return texto_limpio
         
     except Exception as e:
-        logger.error(f"Error extrayendo texto de {filename}: {str(e)}")
-        raise ValueError(f"Error extrayendo texto de {filename}: {str(e)}")
+        error_detallado = f"Error extrayendo texto de {filename}"
+        if file_extension:
+            error_detallado += f" (tipo: {file_extension})"
+        error_detallado += f": {str(e)}"
+        logger.error(error_detallado)
+        raise ValueError(error_detallado)
 
 async def extract_text_from_audio_whisper(content: bytes, filename: str, cancel_check: Optional[callable] = None) -> str:
     """
