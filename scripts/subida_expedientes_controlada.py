@@ -9,7 +9,7 @@ INGESTA_URL = f"{BASE_URL}/ingesta/archivos"
 EXPEDIENTES_DIR = r"c:\Users\Roger Calderon\Downloads\expedientes_50_txt_unicos_largos"
 
 # Token JWT - PEGA TU TOKEN AQUÍ
-JWT_TOKEN = ""  # Pega tu token entre las comillas
+JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNzA5OTkwOTk5Iiwicm9sZSI6IlVzdWFyaW8gSnVkaWNpYWwiLCJ1c2VybmFtZSI6InJvZ2VyLmNhbGRlcm9uQHVjci5hYy5jciIsImV4cCI6MTc1OTg5OTE0MCwiaWF0IjoxNzU5ODcwMzQwfQ.UDoOGxok79UBXyvJU4fOMovDvhdVYnl2hIYCfGrywyw" # Pega tu token entre las comillas
 
 # Configuración para evitar saturación
 BATCH_SIZE = 3  # Procesar solo 3 archivos por lote
