@@ -76,6 +76,7 @@ DOCUMENTOS RECUPERADOS DE LA BASE DE DATOS:
 3. **NO ASUMAS**: No completes información faltante con conocimiento general
 4. **NO EXTERNOS**: No uses información de tu entrenamiento sobre casos legales externos
 5. **NO DIGAS "me proporcionaste"**: Los documentos NO vienen del usuario, vienen de la búsqueda automática en la base de datos
+6. **SOLO MARKDOWN**: USA ÚNICAMENTE SINTAXIS MARKDOWN PURA. NO uses HTML (<br>, <strong>, <table>, etc.)
 
 INSTRUCCIONES:
 1. **Precisión Legal**: Usa lenguaje técnico del contexto, pero explica términos complejos
@@ -88,11 +89,13 @@ INSTRUCCIONES:
 5. **Tono**: Profesional, claro y útil
 6. **Perspectiva**: NUNCA digas "los documentos que me proporcionaste/diste". Di "los expedientes encontrados" o "en la base de datos"
 7. **Referencias**: Cita el expediente de donde obtienes cada dato
-8. **Formato**: 
-   - Usa párrafos y listas para la mayoría de respuestas
-   - USA TABLAS SOLO cuando compares 3+ expedientes con múltiples atributos
-   - NO uses tablas para un solo expediente o respuestas narrativas
-   - Prefiere listas con viñetas para enumeraciones simples
+8. **Formato MARKDOWN**: 
+   - Usa párrafos separados con doble salto de línea
+   - USA TABLAS MARKDOWN cuando compares 3+ expedientes con múltiples atributos
+   - Usa listas con `-` o `*` para enumeraciones
+   - Usa `**negrita**` para resaltar, NO uses HTML
+   - Para saltos de línea dentro de párrafos, usa doble espacio al final
+   - Ejemplo de tabla: `| Columna 1 | Columna 2 |\n|-----------|-----------|`
 
 EJEMPLOS DE RESPUESTAS CORRECTAS:
 ✅ "Encontré varios expedientes sobre narcotráfico en la base de datos:"
@@ -103,6 +106,7 @@ EJEMPLOS DE RESPUESTAS INCORRECTAS:
 ❌ "Los documentos que me proporcionaste..."
 ❌ "Según los archivos que me diste..."
 ❌ "En los expedientes que compartiste..."
+❌ Usar "<br>", "<strong>", "<table>" o cualquier HTML
 
 ANÁLISIS DE EXPEDIENTES ESPECÍFICOS:
 - Si el contexto incluye chunks numerados de un expediente, léelos secuencialmente
@@ -350,62 +354,37 @@ async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[
             yield chunk
     """
     import json
-    
-    print(f"\n{'='*80}")
-    print(f"🎬 STREAMING - Iniciando streaming de respuesta")
-    print(f"   - Input: {input_dict.get('input', 'N/A')[:100]}...")
-    print(f"   - Session ID: {config.get('configurable', {}).get('session_id', 'N/A')}")
-    print(f"{'='*80}\n")
-    
-    chunk_count = 0
+        
     total_chars = 0
     
     try:
         # Stream desde la chain
         async for chunk in chain.astream(input_dict, config=config):
-            chunk_count += 1
-            
-            # Debug primer chunk
-            if chunk_count == 1:
-                print(f"📦 Primer chunk - Tipo: {type(chunk)}, Keys: {list(chunk.keys()) if isinstance(chunk, dict) else 'N/A'}")
-            
             # Las chains de LangChain emiten dicts, extraer 'answer'
-            if isinstance(chunk, dict):
-                if "answer" in chunk:
-                    content = chunk["answer"]
+            if isinstance(chunk, dict) and "answer" in chunk:
+                content = chunk["answer"]
+                
+                # Convertir a string si es necesario
+                if content is not None:
+                    content_str = str(content) if not isinstance(content, str) else content
                     
-                    if content:  # Solo emitir si hay contenido
-                        total_chars += len(str(content))
+                    # Emitir solo si hay contenido (puede ser espacio)
+                    if content_str:
+                        total_chars += len(content_str)
                         chunk_data = {
                             "type": "chunk",
-                            "content": str(content),
+                            "content": content_str,
                             "done": False
                         }
                         yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
-                    else:
-                        print(f"⚠️  Chunk #{chunk_count} con 'answer' vacío")
-                else:
-                    print(f"⚠️  Chunk #{chunk_count} sin 'answer'. Keys: {list(chunk.keys())}")
         
         # Señal de finalización
         done_data = {"type": "done", "content": "", "done": True}
         yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
         
-        print(f"\n{'='*80}")
-        print(f"✅ STREAMING COMPLETADO")
-        print(f"   - Total chunks: {chunk_count}")
-        print(f"   - Total caracteres: {total_chars}")
-        if total_chars == 0:
-            print(f"   ⚠️  ADVERTENCIA: No se generó contenido!")
-        print(f"{'='*80}\n")
-        
-        logger.info("✅ Streaming completado exitosamente")
+        logger.info(f"✅ Streaming completado: {total_chars} caracteres")
         
     except Exception as e:
-        print(f"\n{'='*80}")
-        print(f"❌ ERROR EN STREAMING: {e}")
-        print(f"{'='*80}\n")
-        
         logger.error(f"❌ Error en streaming: {e}", exc_info=True)
         
         error_data = {

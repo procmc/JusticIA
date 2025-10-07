@@ -74,11 +74,32 @@ class TikaService:
                     timeout=self.timeout
                 )
                 
+                # Logging detallado de la respuesta
+                logger.info(f"Tika response status: {response.status_code}")
+                logger.info(f"Response headers: {dict(response.headers)}")
+                logger.info(f"Content-Type detectado: {response.headers.get('Content-Type', 'unknown')}")
+                
                 if response.status_code == 200:
                     text = response.text
                     
                     if not text or not text.strip():
-                        logger.warning(f"Tika no extrajo texto de '{filename}'")
+                        logger.warning(f"Tika no extrajo texto de '{filename}' - Response vacío")
+                        
+                        # Intentar obtener metadata para diagnóstico
+                        try:
+                            meta_response = requests.put(
+                                f"{self.tika_url}/meta",
+                                data=content,
+                                headers={'Accept': 'application/json'},
+                                timeout=30
+                            )
+                            if meta_response.status_code == 200:
+                                metadata = meta_response.json()
+                                logger.warning(f"Metadata del archivo: {metadata}")
+                                logger.warning(f"Parser usado: {metadata.get('X-TIKA:Parsed-By', 'unknown')}")
+                        except Exception as me:
+                            logger.warning(f"No se pudo obtener metadata: {me}")
+                        
                         return ""
                     
                     # Limpiar texto (remover espacios múltiples y saltos de línea)
