@@ -5,11 +5,8 @@ import logging
 import json
 
 from .retriever import DynamicJusticIARetriever
-from .langchain_chains import (
-    create_conversational_rag_chain,
-    create_expediente_specific_chain,
-    stream_chain_response
-)
+from .general_chains import create_conversational_rag_chain, stream_chain_response
+from .expediente_chains import create_expediente_specific_chain
 from .session_store import conversation_store
 
 logger = logging.getLogger(__name__)
@@ -95,7 +92,7 @@ class RAGChainService:
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
-                logger.error(f"❌ Error en streaming con historial: {e}", exc_info=True)
+                logger.error(f" Error en streaming con historial: {e}", exc_info=True)
                 error_data = {
                     "type": "error",
                     "content": f"Error al procesar la consulta: {str(e)}",
@@ -128,7 +125,7 @@ class RAGChainService:
         # Validar formato (acepta YY-NNNNNN-NNNN-XX o YYYY-NNNNNN-NNNN-XX)
         expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
         if not re.match(expediente_pattern, expediente_numero):
-            logger.error(f"❌ Formato inválido: {expediente_numero}")
+            logger.error(f" Formato inválido: {expediente_numero}")
             # Fallback a general
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
@@ -149,7 +146,7 @@ class RAGChainService:
             expediente_filter=expediente_numero
         )
         
-        logger.info(f"✅ DynamicJusticIARetriever creado para expediente {expediente_numero}")
+        logger.info(f" DynamicJusticIARetriever creado para expediente {expediente_numero}")
         
         # Crear chain especializada para expedientes
         chain = await create_expediente_specific_chain(
@@ -158,7 +155,7 @@ class RAGChainService:
             with_history=True
         )
         
-        logger.info(f"✅ Chain expediente creada")
+        logger.info(f" Chain expediente creada")
         
         # Configuración de sesión
         config = {
@@ -182,7 +179,7 @@ class RAGChainService:
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
-                logger.error(f"❌ Error en streaming expediente con historial: {e}", exc_info=True)
+                logger.error(f" Error en streaming expediente con historial: {e}", exc_info=True)
                 error_data = {
                     "type": "error",
                     "content": f"Error al procesar la consulta del expediente: {str(e)}",
