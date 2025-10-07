@@ -1,6 +1,3 @@
-"""
-Construcción de prompts para JusticIA
-"""
 import os
 
 def load_system_prompt():
@@ -13,11 +10,11 @@ def load_system_prompt():
         with open(system_prompt_path, 'r', encoding='utf-8') as f:
             return f.read().strip()
     except:
-        return "Eres JusticIA, asistente virtual especializado en documentos legales del Poder Judicial de Costa Rica."
+        return "Eres JusticBot, asistente virtual especializado en documentos legales del Poder Judicial de Costa Rica."
 
 def create_justicia_prompt(pregunta: str, context: str = "", conversation_context: str = "") -> str:
-    """Crea el prompt completo para JusticIA con validaciones anti-alucinación"""
-    
+    """Crea el prompt completo para JusticBot con validaciones anti-alucinación"""
+
     # Detectar saludos simples
     is_greeting = pregunta.lower().strip() in [
         "hola", "buenos días", "buenas tardes", "buenas noches", 
@@ -31,15 +28,13 @@ def create_justicia_prompt(pregunta: str, context: str = "", conversation_contex
         if conversation_context:
             prompt_parts.append("INSTRUCCIÓN: Saluda familiarmente sin buscar expedientes.")
         else:
-            prompt_parts.append("INSTRUCCIÓN: Preséntate como JusticIA sin buscar expedientes.")
+            prompt_parts.append("INSTRUCCIÓN: Preséntate como JusticBot sin buscar expedientes.")
     
     # System prompt base
     prompt_parts.append(load_system_prompt())
     
     # Historial si existe
     if conversation_context:
-        print(f"📋 Contexto recibido en prompt_builder: {len(conversation_context)} caracteres")
-        print(f"📋 Primeros 200 caracteres del contexto: {conversation_context[:200]}...")
         prompt_parts.append(f"HISTORIAL DE CONVERSACIÓN PREVIA:\n{conversation_context}")
     
     # Expedientes solo para consultas no-saludo con validación
@@ -59,6 +54,6 @@ def create_justicia_prompt(pregunta: str, context: str = "", conversation_contex
     
     # Recordatorio final anti-alucinación
     if not is_greeting:
-        prompt_parts.append("🚨 RECORDATORIO: SOLO usa información del contexto proporcionado. Si no hay información relevante sobre la consulta específica, di claramente que no encuentras información sobre ese tema.")
+        prompt_parts.append("RECORDATORIO: SOLO usa información del contexto proporcionado. Si no hay información relevante sobre la consulta específica, di claramente que no encuentras información sobre ese tema.")
     
     return "\n\n".join(prompt_parts)
