@@ -2,6 +2,34 @@ import React from 'react';
 import { Card, CardBody, Chip, Progress, Button } from '@heroui/react';
 import { IoCalendar, IoScale, IoDocument, IoEye } from 'react-icons/io5';
 
+/**
+ * Formatea una fecha ISO a formato legible en español
+ * @param {string} isoDate - Fecha en formato ISO (ej: "2025-09-19T05:25:28.010000")
+ * @returns {string} - Fecha formateada (ej: "19 sept. 2025")
+ */
+const formatDate = (isoDate) => {
+  if (!isoDate) return 'Sin fecha';
+  
+  try {
+    const date = new Date(isoDate);
+    
+    // Verificar si es una fecha válida
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    
+    const day = date.getDate();
+    const monthNames = [
+      'ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.',
+      'jul.', 'ago.', 'sept.', 'oct.', 'nov.', 'dic.'
+    ];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
+  } catch (error) {
+    return 'Fecha inválida';
+  }
+};
+
 const CaseCard = ({
   caseData,
   parseExpedientNumber,
@@ -88,7 +116,7 @@ const CaseCard = ({
                 <span className="font-medium">{documentCount} documentos</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Creado: {caseData.date}
+                Creado: {formatDate(caseData.date)}
               </div>
             </div>
             <Button

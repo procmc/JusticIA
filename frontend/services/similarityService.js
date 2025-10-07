@@ -236,6 +236,7 @@ class SimilarityService {
             id: caso.CN_Id_expediente || '',
             expedientId: caso.expediente_id || '',
             expedientNumber: caso.CT_Num_expediente || '',
+            date: caso.fecha_creacion || '',  // Fecha de creación del expediente
             similarity: caso.puntuacion_similitud || 0,
             similarityPercentage: Math.round((caso.puntuacion_similitud || 0) * 100),
             documents: (caso.documentos_coincidentes || []).map(doc => {

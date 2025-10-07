@@ -1,9 +1,8 @@
-
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.auth.jwt_auth import require_role
+from app.auth.jwt_auth import require_usuario_judicial
 from app.services.documentos.file_management_service import file_management_service
 import logging
 from celery.result import AsyncResult
@@ -15,8 +14,10 @@ logger = logging.getLogger(__name__)
 
 # Endpoint principal para consultar progreso de tareas
 @router.get("/progress/{task_id}")
-@require_role("Usuario Judicial")
-async def consultar_progreso_tarea(task_id: str, request: Request, current_user: dict = None):
+async def consultar_progreso_tarea(
+    task_id: str,
+    current_user: dict = Depends(require_usuario_judicial),
+):
     """
     Consulta el estado y progreso de una tarea Celery.
     Usa ProgressTracker para progreso granular, con fallback a Celery.
@@ -80,8 +81,9 @@ async def consultar_progreso_tarea(task_id: str, request: Request, current_user:
 
 
 @router.get("/stats")
-@require_role("Usuario Judicial")
-async def get_tasks_stats(request: Request, current_user: dict = None):
+async def get_tasks_stats(
+    current_user: dict = Depends(require_usuario_judicial),
+):
     """
     Obtiene estadísticas de tareas en memoria para monitoreo.
     """
@@ -101,13 +103,11 @@ async def get_tasks_stats(request: Request, current_user: dict = None):
 
 
 @router.post("/archivos")
-@require_role("Usuario Judicial")
 async def ingestar_archivos(
-    request: Request,
     CT_Num_expediente: str = Form(..., description="Número de expediente"),
     files: List[UploadFile] = File(..., description="Archivos a procesar"),
     db: Session = Depends(get_db),
-    current_user: dict = None,
+    current_user: dict = Depends(require_usuario_judicial),
 ):
     """
     Ingesta de archivos de forma asíncrona usando Celery.
@@ -154,8 +154,10 @@ async def ingestar_archivos(
 
 
 @router.post("/cancel/{task_id}")
-@require_role("Usuario Judicial")
-async def cancelar_tarea(task_id: str, request: Request, current_user: dict = None):
+async def cancelar_tarea(
+    task_id: str,
+    current_user: dict = Depends(require_usuario_judicial),
+):
     """
     Cancela una tarea de procesamiento de archivo en ejecución.
     

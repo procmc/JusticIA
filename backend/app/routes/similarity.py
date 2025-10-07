@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.similarity_schemas import (
     SimilaritySearchRequest,
     RespuestaBusquedaSimilitud,
@@ -6,23 +6,21 @@ from app.schemas.similarity_schemas import (
     RespuestaGenerarResumen,
 )
 from app.services.busqueda_similares.similarity_service import SimilarityService
-from app.auth.jwt_auth import require_role
+from app.auth.jwt_auth import require_usuario_judicial
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.post("/search", response_model=RespuestaBusquedaSimilitud)
-@require_role("Usuario Judicial")
 async def search_similar_cases(
-    request: Request,
-    search_request: SimilaritySearchRequest,
-    current_user: dict = None,
+    data: SimilaritySearchRequest,
+    current_user: dict = Depends(require_usuario_judicial),
 ) -> RespuestaBusquedaSimilitud:
     """Buscar casos similares."""
     try:
         similarity_service = SimilarityService()
-        result = await similarity_service.search_similar_cases(search_request)
+        result = await similarity_service.search_similar_cases(data)
         return result
         
     except ValueError as e:
@@ -43,16 +41,14 @@ async def search_similar_cases(
 
 
 @router.post("/generate-summary", response_model=RespuestaGenerarResumen)
-@require_role("Usuario Judicial")
 async def generate_case_summary(
-    request: Request,
-    summary_request: GenerateResumenRequest,
-    current_user: dict = None,
+    data: GenerateResumenRequest,
+    current_user: dict = Depends(require_usuario_judicial),
 ) -> RespuestaGenerarResumen:
     """Generar resumen de IA para un expediente específico."""
     try:
         similarity_service = SimilarityService()
-        result = await similarity_service.generate_case_summary(summary_request.numero_expediente)
+        result = await similarity_service.generate_case_summary(data.numero_expediente)
         return result
         
     except ValueError as e:

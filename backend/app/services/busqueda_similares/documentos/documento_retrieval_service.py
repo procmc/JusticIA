@@ -106,6 +106,7 @@ class DocumentoRetrievalService:
                 "CN_Id_expediente": expediente.get("CN_Id_expediente"),  # ID real de BD
                 "CT_Num_expediente": expedient_id,  # CT_Num_expediente (más claro)
                 "puntuacion_similitud": similar_info.get("max_similarity", 0),
+                "fecha_creacion": expediente.get("created_date"),  # Fecha de creación del expediente
                 "documentos_coincidentes": documentos_coincidentes,
                 "total_documentos": len(documentos_coincidentes),
             }
