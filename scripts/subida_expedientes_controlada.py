@@ -8,12 +8,18 @@ BASE_URL = "http://127.0.0.1:8000"
 INGESTA_URL = f"{BASE_URL}/ingesta/archivos"
 EXPEDIENTES_DIR = r"c:\Users\Roger Calderon\Downloads\expedientes_50_txt_unicos_largos"
 
+# Token JWT - PEGA TU TOKEN AQUÍ
+JWT_TOKEN = ""  # Pega tu token entre las comillas
+
 # Configuración para evitar saturación
 BATCH_SIZE = 3  # Procesar solo 3 archivos por lote
 BATCH_DELAY = 10  # Esperar 10 segundos entre lotes
 FILE_DELAY = 5   # Esperar 5 segundos entre archivos individuales
 
-HEADERS = {}
+# Headers con autorización
+HEADERS = {
+    "Authorization": f"Bearer {JWT_TOKEN}"
+} if JWT_TOKEN else {}
 
 def extraer_numero_expediente(nombre_archivo):
     """Extrae el número de expediente del nombre del archivo."""
@@ -101,10 +107,20 @@ def main():
     print("🚀 Iniciando subida masiva con control de concurrencia...")
     print(f"📁 Directorio: {EXPEDIENTES_DIR}")
     print(f"🌐 Endpoint: {INGESTA_URL}")
-    print(f"📦 Tamaño de lote: {BATCH_SIZE} archivos")
+    print(f"� Token configurado: {'✅ Sí' if JWT_TOKEN else '❌ No (requerido)'}")
+    print(f"�📦 Tamaño de lote: {BATCH_SIZE} archivos")
     print(f"⏰ Pausa entre lotes: {BATCH_DELAY} segundos")
     print(f"⏱️  Pausa entre archivos: {FILE_DELAY} segundos")
     print("-" * 70)
+    
+    # Validar que el token esté configurado
+    if not JWT_TOKEN:
+        print("❌ ERROR: Debes configurar JWT_TOKEN en el script")
+        print("   1. Inicia sesión en el frontend")
+        print("   2. Abre DevTools (F12) > Console")
+        print("   3. Ejecuta: sessionStorage.getItem('token')")
+        print("   4. Copia el token y pégalo en la variable JWT_TOKEN")
+        return
     
     if not os.path.isdir(EXPEDIENTES_DIR):
         print(f"❌ ERROR: El directorio no existe: {EXPEDIENTES_DIR}")
