@@ -17,40 +17,35 @@ def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> s
         Prompt completo optimizado para resúmenes legales en español
     """
     
-    # Prompt completamente independiente sin usar create_justicia_prompt
-    prompt_resumen = f"""Eres un especialista en análisis de expedientes legales de Costa Rica.
+    # Prompt mejorado con instrucciones más estrictas para JSON
+    prompt_resumen = f"""Eres un asistente de análisis legal especializado. Tu única tarea es generar un JSON válido.
 
-CONTEXTO DEL EXPEDIENTE:
+CONTEXTO DEL EXPEDIENTE {numero_expediente}:
 {contexto}
 
-EXPEDIENTE A ANALIZAR: {numero_expediente}
+INSTRUCCIONES CRÍTICAS:
+1. Responde SOLO con el JSON. No agregues texto antes ni después.
+2. NO uses comillas triples (``` o ```json)
+3. NO agregues explicaciones fuera del JSON
+4. Usa escape correcto para comillas dentro del texto: \\"
+5. NO cortes el JSON a la mitad - complétalo siempre
 
-Tu tarea es analizar el expediente legal y generar un resumen estructurado en formato JSON.
-
-Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
-
+FORMATO EXACTO REQUERIDO (copia esta estructura):
 {{
-    "resumen": "Descripción completa del caso",
-    "palabras_clave": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5", "palabra6"],
-    "factores_similitud": ["factor1", "factor2", "factor3", "factor4", "factor5"],
-    "conclusion": "Análisis jurídico completo del expediente"
+    "resumen": "Análisis detallado del expediente con hechos principales, partes involucradas y tipo de procedimiento. Debe incluir montos exactos, fechas específicas y nombres tal como aparecen en el documento (aprox 200 palabras).",
+    "palabras_clave": ["Palabra Clave 1", "Palabra Clave 2", "Palabra Clave 3", "Palabra Clave 4", "Palabra Clave 5", "Palabra Clave 6"],
+    "factores_similitud": ["Factor de Similitud 1", "Factor de Similitud 2", "Factor de Similitud 3", "Factor de Similitud 4", "Factor de Similitud 5"],
+    "conclusion": "Conclusión jurídica completa que incluya: situación procesal actual, fortalezas del caso, riesgos potenciales y perspectivas legales (mínimo 50 palabras)."
 }}
 
-INSTRUCCIONES IMPORTANTES:
+REGLAS DE CONTENIDO:
+- Usa Title Case para palabras clave y factores ("Hostigamiento Laboral" NO "hostigamiento laboral")
+- Mantén fidelidad absoluta a cifras: si dice "₡12.500.000" no lo cambies a "₡12.500"
+- Cita fechas exactamente como aparecen: "17/01/2025" no "enero 2025"
+- IMPORTANTE: Genera los 4 campos completos, no dejes ninguno vacío
 
-**Sobre el contenido:**
-- Analiza los hechos principales, partes involucradas y tipo de procedimiento en un resumen de aproximadamente 200 palabras
-- Mantén TOTAL FIDELIDAD a los datos del contexto: montos, fechas, nombres y cifras deben citarse exactamente como aparecen
-- Si el documento indica "₡12.500.000", reprodúcelo así (no lo simplifiques a "₡12.500")
-- Si menciona "4 años" o fechas específicas (17/01/2025), cópialas literalmente
-- No agregues información que no esté explícitamente en el contexto
-
-**Sobre el formato de respuesta:**
-- Identifica 6 palabras clave del ámbito jurídico costarricense con formato Title Case ("Hostigamiento Laboral", "Terminación Sin Causa Objetiva")
-- Determina 5 factores de similitud para encontrar casos comparables, también en Title Case ("Casos De Hostigamiento Laboral")
-- Desarrolla una conclusión jurídica completa que incluya situación procesal actual, fortalezas del caso, riesgos potenciales y perspectivas legales (mínimo 50 palabras)
-- Responde únicamente con JSON válido en español"""
-
+Responde AHORA con el JSON completo (sin texto adicional):"""
+    
     return prompt_resumen
 
 

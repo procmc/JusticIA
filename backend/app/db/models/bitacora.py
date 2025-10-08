@@ -19,5 +19,5 @@ class T_Bitacora(Base):
 	CN_Id_tipo_accion: Mapped[Optional[int]] = mapped_column(ForeignKey("T_Tipo_accion.CN_Id_tipo_accion"))
 	tipo_accion: Mapped[Optional["T_Tipo_accion"]] = relationship(back_populates="bitacoras")
 
-	CN_Id_expediente: Mapped[int] = mapped_column(BigInteger, ForeignKey("T_Expediente.CN_Id_expediente"))
-	expediente: Mapped["T_Expediente"] = relationship(back_populates="bitacoras")
+	CN_Id_expediente: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("T_Expediente.CN_Id_expediente"), nullable=True)
+	expediente: Mapped[Optional["T_Expediente"]] = relationship(back_populates="bitacoras")

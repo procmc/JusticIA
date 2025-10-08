@@ -280,100 +280,171 @@ class SimilarityService:
         logger.info(f"Respuesta cruda del LLM (últimos 100 chars): {respuesta_raw[-100:]}")
         
         try:
-            # Limpiar la respuesta básica
+            # Paso 1: Limpiar la respuesta
             respuesta_limpia = respuesta_raw.strip()
             
-            # Intentar encontrar JSON completo primero
-            json_match = re.search(r'\{[^{}]*"resumen"[^{}]*"palabras_clave"[^{}]*"factores_similitud"[^{}]*"conclusion"[^{}]*\}', 
-                                 respuesta_limpia, re.DOTALL)
+            # Eliminar markdown code blocks si existen (```json o ```)
+            if respuesta_limpia.startswith("```"):
+                # Eliminar primera línea con ```json o ```
+                lineas = respuesta_limpia.split('\n')
+                respuesta_limpia = '\n'.join(lineas[1:])
+                # Eliminar última línea con ```
+                if respuesta_limpia.endswith("```"):
+                    respuesta_limpia = respuesta_limpia[:-3]
             
-            if not json_match:
-                # Intentar reparar JSON incompleto
-                logger.warning("JSON completo no encontrado, intentando reparar...")
-                json_reparado = self._intentar_reparar_json(respuesta_limpia)
-                if json_reparado:
-                    json_str = json_reparado
-                    logger.info(f"JSON extraído/reparado: {json_str}")
-                    
-                    # Intentar parsear el JSON
-                    datos = json.loads(json_str)
-                    
-                    return ResumenIA(
-                        resumen=datos.get("resumen", "No se pudo generar resumen"),
-                        palabras_clave=datos.get("palabras_clave", []),
-                        factores_similitud=datos.get("factores_similitud", []),
-                        conclusion=datos.get("conclusion", "No se pudo generar conclusión")
-                    )
-                else:
-                    logger.warning("No se pudo reparar el JSON")
-                    return self._crear_resumen_fallback(respuesta_raw)
+            respuesta_limpia = respuesta_limpia.strip()
+            
+            # Paso 2: Intentar encontrar JSON usando múltiples estrategias
+            json_str = None
+            
+            # Estrategia 1: Buscar JSON completo con todos los campos
+            pattern_completo = r'\{\s*"resumen"\s*:[^}]*"palabras_clave"\s*:[^}]*"factores_similitud"\s*:[^}]*"conclusion"\s*:[^}]*\}'
+            match = re.search(pattern_completo, respuesta_limpia, re.DOTALL)
+            
+            if match:
+                json_str = match.group()
+                logger.info("✓ JSON completo encontrado con regex")
             else:
-                json_str = json_match.group()
-                logger.info(f"JSON extraído: {json_str}")
+                # Estrategia 2: Buscar inicio y fin de JSON
+                inicio = respuesta_limpia.find('{')
+                fin = respuesta_limpia.rfind('}')
                 
-                # Intentar parsear el JSON
+                if inicio != -1 and fin != -1 and fin > inicio:
+                    json_str = respuesta_limpia[inicio:fin+1]
+                    logger.info("✓ JSON extraído por posición de llaves")
+                else:
+                    logger.warning("✗ No se encontró estructura JSON válida")
+                    return self._crear_resumen_fallback(respuesta_raw)
+            
+            # Paso 3: Intentar parsear el JSON
+            try:
                 datos = json.loads(json_str)
+                logger.info("✓ JSON parseado exitosamente")
+                
+                # Validar que tenga los campos mínimos
+                if not datos.get("resumen") or not datos.get("conclusion"):
+                    logger.warning("JSON válido pero sin campos críticos, usando fallback")
+                    return self._crear_resumen_fallback(respuesta_raw)
                 
                 return ResumenIA(
                     resumen=datos.get("resumen", "No se pudo generar resumen"),
-                    palabras_clave=datos.get("palabras_clave", []),
-                    factores_similitud=datos.get("factores_similitud", []),
-                    conclusion=datos.get("conclusion", "No se pudo generar conclusión")
+                    palabras_clave=datos.get("palabras_clave", []) or [
+                        "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
+                        "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
+                    ],
+                    factores_similitud=datos.get("factores_similitud", []) or [
+                        "Contenido del expediente legal", 
+                        "Documentación procesal oficial",
+                        "Tipo de procedimiento judicial",
+                        "Materias jurídicas involucradas",
+                        "Contexto procesal específico"
+                    ],
+                    conclusion=datos.get("conclusion", "Se requiere análisis manual adicional")
                 )
                 
-        except json.JSONDecodeError as e:
-            logger.error(f"Error JSON decode: {e}")
-            return self._crear_resumen_fallback(respuesta_raw)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Error parseando JSON: {e}")
+                logger.info("Intentando reparar JSON...")
+                
+                # Estrategia 3: Intentar reparar JSON
+                json_reparado = self._intentar_reparar_json(json_str)
+                if json_reparado:
+                    try:
+                        datos = json.loads(json_reparado)
+                        logger.info("✓ JSON reparado y parseado exitosamente")
+                        
+                        return ResumenIA(
+                            resumen=datos.get("resumen", "No se pudo generar resumen"),
+                            palabras_clave=datos.get("palabras_clave", []) or [
+                                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
+                                "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
+                            ],
+                            factores_similitud=datos.get("factores_similitud", []) or [
+                                "Contenido del expediente legal", 
+                                "Documentación procesal oficial",
+                                "Tipo de procedimiento judicial",
+                                "Materias jurídicas involucradas",
+                                "Contexto procesal específico"
+                            ],
+                            conclusion=datos.get("conclusion", "Se requiere análisis manual adicional")
+                        )
+                    except json.JSONDecodeError:
+                        logger.warning("✗ No se pudo reparar el JSON")
+                        return self._crear_resumen_fallback(respuesta_raw)
+                else:
+                    logger.warning("✗ Reparación de JSON falló")
+                    return self._crear_resumen_fallback(respuesta_raw)
+                
         except Exception as e:
             logger.error(f"Error general parseando respuesta IA: {e}")
             return self._crear_resumen_fallback(respuesta_raw)
 
-    def _intentar_reparar_json(self, respuesta: str) -> str:
-        """Intenta reparar JSON incompleto añadiendo campos faltantes."""
+    def _intentar_reparar_json(self, json_str: str) -> str:
+        """Intenta reparar JSON incompleto o mal formado."""
         import json
         try:
-            # Buscar inicio del JSON
-            inicio_json = respuesta.find('{')
-            if inicio_json == -1:
-                return ""
+            # Si ya es JSON válido, retornarlo
+            json.loads(json_str)
+            return json_str
+        except json.JSONDecodeError:
+            pass
+        
+        try:
+            # Paso 1: Limpiar espacios y saltos de línea problemáticos
+            json_limpio = json_str.strip()
+            
+            # Paso 2: Asegurar que comience con {
+            if not json_limpio.startswith('{'):
+                inicio = json_limpio.find('{')
+                if inicio != -1:
+                    json_limpio = json_limpio[inicio:]
+                else:
+                    logger.error("No se encontró inicio de JSON")
+                    return ""
+            
+            # Paso 3: Contar llaves para cerrar correctamente
+            abiertas = json_limpio.count('{')
+            cerradas = json_limpio.count('}')
+            
+            # Paso 4: Si faltan cerrar llaves
+            if abiertas > cerradas:
+                logger.info(f"Reparando: {abiertas} llaves abiertas, {cerradas} cerradas")
                 
-            json_parte = respuesta[inicio_json:]
-            
-            # Verificar si tiene al menos el resumen
-            if '"resumen"' not in json_parte:
-                return ""
-            
-            # Intentar cerrar JSON incompleto de forma inteligente
-            json_reparado = json_parte
-            
-            # Si no termina con }, intentar cerrarlo
-            if not json_reparado.rstrip().endswith('}'):
-                # Contar llaves abiertas vs cerradas
-                abiertas = json_reparado.count('{')
-                cerradas = json_reparado.count('}')
+                # Verificar si tiene al menos el campo resumen
+                if '"resumen"' not in json_limpio:
+                    logger.error("JSON no tiene campo 'resumen'")
+                    return ""
                 
-                # Si falta cerrar, agregar campos por defecto y cerrar
-                if abiertas > cerradas:
-                    # Verificar qué campos faltan y agregarlos
-                    if '"palabras_clave"' not in json_reparado:
-                        json_reparado += ', "palabras_clave": ["Análisis Legal", "Expediente Judicial", "Procedimiento Legal", "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"]'
-                    
-                    if '"factores_similitud"' not in json_reparado:
-                        json_reparado += ', "factores_similitud": ["Contenido del expediente legal", "Documentación procesal oficial", "Tipo de procedimiento judicial", "Materias jurídicas involucradas", "Contexto procesal específico"]'
-                    
-                    if '"conclusion"' not in json_reparado:
-                        json_reparado += ', "conclusion": "Se requiere análisis manual adicional para conclusiones jurídicas específicas"'
-                    
-                    # Cerrar JSON
-                    json_reparado += '}'
+                # Eliminar comas finales mal puestas
+                json_limpio = json_limpio.rstrip().rstrip(',')
+                
+                # Agregar campos faltantes si no existen
+                if '"palabras_clave"' not in json_limpio:
+                    logger.info("Agregando palabras_clave por defecto")
+                    json_limpio += ', "palabras_clave": ["Análisis Legal", "Expediente Judicial", "Procedimiento Legal", "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"]'
+                
+                if '"factores_similitud"' not in json_limpio:
+                    logger.info("Agregando factores_similitud por defecto")
+                    json_limpio += ', "factores_similitud": ["Contenido del expediente legal", "Documentación procesal oficial", "Tipo de procedimiento judicial", "Materias jurídicas involucradas", "Contexto procesal específico"]'
+                
+                if '"conclusion"' not in json_limpio:
+                    logger.info("Agregando conclusion por defecto")
+                    json_limpio += ', "conclusion": "Se requiere análisis manual adicional para conclusiones jurídicas específicas y recomendaciones legales detalladas"'
+                
+                # Cerrar las llaves faltantes
+                diferencia = abiertas - cerradas
+                json_limpio += '}' * diferencia
             
-            # Verificar que el JSON sea válido
-            json.loads(json_reparado)
-            logger.info("JSON reparado exitosamente")
-            return json_reparado
+            # Paso 5: Validar el JSON reparado
+            json.loads(json_limpio)
+            logger.info("✓ JSON reparado exitosamente")
+            return json_limpio
             
+        except json.JSONDecodeError as e:
+            logger.error(f"✗ Error reparando JSON: {e}")
+            return ""
         except Exception as e:
-            logger.error(f"Error reparando JSON: {e}")
+            logger.error(f"✗ Error inesperado reparando JSON: {e}")
             return ""
     
     def _crear_resumen_fallback(self, respuesta_raw: str) -> ResumenIA:
