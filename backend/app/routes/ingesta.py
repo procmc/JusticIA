@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.documentos.file_management_service import file_management_service
+from app.services.bitacora_service import bitacora_service
+from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult
 from celery_app import celery_app
@@ -120,37 +122,69 @@ async def ingestar_archivos(
             detail="Debe proporcionar al menos un archivo"
         )
     
-    # Procesar cada archivo con Celery
-    task_ids = []
-    from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
-    
-    for file in files:
-        try:
-            # Guardar archivo físicamente
-            archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
-            
-            # Enviar a Celery (genera task_id automáticamente)
-            celery_task = procesar_archivo_celery.delay(
-                CT_Num_expediente,
-                archivo_info
-            )
-            task_ids.append(celery_task.id)
-            
-        except Exception as e:
-            logger.error(f"Error guardando archivo {file.filename}: {e}")
-            # Agregar error a la lista para notificar al frontend
-            task_ids.append({
-                "error": True,
-                "filename": file.filename,
-                "message": f"Error al guardar: {str(e)}"
-            })
-    
-    return {
-        "message": f"{len(files)} archivos enviados a procesamiento",
-        "task_ids": task_ids,
-        "expediente": CT_Num_expediente,
-        "total_files": len(files)
-    }
+    try:
+        # Procesar cada archivo con Celery
+        task_ids = []
+        from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
+        
+        for file in files:
+            try:
+                # Guardar archivo físicamente
+                archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
+                
+                # Enviar a Celery (genera task_id automáticamente)
+                celery_task = procesar_archivo_celery.delay(
+                    CT_Num_expediente,
+                    archivo_info
+                )
+                task_ids.append(celery_task.id)
+                
+            except Exception as e:
+                logger.error(f"Error guardando archivo {file.filename}: {e}")
+                # Agregar error a la lista para notificar al frontend
+                task_ids.append({
+                    "error": True,
+                    "filename": file.filename,
+                    "message": f"Error al guardar: {str(e)}"
+                })
+        
+        # ✅ Registrar en bitácora - Ingesta iniciada
+        await bitacora_service.registrar(
+            db=db,
+            usuario_id=current_user["user_id"],
+            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
+            texto=f"Ingesta iniciada: {len(files)} archivo(s) en expediente {CT_Num_expediente}",
+            info_adicional={
+                "expediente": CT_Num_expediente,
+                "total_archivos": len(files),
+                "archivos": [f.filename for f in files],
+                "task_ids": [tid for tid in task_ids if isinstance(tid, str)]
+            }
+        )
+        
+        return {
+            "message": f"{len(files)} archivos enviados a procesamiento",
+            "task_ids": task_ids,
+            "expediente": CT_Num_expediente,
+            "total_files": len(files)
+        }
+        
+    except Exception as e:
+        #Registrar error en bitácora
+        await bitacora_service.registrar(
+            db=db,
+            usuario_id=current_user["user_id"],
+            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
+            texto=f"Error en ingesta de expediente {CT_Num_expediente}: {str(e)}",
+            info_adicional={
+                "expediente": CT_Num_expediente,
+                "error": str(e)
+            }
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar archivos: {str(e)}"
+        )
 
 
 @router.post("/cancel/{task_id}")
