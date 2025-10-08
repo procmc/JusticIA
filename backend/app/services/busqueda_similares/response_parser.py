@@ -182,21 +182,21 @@ class ResponseParser:
         return json_str
     
     def _agregar_campos_faltantes(self, json_str: str) -> str:
-        """Agrega campos requeridos si faltan."""
+        """Agrega campos requeridos si faltan (en español)."""
         if '"palabras_clave"' not in json_str:
             if not json_str.rstrip().endswith(','):
                 json_str = json_str.rstrip() + ','
-            json_str += ' "palabras_clave": ["Análisis Legal", "Expediente Judicial", "Procedimiento Legal"]'
+            json_str += ' "palabras_clave": ["Análisis Jurídico", "Procedimiento Legal", "Documentación Judicial"]'
         
         if '"factores_similitud"' not in json_str:
             if not json_str.rstrip().endswith(','):
                 json_str = json_str.rstrip() + ','
-            json_str += ' "factores_similitud": ["Contenido del expediente legal", "Documentación procesal oficial"]'
+            json_str += ' "factores_similitud": ["Naturaleza del Procedimiento", "Materia Jurídica Involucrada", "Tipo de Controversia Legal"]'
         
         if '"conclusion"' not in json_str:
             if not json_str.rstrip().endswith(','):
                 json_str = json_str.rstrip() + ','
-            json_str += ' "conclusion": "Se requiere análisis manual adicional"'
+            json_str += ' "conclusion": "Se requiere análisis jurídico adicional para emitir conclusiones específicas"'
         
         return json_str
     
@@ -216,25 +216,25 @@ class ResponseParser:
         return ResumenIA(
             resumen=resumen_texto,
             palabras_clave=datos.get("palabras_clave") or [
-                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal"
+                "Análisis Jurídico", "Procedimiento Legal", "Documentación Judicial"
             ],
             factores_similitud=datos.get("factores_similitud") or [
-                "Contenido del expediente legal", 
-                "Documentación procesal oficial"
+                "Naturaleza del Procedimiento", 
+                "Materia Jurídica Involucrada"
             ],
-            conclusion=datos.get("conclusion") or "Se requiere análisis manual adicional"
+            conclusion=datos.get("conclusion") or "Se requiere análisis jurídico adicional"
         )
     
     def _crear_resumen_fallback(self, respuesta_raw: str) -> ResumenIA:
-        """Crea un resumen de fallback cuando no se puede parsear JSON."""
+        """Crea un resumen de fallback cuando no se puede parsear JSON (en español)."""
         return ResumenIA(
-            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del expediente",
+            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del expediente judicial",
             palabras_clave=[
-                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal"
+                "Análisis Jurídico", "Procedimiento Legal", "Documentación Judicial"
             ],
             factores_similitud=[
-                "Contenido del expediente legal", 
-                "Documentación procesal oficial"
+                "Naturaleza del Procedimiento Legal", 
+                "Materia Jurídica del Expediente"
             ],
-            conclusion="Se requiere análisis manual adicional"
+            conclusion="Se requiere análisis jurídico manual para conclusiones específicas"
         )
