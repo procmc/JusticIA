@@ -19,18 +19,32 @@ const ConsultaChat = () => {
 
   // Función personalizada para cambiar el scope y limpiar cuando sea necesario
   const handleSearchScopeChange = (newScope) => {
+    // Solo cambiar si realmente es diferente al modo actual
     if (newScope !== searchScope) {
-      // Si cambiamos de modo, limpiar la conversación e iniciar nueva sesión
+      console.log(`🔄 Cambiando modo de búsqueda: ${searchScope} → ${newScope}`);
+      
+      // Limpiar conversación e iniciar nueva sesión al cambiar de modo
       setMessages([]);
       setConsultedExpediente(null);
       newSession();  // Generar nuevo session_id
-      
       setSearchScope(newScope);
-      
+
       // Mostrar mensaje de bienvenida específico para el modo expediente
       if (newScope === 'expediente') {
         const welcomeMessage = {
-          text: `**🔍 Modo: Consulta por Expediente Específico**\n\nPara comenzar, necesito que ingreses un número de expediente válido.\n\n**Formato:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nUna vez que ingreses el número, podrás hacer cualquier consulta específica sobre ese expediente.\n\n💡 **Tip:** Si quieres hacer consultas generales sobre temas legales, cambia a "Búsqueda general".`,
+          text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+---
+
+### 🎯 **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`,
           isUser: false,
           timestamp: new Date().toLocaleTimeString('es-ES', {
             hour: '2-digit',
@@ -39,26 +53,25 @@ const ConsultaChat = () => {
         };
         setMessages([welcomeMessage]);
       }
+    } else {
+      console.log(` Ya estás en modo ${searchScope}, no se requiere cambio`);
     }
   };
 
   // Función para detectar si un texto es un número de expediente
   const isExpedienteNumber = validarFormatoExpediente;
-  
+
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
 
   // Hook para gestión de session_id (backend gestiona el historial automáticamente)
   const { sessionId, newSession, isReady } = useSessionId();
 
-  // DEBUG: Log del session_id
-  console.log('🆔 Session ID actual:', sessionId);
-
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
     setIsTyping(false);
     setStreamingMessageIndex(null);
-    
+
     // Cancelar la request actual si existe
     if (currentRequestRef.current) {
       currentRequestRef.current = null;
@@ -72,14 +85,14 @@ const ConsultaChat = () => {
       if (isExpedienteNumber(text)) {
         // Normalizar el expediente (convertir guiones Unicode a ASCII y mayúsculas)
         const newExpediente = normalizarExpediente(text.trim());
-        
+
         // Si es un expediente diferente al actual, cambiarlo
         if (newExpediente !== consultedExpediente) {
           setConsultedExpediente(newExpediente);
-          
+
           // Crear mensaje del usuario indicando que se estableció/cambió el expediente
           const userMessage = {
-            text: consultedExpediente 
+            text: consultedExpediente
               ? `Cambiar consulta a expediente: ${newExpediente}`
               : `Establecer consulta para expediente: ${newExpediente}`,
             isUser: true,
@@ -90,27 +103,35 @@ const ConsultaChat = () => {
             scope: searchScope,
             expedienteNumber: newExpediente
           };
-          
+
           // Crear mensaje del asistente confirmando
           const assistantMessage = {
-            text: consultedExpediente 
-              ? `✅ **Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
-              : `✅ **Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
+            text: consultedExpediente
+              ? ` **Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
+              : ` **Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
             isUser: false,
             timestamp: new Date().toLocaleTimeString('es-ES', {
               hour: '2-digit',
               minute: '2-digit'
             })
           };
-          
+
           setMessages(prev => [...prev, userMessage, assistantMessage]);
-          
-          // Backend gestionará el historial automáticamente al hacer la primera consulta
-          console.log('📋 Expediente establecido:', text.trim());
-          
+
+          // NUEVO: Actualizar inmediatamente el contexto en el backend
+          const action = consultedExpediente ? 'change' : 'set';
+          consultaService.updateExpedienteContext(sessionId, newExpediente, action)
+            .then(success => {
+              if (success) {
+              } else {
+                console.warn(' Error sincronizando contexto con el backend');
+              }
+            })
+            .catch(error => {
+              console.error(' Error sincronizando contexto:', error);
+            });
           return;
         }
-        // Si es el mismo expediente, continuar con consulta normal (no hacer nada especial)
       }
       // Si no tenemos expediente consultado y el texto no es un número válido
       else if (!consultedExpediente) {
@@ -124,7 +145,7 @@ const ConsultaChat = () => {
           }),
           scope: searchScope
         };
-        
+
         const assistantMessage = {
           text: `Para realizar consultas sobre un expediente específico, necesito que ingreses un número de expediente válido.\n\n**Formato esperado:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de arriba.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
           isUser: false,
@@ -133,18 +154,17 @@ const ConsultaChat = () => {
             minute: '2-digit'
           })
         };
-        
+
         setMessages(prev => [...prev, userMessage, assistantMessage]);
         return;
       }
-      // Si ya tenemos expediente consultado, continuar con la consulta normal
     }
-    
+
     // Cancelar cualquier request anterior
     if (currentRequestRef.current) {
       stopStreamingRef.current = true;
     }
-    
+
     // Resetear flag de parada
     stopStreamingRef.current = false;
     currentRequestRef.current = { active: true };
@@ -174,7 +194,7 @@ const ConsultaChat = () => {
 
     // Agregar mensaje vacío del asistente
     setMessages(prev => [...prev, assistantMessage]);
-    
+
     // Obtener el índice del mensaje que vamos a actualizar
     const messageIndex = messages.length + 1; // +1 porque ya agregamos el mensaje del usuario
     setStreamingMessageIndex(messageIndex);
@@ -182,14 +202,12 @@ const ConsultaChat = () => {
 
     // Validar que tengamos session_id antes de continuar
     if (!sessionId) {
-      console.error('❌ No hay session_id disponible');
+      console.error(' No hay session_id disponible');
       setIsTyping(false);
       setStreamingMessageIndex(null);
       return;
     }
 
-    console.log('📤 Enviando consulta con session_id:', sessionId);
-    
     // ======= MODO STREAMING MEJORADO =======
     try {
       // Definir callbacks comunes para ambos tipos de consulta
@@ -215,7 +233,7 @@ const ConsultaChat = () => {
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;
-          
+
           // Asignar timestamp al mensaje completado
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
@@ -227,9 +245,6 @@ const ConsultaChat = () => {
                   minute: '2-digit'
                 })
               };
-              
-              // Backend guarda el historial automáticamente, no necesitamos hacer nada aquí
-              console.log('✅ Respuesta completada - Backend gestiona historial automáticamente');
             }
             return updatedMessages;
           });
@@ -242,7 +257,7 @@ const ConsultaChat = () => {
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;
-          
+
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             if (updatedMessages[messageIndex]) {
@@ -274,27 +289,27 @@ const ConsultaChat = () => {
 
     } catch (error) {
       console.error('Error en handleSendMessage:', error);
-      
+
       // Limpiar estado
       setStreamingMessageIndex(null);
       setIsTyping(false);
       currentRequestRef.current = null;
-      
+
       // Mostrar mensaje de error específico
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         if (updatedMessages[messageIndex]) {
           let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta.';
-          
+
           // Manejar diferentes tipos de error
           const errorText = typeof error === 'string' ? error : (error.message || error.toString() || 'Error desconocido');
-          
+
           if (errorText.includes('No se puede conectar con el servidor backend')) {
             errorMessage = '🔌 **Error de Conexión**\n\nNo se puede conectar con el servidor backend. Por favor verifica que:\n\n• El servidor backend esté ejecutándose en el puerto 8000\n• Ollama esté activo en el puerto 11434\n• No haya problemas de red\n\nIntenta nuevamente en unos momentos.';
           } else if (errorText.includes('Failed to fetch')) {
             errorMessage = '🔌 **Error de Red**\n\nNo se puede conectar con el servidor. Verifica tu conexión y que los servicios estén activos.';
           }
-          
+
           updatedMessages[messageIndex] = {
             ...updatedMessages[messageIndex],
             text: errorMessage,
@@ -331,17 +346,17 @@ const ConsultaChat = () => {
           className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
           title="Ver historial de conversaciones"
         >
-          <svg 
-            className="w-3.5 h-3.5" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={1.5} 
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
           <span className="font-medium hidden sm:block">Historial</span>
@@ -351,31 +366,62 @@ const ConsultaChat = () => {
         {messages.length > 0 && (
           <button
             onClick={() => {
+
+              // Mantener el modo actual (general o expediente) y solo limpiar la conversación
               newSession();  // Generar nuevo session_id
               setMessages([]);
-              setConsultedExpediente(null);  // Limpiar expediente si estaba establecido
+              
+              // Solo limpiar expediente si estamos en modo expediente
+              if (searchScope === 'expediente') {
+                setConsultedExpediente(null);
+                
+                // Mostrar mensaje de bienvenida para modo expediente
+                const welcomeMessage = {
+                  text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+---
+
+### 🎯 **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`,
+                  isUser: false,
+                  timestamp: new Date().toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                };
+                // Usar setTimeout para asegurar que se ejecute después del setMessages([])
+                setTimeout(() => setMessages([welcomeMessage]), 0);
+              }
+              // Para modo general, simplemente se queda con mensajes vacíos (estado inicial limpio)
             }}
             className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
             title="Nueva conversación"
           >
-            <svg 
-              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={1.5} 
-                d="M12 4v16m8-8H4" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 4v16m8-8H4"
               />
             </svg>
             <span className="font-medium hidden sm:block">Nueva</span>
           </button>
         )}
       </div>
-      
+
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
         <MessageList
