@@ -166,8 +166,8 @@ const CustomTextarea = ({
       </div>
 
       {/* Barra de alcance debajo del textarea - estilo equilibrado */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-2 py-1">
+      <div className="px-2 py-2">
+        <div className="flex items-center justify-between min-h-[32px]">
           <div className="flex items-center gap-5">
             <Checkbox
               isSelected={searchScope === 'general'}
@@ -198,6 +198,12 @@ const CustomTextarea = ({
               <div className="flex items-center gap-2">
                 <IoDocument className="w-4 h-4 text-primario" />
                 <span>Por expediente específico</span>
+                {/* Indicador discreto del expediente consultado */}
+                {searchScope === 'expediente' && consultedExpediente && (
+                  <span className="ml-2 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md whitespace-nowrap">
+                    {consultedExpediente}
+                  </span>
+                )}
               </div>
             </Checkbox>
           </div>
@@ -210,18 +216,7 @@ const CustomTextarea = ({
           )}
         </div>
 
-        {/* Información sobre expediente consultado */}
-        {searchScope === 'expediente' && consultedExpediente && (
-          <div className="px-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-              <IoDocument className="w-4 h-4 text-blue-600" />
-              <span>Consultando expediente: <strong>{consultedExpediente}</strong></span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Todas las consultas serán sobre este expediente. Para consultar otro, cambia a &quot;Búsqueda general&quot;.
-            </p>
-          </div>
-        )}
+
       </div>
     </div>
   );
