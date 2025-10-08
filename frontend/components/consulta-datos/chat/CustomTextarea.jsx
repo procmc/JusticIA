@@ -166,17 +166,17 @@ const CustomTextarea = ({
       </div>
 
       {/* Barra de alcance debajo del textarea - estilo equilibrado */}
-      <div className="px-2 py-2">
-        <div className="flex items-center justify-between min-h-[32px]">
+      <div className="px-3 py-2.5">
+        <div className="flex items-center justify-between min-h-[36px]">
           <div className="flex items-center gap-5">
             <Checkbox
               isSelected={searchScope === 'general'}
               onValueChange={(checked) => checked && setSearchScope && setSearchScope('general')}
               size="md"
               classNames={{
-                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario w-5 h-5",
                 icon: "text-white",
-                label: "text-sm font-medium text-gray-700"
+                label: "text-sm font-semibold text-gray-700"
               }}
             >
               <div className="flex items-center gap-2">
@@ -190,9 +190,9 @@ const CustomTextarea = ({
               onValueChange={(checked) => checked && setSearchScope && setSearchScope('expediente')}
               size="md"
               classNames={{
-                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario w-5 h-5",
                 icon: "text-white",
-                label: "text-sm font-medium text-gray-700"
+                label: "text-sm font-semibold text-gray-700"
               }}
             >
               <div className="flex items-center gap-2">
