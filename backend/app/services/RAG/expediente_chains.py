@@ -60,9 +60,8 @@ INSTRUCCIONES PARA ANÁLISIS:
 8. **Perspectiva**: NUNCA digas "los documentos que me proporcionaste". Di "los documentos del expediente" o "según el expediente"
 
 EJEMPLOS DE RESPUESTAS CORRECTAS:
-✅ "Según los documentos del expediente {expediente_numero}..."
-✅ "El expediente {expediente_numero} contiene..."
-✅ "En el Chunk 3 del expediente se indica..."
+"Según los documentos del expediente {expediente_numero}..."
+"El expediente {expediente_numero} contiene..."
 
 EJEMPLOS DE RESPUESTAS INCORRECTAS:
 ❌ "En los documentos que me proporcionaste del expediente..."
