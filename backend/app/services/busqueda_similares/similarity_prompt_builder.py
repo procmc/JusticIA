@@ -17,8 +17,8 @@ def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> s
         Prompt completo optimizado para resúmenes legales en español
     """
     
-    # Prompt mejorado con instrucciones más estrictas para JSON
-    prompt_resumen = f"""Eres un asistente de análisis legal especializado. Tu única tarea es generar un JSON válido.
+    # Prompt mejorado con instrucciones MÁS ESTRICTAS para JSON y ESPAÑOL
+    prompt_resumen = f"""Eres un asistente jurídico especializado en derecho costarricense. Tu única tarea es generar un JSON válido en español.
 
 CONTEXTO DEL EXPEDIENTE {numero_expediente}:
 {contexto}
@@ -29,6 +29,7 @@ INSTRUCCIONES CRÍTICAS:
 3. NO agregues explicaciones fuera del JSON
 4. Usa escape correcto para comillas dentro del texto: \\"
 5. NO cortes el JSON a la mitad - complétalo siempre
+6. TODO debe estar en ESPAÑOL - NUNCA uses inglés
 
 FORMATO EXACTO REQUERIDO (copia esta estructura):
 {{
@@ -38,13 +39,28 @@ FORMATO EXACTO REQUERIDO (copia esta estructura):
     "conclusion": "Conclusión jurídica completa que incluya: situación procesal actual, fortalezas del caso, riesgos potenciales y perspectivas legales (mínimo 50 palabras)."
 }}
 
-REGLAS DE CONTENIDO:
+REGLAS DE CONTENIDO EN ESPAÑOL:
+- TODO el contenido DEBE estar en español (resumen, palabras clave, factores, conclusión)
+- NUNCA uses inglés: NO "Legal Analysis", NO "Case Summary", NO "Document Review"
 - Usa Title Case para palabras clave y factores ("Hostigamiento Laboral" NO "hostigamiento laboral")
+- Ejemplos válidos de factores_similitud en español:
+  * "Naturaleza del Procedimiento Legal"
+  * "Materia Jurídica Involucrada"
+  * "Tipo de Controversia Judicial"
+  * "Cuantía Económica del Caso"
+  * "Partes Procesales Involucradas"
 - Mantén fidelidad absoluta a cifras: si dice "₡12.500.000" no lo cambies a "₡12.500"
 - Cita fechas exactamente como aparecen: "17/01/2025" no "enero 2025"
-- IMPORTANTE: Genera los 4 campos completos, no dejes ninguno vacío
+- IMPORTANTE: Genera los 4 campos completos en español, no dejes ninguno vacío
 
-Responde AHORA con el JSON completo (sin texto adicional):"""
+EJEMPLOS DE FACTORES CORRECTOS (en español):
+✓ "Conflicto Laboral y Despido Injustificado"
+✓ "Cuantificación de Daños y Perjuicios"
+✓ "Procedimiento de Pensión Alimentaria"
+✗ "Legal Document Analysis" (INCORRECTO - está en inglés)
+✗ "Case Background Information" (INCORRECTO - está en inglés)
+
+Responde AHORA con el JSON completo EN ESPAÑOL (sin texto adicional):"""
     
     return prompt_resumen
 
