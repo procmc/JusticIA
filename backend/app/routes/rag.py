@@ -11,21 +11,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/rag", tags=["RAG - Consultas Inteligentes"])
 
-# =====================================================================
-# NUEVA ARQUITECTURA LANGCHAIN - ÚNICO ENDPOINT
-# =====================================================================
-
-
-# =====================================================================
-# NUEVO ENDPOINT CON SESSION MANAGEMENT
-# =====================================================================
-
 class ConsultaConHistorialRequest(BaseModel):
     """Request para consultas con gestión de historial por session_id"""
     query: str
     session_id: str
     top_k: int = 15
     expediente_number: Optional[str] = None  # Opcional, para consultas de expediente específico
+
+
+class UpdateExpedienteContextRequest(BaseModel):
+    """Request para actualizar el contexto de expediente en una sesión"""
+    session_id: str
+    expediente_number: str
+    action: str  # 'set' para establecer, 'change' para cambiar
 
 
 @router.post("/consulta-con-historial-stream")
@@ -97,5 +95,72 @@ async def consulta_con_historial_stream(
         raise HTTPException(
             status_code=500,
             detail=f"Error procesando consulta con historial: {str(e)}"
+        )
+
+
+@router.post("/update-expediente-context")
+async def update_expediente_context(
+    request: UpdateExpedienteContextRequest,
+    rag_service=Depends(get_rag_service)
+):
+    """
+    Actualiza el contexto de expediente en una sesión sin hacer consulta.
+    
+    Esto permite que cuando el usuario cambia/establece un expediente,
+    el backend actualice inmediatamente su historial con esta información,
+    manteniendo la sincronización entre frontend y backend.
+    
+    Request Body:
+    {
+        "session_id": "session_user@example.com_1696425015000",
+        "expediente_number": "2022-123456-7890-LA",
+        "action": "set|change"
+    }
+    """
+    try:
+        # Validar entrada
+        if not request.session_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="session_id es requerido"
+            )
+        
+        if not request.expediente_number.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="expediente_number es requerido"
+            )
+        
+        logger.info(f"🔄 Actualizando contexto expediente - Session: {request.session_id}")
+        logger.info(f"🔄 Expediente: {request.expediente_number}, Acción: {request.action}")
+        
+        # Llamar al nuevo método para actualizar contexto
+        success = await rag_service.update_expediente_context(
+            session_id=request.session_id,
+            expediente_number=request.expediente_number,
+            action=request.action
+        )
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Contexto de expediente {request.expediente_number} actualizado correctamente",
+                "session_id": request.session_id,
+                "expediente_number": request.expediente_number,
+                "action": request.action
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Error actualizando el contexto del expediente"
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error actualizando contexto expediente: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error actualizando contexto del expediente: {str(e)}"
         )
 

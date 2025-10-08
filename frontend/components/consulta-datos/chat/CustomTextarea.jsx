@@ -38,6 +38,18 @@ const CustomTextarea = ({
     }
   }, [adjustHeight, value]); // Agregar 'value' como dependencia
 
+  // Recalcular altura cuando cambie el tamaño de la ventana
+  useEffect(() => {
+    const handleResize = () => {
+      if (textareaRef.current && value.trim()) {
+        adjustHeight();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [adjustHeight, value]);
+
   const handleInput = (event) => {
     onChange(event);
     adjustHeight();
@@ -67,12 +79,28 @@ const CustomTextarea = ({
     if (!value.trim()) return '52px'; // Altura fija cuando está vacío (incluye padding)
     
     if (textareaRef.current) {
+      // Guardar la altura actual para restaurarla después
+      const currentHeight = textareaRef.current.style.height;
       // Forzar recálculo del scrollHeight
       textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 20 * maxRows; // Usando lineHeight de 20px
-      const calculatedHeight = Math.min(Math.max(scrollHeight, 20) + 32, maxHeight + 32);
-      return `${calculatedHeight}px`;
+      // Restaurar altura para evitar flicker
+      textareaRef.current.style.height = currentHeight;
+      
+      const lineHeight = 20; // px
+      const paddingHeight = 32; // 16px arriba + 16px abajo
+      const maxHeight = lineHeight * maxRows;
+      
+      // Calcular altura mínima y máxima responsiva
+      const minHeight = lineHeight + paddingHeight; // Al menos una línea
+      const responsiveMaxHeight = Math.min(maxHeight, window.innerHeight * 0.4); // Máximo 40% de la pantalla
+      
+      // Si el contenido excede el máximo, usar el máximo para activar scroll
+      if (scrollHeight > responsiveMaxHeight - paddingHeight) {
+        return `${responsiveMaxHeight}px`;
+      } else {
+        return `${Math.max(scrollHeight + paddingHeight, minHeight)}px`;
+      }
     }
     return '52px';
   };
@@ -81,9 +109,17 @@ const CustomTextarea = ({
   const shouldShowScroll = () => {
     if (!value.trim()) return false;
     if (textareaRef.current) {
+      // Forzar recálculo antes de medir
+      const currentHeight = textareaRef.current.style.height;
+      textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 20 * maxRows; // Usando lineHeight de 20px
-      return scrollHeight > maxHeight;
+      textareaRef.current.style.height = currentHeight;
+      
+      const lineHeight = 20;
+      const maxHeight = lineHeight * maxRows;
+      const responsiveMaxHeight = Math.min(maxHeight, window.innerHeight * 0.4 - 32); // Restar padding
+      
+      return scrollHeight > responsiveMaxHeight;
     }
     return false;
   };
@@ -99,32 +135,33 @@ const CustomTextarea = ({
           {/* Contenedor del textarea con scroll */}
         <div className="relative">
           <div
-            className={`p-4 transition-all duration-300 flex items-center ${value.trim() && shouldShowScroll() ? 'overflow-y-auto custom-blue-scroll' : 'overflow-hidden'}`}
-            style={{ height: getContainerHeight() }}
+            className={`p-4 transition-all duration-300 ${shouldShowScroll() ? 'overflow-y-auto custom-blue-scroll' : 'overflow-hidden'}`}
+            style={{ 
+              height: getContainerHeight(),
+              display: 'flex',
+              alignItems: shouldShowScroll() ? 'flex-start' : 'center'
+            }}
           >
             <textarea
               ref={textareaRef}
               placeholder={
                 searchScope === 'expediente' && !consultedExpediente 
-                  ? "📋 Ingresa número de expediente (ej: 2022-097794-3873-PN)..."
+                  ? "Ingresa número de expediente (ej: 2022-097794-3873-PN)..."
                   : searchScope === 'expediente' && consultedExpediente
-                  ? `💬 Pregunta sobre el expediente ${consultedExpediente}...`
-                  : "💬 ¿En qué puedo ayudarte hoy?..."
+                  ? `Pregunta sobre el expediente ${consultedExpediente}...`
+                  : "¿En qué puedo ayudarte hoy?..."
               }
               value={value}
               onChange={handleInput}
               rows={1}
               disabled={disabled} // Solo disabled por la prop, no por isLoading
               onKeyDown={handleKeyDown}
-              className="w-full resize-none border-none bg-transparent text-base text-gray-800 placeholder:text-gray-400 focus:outline-none flex items-center"
+              className="w-full resize-none border-none bg-transparent text-base text-gray-800 placeholder:text-gray-400 focus:outline-none"
               style={{
-                height: value.trim() ? (textareaRef.current ? textareaRef.current.style.height : '20px') : '20px',
                 lineHeight: '20px',
                 minHeight: '20px',
                 paddingTop: '0px',
-                paddingBottom: '0px',
-                display: 'flex',
-                alignItems: 'center'
+                paddingBottom: '0px'
               }}
             />
           </div>
@@ -166,17 +203,17 @@ const CustomTextarea = ({
       </div>
 
       {/* Barra de alcance debajo del textarea - estilo equilibrado */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-2 py-1">
+      <div className="px-3 py-2.5">
+        <div className="flex items-center justify-between min-h-[36px]">
           <div className="flex items-center gap-5">
             <Checkbox
               isSelected={searchScope === 'general'}
               onValueChange={(checked) => checked && setSearchScope && setSearchScope('general')}
               size="md"
               classNames={{
-                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario w-5 h-5",
                 icon: "text-white",
-                label: "text-sm font-medium text-gray-700"
+                label: "text-sm font-semibold text-gray-700"
               }}
             >
               <div className="flex items-center gap-2">
@@ -190,14 +227,20 @@ const CustomTextarea = ({
               onValueChange={(checked) => checked && setSearchScope && setSearchScope('expediente')}
               size="md"
               classNames={{
-                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario",
+                wrapper: "group-data-[selected=true]:border-primario group-data-[selected=true]:bg-primario w-5 h-5",
                 icon: "text-white",
-                label: "text-sm font-medium text-gray-700"
+                label: "text-sm font-semibold text-gray-700"
               }}
             >
               <div className="flex items-center gap-2">
                 <IoDocument className="w-4 h-4 text-primario" />
                 <span>Por expediente específico</span>
+                {/* Indicador discreto del expediente consultado */}
+                {searchScope === 'expediente' && consultedExpediente && (
+                  <span className="ml-2 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md whitespace-nowrap">
+                    {consultedExpediente}
+                  </span>
+                )}
               </div>
             </Checkbox>
           </div>
@@ -210,18 +253,7 @@ const CustomTextarea = ({
           )}
         </div>
 
-        {/* Información sobre expediente consultado */}
-        {searchScope === 'expediente' && consultedExpediente && (
-          <div className="px-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-              <IoDocument className="w-4 h-4 text-blue-600" />
-              <span>Consultando expediente: <strong>{consultedExpediente}</strong></span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Todas las consultas serán sobre este expediente. Para consultar otro, cambia a &quot;Búsqueda general&quot;.
-            </p>
-          </div>
-        )}
+
       </div>
     </div>
   );

@@ -197,6 +197,59 @@ class RAGChainService:
                 "Access-Control-Allow-Headers": "*",
             }
         )
+    
+    async def update_expediente_context(
+        self,
+        session_id: str,
+        expediente_number: str,
+        action: str = "set"
+    ) -> bool:
+        try:
+            logger.info(f"Actualizando contexto - Session: {session_id}")
+            logger.info(f"Expediente: {expediente_number}, Acción: {action}")
+            
+            # Actualizar metadatos de la sesión con el expediente
+            conversation_store.update_metadata(
+                session_id=session_id,
+                expediente_number=expediente_number
+            )
+            
+            # Obtener o crear el historial de la sesión
+            session_history = conversation_store.get_session_history(session_id)
+            
+            # Crear mensaje del sistema para documentar el cambio
+            from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+            
+            if action == "change":
+                # Mensaje indicando cambio de expediente
+                user_message = HumanMessage(
+                    content=f"Cambiar consulta a expediente: {expediente_number}"
+                )
+                assistant_message = AIMessage(
+                    content=f"**Expediente cambiado:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?"
+                )
+            else:
+                # Mensaje indicando establecimiento inicial del expediente
+                user_message = HumanMessage(
+                    content=f"Establecer consulta para expediente: {expediente_number}"
+                )
+                assistant_message = AIMessage(
+                    content=f"**Expediente establecido:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?"
+                )
+            
+            # Agregar mensajes al historial
+            session_history.add_message(user_message)
+            session_history.add_message(assistant_message)
+            
+            # Actualizar contador de mensajes en metadatos
+            conversation_store.update_metadata(session_id)
+            
+            logger.info(f"Contexto de expediente {expediente_number} actualizado en sesión {session_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualizando contexto de expediente: {e}", exc_info=True)
+            return False
 
 _rag_service = None
 
