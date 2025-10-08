@@ -106,10 +106,10 @@ const CustomTextarea = ({
               ref={textareaRef}
               placeholder={
                 searchScope === 'expediente' && !consultedExpediente 
-                  ? "📋 Ingresa número de expediente (ej: 2022-097794-3873-PN)..."
+                  ? "Ingresa número de expediente (ej: 2022-097794-3873-PN)..."
                   : searchScope === 'expediente' && consultedExpediente
-                  ? `💬 Pregunta sobre el expediente ${consultedExpediente}...`
-                  : "💬 ¿En qué puedo ayudarte hoy?..."
+                  ? `Pregunta sobre el expediente ${consultedExpediente}...`
+                  : "¿En qué puedo ayudarte hoy?..."
               }
               value={value}
               onChange={handleInput}
