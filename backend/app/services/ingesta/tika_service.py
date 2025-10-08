@@ -19,7 +19,7 @@ class TikaService:
             tika_url: URL del servidor Tika. Por defecto usa TIKA_SERVER_URL del .env
         """
         self.tika_url = tika_url or os.getenv('TIKA_SERVER_URL', 'http://tika:9998')
-        self.timeout = int(os.getenv('TIKA_TIMEOUT', '300'))  # 5 minutos
+        self.timeout = int(os.getenv('TIKA_TIMEOUT', '600'))  # 10 minutos para archivos grandes con OCR
         self.max_retries = 3
         
     def is_available(self) -> bool:
