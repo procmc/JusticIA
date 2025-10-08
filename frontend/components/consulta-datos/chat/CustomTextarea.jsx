@@ -38,6 +38,18 @@ const CustomTextarea = ({
     }
   }, [adjustHeight, value]); // Agregar 'value' como dependencia
 
+  // Recalcular altura cuando cambie el tamaño de la ventana
+  useEffect(() => {
+    const handleResize = () => {
+      if (textareaRef.current && value.trim()) {
+        adjustHeight();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [adjustHeight, value]);
+
   const handleInput = (event) => {
     onChange(event);
     adjustHeight();
@@ -67,12 +79,28 @@ const CustomTextarea = ({
     if (!value.trim()) return '52px'; // Altura fija cuando está vacío (incluye padding)
     
     if (textareaRef.current) {
+      // Guardar la altura actual para restaurarla después
+      const currentHeight = textareaRef.current.style.height;
       // Forzar recálculo del scrollHeight
       textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 20 * maxRows; // Usando lineHeight de 20px
-      const calculatedHeight = Math.min(Math.max(scrollHeight, 20) + 32, maxHeight + 32);
-      return `${calculatedHeight}px`;
+      // Restaurar altura para evitar flicker
+      textareaRef.current.style.height = currentHeight;
+      
+      const lineHeight = 20; // px
+      const paddingHeight = 32; // 16px arriba + 16px abajo
+      const maxHeight = lineHeight * maxRows;
+      
+      // Calcular altura mínima y máxima responsiva
+      const minHeight = lineHeight + paddingHeight; // Al menos una línea
+      const responsiveMaxHeight = Math.min(maxHeight, window.innerHeight * 0.4); // Máximo 40% de la pantalla
+      
+      // Si el contenido excede el máximo, usar el máximo para activar scroll
+      if (scrollHeight > responsiveMaxHeight - paddingHeight) {
+        return `${responsiveMaxHeight}px`;
+      } else {
+        return `${Math.max(scrollHeight + paddingHeight, minHeight)}px`;
+      }
     }
     return '52px';
   };
@@ -81,9 +109,17 @@ const CustomTextarea = ({
   const shouldShowScroll = () => {
     if (!value.trim()) return false;
     if (textareaRef.current) {
+      // Forzar recálculo antes de medir
+      const currentHeight = textareaRef.current.style.height;
+      textareaRef.current.style.height = "auto";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 20 * maxRows; // Usando lineHeight de 20px
-      return scrollHeight > maxHeight;
+      textareaRef.current.style.height = currentHeight;
+      
+      const lineHeight = 20;
+      const maxHeight = lineHeight * maxRows;
+      const responsiveMaxHeight = Math.min(maxHeight, window.innerHeight * 0.4 - 32); // Restar padding
+      
+      return scrollHeight > responsiveMaxHeight;
     }
     return false;
   };
@@ -99,8 +135,12 @@ const CustomTextarea = ({
           {/* Contenedor del textarea con scroll */}
         <div className="relative">
           <div
-            className={`p-4 transition-all duration-300 flex items-center ${value.trim() && shouldShowScroll() ? 'overflow-y-auto custom-blue-scroll' : 'overflow-hidden'}`}
-            style={{ height: getContainerHeight() }}
+            className={`p-4 transition-all duration-300 ${shouldShowScroll() ? 'overflow-y-auto custom-blue-scroll' : 'overflow-hidden'}`}
+            style={{ 
+              height: getContainerHeight(),
+              display: 'flex',
+              alignItems: shouldShowScroll() ? 'flex-start' : 'center'
+            }}
           >
             <textarea
               ref={textareaRef}
@@ -116,15 +156,12 @@ const CustomTextarea = ({
               rows={1}
               disabled={disabled} // Solo disabled por la prop, no por isLoading
               onKeyDown={handleKeyDown}
-              className="w-full resize-none border-none bg-transparent text-base text-gray-800 placeholder:text-gray-400 focus:outline-none flex items-center"
+              className="w-full resize-none border-none bg-transparent text-base text-gray-800 placeholder:text-gray-400 focus:outline-none"
               style={{
-                height: value.trim() ? (textareaRef.current ? textareaRef.current.style.height : '20px') : '20px',
                 lineHeight: '20px',
                 minHeight: '20px',
                 paddingTop: '0px',
-                paddingBottom: '0px',
-                display: 'flex',
-                alignItems: 'center'
+                paddingBottom: '0px'
               }}
             />
           </div>
