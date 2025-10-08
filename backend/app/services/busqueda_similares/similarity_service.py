@@ -31,6 +31,11 @@ from .similarity_prompt_builder import (
 # IMPORTANTE: Usar constantes de metadata para evitar typos
 from app.constants.metadata_fields import MetadataFields as MF
 
+# Módulos especializados para separación de responsabilidades
+from .document_retriever import DocumentRetriever
+from .summary_generator import SummaryGenerator
+from .response_parser import ResponseParser
+
 logger = logging.getLogger(__name__)
 
 class SimilarityService:
@@ -40,6 +45,11 @@ class SimilarityService:
         self.documento_service = DocumentoService()
         self.documento_retrieval_service = DocumentoRetrievalService()
         self.embeddings_service = None
+        
+        # Inicializar módulos especializados
+        self.document_retriever = DocumentRetriever()
+        self.summary_generator = SummaryGenerator()
+        self.response_parser = ResponseParser()
 
     async def _get_embeddings_service(self):
         if self.embeddings_service is None:
@@ -107,7 +117,7 @@ class SimilarityService:
         # Convertir LangChain Documents al formato esperado por documento_retrieval_service
         similar_docs = []
         for doc in docs:
-            # Usar más caracteres para documentos legales (500 en lugar de 200)
+            # Usar más caracteres para documentos legales (500)
             preview_chars = 500
             content_preview = doc.page_content[:preview_chars] + "..." if len(doc.page_content) > preview_chars else doc.page_content
             
@@ -152,17 +162,20 @@ class SimilarityService:
         try:
             logger.info(f"Iniciando generación de resumen para expediente: {numero_expediente}")
             
-            # 1. Obtener documentos del expediente
-            docs_expediente = await self._obtener_documentos_expediente(numero_expediente)
+            # 1. Obtener documentos del expediente (usando DocumentRetriever)
+            docs_expediente = await self.document_retriever.obtener_documentos_expediente(numero_expediente)
             
-            # 2. Crear contexto para el LLM
-            contexto_completo = await self._crear_contexto_resumen(docs_expediente)
+            # 2. Crear contexto para el LLM (usando SummaryGenerator)
+            contexto_completo = await self.summary_generator.crear_contexto_resumen(docs_expediente)
             
-            # 3. Generar respuesta con LLM
-            respuesta_content = await self._generar_respuesta_llm(contexto_completo, numero_expediente)
+            # 3. Generar respuesta con LLM con reintentos (usando SummaryGenerator)
+            respuesta_content = await self.summary_generator.generar_respuesta_llm(
+                contexto_completo, 
+                numero_expediente
+            )
             
-            # 4. Parsear respuesta de IA
-            resumen_ia = self._parsear_respuesta_ia(respuesta_content)
+            # 4. Parsear respuesta de IA (usando ResponseParser)
+            resumen_ia = self.response_parser.parsear_respuesta_ia(respuesta_content)
             
             end_time = time.time()
             
@@ -176,290 +189,3 @@ class SimilarityService:
         except Exception as e:
             logger.error(f"Error generando resumen para expediente {numero_expediente}: {e}")
             raise
-
-    async def _obtener_documentos_expediente(self, numero_expediente: str) -> List[Document]:
-        """Obtiene documentos del expediente usando retriever o fallback a BD."""
-        try:
-            # Estrategia principal: usar retriever con filtro directo (más eficiente)
-            retriever = DynamicJusticIARetriever(
-                top_k=50,
-                similarity_threshold=0.2,  # Más permisivo para obtener todos los docs
-                expediente_filter=numero_expediente  # Filtro directo en Milvus
-            )
-            logger.info(f"Retriever inicializado con filtro de expediente: {numero_expediente}")
-            
-            # Query simple - el filtro ya limita al expediente
-            query_expediente = f"documentos del expediente {numero_expediente}"
-            logger.info(f"Query para búsqueda: {query_expediente}")
-            
-            docs_expediente = await retriever._aget_relevant_documents(query_expediente)
-            logger.info(f"Documentos obtenidos con filtro: {len(docs_expediente)}")
-            
-            if docs_expediente:
-                logger.info(f"Documentos recuperados para expediente {numero_expediente}: {len(docs_expediente)}")
-                return docs_expediente
-            else:
-                logger.warning("No se encontraron documentos en retriever, usando fallback")
-                return await self._obtener_documentos_fallback(numero_expediente)
-                
-        except Exception as e:
-            logger.error(f"Error con retriever/Milvus: {e}")
-            return await self._obtener_documentos_fallback(numero_expediente)
-
-    async def _obtener_documentos_fallback(self, numero_expediente: str) -> List[Document]:
-        """Estrategia de fallback: obtener documentos directamente de la BD."""
-        logger.info("Intentando fallback con documento_service")
-        
-        expediente_data = await self.documento_service.obtener_expediente_completo(
-            numero_expediente, incluir_documentos=True
-        )
-        
-        if not expediente_data or not expediente_data.get("documents"):
-            raise ValueError(f"No se encontraron documentos para el expediente {numero_expediente}")
-        
-        # Convertir documentos a formato LangChain Document
-        docs = []
-        for doc_data in expediente_data["documents"]:
-            content = doc_data.get("content_preview", "") or doc_data.get("content", "")
-            if content.strip():
-                doc = Document(
-                    page_content=content,
-                    metadata={
-                        "numero_expediente": numero_expediente,  # Consistente con Milvus
-                        "nombre_archivo": doc_data.get("document_name", ""),
-                        "id_documento": doc_data.get("id", ""),
-                    }
-                )
-                docs.append(doc)
-        
-        logger.info(f"Fallback exitoso: {len(docs)} documentos desde BD")
-        return docs
-
-    async def _crear_contexto_resumen(self, docs_expediente: List[Document]) -> str:
-        """Crea el contexto optimizado para documentos legales."""
-        try:
-            contexto_completo = create_similarity_search_context(
-                docs_expediente, 
-                max_docs=20,  # Más documentos para resumen completo
-                max_chars_per_doc=7000  # Más caracteres para documentos legales
-            )
-            logger.info(f"Contexto creado con {len(contexto_completo)} caracteres")
-            return contexto_completo
-        except Exception as e:
-            logger.error(f"Error creando contexto: {e}")
-            raise ValueError(f"Error procesando documentos: {e}")
-
-    async def _generar_respuesta_llm(self, contexto_completo: str, numero_expediente: str) -> str:
-        """Genera respuesta usando el LLM."""
-        try:
-            # Crear prompt especializado
-            prompt = create_similarity_summary_prompt(contexto_completo, numero_expediente)
-            logger.info("Prompt creado correctamente")
-        
-            # Obtener LLM 
-            llm = await get_llm()
-            logger.info("LLM obtenido correctamente")
-            
-            respuesta_llm = await llm.ainvoke(prompt)
-            respuesta_content = getattr(respuesta_llm, "content", str(respuesta_llm))
-            logger.info(f"Respuesta del LLM obtenida: {len(respuesta_content)} caracteres")
-            
-            return respuesta_content
-            
-        except Exception as e:
-            logger.error(f"Error con LLM: {e}")
-            raise ValueError(f"Error de conexión con Ollama: {e}")
-
-    def _parsear_respuesta_ia(self, respuesta_raw: str) -> ResumenIA:
-        """Parsea la respuesta del LLM y la convierte en objeto ResumenIA."""
-        import json
-        import re
-        
-        # Log para debug
-        logger.info(f"Respuesta cruda del LLM (primeros 200 chars): {respuesta_raw[:200]}")
-        logger.info(f"Respuesta cruda del LLM (últimos 100 chars): {respuesta_raw[-100:]}")
-        
-        try:
-            # Paso 1: Limpiar la respuesta
-            respuesta_limpia = respuesta_raw.strip()
-            
-            # Eliminar markdown code blocks si existen (```json o ```)
-            if respuesta_limpia.startswith("```"):
-                # Eliminar primera línea con ```json o ```
-                lineas = respuesta_limpia.split('\n')
-                respuesta_limpia = '\n'.join(lineas[1:])
-                # Eliminar última línea con ```
-                if respuesta_limpia.endswith("```"):
-                    respuesta_limpia = respuesta_limpia[:-3]
-            
-            respuesta_limpia = respuesta_limpia.strip()
-            
-            # Paso 2: Intentar encontrar JSON usando múltiples estrategias
-            json_str = None
-            
-            # Estrategia 1: Buscar JSON completo con todos los campos
-            pattern_completo = r'\{\s*"resumen"\s*:[^}]*"palabras_clave"\s*:[^}]*"factores_similitud"\s*:[^}]*"conclusion"\s*:[^}]*\}'
-            match = re.search(pattern_completo, respuesta_limpia, re.DOTALL)
-            
-            if match:
-                json_str = match.group()
-                logger.info("✓ JSON completo encontrado con regex")
-            else:
-                # Estrategia 2: Buscar inicio y fin de JSON
-                inicio = respuesta_limpia.find('{')
-                fin = respuesta_limpia.rfind('}')
-                
-                if inicio != -1 and fin != -1 and fin > inicio:
-                    json_str = respuesta_limpia[inicio:fin+1]
-                    logger.info("✓ JSON extraído por posición de llaves")
-                else:
-                    logger.warning("✗ No se encontró estructura JSON válida")
-                    return self._crear_resumen_fallback(respuesta_raw)
-            
-            # Paso 3: Intentar parsear el JSON
-            try:
-                datos = json.loads(json_str)
-                logger.info("✓ JSON parseado exitosamente")
-                
-                # Validar que tenga los campos mínimos
-                if not datos.get("resumen") or not datos.get("conclusion"):
-                    logger.warning("JSON válido pero sin campos críticos, usando fallback")
-                    return self._crear_resumen_fallback(respuesta_raw)
-                
-                return ResumenIA(
-                    resumen=datos.get("resumen", "No se pudo generar resumen"),
-                    palabras_clave=datos.get("palabras_clave", []) or [
-                        "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
-                        "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
-                    ],
-                    factores_similitud=datos.get("factores_similitud", []) or [
-                        "Contenido del expediente legal", 
-                        "Documentación procesal oficial",
-                        "Tipo de procedimiento judicial",
-                        "Materias jurídicas involucradas",
-                        "Contexto procesal específico"
-                    ],
-                    conclusion=datos.get("conclusion", "Se requiere análisis manual adicional")
-                )
-                
-            except json.JSONDecodeError as e:
-                logger.warning(f"Error parseando JSON: {e}")
-                logger.info("Intentando reparar JSON...")
-                
-                # Estrategia 3: Intentar reparar JSON
-                json_reparado = self._intentar_reparar_json(json_str)
-                if json_reparado:
-                    try:
-                        datos = json.loads(json_reparado)
-                        logger.info("✓ JSON reparado y parseado exitosamente")
-                        
-                        return ResumenIA(
-                            resumen=datos.get("resumen", "No se pudo generar resumen"),
-                            palabras_clave=datos.get("palabras_clave", []) or [
-                                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
-                                "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
-                            ],
-                            factores_similitud=datos.get("factores_similitud", []) or [
-                                "Contenido del expediente legal", 
-                                "Documentación procesal oficial",
-                                "Tipo de procedimiento judicial",
-                                "Materias jurídicas involucradas",
-                                "Contexto procesal específico"
-                            ],
-                            conclusion=datos.get("conclusion", "Se requiere análisis manual adicional")
-                        )
-                    except json.JSONDecodeError:
-                        logger.warning("✗ No se pudo reparar el JSON")
-                        return self._crear_resumen_fallback(respuesta_raw)
-                else:
-                    logger.warning("✗ Reparación de JSON falló")
-                    return self._crear_resumen_fallback(respuesta_raw)
-                
-        except Exception as e:
-            logger.error(f"Error general parseando respuesta IA: {e}")
-            return self._crear_resumen_fallback(respuesta_raw)
-
-    def _intentar_reparar_json(self, json_str: str) -> str:
-        """Intenta reparar JSON incompleto o mal formado."""
-        import json
-        try:
-            # Si ya es JSON válido, retornarlo
-            json.loads(json_str)
-            return json_str
-        except json.JSONDecodeError:
-            pass
-        
-        try:
-            # Paso 1: Limpiar espacios y saltos de línea problemáticos
-            json_limpio = json_str.strip()
-            
-            # Paso 2: Asegurar que comience con {
-            if not json_limpio.startswith('{'):
-                inicio = json_limpio.find('{')
-                if inicio != -1:
-                    json_limpio = json_limpio[inicio:]
-                else:
-                    logger.error("No se encontró inicio de JSON")
-                    return ""
-            
-            # Paso 3: Contar llaves para cerrar correctamente
-            abiertas = json_limpio.count('{')
-            cerradas = json_limpio.count('}')
-            
-            # Paso 4: Si faltan cerrar llaves
-            if abiertas > cerradas:
-                logger.info(f"Reparando: {abiertas} llaves abiertas, {cerradas} cerradas")
-                
-                # Verificar si tiene al menos el campo resumen
-                if '"resumen"' not in json_limpio:
-                    logger.error("JSON no tiene campo 'resumen'")
-                    return ""
-                
-                # Eliminar comas finales mal puestas
-                json_limpio = json_limpio.rstrip().rstrip(',')
-                
-                # Agregar campos faltantes si no existen
-                if '"palabras_clave"' not in json_limpio:
-                    logger.info("Agregando palabras_clave por defecto")
-                    json_limpio += ', "palabras_clave": ["Análisis Legal", "Expediente Judicial", "Procedimiento Legal", "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"]'
-                
-                if '"factores_similitud"' not in json_limpio:
-                    logger.info("Agregando factores_similitud por defecto")
-                    json_limpio += ', "factores_similitud": ["Contenido del expediente legal", "Documentación procesal oficial", "Tipo de procedimiento judicial", "Materias jurídicas involucradas", "Contexto procesal específico"]'
-                
-                if '"conclusion"' not in json_limpio:
-                    logger.info("Agregando conclusion por defecto")
-                    json_limpio += ', "conclusion": "Se requiere análisis manual adicional para conclusiones jurídicas específicas y recomendaciones legales detalladas"'
-                
-                # Cerrar las llaves faltantes
-                diferencia = abiertas - cerradas
-                json_limpio += '}' * diferencia
-            
-            # Paso 5: Validar el JSON reparado
-            json.loads(json_limpio)
-            logger.info("✓ JSON reparado exitosamente")
-            return json_limpio
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"✗ Error reparando JSON: {e}")
-            return ""
-        except Exception as e:
-            logger.error(f"✗ Error inesperado reparando JSON: {e}")
-            return ""
-    
-    def _crear_resumen_fallback(self, respuesta_raw: str) -> ResumenIA:
-        """Crea un resumen de fallback cuando no se puede parsear JSON - optimizado para español."""
-        return ResumenIA(
-            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del expediente",
-            palabras_clave=[
-                "Análisis Legal", "Expediente Judicial", "Procedimiento Legal", 
-                "Documentación Oficial", "Proceso Judicial", "Materia Jurídica"
-            ],
-            factores_similitud=[
-                "Contenido del expediente legal", 
-                "Documentación procesal oficial",
-                "Tipo de procedimiento judicial",
-                "Materias jurídicas involucradas"
-            ],
-            conclusion="Se requiere análisis manual adicional para conclusiones jurídicas específicas y recomendaciones legales detalladas"
-        )
