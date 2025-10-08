@@ -105,12 +105,20 @@ const ConsultaChat = () => {
           
           setMessages(prev => [...prev, userMessage, assistantMessage]);
           
-          // Backend gestionará el historial automáticamente al hacer la primera consulta
-          console.log('📋 Expediente establecido:', text.trim());
-          
+          // NUEVO: Actualizar inmediatamente el contexto en el backend
+          const action = consultedExpediente ? 'change' : 'set';
+          consultaService.updateExpedienteContext(sessionId, newExpediente, action)
+            .then(success => {
+              if (success) {
+              } else {
+                console.warn(' Error sincronizando contexto con el backend');
+              }
+            })
+            .catch(error => {
+              console.error(' Error sincronizando contexto:', error);
+            });
           return;
         }
-        // Si es el mismo expediente, continuar con consulta normal (no hacer nada especial)
       }
       // Si no tenemos expediente consultado y el texto no es un número válido
       else if (!consultedExpediente) {
@@ -137,7 +145,6 @@ const ConsultaChat = () => {
         setMessages(prev => [...prev, userMessage, assistantMessage]);
         return;
       }
-      // Si ya tenemos expediente consultado, continuar con la consulta normal
     }
     
     // Cancelar cualquier request anterior

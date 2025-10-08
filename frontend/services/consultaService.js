@@ -149,6 +149,34 @@ class ConsultaService {
     }
   }
 
+  async updateExpedienteContext(sessionId, expedienteNumber, action = 'set') {
+    try {
+      if (!sessionId || !expedienteNumber) {
+        throw new Error('sessionId y expedienteNumber son requeridos');
+      }
+
+      const payload = {
+        session_id: sessionId,
+        expediente_number: expedienteNumber,
+        action: action
+      };
+
+      const response = await httpService.post('/rag/update-expediente-context', payload);
+      
+      if (response.success) {
+        console.log('Contexto de expediente actualizado en backend');
+        return true;
+      } else {
+        console.error('Error actualizando contexto:', response.message);
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('Error actualizando contexto de expediente:', error);
+      return false;
+    }
+  }
+
   /**
    * Cancelar consulta en progreso
    */
