@@ -30,7 +30,19 @@ const ConsultaChat = () => {
       // Mostrar mensaje de bienvenida específico para el modo expediente
       if (newScope === 'expediente') {
         const welcomeMessage = {
-          text: `**🔍 Modo: Consulta por Expediente Específico**\n\nPara comenzar, necesito que ingreses un número de expediente válido.\n\n**Formato:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nUna vez que ingreses el número, podrás hacer cualquier consulta específica sobre ese expediente.\n\n💡 **Tip:** Si quieres hacer consultas generales sobre temas legales, cambia a "Búsqueda general".`,
+          text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+---
+
+### 🎯 **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`,
           isUser: false,
           timestamp: new Date().toLocaleTimeString('es-ES', {
             hour: '2-digit',
