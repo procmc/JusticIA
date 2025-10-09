@@ -25,7 +25,14 @@ from app.db.database import get_db
 from ..async_processing.progress_tracker import ProgressTracker
 from ..tika_service import TikaService
 
-async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str, db: Optional[Session] = None, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> FileProcessingStatus:
+async def process_uploaded_files(
+    files: List[UploadFile], 
+    CT_Num_expediente: str, 
+    db: Optional[Session] = None, 
+    usuario_id: Optional[str] = None,
+    progress_tracker: Optional[ProgressTracker] = None, 
+    cancel_check: Optional[callable] = None
+) -> FileProcessingStatus:
     """
     Procesa una lista de archivos subidos para un expediente específico.
     Solo almacena en vectorstore si se puede crear registro en BD (transaccional).
@@ -34,6 +41,7 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
         files: Lista de archivos a procesar
         CT_Num_expediente: Número de expediente validado
         db: Sesión de BD (requerida para almacenamiento completo)
+        usuario_id: ID del usuario que inició la ingesta (para bitácora)
         progress_tracker: Tracker para reportar progreso granular
         cancel_check: Función opcional para verificar si se canceló la tarea
         
@@ -110,7 +118,7 @@ async def process_uploaded_files(files: List[UploadFile], CT_Num_expediente: str
             temp_filepath = f"uploads/{CT_Num_expediente}/{file.filename}"
             
             result = await process_single_file_with_content(
-                file, content, temp_filepath, CT_Num_expediente, expediente, db, progress_tracker, cancel_check
+                file, content, temp_filepath, CT_Num_expediente, expediente, db, usuario_id, progress_tracker, cancel_check
             )
             archivos_procesados.append(result)
             
@@ -250,6 +258,7 @@ async def process_single_file_with_content(
     CT_Num_expediente: str, 
     expediente=None, 
     db: Optional[Session] = None,
+    usuario_id: Optional[str] = None,
     progress_tracker: Optional[ProgressTracker] = None,
     cancel_check: Optional[callable] = None
 ) -> FileUploadResponse:
@@ -264,6 +273,7 @@ async def process_single_file_with_content(
         CT_Num_expediente: Número del expediente
         expediente: Objeto expediente (opcional)
         db: Sesión de BD (opcional)
+        usuario_id: ID del usuario que inició la ingesta (para bitácora)
         progress_tracker: Tracker de progreso (opcional)
         cancel_check: Función para verificar cancelación (opcional)
     """
@@ -361,14 +371,29 @@ async def process_single_file_with_content(
                     progress_tracker.update_progress(60, "Generando embeddings vectoriales")
                 
                 # 5. Almacenar en Milvus con IDs reales
-                await store_in_vectorstore(
+                doc_ids, num_chunks = await store_in_vectorstore(
                     texto=texto_extraido, 
                     metadatos=metadatos, 
                     CT_Num_expediente=CT_Num_expediente,
                     id_expediente=expediente.CN_Id_expediente,  # ID real del expediente
                     id_documento=documento_creado.CN_Id_documento  # ID real del documento
                 )
-                logger.info(f"Almacenado en vectorstore exitosamente")
+                logger.info(f"Almacenado en vectorstore exitosamente: {num_chunks} chunks")
+                
+                # Registrar en bitácora el almacenamiento vectorial
+                if usuario_id:
+                    try:
+                        from app.services.bitacora_service import bitacora_service
+                        await bitacora_service.registrar_almacenamiento_vectorial(
+                            db=db,
+                            usuario_id=usuario_id,
+                            expediente_num=CT_Num_expediente,
+                            filename=file.filename,
+                            documento_id=documento_creado.CN_Id_documento,
+                            num_chunks=num_chunks
+                        )
+                    except Exception as e:
+                        logger.warning(f"Error registrando almacenamiento vectorial en bitácora: {e}")
                 
                 # Progreso: Finalizando (85%)
                 if progress_tracker:
