@@ -21,7 +21,7 @@ async def create_expediente_specific_chain(
 ):
     """Crea una chain especializada para análisis de expediente específico."""
     llm = await get_llm()
-    EXPEDIENTE_SYSTEM_PROMPT = f"""Eres JusticIA, especialista en análisis de expedientes legales costarricenses.
+    EXPEDIENTE_SYSTEM_PROMPT = f"""Eres JusticBot, especialista en análisis de expedientes legales costarricenses.
 
 EXPEDIENTE BAJO ANÁLISIS: {expediente_numero}
 
