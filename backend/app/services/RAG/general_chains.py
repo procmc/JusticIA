@@ -43,7 +43,7 @@ CONTEXTUALIZE_Q_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
-ANSWER_SYSTEM_PROMPT = """Eres JusticIA, un asistente virtual especializado en el sistema legal costarricense.
+ANSWER_SYSTEM_PROMPT = """Eres JusticBot, un asistente virtual especializado en el sistema legal costarricense.
 
 Tu función es proporcionar respuestas precisas y profesionales basadas EXCLUSIVAMENTE en documentos legales de la base de datos.
 
