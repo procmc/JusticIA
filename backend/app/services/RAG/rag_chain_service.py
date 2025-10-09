@@ -20,6 +20,7 @@ class RAGChainService:
     # LANGCHAIN ARCHITECTURE (Modern)
     # =====================================================================
     
+    # Consulta principal 
     async def consulta_con_historial_streaming(
         self,
         pregunta: str,
@@ -27,11 +28,12 @@ class RAGChainService:
         top_k: int = 15,
         expediente_filter: Optional[str] = None
     ):
-        # Actualizar metadatos de la sesión
+        # 1. Actualizar la información de la conversación
         conversation_store.update_metadata(session_id)
         
-        # Decidir flujo según expediente
+        # 2. AQUÍ COORDINA: Decide qué flujo seguir
         if expediente_filter and expediente_filter.strip():
+            # → VA AL FLUJO DE EXPEDIENTE ESPECÍFICO
             logger.info(f" FLUJO → EXPEDIENTE ESPECÍFICO: {expediente_filter}")
             return await self._consulta_expediente_con_historial(
                 pregunta=pregunta,
@@ -40,25 +42,23 @@ class RAGChainService:
             )
         else:
             logger.info(f" FLUJO → GENERAL CON HISTORIAL")
+            # → VA AL FLUJO GENERAL
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
                 top_k=top_k
             )
     
+    # Consulta general con historial
     async def _consulta_general_con_historial(
         self,
         pregunta: str,
         session_id: str,
-        top_k: int = 50  # Aumentado para más contexto
+        top_k: int = 50 
     ):
-        """
-        Consulta general usando LangChain chains con historial automático.
-        Usa SmartRetrieverRouter (V2) que decide automáticamente el modo.
-        """
         logger.info(f" GENERAL CON HISTORIAL - Pregunta: '{pregunta[:50]}...', Session: {session_id}, Top-K: {top_k}")
         
-        # Crear retriever con parámetros optimizados
+        # Crear buscador
         retriever = DynamicJusticIARetriever(
             top_k=top_k,
             similarity_threshold=0.3
@@ -67,7 +67,7 @@ class RAGChainService:
         # Crear chain conversacional
         chain = await create_conversational_rag_chain(
             retriever=retriever,
-            with_history=True
+            with_history=True # "Recuerda la conversación anterior"
         )
         
         # Configuración de sesión
@@ -111,6 +111,7 @@ class RAGChainService:
             }
         )
     
+    # Consulta de expediente específico con historial
     async def _consulta_expediente_con_historial(
         self,
         pregunta: str,
@@ -122,7 +123,7 @@ class RAGChainService:
         """
         logger.info(f" EXPEDIENTE CON HISTORIAL - Número: {expediente_numero}")
         
-        # Validar formato (acepta YY-NNNNNN-NNNN-XX o YYYY-NNNNNN-NNNN-XX)
+        # Validar formato del expediente ingresado
         expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
         if not re.match(expediente_pattern, expediente_numero):
             logger.error(f" Formato inválido: {expediente_numero}")
@@ -133,7 +134,7 @@ class RAGChainService:
                 top_k=15
             )
         
-        # Actualizar metadatos con número de expediente
+        # Actualizar la información de la conversación
         conversation_store.update_metadata(
             session_id=session_id,
             expediente_number=expediente_numero
@@ -173,13 +174,14 @@ class RAGChainService:
         async def event_generator():
             try:
                 async for chunk in stream_chain_response(chain, input_dict, config):
-                    yield chunk
+                    yield chunk # Envía cada pedacito al frontend
                 
-                # Auto-generar título si es el primer mensaje
+                # Cuando termina, genera título automático
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
                 logger.error(f" Error en streaming expediente con historial: {e}", exc_info=True)
+                # Si algo sale mal, envía error
                 error_data = {
                     "type": "error",
                     "content": f"Error al procesar la consulta del expediente: {str(e)}",
@@ -198,6 +200,7 @@ class RAGChainService:
             }
         )
     
+    # Actualizar contexto de expediente en la sesión
     async def update_expediente_context(
         self,
         session_id: str,
@@ -251,8 +254,10 @@ class RAGChainService:
             logger.error(f"Error actualizando contexto de expediente: {e}", exc_info=True)
             return False
 
+# Inicializar servicio RAG
 _rag_service = None
 
+# Obtener instancia singleton del servicio RAG
 async def get_rag_service() -> RAGChainService:
     global _rag_service
     if _rag_service is None:
