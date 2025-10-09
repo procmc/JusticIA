@@ -24,6 +24,7 @@ from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
 from ..async_processing.progress_tracker import ProgressTracker
 from ..tika_service import TikaService
+from .text_cleaner import clean_extracted_text, validate_cleaned_text, detect_encoding_problems
 
 async def process_uploaded_files(
     files: List[UploadFile], 
@@ -468,11 +469,12 @@ async def process_single_file_with_content(
         # Re-lanzar la excepción original sin modificar el mensaje
         raise
 
+
 async def extract_text_from_file(content: bytes, filename: str, content_type: str, progress_tracker: Optional[ProgressTracker] = None, cancel_check: Optional[callable] = None) -> str:
     """
     Extrae texto de diferentes tipos de archivos:
     - Audio (MP3, WAV, OGG, M4A): Transcripción con Whisper
-    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, etc.): Apache Tika Server con Tesseract OCR integrado
+    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, HTML, etc.): Apache Tika Server con Tesseract OCR integrado
     
     Nota: Tika Server tiene Tesseract OCR configurado para extraer texto de PDFs escaneados automáticamente.
     """
@@ -533,14 +535,16 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
             error_msg += ". Posibles causas: archivo corrupto, formato no soportado, o archivo protegido con contraseña."
             raise ValueError(error_msg)
         
-        # Validar que no hay caracteres corruptos (problema de encoding)
-        if any(char in texto for char in ['茅', '谩', '帽', '贸', 'iacute', 'aacute']):
-            logger.warning(f"Detectados caracteres corruptos en {filename}. Muestra: {texto[:100]}...")
+        # Aplicar limpieza profunda del texto usando el helper
+        # (El helper ya incluye detección de problemas de encoding)
+        texto_limpio = clean_extracted_text(texto, filename)
         
-        # Limpiar el texto (remover espacios excesivos, saltos de línea múltiples)
-        texto_limpio = ' '.join(texto.split())
+        # Validar que quedó contenido después de la limpieza
+        is_valid, error_msg = validate_cleaned_text(texto_limpio, min_length=10, filename=filename)
+        if not is_valid:
+            logger.warning(error_msg)
         
-        logger.info(f"Texto extraído exitosamente de {filename} ({len(texto_limpio)} caracteres)")
+        logger.info(f"Texto extraído y limpiado de {filename} ({len(texto_limpio)} caracteres)")
         return texto_limpio
         
     except Exception as e:

@@ -24,6 +24,17 @@
   </server>
   
   <parsers>
+    <!-- Parser para HTML y XHTML (.html, .htm, .xhtml) -->
+    <parser class="org.apache.tika.parser.html.HtmlParser">
+      <params>
+        <!-- Extraer solo el texto visible, ignorar scripts y estilos -->
+        <param name="extractScripts" type="bool">false</param>
+        <param name="extractStyles" type="bool">false</param>
+        <!-- Preservar saltos de línea y estructura básica -->
+        <param name="flattenSuperscripts" type="bool">true</param>
+      </params>
+    </parser>
+    
     <!-- Parser para documentos de Microsoft Office (.docx, .xlsx, .pptx, etc.) -->
     <parser class="org.apache.tika.parser.microsoft.ooxml.OOXMLParser">
       <params>

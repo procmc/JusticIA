@@ -46,20 +46,20 @@ class TikaService:
             enable_ocr: Si True, habilita OCR automático para PDFs escaneados
             
         Returns:
-            str: Texto extraído limpio
+            str: Texto extraído (sin limpieza profunda, eso se hace después)
             
         Raises:
             Exception: Si falla la extracción
         """
         headers = {
-            'Accept': 'text/plain',
+            'Accept': 'text/plain; charset=utf-8',  # Especificar UTF-8 explícitamente
             'Content-Type': 'application/octet-stream',
         }
         
         # Configurar OCR en español si está habilitado
         if enable_ocr:
-            headers['X-Tika-OCRLanguage'] = 'spa'
-            headers['X-Tika-PDFOcrStrategy'] = 'auto'
+            headers['X-Tika-OCRLanguage'] = 'spa+eng'  # Español e inglés
+            headers['X-Tika-PDFOcrStrategy'] = 'auto'  # OCR solo si es necesario
         
         endpoint = f"{self.tika_url}/tika"
         
@@ -80,7 +80,8 @@ class TikaService:
                 logger.info(f"Content-Type detectado: {response.headers.get('Content-Type', 'unknown')}")
                 
                 if response.status_code == 200:
-                    text = response.text
+                    # Obtener texto con encoding UTF-8 explícito
+                    text = response.content.decode('utf-8', errors='replace')
                     
                     if not text or not text.strip():
                         logger.warning(f"Tika no extrajo texto de '{filename}' - Response vacío")
@@ -102,10 +103,9 @@ class TikaService:
                         
                         return ""
                     
-                    # Limpiar texto (remover espacios múltiples y saltos de línea)
-                    text_limpio = ' '.join(text.split())
-                    logger.info(f"Texto extraído: {len(text_limpio)} caracteres")
-                    return text_limpio
+                    # Retornar texto sin limpieza excesiva (se hace después con clean_extracted_text)
+                    logger.info(f"Texto extraído de '{filename}': {len(text)} caracteres")
+                    return text
                     
                 elif response.status_code == 422:
                     logger.error(f"Tipo de archivo no soportado: {filename}")

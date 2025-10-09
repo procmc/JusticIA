@@ -6,7 +6,7 @@ import {
 } from '@/utils/validation/expedienteValidator';
 
 export const tiposArchivo = {
-  documentos: ['.pdf', '.doc', '.docx', '.rtf', '.txt'],
+  documentos: ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml'],
   audio: ['.mp3', '.wav', '.m4a', '.ogg']
 };
 
