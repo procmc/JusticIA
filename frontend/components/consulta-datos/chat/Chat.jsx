@@ -22,8 +22,6 @@ const ConsultaChat = () => {
   const handleSearchScopeChange = (newScope) => {
     // Solo cambiar si realmente es diferente al modo actual
     if (newScope !== searchScope) {
-      console.log(`🔄 Cambiando modo de búsqueda: ${searchScope} → ${newScope}`);
-      
       // Limpiar conversación e iniciar nueva sesión al cambiar de modo
       setMessages([]);
       setConsultedExpediente(null);
@@ -54,8 +52,6 @@ const ConsultaChat = () => {
         };
         setMessages([welcomeMessage]);
       }
-    } else {
-      console.log(` Ya estás en modo ${searchScope}, no se requiere cambio`);
     }
   };
 
@@ -75,11 +71,24 @@ const ConsultaChat = () => {
 
     // Cancelar la request actual si existe
     if (currentRequestRef.current) {
+      currentRequestRef.current.active = false;
       currentRequestRef.current = null;
     }
+
+    // Cancelar en el servicio también
+    consultaService.cancelConsulta();
   };
 
   const handleSendMessage = async (text) => {
+    // IMPORTANTE: Cancelar cualquier consulta en progreso PRIMERO
+    if (currentRequestRef.current?.active) {
+      stopStreamingRef.current = true;
+      currentRequestRef.current.active = false;
+      consultaService.cancelConsulta();
+      // Esperar un poco para asegurar que la cancelación se complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     // Si estamos en modo expediente específico
     if (searchScope === 'expediente') {
       // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
@@ -122,14 +131,8 @@ const ConsultaChat = () => {
           // NUEVO: Actualizar inmediatamente el contexto en el backend
           const action = consultedExpediente ? 'change' : 'set';
           consultaService.updateExpedienteContext(sessionId, newExpediente, action)
-            .then(success => {
-              if (success) {
-              } else {
-                console.warn(' Error sincronizando contexto con el backend');
-              }
-            })
             .catch(error => {
-              console.error(' Error sincronizando contexto:', error);
+              console.error('Error sincronizando contexto:', error);
             });
           return;
         }
@@ -161,15 +164,13 @@ const ConsultaChat = () => {
       }
     }
 
-    // Cancelar cualquier request anterior
-    if (currentRequestRef.current) {
-      stopStreamingRef.current = true;
-    }
-
     // Resetear flag de parada y contador de reintentos
     stopStreamingRef.current = false;
-    currentRequestRef.current = { active: true };
     retryCountRef.current = 0;
+
+    // Crear nueva referencia de request con ID único para rastreo
+    const requestId = Date.now();
+    currentRequestRef.current = { active: true, id: requestId };
 
     // Crear mensaje del usuario
     const userMessage = {
@@ -204,7 +205,7 @@ const ConsultaChat = () => {
 
     // Validar que tengamos session_id antes de continuar
     if (!sessionId) {
-      console.error(' No hay session_id disponible');
+      console.error('No hay session_id disponible');
       setIsTyping(false);
       setStreamingMessageIndex(null);
       return;
@@ -215,7 +216,8 @@ const ConsultaChat = () => {
       // Definir callbacks comunes para ambos tipos de consulta
       const onChunk = (chunk) => {
         // Callback para cada chunk recibido
-        if (currentRequestRef.current?.active) {
+        // Verificar que esta request siga siendo la activa
+        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             if (updatedMessages[messageIndex]) {
@@ -231,7 +233,8 @@ const ConsultaChat = () => {
 
       const onComplete = () => {
         // Callback cuando termina el streaming
-        if (currentRequestRef.current?.active) {
+        // Verificar que esta request siga siendo la activa
+        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;
@@ -242,28 +245,29 @@ const ConsultaChat = () => {
             if (updatedMessages[messageIndex]) {
               const responseText = updatedMessages[messageIndex].text || '';
               
-              // Si la respuesta está vacía, reintentar automáticamente (máximo 2 intentos)
-              if (!responseText.trim() && retryCountRef.current < 2) {
-                retryCountRef.current += 1;
-                console.log(`🔄 Respuesta vacía, reintentando (${retryCountRef.current}/2)...`);
+              // Solo reintentar si la respuesta está completamente vacía Y no hemos reintentado antes
+              if (!responseText.trim() && retryCountRef.current === 0) {
+                retryCountRef.current = 1;
                 
-                // Mantener el indicador de carga para hacer el reintento transparente
-                setIsTyping(true);
-                setStreamingMessageIndex(messageIndex);
-                
-                // Limpiar el mensaje del asistente y reintentar
+                // Marcar como reintento en el mensaje
                 updatedMessages[messageIndex] = {
                   ...updatedMessages[messageIndex],
                   text: '',
-                  timestamp: ''
+                  timestamp: '',
+                  isRetrying: true
                 };
                 
-                // Reintentar después de una pausa, directamente llamar al servicio
-                setTimeout(async () => {
-                  currentRequestRef.current = { active: true };
-                  
-                  try {
-                    await consultaService.consultaGeneralStreaming(
+                // Reintentar después de una pausa
+                setTimeout(() => {
+                  // Verificar que no se haya iniciado otra consulta mientras tanto
+                  if (currentRequestRef.current === null || currentRequestRef.current.id === requestId) {
+                    setIsTyping(true);
+                    setStreamingMessageIndex(messageIndex);
+                    
+                    const retryRequestId = requestId + 0.1; // ID ligeramente diferente para el reintento
+                    currentRequestRef.current = { active: true, id: retryRequestId };
+                    
+                    consultaService.consultaGeneralStreaming(
                       text,
                       onChunk,
                       onComplete,
@@ -271,21 +275,21 @@ const ConsultaChat = () => {
                       5,
                       sessionId,
                       searchScope === 'expediente' ? consultedExpediente : null
-                    );
-                  } catch (error) {
-                    onError(error);
+                    ).catch(onError);
                   }
-                }, 1500);
+                }, 1000);
                 
-                return updatedMessages; // Devolver el mensaje limpio
+                return updatedMessages;
               }
               
+              // Respuesta exitosa o ya reintentamos
               updatedMessages[messageIndex] = {
                 ...updatedMessages[messageIndex],
                 timestamp: new Date().toLocaleTimeString('es-ES', {
                   hour: '2-digit',
                   minute: '2-digit'
-                })
+                }),
+                isRetrying: false
               };
             }
             return updatedMessages;
@@ -295,7 +299,9 @@ const ConsultaChat = () => {
 
       const onError = (error) => {
         // Callback para errores
-        if (currentRequestRef.current?.active) {
+        // Verificar que esta request siga siendo la activa
+        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
+          console.error('Error en consulta:', error);
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;

@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import MessageBubble from './MessageBubble';
-import TypingIndicator from './TypingIndicator';
 import { ScrollShadow } from '@heroui/react';
 
-const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
+const MessageList = ({ messages, streamingMessageIndex }) => {
   const messagesEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
   const lastMessageContentRef = useRef('');
@@ -38,13 +37,6 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
       }
     }
   }, [messages, streamingMessageIndex]);
-
-  // Scroll cuando cambie el estado de typing
-  useEffect(() => {
-    if (isTyping) {
-      scrollToBottom();
-    }
-  }, [isTyping]);
 
   return (
     <ScrollShadow 
@@ -95,7 +87,6 @@ const MessageList = ({ messages, isTyping, streamingMessageIndex }) => {
                   isStreaming={index === streamingMessageIndex}
                 />
               ))}
-              {isTyping && <TypingIndicator />}
             </div>
           )}
           <div ref={messagesEndRef} />
