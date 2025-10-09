@@ -1,7 +1,7 @@
 from celery_app import celery_app
 from celery.exceptions import Terminated, SoftTimeLimitExceeded
 from sqlalchemy.orm import sessionmaker
-from app.db.database import engine, SessionLocal  # Reutilizar engine global configurado
+from app.db.database import engine, SessionLocal
 from app.services.ingesta.async_processing.progress_tracker import progress_manager
 from app.services.ingesta.file_management.document_processor import process_uploaded_files
 from io import BytesIO
@@ -12,7 +12,7 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True)
-def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
+def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     """
     Tarea Celery para procesar un archivo en segundo plano.
     
@@ -22,6 +22,7 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
     Args:
         CT_Num_expediente: Número de expediente
         archivo_data: Diccionario con datos del archivo
+        usuario_id: ID del usuario que inició la ingesta
     """
     # Usar el task_id de Celery como file_process_id para tracking
     task_id = self.request.id
@@ -59,11 +60,17 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
         db = SessionLocal()
         
         try:
+            # Registrar inicio en bitácora
+            from app.services.bitacora_service import bitacora_service
+            asyncio.run(bitacora_service.registrar_ingesta(
+                db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "inicio"
+            ))
+            
             # Ejecutar la función async de forma síncrona usando asyncio.run()
             # Esto crea un nuevo event loop para esta tarea
             # El tracker se pasa a process_uploaded_files que maneja todo el progreso
             resultado_completo = asyncio.run(
-                process_uploaded_files([file_obj], CT_Num_expediente, db, tracker, check_if_cancelled)
+                process_uploaded_files([file_obj], CT_Num_expediente, db, usuario_id, tracker, check_if_cancelled)
             )
             
             # Verificar cancelación después del procesamiento
@@ -79,6 +86,13 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
                     error_msg = archivo_resultado.message or "Error en procesamiento"
                     progress_manager.schedule_task_cleanup(task_id, delay_minutes=3)
                     raise Exception(error_msg)
+                
+                # Registrar éxito en bitácora
+                asyncio.run(bitacora_service.registrar_ingesta(
+                    db, usuario_id, CT_Num_expediente, archivo_data['filename'], 
+                    task_id, "completado", archivo_resultado.file_id
+                ))
+                
                 progress_manager.schedule_task_cleanup(task_id, delay_minutes=5)
                 
                 # Liberar memoria
@@ -115,6 +129,11 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data):
         # Excepción específica de Celery cuando se revoca con terminate=True
         logger.warning(f"Tarea {task_id} terminada forzosamente (cancelación)")
         tracker.mark_cancelled("Procesamiento interrumpido por cancelación")
+        if 'db' in locals():
+            from app.services.bitacora_service import bitacora_service
+            asyncio.run(bitacora_service.registrar_ingesta(
+                db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "cancelado"
+            ))
         progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
         
         # Liberar memoria

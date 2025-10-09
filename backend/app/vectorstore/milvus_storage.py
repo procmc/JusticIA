@@ -20,7 +20,7 @@ async def store_in_vectorstore(
     CT_Num_expediente: str,
     id_expediente: int,  # ID real de la BD
     id_documento: int    # ID real de la BD
-):
+) -> tuple[list, int]:
     """
     Almacena el texto en Milvus usando LangChain para automación completa.
     
@@ -37,7 +37,7 @@ async def store_in_vectorstore(
         id_documento: ID real del documento en la BD transaccional
         
     Returns:
-        List: IDs de los documentos almacenados
+        tuple: (IDs de documentos almacenados, número de chunks)
     """
     # Configurar text splitter con chunks que respeten el límite de Milvus (8192 chars)
     text_splitter = RecursiveCharacterTextSplitter(
@@ -112,6 +112,6 @@ async def store_in_vectorstore(
     if langchain_documents:
         doc_ids = await add_documents(langchain_documents)
         print(f"LangChain: {len(doc_ids)} chunks almacenados para {metadatos['nombre_archivo']}")
-        return doc_ids
+        return doc_ids, len(chunks)  # Retornar IDs y número de chunks
     
-    return []
+    return [], 0  # Sin documentos procesados
