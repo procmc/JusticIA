@@ -151,7 +151,7 @@ const ConsultaChat = () => {
         };
 
         const assistantMessage = {
-          text: `Para realizar consultas sobre un expediente específico, necesito que ingreses un número de expediente válido.\n\n**Formato esperado:** YYYY-NNNNNN-NNNN-XX\n**Ejemplo:** 2022-097794-3873-PN\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de arriba.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
+          text: `Para realizar consultas sobre un expediente específico, **necesito que ingreses un número de expediente válido**.\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de abajo.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
           isUser: false,
           timestamp: new Date().toLocaleTimeString('es-ES', {
             hour: '2-digit',
