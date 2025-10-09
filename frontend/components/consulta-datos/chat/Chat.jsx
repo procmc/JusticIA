@@ -12,6 +12,7 @@ const ConsultaChat = () => {
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
   const stopStreamingRef = useRef(false);
   const currentRequestRef = useRef(null);
+  const retryCountRef = useRef(0);
 
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
@@ -165,9 +166,10 @@ const ConsultaChat = () => {
       stopStreamingRef.current = true;
     }
 
-    // Resetear flag de parada
+    // Resetear flag de parada y contador de reintentos
     stopStreamingRef.current = false;
     currentRequestRef.current = { active: true };
+    retryCountRef.current = 0;
 
     // Crear mensaje del usuario
     const userMessage = {
@@ -238,6 +240,46 @@ const ConsultaChat = () => {
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             if (updatedMessages[messageIndex]) {
+              const responseText = updatedMessages[messageIndex].text || '';
+              
+              // Si la respuesta está vacía, reintentar automáticamente (máximo 2 intentos)
+              if (!responseText.trim() && retryCountRef.current < 2) {
+                retryCountRef.current += 1;
+                console.log(`🔄 Respuesta vacía, reintentando (${retryCountRef.current}/2)...`);
+                
+                // Mantener el indicador de carga para hacer el reintento transparente
+                setIsTyping(true);
+                setStreamingMessageIndex(messageIndex);
+                
+                // Limpiar el mensaje del asistente y reintentar
+                updatedMessages[messageIndex] = {
+                  ...updatedMessages[messageIndex],
+                  text: '',
+                  timestamp: ''
+                };
+                
+                // Reintentar después de una pausa, directamente llamar al servicio
+                setTimeout(async () => {
+                  currentRequestRef.current = { active: true };
+                  
+                  try {
+                    await consultaService.consultaGeneralStreaming(
+                      text,
+                      onChunk,
+                      onComplete,
+                      onError,
+                      5,
+                      sessionId,
+                      searchScope === 'expediente' ? consultedExpediente : null
+                    );
+                  } catch (error) {
+                    onError(error);
+                  }
+                }, 1500);
+                
+                return updatedMessages; // Devolver el mensaje limpio
+              }
+              
               updatedMessages[messageIndex] = {
                 ...updatedMessages[messageIndex],
                 timestamp: new Date().toLocaleTimeString('es-ES', {
