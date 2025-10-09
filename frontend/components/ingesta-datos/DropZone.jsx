@@ -96,7 +96,7 @@ const DropZone = ({
 
         {/* Formatos soportados y límites */}
         <div className="mt-6 space-y-1 text-xs text-gray-500 text-center">
-          <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, MP3, WAV, M4A, OGG</div>
+          <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, HTML, MP3, WAV, M4A, OGG</div>
           <div>Máximo 10 archivos por expediente</div>
         </div>
       </motion.div>

@@ -5,6 +5,8 @@ ALLOWED_FILE_TYPES = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     'application/rtf': ['.rtf'],
     'text/plain': ['.txt'],
+    'text/html': ['.html', '.htm'],
+    'application/xhtml+xml': ['.xhtml'],
     'audio/mpeg': ['.mp3'],
     'audio/mp3': ['.mp3'],
     'audio/wav': ['.wav'],
@@ -20,7 +22,7 @@ ALLOWED_FILE_TYPES = {
 MAX_FILE_SIZE = 1024 * 1024 * 1024
 
 # Extensiones permitidas
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.mp3', '.wav', '.ogg', '.m4a']
+ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a']
 
 # Mapeo de extensiones a códigos numéricos para Milvus
 FILE_TYPE_CODES = {
@@ -29,8 +31,11 @@ FILE_TYPE_CODES = {
     '.doc': 3,
     '.docx': 4,
     '.rtf': 5,
-    '.mp3': 6,
-    '.wav': 7,
-    '.ogg': 8,
-    '.m4a': 9
+    '.html': 6,
+    '.htm': 6,
+    '.xhtml': 6,
+    '.mp3': 10,
+    '.wav': 11,
+    '.ogg': 12,
+    '.m4a': 13
 }
