@@ -8,22 +8,35 @@ from pydantic import Field
 # IMPORTANTE: Usar constantes de metadata para evitar typos
 from app.constants.metadata_fields import MetadataFields as MF
 
+# Nuevas importaciones para mejoras RAG
+from app.config.rag_config import rag_config
+from app.services.RAG.search_strategies import search_manager
+
+# Importar limpieza de encoding para post-procesamiento
+from app.services.ingesta.file_management.text_cleaner import fix_encoding_issues
+
 logger = logging.getLogger(__name__)
 
 
 class DynamicJusticIARetriever(BaseRetriever):
     # Campos Pydantic V2
-    top_k: int = Field(default=10, description="Número de documentos a recuperar")
-    similarity_threshold: float = Field(default=0.3, description="Umbral de similitud mínimo")
+    top_k: int = Field(default=rag_config.TOP_K_GENERAL, description="Número de documentos a recuperar")
+    similarity_threshold: float = Field(default=rag_config.SIMILARITY_THRESHOLD_GENERAL, description="Umbral de similitud mínimo")
     expediente_filter: Optional[str] = Field(default=None, description="Filtro por expediente específico")
     
     def __init__(
         self, 
-        top_k: int = 10,
-        similarity_threshold: float = 0.3,
+        top_k: int = None,  # None = usar valor del config
+        similarity_threshold: float = None,  # None = usar valor del config
         expediente_filter: Optional[str] = None,
         **kwargs
     ):
+        # Usar valores del config si no se especifican
+        if top_k is None:
+            top_k = rag_config.TOP_K_GENERAL
+        if similarity_threshold is None:
+            similarity_threshold = rag_config.SIMILARITY_THRESHOLD_GENERAL
+        
         super().__init__(**kwargs)
         object.__setattr__(self, 'top_k', top_k)
         object.__setattr__(self, 'similarity_threshold', similarity_threshold)
@@ -59,55 +72,90 @@ class DynamicJusticIARetriever(BaseRetriever):
             return []
     
     async def _get_expediente_documents(self, expediente_numero: str) -> List[Document]:
-        """Obtiene todos los documentos de un expediente específico."""
+        """Obtiene todos los documentos de un expediente específico con limpieza de encoding."""
         try:
+            logger.info(f"Obteniendo documentos del expediente: {expediente_numero}")
+            
             # Obtener documentos completos del expediente
             docs = await get_expedient_documents(expediente_numero)
             
-            if docs:
-                # Limitar al top_k configurado
-                result = docs[:self.top_k]
-                logger.info(f"Expediente {expediente_numero}: {len(result)} documentos recuperados")
-                return result
+            if not docs:
+                logger.warning(f"Expediente {expediente_numero}: sin documentos")
+                return []
             
-            logger.warning(f"Expediente {expediente_numero}: sin documentos")
-            return []
+            # Aplicar limpieza de encoding a todos los documentos
+            for doc in docs:
+                if hasattr(doc, 'page_content'):
+                    doc.page_content = fix_encoding_issues(doc.page_content)
+            
+            # Limitar al top_k configurado
+            result = docs[:self.top_k]
+            logger.info(f"Expediente {expediente_numero}: {len(result)} documentos recuperados (con limpieza de encoding)")
+            return result
             
         except Exception as e:
-            logger.error(f"Error obteniendo expediente {expediente_numero}: {e}")
+            logger.error(f"Error obteniendo expediente {expediente_numero}: {e}", exc_info=True)
             return []
     
     async def _get_general_documents(self, query: str) -> List[Document]:
-        """Búsqueda semántica general en toda la base de datos."""
+        """Búsqueda semántica general con fallback automático."""
         try:
-            # Búsqueda vectorial
-            results = await search_by_text(
+            # Búsqueda con fallback
+            logger.info(f"Búsqueda general con fallback habilitado")
+            results = await search_manager.search_with_fallback(
                 query_text=query,
                 top_k=self.top_k,
-                score_threshold=self.similarity_threshold
+                threshold=self.similarity_threshold
             )
             
-            # Convertir a LangChain Documents
+            if not results:
+                logger.warning(f"No se encontraron resultados para: '{query[:100]}'")
+                return []
+            
+            # Convertir a LangChain Documents con metadata enriquecida y limpieza de encoding
             documents = []
             for doc in results:
                 if isinstance(doc, Document):
+                    # Limpiar encoding del contenido existente
+                    doc.page_content = fix_encoding_issues(doc.page_content)
                     documents.append(doc)
                 else:
-                    # Convertir dict a Document
                     content = doc.get("content_preview", "")
                     if content.strip():
-                        # Usar constantes MF para metadata (consistencia total)
+                        # Limpiar encoding antes de crear el documento
+                        content_limpio = fix_encoding_issues(content)
+                        
+                        # Extraer metadata completa de Milvus
+                        milvus_metadata = doc.get("metadata", {})
+                        
+                        # Construir metadata enriquecida para el LLM
+                        enriched_metadata = {
+                            # Identificación del expediente
+                            MF.EXPEDIENTE_NUMERO: doc.get("expedient_id", ""),
+                            MF.DOCUMENTO_NOMBRE: doc.get("document_name", ""),
+                            MF.DOCUMENTO_ID: doc.get("id", ""),
+                            
+                            # Información del chunk
+                            "indice_chunk": milvus_metadata.get("indice_chunk", 0),
+                            "id_chunk": milvus_metadata.get("id_chunk", ""),
+                            
+                            # Información de páginas (si existe)
+                            "pagina_inicio": milvus_metadata.get("pagina_inicio"),
+                            "pagina_fin": milvus_metadata.get("pagina_fin"),
+                            
+                            # Tipo de documento (sentencia, resolución, etc.)
+                            "tipo_documento": milvus_metadata.get("tipo_documento", ""),
+                            
+                            # Score de similitud
+                            MF.SIMILARITY_SCORE: doc.get("similarity_score", 0.0)
+                        }
+                        
                         documents.append(Document(
-                            page_content=content,
-                            metadata={
-                                MF.EXPEDIENTE_NUMERO: doc.get("expedient_id", ""),
-                                MF.DOCUMENTO_NOMBRE: doc.get("document_name", ""),
-                                MF.DOCUMENTO_ID: doc.get("id", ""),
-                                MF.SIMILARITY_SCORE: doc.get("similarity_score", 0.0)
-                            }
+                            page_content=content_limpio,
+                            metadata=enriched_metadata
                         ))
             
-            logger.debug(f"Convertidos {len(documents)} documentos a formato LangChain")
+            logger.info(f"Búsqueda completada: {len(documents)} documentos (con limpieza de encoding)")
             return documents
             
         except Exception as e:

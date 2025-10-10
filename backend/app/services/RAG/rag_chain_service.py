@@ -9,6 +9,9 @@ from .general_chains import create_conversational_rag_chain, stream_chain_respon
 from .expediente_chains import create_expediente_specific_chain
 from .session_store import conversation_store
 
+# Importar configuración centralizada
+from app.config.rag_config import rag_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,14 +37,14 @@ class RAGChainService:
         # 2. AQUÍ COORDINA: Decide qué flujo seguir
         if expediente_filter and expediente_filter.strip():
             # → VA AL FLUJO DE EXPEDIENTE ESPECÍFICO
-            logger.info(f" FLUJO → EXPEDIENTE ESPECÍFICO: {expediente_filter}")
+            logger.info(f"FLUJO: EXPEDIENTE ESPECÍFICO: {expediente_filter}")
             return await self._consulta_expediente_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
                 expediente_numero=expediente_filter.strip()
             )
         else:
-            logger.info(f" FLUJO → GENERAL CON HISTORIAL")
+            logger.info(f"FLUJO: GENERAL CON HISTORIAL")
             # → VA AL FLUJO GENERAL
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
@@ -54,14 +57,31 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        top_k: int = 50 
+        top_k: int = None  # None = usar valor del config
     ):
-        logger.info(f" GENERAL CON HISTORIAL - Pregunta: '{pregunta[:50]}...', Session: {session_id}, Top-K: {top_k}")
+        # Usar valor del config si no se especifica
+        if top_k is None:
+            top_k = rag_config.TOP_K_GENERAL
         
-        # Crear buscador
+        # IMPORTANTE: Limitar top_k máximo para evitar sobrecarga del LLM
+        # Con gpt-oss:20b (32K ctx), máximo recomendado es ~15 documentos
+        MAX_TOP_K = 15
+        if top_k > MAX_TOP_K:
+            print(f" top_k={top_k} excede el máximo recomendado. Limitando a {MAX_TOP_K}")
+            top_k = MAX_TOP_K
+        
+        print(f"🔍 Consulta: '{pregunta[:60]}...' | Top-K: {top_k}")
+        
+        logger.info(
+            f"General con historial - Pregunta: '{pregunta[:50]}...', "
+            f"Session: {session_id}, Top-K: {top_k} "
+            f"(threshold: {rag_config.SIMILARITY_THRESHOLD_GENERAL})"
+        )
+        
+        # Crear buscador con configuración centralizada
         retriever = DynamicJusticIARetriever(
             top_k=top_k,
-            similarity_threshold=0.3
+            similarity_threshold=rag_config.SIMILARITY_THRESHOLD_GENERAL
         )
         
         # Crear chain conversacional
@@ -92,7 +112,8 @@ class RAGChainService:
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
-                logger.error(f" Error en streaming con historial: {e}", exc_info=True)
+                print(f"❌ Error en streaming: {e}")
+                logger.error(f"Error en streaming con historial: {e}", exc_info=True)
                 error_data = {
                     "type": "error",
                     "content": f"Error al procesar la consulta: {str(e)}",
@@ -120,18 +141,19 @@ class RAGChainService:
     ):
         """
         Consulta de expediente específico usando LangChain chains con historial.
+        Usa configuración optimizada para expedientes específicos.
         """
-        logger.info(f" EXPEDIENTE CON HISTORIAL - Número: {expediente_numero}")
+        logger.info(f"Expediente con historial - Número: {expediente_numero}")
         
         # Validar formato del expediente ingresado
         expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
         if not re.match(expediente_pattern, expediente_numero):
-            logger.error(f" Formato inválido: {expediente_numero}")
+            logger.error(f"Formato inválido: {expediente_numero}")
             # Fallback a general
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
-                top_k=15
+                top_k=None  # Usar valor del config
             )
         
         # Actualizar la información de la conversación
@@ -140,14 +162,18 @@ class RAGChainService:
             expediente_number=expediente_numero
         )
         
-        # Crear retriever configurado para expediente específico
+        # Crear retriever configurado para expediente específico con config centralizado
         retriever = DynamicJusticIARetriever(
-            top_k=50,
-            similarity_threshold=0.2,
+            top_k=rag_config.TOP_K_EXPEDIENTE,
+            similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
             expediente_filter=expediente_numero
         )
         
-        logger.info(f" DynamicJusticIARetriever creado para expediente {expediente_numero}")
+        logger.info(
+            f"DynamicJusticIARetriever creado para expediente {expediente_numero} "
+            f"(top_k: {rag_config.TOP_K_EXPEDIENTE}, "
+            f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
+        )
         
         # Crear chain especializada para expedientes
         chain = await create_expediente_specific_chain(
@@ -156,7 +182,7 @@ class RAGChainService:
             with_history=True
         )
         
-        logger.info(f" Chain expediente creada")
+        logger.info(f"Chain expediente creada")
         
         # Configuración de sesión
         config = {
@@ -180,7 +206,7 @@ class RAGChainService:
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
-                logger.error(f" Error en streaming expediente con historial: {e}", exc_info=True)
+                logger.error(f"Error en streaming expediente con historial: {e}", exc_info=True)
                 # Si algo sale mal, envía error
                 error_data = {
                     "type": "error",
