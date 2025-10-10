@@ -58,7 +58,7 @@ class DynamicJusticIARetriever(BaseRetriever):
                 return docs
             
             # FLUJO 2: Búsqueda general semántica
-            logger.info(f"Búsqueda general: query='{query[:100]}...', top_k={self.top_k}")
+            logger.info(f"Búsqueda general: query='{query[:100]}...', top_k={self.top_k}, threshold={self.similarity_threshold}")
             docs = await self._get_general_documents(query)
             logger.debug(f"General: {len(docs)} documentos recuperados")
             

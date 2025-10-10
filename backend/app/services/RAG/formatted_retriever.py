@@ -101,6 +101,7 @@ class FormattedRetriever(BaseRetriever):
             f"Documentos formateados: {len(formatted_docs)} total "
             f"({len(docs_by_exp)} expedientes)"
         )
+        
         return formatted_docs
     
     def _get_relevant_documents(self, query: str) -> List[Document]:
