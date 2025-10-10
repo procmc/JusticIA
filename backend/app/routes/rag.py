@@ -32,7 +32,7 @@ async def consulta_con_historial_stream(
     rag_service=Depends(get_rag_service)
 ):
     """
-    🆕 Endpoint NUEVO con gestión automática de historial conversacional.
+    Endpoint NUEVO con gestión automática de historial conversacional.
     
     Diferencias con /consulta-general-stream:
     - Recibe `session_id` en lugar de enviar todo el contexto histórico
@@ -76,9 +76,9 @@ async def consulta_con_historial_stream(
         # Usar query directamente (sin validación de seguridad por ahora)
         query_to_use = request.query
         
-        logger.info(f"🆕 Consulta con historial - Session: {request.session_id}")
-        logger.info(f"🆕 Query: {query_to_use[:100]}...")
-        logger.info(f"🆕 Expediente: {request.expediente_number or 'None'}")
+        logger.info(f"Consulta con historial - Session: {request.session_id}")
+        logger.info(f"Query: {query_to_use[:100]}...")
+        logger.info(f"Expediente: {request.expediente_number or 'None'}")
         
         # Llamar al nuevo método con gestión de historial
         return await rag_service.consulta_con_historial_streaming(
@@ -91,7 +91,7 @@ async def consulta_con_historial_stream(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error en consulta con historial: {e}", exc_info=True)
+        logger.error(f"Error en consulta con historial: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error procesando consulta con historial: {str(e)}"
@@ -131,8 +131,8 @@ async def update_expediente_context(
                 detail="expediente_number es requerido"
             )
         
-        logger.info(f"🔄 Actualizando contexto expediente - Session: {request.session_id}")
-        logger.info(f"🔄 Expediente: {request.expediente_number}, Acción: {request.action}")
+        logger.info(f"Actualizando contexto expediente - Session: {request.session_id}")
+        logger.info(f"Expediente: {request.expediente_number}, Acción: {request.action}")
         
         # Llamar al nuevo método para actualizar contexto
         success = await rag_service.update_expediente_context(
@@ -158,7 +158,7 @@ async def update_expediente_context(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error actualizando contexto expediente: {e}", exc_info=True)
+        logger.error(f"Error actualizando contexto expediente: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error actualizando contexto del expediente: {str(e)}"

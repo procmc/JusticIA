@@ -67,16 +67,8 @@ class RAGChainService:
         # Con gpt-oss:20b (32K ctx), máximo recomendado es ~15 documentos
         MAX_TOP_K = 15
         if top_k > MAX_TOP_K:
-            print(f" top_k={top_k} excede el máximo recomendado. Limitando a {MAX_TOP_K}")
+            logger.warning(f"top_k={top_k} excede el máximo recomendado. Ajustando a {MAX_TOP_K}")
             top_k = MAX_TOP_K
-        
-        print(f"🔍 Consulta: '{pregunta[:60]}...' | Top-K: {top_k}")
-        
-        logger.info(
-            f"General con historial - Pregunta: '{pregunta[:50]}...', "
-            f"Session: {session_id}, Top-K: {top_k} "
-            f"(threshold: {rag_config.SIMILARITY_THRESHOLD_GENERAL})"
-        )
         
         # Crear buscador con configuración centralizada
         retriever = DynamicJusticIARetriever(
@@ -112,7 +104,6 @@ class RAGChainService:
                 conversation_store.auto_generate_title(session_id)
                 
             except Exception as e:
-                print(f"❌ Error en streaming: {e}")
                 logger.error(f"Error en streaming con historial: {e}", exc_info=True)
                 error_data = {
                     "type": "error",
