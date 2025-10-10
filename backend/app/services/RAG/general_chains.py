@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
@@ -11,6 +11,7 @@ import json
 
 from app.llm.llm_service import get_llm
 from .session_store import get_session_history_func
+from .formatted_retriever import FormattedRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,15 @@ CÓMO FUNCIONAS:
 DOCUMENTOS RECUPERADOS DE LA BASE DE DATOS:
 {context}
 
+⚠️ IMPORTANTE - PROBLEMAS DE ENCODING:
+Algunos documentos pueden contener caracteres mal codificados (ej: "artÃ­culo" en lugar de "artículo", "relaciÃ³n" en lugar de "relación").
+**DEBES INTERPRETAR** estos textos como si estuvieran correctamente escritos. No ignores documentos relevantes por errores de encoding.
+Ejemplos de interpretación:
+- "artÃ­culo" = "artículo"
+- "relaciÃ³n" = "relación"  
+- "jurisdicciÃ³n" = "jurisdicción"
+- "aplicaciÃ³n" = "aplicación"
+
 ⚠️ RESTRICCIONES CRÍTICAS:
 1. **SOLO USA LOS DOCUMENTOS RECUPERADOS**: Responde ÚNICAMENTE con información de los documentos arriba
 2. **NO INVENTES**: Si la información no está en los documentos recuperados, di "No encontré esta información en la base de datos"
@@ -129,6 +139,9 @@ ANÁLISIS DE EXPEDIENTES ESPECÍFICOS:
 RESPUESTA A LA PREGUNTA DEL USUARIO:
 """
 
+# Prompt template simple (el formateo se hace en FormattedRetriever)
+DOCUMENT_PROMPT = PromptTemplate.from_template("{page_content}")
+
 ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     ("system", ANSWER_SYSTEM_PROMPT),
     MessagesPlaceholder("chat_history"),
@@ -143,15 +156,20 @@ async def create_conversational_rag_chain(
 ):
     """Crea una chain RAG conversacional completa con historial para consultas generales."""
     llm = await get_llm()
+    
+    # Envolver el retriever con FormattedRetriever para agregar metadata visible
+    formatted_retriever = FormattedRetriever(retriever)
+    
     history_aware_retriever = create_history_aware_retriever(
         llm=llm,
-        retriever=retriever,
+        retriever=formatted_retriever,
         prompt=CONTEXTUALIZE_Q_PROMPT,
     )
     
     question_answer_chain = create_stuff_documents_chain(
         llm=llm,
-        prompt=ANSWER_PROMPT
+        prompt=ANSWER_PROMPT,
+        document_prompt=DOCUMENT_PROMPT
     )
     
     rag_chain = create_retrieval_chain(
@@ -202,7 +220,21 @@ async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[
         done_data = {"type": "done", "content": "", "done": True}
         yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
         
-        logger.info(f"Streaming completado: {total_chars} caracteres")
+        logger.info(f"Streaming completado: {total_chars} caracteres generados")
+        
+        # Detectar respuestas vacías y enviar fallback
+        if total_chars == 0:
+            logger.warning(" No se generó contenido, enviando mensaje de fallback")
+            fallback_message = "No encontré información relevante en los documentos recuperados para responder tu pregunta."
+            fallback_data = {
+                "type": "chunk",
+                "content": fallback_message,
+                "done": False
+            }
+            yield f"data: {json.dumps(fallback_data, ensure_ascii=False)}\n\n"
+            
+            done_data = {"type": "done", "content": "", "done": True}
+            yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
         
     except Exception as e:
         logger.error(f"Error en streaming: {e}", exc_info=True)

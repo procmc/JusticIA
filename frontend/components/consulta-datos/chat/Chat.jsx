@@ -3,6 +3,7 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
+import RAG_CONFIG from '../../../config/ragConfig';
 import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 
@@ -249,10 +250,10 @@ const ConsultaChat = () => {
               if (!responseText.trim() && retryCountRef.current === 0) {
                 retryCountRef.current = 1;
                 
-                // Marcar como reintento en el mensaje
+                // NO vaciar el texto, mantener el mensaje y agregar indicador de reintento
                 updatedMessages[messageIndex] = {
                   ...updatedMessages[messageIndex],
-                  text: '',
+                  text: 'Reintentando obtener respuesta...',
                   timestamp: '',
                   isRetrying: true
                 };
@@ -267,17 +268,30 @@ const ConsultaChat = () => {
                     const retryRequestId = requestId + 0.1; // ID ligeramente diferente para el reintento
                     currentRequestRef.current = { active: true, id: retryRequestId };
                     
+                    // Limpiar el mensaje antes de reintentar
+                    setMessages(prev => {
+                      const updated = [...prev];
+                      if (updated[messageIndex]) {
+                        updated[messageIndex] = {
+                          ...updated[messageIndex],
+                          text: '',
+                          isRetrying: false
+                        };
+                      }
+                      return updated;
+                    });
+                    
                     consultaService.consultaGeneralStreaming(
                       text,
                       onChunk,
                       onComplete,
                       onError,
-                      5,
+                      null,
                       sessionId,
                       searchScope === 'expediente' ? consultedExpediente : null
                     ).catch(onError);
                   }
-                }, 1000);
+                }, 1500);
                 
                 return updatedMessages;
               }
@@ -330,7 +344,7 @@ const ConsultaChat = () => {
         onChunk,
         onComplete,
         onError,
-        5, // topK
+        null, // topK null = usar config según tipo de búsqueda
         sessionId,  // Backend gestiona historial con este ID
         searchScope === 'expediente' ? consultedExpediente : null // pasar expediente como parámetro
       );

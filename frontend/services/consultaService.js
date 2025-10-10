@@ -1,4 +1,5 @@
 import httpService from './httpService';
+import RAG_CONFIG from '../config/ragConfig';
 
 class ConsultaService {
   constructor() {
@@ -15,11 +16,11 @@ class ConsultaService {
    * @param {Function} onChunk - Callback para cada chunk de respuesta
    * @param {Function} onComplete - Callback al completar
    * @param {Function} onError - Callback en caso de error
-   * @param {number} topK - Número de documentos a recuperar (default: 15)
+   * @param {number} topK - Número de documentos a recuperar (null = usar config según tipo)
    * @param {string} sessionId - ID de sesión para gestión de historial
    * @param {string} expedienteNumber - Número de expediente (opcional)
    */
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = 15, sessionId = null, expedienteNumber = null) {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
       this.abortController.abort();
@@ -38,6 +39,11 @@ class ConsultaService {
       // Validar que haya session_id
       if (!sessionId) {
         throw new Error('session_id es requerido para gestión de historial');
+      }
+
+      // Determinar top_k según el tipo de consulta (si no se especifica)
+      if (topK === null) {
+        topK = expedienteNumber ? RAG_CONFIG.EXPEDIENTE.TOP_K : RAG_CONFIG.GENERAL.TOP_K;
       }
 
       // Preparar el payload con el nuevo formato

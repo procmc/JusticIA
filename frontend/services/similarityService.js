@@ -10,6 +10,7 @@
  */
 
 import httpService from './httpService';
+import RAG_CONFIG from '../config/ragConfig';
 
 class SimilarityService {
   constructor() {
@@ -29,7 +30,12 @@ class SimilarityService {
   /**
    * Buscar casos similares con manejo robusto de errores
    */
-  async searchSimilarCases({ searchMode, query, limit = 30, threshold = 0.3 }) {
+  async searchSimilarCases({ 
+    searchMode, 
+    query, 
+    limit = RAG_CONFIG.SIMILARITY.LIMIT, 
+    threshold = RAG_CONFIG.SIMILARITY.THRESHOLD 
+  }) {
     try {
       // Cancelar búsqueda anterior si existe
       if (this.abortController) {
