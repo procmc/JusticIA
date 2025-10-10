@@ -107,13 +107,13 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except:
-     * - /auth/login (página de login)
+     * - /auth/* (todas las páginas de autenticación: login, recuperar contraseña, cambiar contraseña)
      * - /api/auth (endpoints de NextAuth)
      * - /_next/static (archivos estáticos)
      * - /_next/image (optimización de imágenes)
      * - /favicon.ico, /robots.txt (archivos públicos)
      * - /public (carpeta pública)
      */
-    "/((?!auth/login|api/auth|_next/static|_next/image|favicon.ico|robots.txt|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.svg|.*\\.ico).*)",
+    "/((?!auth|api/auth|_next/static|_next/image|favicon.ico|robots.txt|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.svg|.*\\.ico).*)",
   ],
 };
