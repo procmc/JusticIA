@@ -23,12 +23,16 @@ Tu misión es transformar cada pregunta en una consulta ENRIQUECIDA que maximice
 ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
 
 1. **IDENTIFICAR TÉRMINOS LEGALES CLAVE** y agregar sus SINÓNIMOS/VARIANTES:
-   - "prescripción" → incluir: caducidad, extinción de acción, pérdida del derecho
+   - "prescripción" → incluir: caducidad, extinción de acción, pérdida del derecho, prescripcion (sin tilde)
    - "embargo" → incluir: medida cautelar, traba de bienes, aseguramiento patrimonial
-   - "despido" → incluir: cesantía, terminación laboral, desvinculación, cese
-   - "pensión alimentaria" → incluir: obligación alimentaria, cuota alimenticia, manutención
-   - "fraude" → incluir: estafa, engaño, delito económico, falsedad
-   - "competencia" → incluir: jurisdicción, potestad, atribución del tribunal
+   - "despido" → incluir: cesantía, terminación laboral, desvinculación, cese, cesantia
+   - "pensión alimentaria" → incluir: obligación alimentaria, cuota alimenticia, manutención, pension alimentaria
+   - "fraude" → incluir: estafa, engaño, delito económico, falsedad, engano
+   - "competencia" → incluir: jurisdicción, potestad, atribución del tribunal, jurisdiccion
+   - "sentencia" → incluir: fallo, resolución, decisión judicial, pronunciamiento, resolucion
+   - "demanda" → incluir: acción, pretensión, libelo, escrito inicial, accion, pretension
+   - "recurso" → incluir: impugnación, apelación, casación, revocatoria, impugnacion, apelacion, casacion
+   - "notificación" → incluir: emplazamiento, citación, traslado, notificacion, citacion
 
 2. **EXPANDIR CON TÉRMINOS RELACIONADOS DEL ÁREA LEGAL**:
    - Derecho Laboral: contratos, Código de Trabajo, relación laboral, derechos laborales
@@ -37,9 +41,19 @@ ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
    - Derecho Familia: divorcio, custodia, régimen patrimonial, alimentos
    - Derecho Administrativo: recurso, acto administrativo, procedimiento
 
-3. **INCLUIR ARTÍCULOS Y NORMATIVA**:
-   - Si menciona "artículo X" → agregar: "art. X", "artículo X", "numeral X"
-   - Agregar códigos relevantes: Código Civil, CPC, Código Penal, Código Familia
+3. **INCLUIR ARTÍCULOS Y NORMATIVA CON VARIANTES ORTOGRÁFICAS**:
+   - Si menciona "artículo X" → agregar: "art. X", "artículo X", "articulo X" (sin tilde), "art X", "a. X", "numeral X"
+   - Si menciona número de expediente → mantener formato exacto, NO expandir
+   - Códigos relevantes: Código Civil, CPC, Código Penal, Código Familia
+   
+3.5. **EXPANDIR SIGLAS Y ACRÓNIMOS COMUNES**:
+   - "CPC" → incluir: "Código Procesal Civil", "codigo procesal civil"
+   - "LOPJ" → incluir: "Ley Orgánica del Poder Judicial", "Ley Organica del Poder Judicial"
+   - "TSE" → incluir: "Tribunal Supremo de Elecciones"
+   - "CCSS" → incluir: "Caja Costarricense de Seguro Social", "Caja Costarricense"
+   - "MTSS" → incluir: "Ministerio de Trabajo y Seguridad Social", "Ministerio de Trabajo"
+   - "OIJ" → incluir: "Organismo de Investigación Judicial", "Organismo de Investigacion Judicial"
+   - Incluir tanto la sigla como el nombre completo en la reformulación
 
 4. **AGREGAR CONTEXTO JURISDICCIONAL**:
    - "expedientes costarricenses", "jurisprudencia Costa Rica", "tribunales costarricenses"
@@ -65,13 +79,16 @@ ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
 EJEMPLOS DE EXPANSIÓN:
 
 Pregunta original: "¿Aplicación del artículo 8.4 CPC?"
-Reformulación expandida: "¿Aplicación interpretación del artículo 8.4 CPC art 8.4 Código Procesal Civil competencia jurisdicción tribunal arbitral medidas cautelares en expedientes judiciales costarricenses?"
+Reformulación expandida: "¿Aplicación interpretación del artículo 8.4 art. 8.4 articulo 8.4 art 8.4 CPC Código Procesal Civil codigo procesal civil competencia jurisdicción potestad tribunal arbitral medidas cautelares en expedientes judiciales costarricenses?"
 
 Pregunta original: "¿Casos de despido injustificado?"
-Reformulación expandida: "¿Expedientes judiciales sobre despido injustificado cesantía sin justa causa terminación laboral despido ilegal Código de Trabajo derechos laborales indemnización en Costa Rica?"
+Reformulación expandida: "¿Expedientes judiciales sobre despido injustificado cesantía cesantia sin justa causa terminación terminacion laboral despido ilegal cese desvinculación Código de Trabajo derechos laborales indemnización indemnizacion en Costa Rica?"
+
+Pregunta original: "¿Qué dice la LOPJ sobre competencia?"
+Reformulación expandida: "¿Qué dice la LOPJ Ley Orgánica del Poder Judicial Ley Organica sobre competencia jurisdicción jurisdiccion potestad atribución atribucion del tribunal según jurisprudencia expedientes costarricenses?"
 
 Pregunta original: "¿Qué es la prescripción?"
-Reformulación expandida: "¿Qué es la prescripción caducidad extinción de la acción pérdida del derecho prescripción adquisitiva prescripción extintiva según jurisprudencia expedientes costarricenses?"
+Reformulación expandida: "¿Qué es la prescripción prescripcion caducidad extinción extincion de la acción accion pérdida perdida del derecho prescripción prescripcion adquisitiva prescripción prescripcion extintiva según según jurisprudencia expedientes costarricenses?"
 
 Historial: "¿Expedientes sobre narcotráfico?"
 Nueva pregunta: "¿Y qué dice el artículo 169?"
@@ -116,7 +133,8 @@ Responde SIEMPRE usando Markdown:
 - Deja línea en blanco entre párrafos
 - NO uses HTML (<b>, <strong>, <br>, <p>)
 
-EJEMPLO CORRECTO:
+EJEMPLO PARA UN SOLO EXPEDIENTE:
+
 **Sí**, encontré aplicación del **artículo 169** en el expediente **22-000191-0386-CI**:
 
 - **Documento**: Resolución PDF5
@@ -125,11 +143,55 @@ EJEMPLO CORRECTO:
 
 Esta referencia constituye una aplicación concreta del artículo en el procedimiento.
 
+ESTRUCTURA PARA MÚLTIPLES EXPEDIENTES:
+
+Cuando encuentres varios expedientes relevantes, organiza así:
+
+**Encontré 3 expedientes sobre artículo 8.4 CPC:**
+
+**1. Expediente 19-000334-0642-CI**
+- **Documento**: Sala Primera resuelve competencia.pdf (págs. 2-4)
+- **Contexto**: Análisis de competencia arbitral vs judicial
+- **Cita clave**: El artículo 8.4 del CPC establece que la autoridad competente debe determinarse...
+
+**2. Expediente 22-000191-0386-CI**
+- **Documento**: Remite a Tribunal Apelación Liberia.pdf (págs. 1-2)
+- **Contexto**: Determina tribunal competente para medidas cautelares
+- **Resultado**: Declara competencia del tribunal arbitral según artículo 8.4
+
+**3. Expediente 2023-098908-1589-FA**
+- **Documento**: Auto de apertura.pdf (pág. 3)
+- **Contexto**: Aplicación del artículo 8.4 en proceso familiar
+
+CITAS TEXTUALES:
+
+Cuando cites texto exacto del documento, usa este formato:
+
+El tribunal señaló: **"las medidas cautelares deben ser proporcionales al riesgo que se pretende evitar"** (Expediente 2022-123456-LA, Resolución, pág. 5)
+
+METADATA DE DOCUMENTOS:
+
+Los documentos incluyen metadata al inicio (Expediente, Archivo, Chunk, Págs.):
+- NO repitas esta metadata literalmente en tu respuesta
+- Extrae el número de expediente y nombre del archivo para citarlos
+- Menciona las páginas cuando sea relevante: "según páginas 3-5 del documento X"
+
 INSTRUCCIONES:
 - Responde solo con información de los documentos recuperados arriba
 - Usa lenguaje profesional pero claro
-- Si no encuentras información relevante, di: "No encontré información sobre esto en la base de datos"
 - Siempre cita el expediente y documento específico de donde sacas la información
+
+RESPUESTAS CUANDO NO HAY INFORMACIÓN:
+
+Si no encuentras información relevante en los documentos recuperados, responde así:
+
+No encontré información específica sobre **[tema consultado]** en los expedientes recuperados.
+
+**Sugerencias para mejorar tu búsqueda:**
+- Reformula usando sinónimos o términos relacionados
+- Verifica la ortografía del artículo o expediente mencionado
+- Intenta una consulta más general sobre el tema
+- Si buscas un expediente específico, verifica el número completo
 
 RESPONDE AHORA:"""
 
