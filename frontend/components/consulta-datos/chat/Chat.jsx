@@ -507,7 +507,64 @@ const ConsultaChat = () => {
       <ConversationHistory
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
-        onConversationSelect={() => setMessages([])} // Limpiar mensajes UI al cambiar conversación
+        onConversationSelect={(sessionId, conversation) => {
+          // Restaurar conversación seleccionada
+          if (conversation && conversation.messages) {
+            // Convertir mensajes del backend al formato del frontend
+            const restoredMessages = conversation.messages.map(msg => ({
+              text: msg.content,
+              isUser: msg.role === 'user',
+              timestamp: new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            }));
+            
+            setMessages(restoredMessages);
+            
+            // Si la conversación tiene un expediente asociado, restaurar el contexto
+            if (conversation.expediente_number) {
+              setConsultedExpediente(conversation.expediente_number);
+              setSearchScope('expediente');
+            } else {
+              setSearchScope('general');
+              setConsultedExpediente(null);
+            }
+            
+            console.log(`✅ Conversación ${sessionId} restaurada con ${restoredMessages.length} mensajes`);
+          }
+        }}
+        onNewConversation={() => {
+          // Crear nueva conversación
+          newSession();
+          setMessages([]);
+          setConsultedExpediente(null);
+          
+          // Si estamos en modo expediente, mostrar mensaje de bienvenida
+          if (searchScope === 'expediente') {
+            const welcomeMessage = {
+              text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+---
+
+### 🎯 **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`,
+              isUser: false,
+              timestamp: new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            };
+            setMessages([welcomeMessage]);
+          }
+        }}
       />
     </div>
   );

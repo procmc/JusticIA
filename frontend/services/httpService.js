@@ -204,6 +204,13 @@ class HttpService {
   }
 
   /**
+   * DELETE request
+   */
+  async delete(url, options = {}) {
+    return this.request(url, { ...options, method: 'DELETE' });
+  }
+
+  /**
    * POST con streaming (para chat RAG)
    * Devuelve el response raw para que el caller pueda leer el stream
    */

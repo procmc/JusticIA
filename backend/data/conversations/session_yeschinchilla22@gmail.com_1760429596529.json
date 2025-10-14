@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "session_id": "session_yeschinchilla22@gmail.com_1760429596529",
+    "user_id": "yeschinchilla22@gmail.com",
+    "created_at": "2025-10-14T08:13:21.778702",
+    "updated_at": "2025-10-14T08:14:31.522529",
+    "title": "hola",
+    "message_count": 2,
+    "expediente_number": null
+  },
+  "messages": [
+    {
+      "type": "human",
+      "content": "hola",
+      "timestamp": "2025-10-14T08:31:23.176127"
+    },
+    {
+      "type": "ai",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2025-10-14T08:31:23.176358"
+    },
+    {
+      "type": "human",
+      "content": "Tienes casos de hostigamiento laboral",
+      "timestamp": "2025-10-14T08:31:23.176367"
+    },
+    {
+      "type": "ai",
+      "content": "**Sí, contamos con un expediente que trata de hostigamiento laboral:**\n\n**Expediente 2022-063557-6597-LA**  \n- **Documento**: *2022_063557_6597_LA.txt* (páginas 1‑2).  \n- **Partes**: Actora – **Ana Fernández** (empleada de Constructora Andina SRL desde hace más de cuatro años).  \n- **Hechos**:  \n  - Despido sin causa objetiva y sin la forma escrita exigida.  \n  - Hostigamiento laboral previo a la terminación, que la actora considera causa de la injusticia.  \n- **Prevención de pruebas**:  \n  - Contrato de trabajo, constancias salariales y correos electrónicos internos.  \n  - Informe del sindicato y acta de la Inspección de Trabajo sobre condiciones de seguridad e higiene.  \n- **Pretensiones**:  \n  - Pago de preaviso y auxilio de cesantía.  \n  - Compensación por horas extraordinarias (≈ ₡12 500 000).  \n  - Daño moral por los efectos del hostigamiento laboral.  \n\n**Otros expedientes recuperados** (sin hostigamiento laboral):  \n- 2024‑083668‑3815‑LA – accidente de trabajo.  \n- 2023‑702730‑4375‑LA – discriminación por embarazo.  \n- 2022‑784310‑5139‑LA, 2022‑967097‑6202‑LA, 2023‑285578‑4617‑LA, 2024‑641391‑8667‑LA – temas de despido, discriminación, accidentes o horas extras.\n\nEn síntesis, el único caso de *hostigamiento laboral* presente en los documentos es el **2022‑063557‑6597‑LA**. Si necesitas análisis más detallado o comparativa con otros expedientes, avísame.",
+      "timestamp": "2025-10-14T08:31:23.176377"
+    }
+  ]
+}
