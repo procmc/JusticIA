@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "session_id": "session_yeschinchilla22@gmail.com_1760427395935",
+    "user_id": "yeschinchilla22@gmail.com",
+    "created_at": "2025-10-14T07:36:42.552452",
+    "updated_at": "2025-10-14T07:37:20.378233",
+    "title": "hola",
+    "message_count": 2,
+    "expediente_number": null
+  },
+  "messages": [
+    {
+      "type": "human",
+      "content": "hola",
+      "timestamp": "2025-10-14T08:31:23.259114"
+    },
+    {
+      "type": "ai",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2025-10-14T08:31:23.259170"
+    },
+    {
+      "type": "human",
+      "content": "Tienes casos de narcotrafico?",
+      "timestamp": "2025-10-14T08:31:23.259175"
+    },
+    {
+      "type": "ai",
+      "content": "**Sí**, en los expedientes recuperados aparecen varias **quedaciones por tráfico de drogas**:\n\n1. **Expediente 2022-259948-3682-PN**  \n   - **Documento**: Informe del caso (páginas 1‑2)  \n   - **Contexto**: Se investiga una operación de tráfico de drogas descubierta el 06/10/2023 en Alajuela.  \n   - **Detalle**: Se incautan criptomonedas y se evidencian transferencias financieras vinculadas al delito.\n\n2. **Expediente 2022-259949-3683-PN**  \n   - **Documento**: Informe igual al anterior (páginas 1‑2)  \n   - **Contexto**: Caso idéntico al anterior, con otro principal investigado y las mismas conductas de tráfico de drogas.\n\n3. **Expediente 2022-919642-4280-PN**  \n   - **Documento**: Informe de la investigación (páginas 1‑2)  \n   - **Contexto**: Caso de tráfico de drogas descubierto el 03/03/2024 en Heredia, con incautación de criptomonedas y transferencias bancarias.\n\n4. **Expediente 2024-235553-3263-PN**  \n   - **Documento**: Informe de la investigación (páginas 1‑2)  \n   - **Contexto**: Tráfico de drogas identificado el 09/07/2025 en Heredia, con tarjetas clonadas y movimientos financieros al exterior.\n\nEstas páginas muestran expresamente los delitos de tráfico de drogas y la evidencia asociada (criptomonedas, transferencias bancarias, dispositivos y material de prueba).",
+      "timestamp": "2025-10-14T08:31:23.259180"
+    }
+  ]
+}

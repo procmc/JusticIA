@@ -1,36 +1,83 @@
-import React, { useState } from 'react';
-import { usePersistentChatContext } from '../../../hooks/conversacion/usePersistentChatContext';
+import React, { useState, useEffect } from 'react';
+import { useBackendConversations } from '../../../hooks/useBackendConversations';
 
-const ConversationHistory = ({ isOpen, onClose, onConversationSelect }) => {
+const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConversation }) => {
   const { 
-    userConversations, 
-    conversationId: currentConversationId,
-    switchToConversation, 
+    conversations,
+    isLoading,
+    error,
+    hasConversations,
+    fetchConversations,
     deleteConversation,
-    startNewConversation 
-  } = usePersistentChatContext();
+    getConversationDetail,
+    restoreConversation
+  } = useBackendConversations();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(null);
 
-  const handleSelectConversation = (convId) => {
-    switchToConversation(convId);
-    onConversationSelect?.(convId);
-    onClose();
+  // Recargar conversaciones cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      fetchConversations();
+    }
+  }, [isOpen, fetchConversations]);
+
+  const handleSelectConversation = async (sessionId) => {
+    setLoadingAction(sessionId);
+    
+    try {
+      // Obtener detalles completos de la conversación
+      const conversation = await getConversationDetail(sessionId);
+      
+      if (conversation) {
+        // Notificar al componente padre para que cargue la conversación
+        onConversationSelect?.(sessionId, conversation);
+        onClose();
+      } else {
+        console.error('No se pudieron obtener los detalles de la conversación');
+        // Intentar restaurar la conversación
+        const restored = await restoreConversation(sessionId);
+        if (restored) {
+          onConversationSelect?.(sessionId, restored);
+          onClose();
+        }
+      }
+    } catch (err) {
+      console.error('Error seleccionando conversación:', err);
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
-  const handleDeleteConversation = (convId, e) => {
+  const handleDeleteConversation = async (sessionId, e) => {
     e.stopPropagation();
-    if (showDeleteConfirm === convId) {
-      deleteConversation(convId);
-      setShowDeleteConfirm(null);
+    
+    if (showDeleteConfirm === sessionId) {
+      setLoadingAction(sessionId);
+      
+      try {
+        const success = await deleteConversation(sessionId);
+        
+        if (success) {
+          setShowDeleteConfirm(null);
+          console.log('✅ Conversación eliminada');
+        } else {
+          console.error('No se pudo eliminar la conversación');
+        }
+      } catch (err) {
+        console.error('Error eliminando conversación:', err);
+      } finally {
+        setLoadingAction(null);
+      }
     } else {
-      setShowDeleteConfirm(convId);
+      setShowDeleteConfirm(sessionId);
       setTimeout(() => setShowDeleteConfirm(null), 3000);
     }
   };
 
   const handleNewConversation = () => {
-    startNewConversation();
+    onNewConversation?.();
     onClose();
   };
 
@@ -55,12 +102,11 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect }) => {
   };
 
   const getPreviewText = (conversation) => {
-    if (!conversation.lastMessage) return 'Conversación nueva';
+    if (!conversation.title || conversation.title === 'Nueva conversación') {
+      return 'Conversación sin título';
+    }
     
-    const { userMessage } = conversation.lastMessage;
-    return userMessage.length > 50 
-      ? userMessage.substring(0, 50) + '...'
-      : userMessage;
+    return conversation.title;
   };
 
   if (!isOpen) return null;
@@ -70,9 +116,16 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Historial de Conversaciones
-          </h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Historial de Conversaciones
+            </h3>
+            {hasConversations && (
+              <p className="text-xs text-gray-500 mt-1">
+                {conversations.length} conversación{conversations.length !== 1 ? 'es' : ''} guardada{conversations.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -103,55 +156,81 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect }) => {
 
         {/* Lista de conversaciones */}
         <div className="overflow-y-auto max-h-96">
-          {userConversations.length === 0 ? (
+          {isLoading ? (
+            <div className="px-6 py-8 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+              <p className="text-gray-500">Cargando conversaciones...</p>
+            </div>
+          ) : error ? (
+            <div className="px-6 py-8 text-center text-red-500">
+              <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p>{error}</p>
+              <button 
+                onClick={() => fetchConversations()}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : !hasConversations ? (
             <div className="px-6 py-8 text-center text-gray-500">
               <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <p>No hay conversaciones guardadas</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Inicia una nueva conversación para comenzar
+              </p>
             </div>
           ) : (
             <div className="px-2 py-2 space-y-1">
-              {userConversations.map((conv) => (
+              {conversations.map((conv) => (
                 <div
-                  key={conv.id}
-                  className={`relative group cursor-pointer p-4 rounded-xl transition-all hover:bg-gray-50 ${
-                    conv.id === currentConversationId 
-                      ? 'bg-blue-50 border-2 border-blue-200' 
-                      : 'border-2 border-transparent'
+                  key={conv.session_id}
+                  className={`relative group cursor-pointer p-4 rounded-xl transition-all hover:bg-gray-50 border-2 border-transparent hover:border-blue-100 ${
+                    loadingAction === conv.session_id ? 'opacity-50 pointer-events-none' : ''
                   }`}
-                  onClick={() => handleSelectConversation(conv.id)}
+                  onClick={() => handleSelectConversation(conv.session_id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 truncate">
                           {getPreviewText(conv)}
                         </span>
-                        {conv.id === currentConversationId && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        {conv.expediente_number && (
+                          <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                            {conv.expediente_number}
+                          </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>{formatDate(conv.lastUpdated)}</span>
+                        <span>{formatDate(conv.updated_at)}</span>
                         <span>•</span>
-                        <span>{conv.messageCount} mensajes</span>
+                        <span>{conv.message_count} mensajes</span>
                       </div>
                     </div>
                     
                     {/* Botón de eliminar */}
                     <button
-                      onClick={(e) => handleDeleteConversation(conv.id, e)}
+                      onClick={(e) => handleDeleteConversation(conv.session_id, e)}
+                      disabled={loadingAction === conv.session_id}
                       className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
-                        showDeleteConfirm === conv.id
+                        showDeleteConfirm === conv.session_id
                           ? 'bg-red-100 text-red-600 hover:bg-red-200'
                           : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
                       }`}
-                      title={showDeleteConfirm === conv.id ? 'Hacer clic para confirmar' : 'Eliminar conversación'}
+                      title={showDeleteConfirm === conv.session_id ? 'Hacer clic para confirmar' : 'Eliminar conversación'}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      {loadingAction === conv.session_id ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -163,7 +242,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect }) => {
         {/* Footer con información */}
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
           <p className="text-xs text-gray-500 text-center">
-            Las conversaciones se guardan automáticamente en tu navegador
+            Las conversaciones se guardan automáticamente en el servidor
           </p>
         </div>
       </div>

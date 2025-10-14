@@ -8,6 +8,7 @@ import asyncio
 import logging
 from app.utils.hf_model import ensure_model_available
 from app.embeddings.embeddings import get_embeddings
+from app.services.RAG.session_store import conversation_store
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,14 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Limpiar recursos al apagado"""
+    try:
+        # Guardar todas las conversaciones activas antes de cerrar
+        logger.info("Guardando conversaciones antes de cerrar...")
+        conversation_store.save_all_conversations()
+        logger.info("Conversaciones guardadas exitosamente")
+    except Exception as e:
+        logger.error(f"Error guardando conversaciones al cerrar: {e}", exc_info=True)
+    
     print("Aplicación cerrando...")
 
 

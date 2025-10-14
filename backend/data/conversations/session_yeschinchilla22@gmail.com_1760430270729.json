@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "session_id": "session_yeschinchilla22@gmail.com_1760430270729",
+    "user_id": "yeschinchilla22@gmail.com",
+    "created_at": "2025-10-14T08:24:40.270554",
+    "updated_at": "2025-10-14T08:24:40.270554",
+    "title": "hola}",
+    "message_count": 0,
+    "expediente_number": null
+  },
+  "messages": [
+    {
+      "type": "human",
+      "content": "hola}",
+      "timestamp": "2025-10-14T08:31:23.202917"
+    },
+    {
+      "type": "ai",
+      "content": "**¡Hola!**  \n¿En qué puedo ayudarte hoy?",
+      "timestamp": "2025-10-14T08:31:23.202970"
+    }
+  ]
+}
