@@ -26,6 +26,10 @@ class MensajeExito(BaseModel):
     success: bool
     message: str
 
+class LogoutRequest(BaseModel):
+    usuario_id: str  # Cédula del usuario
+    email: str  # Email del usuario
+
 class SolicitarRecuperacionRequest(BaseModel):
     email: str
 
