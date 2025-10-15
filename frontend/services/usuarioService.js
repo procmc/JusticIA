@@ -66,8 +66,16 @@ class UsuarioService {
   async crearUsuario(usuarioData) {
     try {
       // Validar datos básicos
-      if (!usuarioData || !usuarioData.email) {
+      if (!usuarioData) {
         throw new Error('Datos de usuario incompletos');
+      }
+      
+      // Validar campos requeridos
+      const camposRequeridos = ['cedula', 'nombre_usuario', 'nombre', 'apellido_uno', 'apellido_dos', 'correo', 'id_rol'];
+      const camposFaltantes = camposRequeridos.filter(campo => !usuarioData[campo]);
+      
+      if (camposFaltantes.length > 0) {
+        throw new Error(`Faltan campos requeridos: ${camposFaltantes.join(', ')}`);
       }
 
       const data = await httpService.post('/usuarios', usuarioData);
@@ -104,6 +112,14 @@ class UsuarioService {
       
       if (!usuarioData) {
         throw new Error('Datos de usuario son requeridos');
+      }
+      
+      // Validar campos requeridos para edición
+      const camposRequeridos = ['nombre_usuario', 'nombre', 'apellido_uno', 'apellido_dos', 'correo', 'id_rol', 'id_estado'];
+      const camposFaltantes = camposRequeridos.filter(campo => !usuarioData[campo] && usuarioData[campo] !== 0);
+      
+      if (camposFaltantes.length > 0) {
+        throw new Error(`Faltan campos requeridos: ${camposFaltantes.join(', ')}`);
       }
 
       const data = await httpService.put(`/usuarios/${usuarioId}`, usuarioData);

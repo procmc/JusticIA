@@ -18,7 +18,7 @@ class UsuarioCrear(BaseModel):
     nombre_usuario: str
     nombre: str
     apellido_uno: str
-    apellido_dos: Optional[str] = None
+    apellido_dos: str  # Requerido
     correo: str
     # Contraseña se genera automáticamente - no se solicita al usuario
     id_rol: int
@@ -28,7 +28,7 @@ class UsuarioEditar(BaseModel):
     nombre_usuario: str
     nombre: str
     apellido_uno: str
-    apellido_dos: Optional[str] = None
+    apellido_dos: str  # Requerido
     correo: str
     id_rol: int
     id_estado: int
@@ -39,7 +39,7 @@ class UsuarioRespuesta(BaseModel):
     CT_Nombre_usuario: str
     CT_Nombre: str
     CT_Apellido_uno: str
-    CT_Apellido_dos: Optional[str] = None
+    CT_Apellido_dos: str  # Requerido
     CT_Correo: str
     CN_Id_rol: int
     CN_Id_estado: int
