@@ -76,9 +76,9 @@ class ConversationStore:
         # Cliente Redis para persistencia de historial (OBLIGATORIO)
         try:
             self._redis_history = get_redis_history()
-            logger.info("✅ ConversationStore usando Redis para persistencia")
+            logger.info("ConversationStore usando Redis para persistencia")
         except Exception as e:
-            logger.error(f"❌ Redis no disponible - El historial NO se guardará: {e}")
+            logger.error(f"Redis no disponible - El historial NO se guardará: {e}")
             raise RuntimeError(
                 "Redis es obligatorio para el sistema de conversaciones. "
                 "Verifica que Redis esté corriendo y REDIS_URL esté configurado."
@@ -87,12 +87,11 @@ class ConversationStore:
         logger.info("ConversationStore inicializado")
         
         # Redis carga conversaciones bajo demanda (no al inicio)
-        logger.info("✅ Redis listo - conversaciones se cargarán bajo demanda")
+        logger.info("Redis listo - conversaciones se cargarán bajo demanda")
     
     def _save_conversation_to_file(self, session_id: str):
         """
         Guarda una conversación en Redis.
-        NO afecta el contexto en memoria.
         """
         try:
             if session_id not in self._store or session_id not in self._metadata:
@@ -121,18 +120,14 @@ class ConversationStore:
             )
             
             if success:
-                logger.info(f"✅ Conversación {session_id} guardada en Redis")
+                logger.info(f"Conversación {session_id} guardada en Redis")
             else:
-                logger.error(f"❌ Error guardando conversación {session_id} en Redis")
+                logger.error(f"Error guardando conversación {session_id} en Redis")
             
         except Exception as e:
-            logger.error(f"❌ Error guardando conversación {session_id}: {e}", exc_info=True)
+            logger.error(f"Error guardando conversación {session_id}: {e}", exc_info=True)
     
     def _load_conversation_from_file(self, session_id: str) -> bool:
-        """
-        Carga una conversación desde Redis.
-        Restaura en memoria para uso del contexto.
-        """
         try:
             # Cargar desde Redis
             conversation_data = self._redis_history.load_conversation(session_id)
@@ -141,7 +136,7 @@ class ConversationStore:
                 logger.debug(f"Conversación {session_id} no existe en Redis")
                 return False
             
-            logger.info(f"✅ Conversación {session_id} cargada desde Redis")
+            logger.info(f"Conversación {session_id} cargada desde Redis")
             
             # RESTAURAR EN MEMORIA
             metadata_dict = conversation_data.get("metadata", {})
@@ -178,19 +173,15 @@ class ConversationStore:
             
             self._store[session_id] = history
             
-            logger.info(f"✅ Conversación {session_id} restaurada en memoria ({len(history.messages)} mensajes)")
+            logger.info(f"Conversación {session_id} restaurada en memoria ({len(history.messages)} mensajes)")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error cargando conversación {session_id}: {e}", exc_info=True)
+            logger.error(f"Error cargando conversación {session_id}: {e}", exc_info=True)
             return False
     
     def _load_all_conversations(self):
-        """
-        Redis carga conversaciones bajo demanda (lazy loading).
-        No se cargan todas al inicio para mejor performance.
-        """
-        logger.info("✅ Redis configurado - conversaciones se cargarán bajo demanda")
+        logger.info("Redis configurado - conversaciones se cargarán bajo demanda")
     
     def save_all_conversations(self):
         """Guarda todas las conversaciones activas en archivos"""
@@ -312,11 +303,11 @@ class ConversationStore:
                 )
                 conversations.append(metadata)
             
-            logger.info(f"✅ Usuario {user_id} tiene {len(conversations)} conversaciones")
+            logger.info(f"Usuario {user_id} tiene {len(conversations)} conversaciones")
             return conversations
             
         except Exception as e:
-            logger.error(f"❌ Error obteniendo conversaciones desde Redis: {e}", exc_info=True)
+            logger.error(f"Error obteniendo conversaciones desde Redis: {e}", exc_info=True)
             return []
     
     def get_session_detail(self, session_id: str) -> Optional[Dict]:
@@ -379,9 +370,9 @@ class ConversationStore:
             try:
                 redis_deleted = self._redis_history.delete_conversation(session_id, user_id)
                 if redis_deleted:
-                    logger.info(f"✅ Conversación {session_id} eliminada de Redis")
+                    logger.info(f"Conversación {session_id} eliminada de Redis")
             except Exception as e:
-                logger.error(f"❌ Error eliminando de Redis: {e}", exc_info=True)
+                logger.error(f"Error eliminando de Redis: {e}", exc_info=True)
             
             # 2. ELIMINAR DE MEMORIA
             if session_id in self._store:
@@ -393,10 +384,10 @@ class ConversationStore:
             if user_id in self._user_sessions and session_id in self._user_sessions[user_id]:
                 self._user_sessions[user_id].remove(session_id)
             
-            logger.info(f"✅ Sesión {session_id} eliminada completamente (usuario {user_id})")
+            logger.info(f"Sesión {session_id} eliminada completamente (usuario {user_id})")
             return True
         
-        logger.warning(f"❌ Intento de eliminar sesión {session_id} falló (usuario: {user_id})")
+        logger.warning(f"Intento de eliminar sesión {session_id} falló (usuario: {user_id})")
         return False
     
     def clear_user_sessions(self, user_id: str):
@@ -427,7 +418,7 @@ class ConversationStore:
             redis_stats = self._redis_history.get_stats()
             stats["redis"] = redis_stats
         except Exception as e:
-            logger.error(f"❌ Error obteniendo stats de Redis: {e}", exc_info=True)
+            logger.error(f"Error obteniendo stats de Redis: {e}", exc_info=True)
             stats["redis_error"] = str(e)
         
         return stats
