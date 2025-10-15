@@ -3,6 +3,7 @@ import { Avatar } from '@heroui/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TypingIndicator from './TypingIndicator';
+import { CopyIcon, CheckIcon } from '../../icons';
 
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
@@ -10,6 +11,9 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   
   // Estado para forzar re-renderizado cuando sea necesario
   const [forceRender, setForceRender] = useState(0);
+  
+  // Estado para el botón de copiar
+  const [copied, setCopied] = useState(false);
 
   // Efecto para manejar renderizado inconsistente - forzar actualización cuando el texto cambia
   useEffect(() => {
@@ -17,6 +21,17 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       setForceRender(prev => prev + 1);
     }
   }, [message.text, message.renderKey, isUser]);
+
+  // Función para copiar al portapapeles
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Volver al estado normal después de 2 segundos
+    } catch (err) {
+      console.error('Error al copiar:', err);
+    }
+  };
 
   // Componente personalizado para renderizar Markdown con estilos
   const MarkdownRenderer = ({ content, forceKey }) => {
@@ -245,8 +260,34 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
             )}
           </div>
         </div>
-        <div className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-          {message.timestamp && message.timestamp}
+        
+        <div className={`flex items-center gap-2 mt-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+          <div className={`text-xs text-gray-400`}>
+            {message.timestamp && message.timestamp}
+          </div>
+          
+          {/* Botón de copiar - debajo del mensaje */}
+          {!isUser && message.text && !isStreaming && (
+            <div className="relative group">
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 focus:outline-none text-gray-400 hover:text-gray-700 hover:scale-110"
+                aria-label="Copiar respuesta"
+              >
+                {copied ? (
+                  <CheckIcon size={14} className="text-gray-600" />
+                ) : (
+                  <CopyIcon size={14} className="text-gray-500" />
+                )}
+              </button>
+              
+              {/* Tooltip personalizado */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
+                {copied ? "¡Copiado!" : "Copiar"}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-100"></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
