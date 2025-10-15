@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.documentos.file_management_service import file_management_service
-from app.services.bitacora.bitacora_service import bitacora_service
+from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
 from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult
@@ -149,30 +149,14 @@ async def ingestar_archivos(
                     "message": f"Error al guardar: {str(e)}"
                 })
         
-        # Obtener ID del expediente para la bitácora
-        expediente_db_id = None
-        try:
-            from app.repositories.expediente_repository import ExpedienteRepository
-            expediente_repo = ExpedienteRepository()
-            expediente_obj = expediente_repo.obtener_por_numero(db, CT_Num_expediente)
-            if expediente_obj:
-                expediente_db_id = expediente_obj.CN_Id_expediente
-        except Exception as e:
-            logger.warning(f"No se pudo obtener ID de expediente para bitácora: {e}")
-        
         # Registrar en bitácora - Ingesta iniciada
-        await bitacora_service.registrar(
+        await ingesta_audit_service.registrar_ingesta(
             db=db,
             usuario_id=current_user["user_id"],
-            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
-            texto=f"Ingesta iniciada: {len(files)} archivo(s) en expediente {CT_Num_expediente}",
-            expediente_id=expediente_db_id,
-            info_adicional={
-                "expediente": CT_Num_expediente,
-                "total_archivos": len(files),
-                "archivos": [f.filename for f in files],
-                "task_ids": [tid for tid in task_ids if isinstance(tid, str)]
-            }
+            expediente_num=CT_Num_expediente,
+            filename=f"{len(files)} archivo(s)",
+            task_id=",".join([tid for tid in task_ids if isinstance(tid, str)]),
+            fase="iniciado"
         )
         
         return {
@@ -183,29 +167,14 @@ async def ingestar_archivos(
         }
         
     except Exception as e:
-        # Obtener ID del expediente para la bitácora (incluso en error)
-        expediente_db_id = None
-        try:
-            from app.repositories.expediente_repository import ExpedienteRepository
-            expediente_repo = ExpedienteRepository()
-            expediente_obj = expediente_repo.obtener_por_numero(db, CT_Num_expediente)
-            if expediente_obj:
-                expediente_db_id = expediente_obj.CN_Id_expediente
-        except:
-            pass
-        
         # Registrar error en bitácora
-        await bitacora_service.registrar(
+        await ingesta_audit_service.registrar_ingesta(
             db=db,
             usuario_id=current_user["user_id"],
-            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
-            texto=f"Error en ingesta de expediente {CT_Num_expediente}: {str(e)[:200]}",
-            expediente_id=expediente_db_id,
-            info_adicional={
-                "expediente": CT_Num_expediente,
-                "error": str(e),
-                "tipo_error": "critico"
-            }
+            expediente_num=CT_Num_expediente,
+            filename="Error general",
+            task_id="N/A",
+            fase="error"
         )
         raise HTTPException(
             status_code=500,
@@ -263,18 +232,13 @@ async def cancelar_tarea(
         logger.info(f"Tarea {task_id} marcada como cancelada en ProgressTracker")
         
         # 5. Registrar cancelación en bitácora
-        await bitacora_service.registrar(
+        await ingesta_audit_service.registrar_ingesta(
             db=db,
             usuario_id=current_user["user_id"],
-            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
-            texto=f"Procesamiento cancelado - Task ID: {task_id}",
-            info_adicional={
-                "task_id": task_id,
-                "accion": "cancelacion",
-                "estado_previo": progress.get("status") if progress else "desconocido",
-                "revoked_in_celery": True,
-                "marked_in_tracker": True
-            }
+            expediente_num="N/A",
+            filename=f"Task {task_id}",
+            task_id=task_id,
+            fase="cancelado"
         )
         
         return {
@@ -296,16 +260,13 @@ async def cancelar_tarea(
         
         # Registrar error de cancelación en bitácora
         try:
-            await bitacora_service.registrar(
+            await ingesta_audit_service.registrar_ingesta(
                 db=db,
                 usuario_id=current_user["user_id"],
-                tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
-                texto=f"Error al cancelar procesamiento - Task ID: {task_id}",
-                info_adicional={
-                    "task_id": task_id,
-                    "accion": "cancelacion_fallida",
-                    "error": str(e)
-                }
+                expediente_num="N/A",
+                filename=f"Task {task_id}",
+                task_id=task_id,
+                fase="error_cancelacion"
             )
         except:
             pass
