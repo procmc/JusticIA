@@ -1,0 +1,480 @@
+"""
+Servicio especializado para ESTADÍSTICAS y REPORTES de bitácora.
+Maneja todas las operaciones de consulta (read operations) para análisis y reportes.
+
+Separado del bitacora_service.py para mantener:
+- bitacora_service.py: Write operations (registrar)
+- bitacora_stats_service.py: Read operations (consultas, estadísticas, reportes)
+"""
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+import json
+import logging
+
+from app.db.models.bitacora import T_Bitacora
+from app.repositories.bitacora_repository import BitacoraRepository
+from app.constants.tipos_accion import TiposAccion, DESCRIPCIONES_TIPOS_ACCION
+
+logger = logging.getLogger(__name__)
+
+
+class BitacoraStatsService:
+    """Servicio para estadísticas, consultas y reportes de bitácora"""
+    
+    def __init__(self):
+        self.repo = BitacoraRepository()
+    
+    # =====================================================================
+    # CONSULTAS CON FILTROS
+    # =====================================================================
+    
+    def obtener_con_filtros(
+        self,
+        db: Session,
+        usuario_id: Optional[str] = None,
+        tipo_accion_id: Optional[int] = None,
+        expediente_numero: Optional[str] = None,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None,
+        limite: int = 200
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene registros de bitácora con filtros múltiples.
+        Compatible con FiltrosBitacora.jsx del frontend.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: Filtrar por usuario específico (nombre o correo)
+            tipo_accion_id: Filtrar por tipo de acción
+            expediente_numero: Filtrar por número de expediente
+            fecha_inicio: Fecha de inicio del rango
+            fecha_fin: Fecha de fin del rango
+            limite: Número máximo de registros
+            
+        Returns:
+            list: Lista de registros de bitácora con información expandida
+        """
+        try:
+            registros = self.repo.obtener_con_filtros(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=tipo_accion_id,
+                expediente_numero=expediente_numero,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                limite=limite
+            )
+            
+            # Expandir información para el frontend
+            return [self._expandir_registro(r) for r in registros]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo bitácora con filtros: {e}")
+            return []
+    
+    
+    def obtener_por_usuario(
+        self,
+        db: Session,
+        usuario_id: str,
+        limite: int = 100,
+        tipo_accion_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial de acciones de un usuario específico.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario (cédula)
+            limite: Número máximo de registros
+            tipo_accion_id: Filtrar por tipo de acción (opcional)
+            
+        Returns:
+            List[Dict]: Lista de registros expandidos
+        """
+        try:
+            registros = self.repo.obtener_por_usuario(
+                db=db,
+                usuario_id=usuario_id,
+                limite=limite,
+                tipo_accion_id=tipo_accion_id
+            )
+            
+            return [self._expandir_registro(r) for r in registros]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo bitácora de usuario {usuario_id}: {e}")
+            return []
+    
+    
+    def obtener_por_expediente(
+        self,
+        db: Session,
+        expediente_numero: str,
+        limite: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial de acciones de un expediente específico.
+        
+        Args:
+            db: Sesión de base de datos
+            expediente_numero: Número del expediente
+            limite: Número máximo de registros
+            
+        Returns:
+            List[Dict]: Lista de registros expandidos
+        """
+        try:
+            registros = self.obtener_con_filtros(
+                db=db,
+                expediente_numero=expediente_numero,
+                limite=limite
+            )
+            
+            return registros
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo bitácora de expediente {expediente_numero}: {e}")
+            return []
+    
+    
+    # =====================================================================
+    # ESTADÍSTICAS AGREGADAS
+    # =====================================================================
+    
+    def obtener_estadisticas(self, db: Session, dias: int = 30) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas agregadas de la bitácora.
+        Compatible con DashboardEstadisticas.jsx del frontend.
+        
+        Args:
+            db: Sesión de base de datos
+            dias: Número de días hacia atrás para las estadísticas
+            
+        Returns:
+            Dict con estadísticas completas para el dashboard
+        """
+        try:
+            ahora = datetime.utcnow()
+            inicio_hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+            inicio_7dias = ahora - timedelta(days=7)
+            inicio_30dias = ahora - timedelta(days=30)
+            
+            # Total de registros
+            total_registros = self.repo.contar_total(db)
+            
+            # Registros por período
+            registros_hoy = self.repo.contar_por_periodo(db, inicio_hoy, ahora)
+            registros_7dias = self.repo.contar_por_periodo(db, inicio_7dias, ahora)
+            registros_30dias = self.repo.contar_por_periodo(db, inicio_30dias, ahora)
+            
+            # Contadores únicos
+            usuarios_unicos = self.repo.contar_usuarios_unicos(db, inicio_30dias, ahora)
+            expedientes_unicos = self.repo.contar_expedientes_unicos(db, inicio_30dias, ahora)
+            
+            # Acciones por tipo (con nombres legibles)
+            acciones_por_tipo_raw = self.repo.obtener_acciones_por_tipo(db, inicio_30dias, ahora)
+            acciones_por_tipo = [
+                {
+                    "tipo": DESCRIPCIONES_TIPOS_ACCION.get(item["tipo_id"], f"Tipo {item['tipo_id']}"),
+                    "cantidad": item["cantidad"]
+                }
+                for item in acciones_por_tipo_raw
+            ]
+            
+            return {
+                "registrosHoy": registros_hoy,
+                "registros7Dias": registros_7dias,
+                "registros30Dias": registros_30dias,
+                "totalRegistros": total_registros,
+                "usuariosUnicos": usuarios_unicos,
+                "expedientesUnicos": expedientes_unicos,
+                "accionesPorTipo": acciones_por_tipo
+            }
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo estadísticas: {e}")
+            return {
+                "registrosHoy": 0,
+                "registros7Dias": 0,
+                "registros30Dias": 0,
+                "totalRegistros": 0,
+                "usuariosUnicos": 0,
+                "expedientesUnicos": 0,
+                "accionesPorTipo": []
+            }
+    
+    
+    def obtener_metricas_dashboard(
+        self,
+        db: Session,
+        periodo_dias: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Obtiene métricas específicas para dashboards administrativos.
+        Incluye tendencias y comparaciones.
+        
+        Args:
+            db: Sesión de base de datos
+            periodo_dias: Días hacia atrás para análisis de tendencias
+            
+        Returns:
+            Dict con métricas detalladas para dashboards
+        """
+        try:
+            ahora = datetime.utcnow()
+            inicio_periodo = ahora - timedelta(days=periodo_dias)
+            inicio_periodo_anterior = inicio_periodo - timedelta(days=periodo_dias)
+            
+            # Métricas del período actual
+            registros_periodo = self.repo.contar_por_periodo(db, inicio_periodo, ahora)
+            
+            # Métricas del período anterior (para comparación)
+            registros_periodo_anterior = self.repo.contar_por_periodo(
+                db, inicio_periodo_anterior, inicio_periodo
+            )
+            
+            # Calcular tendencia
+            tendencia_porcentaje = 0
+            if registros_periodo_anterior > 0:
+                tendencia_porcentaje = (
+                    (registros_periodo - registros_periodo_anterior) / registros_periodo_anterior
+                ) * 100
+            
+            # Usuarios más activos
+            usuarios_activos = self.repo.obtener_usuarios_mas_activos(db, inicio_periodo, ahora, limite=10)
+            
+            # Expedientes más consultados
+            expedientes_populares = self.repo.obtener_expedientes_mas_consultados(
+                db, inicio_periodo, ahora, limite=10
+            )
+            
+            # Distribución por hora del día (últimos 7 días)
+            inicio_7dias = ahora - timedelta(days=7)
+            distribucion_horaria = self.repo.obtener_distribucion_horaria(db, inicio_7dias, ahora)
+            
+            return {
+                "periodo_dias": periodo_dias,
+                "registros_periodo": registros_periodo,
+                "registros_periodo_anterior": registros_periodo_anterior,
+                "tendencia_porcentaje": round(tendencia_porcentaje, 2),
+                "tendencia_direccion": "aumento" if tendencia_porcentaje > 0 else "disminucion" if tendencia_porcentaje < 0 else "estable",
+                "usuarios_mas_activos": usuarios_activos,
+                "expedientes_mas_consultados": expedientes_populares,
+                "distribucion_horaria": distribucion_horaria
+            }
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo métricas de dashboard: {e}")
+            return {
+                "periodo_dias": periodo_dias,
+                "registros_periodo": 0,
+                "registros_periodo_anterior": 0,
+                "tendencia_porcentaje": 0,
+                "tendencia_direccion": "estable",
+                "usuarios_mas_activos": [],
+                "expedientes_mas_consultados": [],
+                "distribucion_horaria": []
+            }
+    
+    
+    # =====================================================================
+    # REPORTES Y ANÁLISIS
+    # =====================================================================
+    
+    def generar_reporte_usuario(
+        self,
+        db: Session,
+        usuario_id: str,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Genera un reporte completo de actividad de un usuario.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario
+            fecha_inicio: Fecha de inicio (opcional, default últimos 30 días)
+            fecha_fin: Fecha de fin (opcional, default hoy)
+            
+        Returns:
+            Dict con reporte completo de actividad del usuario
+        """
+        try:
+            ahora = datetime.utcnow()
+            fecha_fin = fecha_fin or ahora
+            fecha_inicio = fecha_inicio or (ahora - timedelta(days=30))
+            
+            # Obtener todos los registros del usuario en el período
+            registros = self.obtener_con_filtros(
+                db=db,
+                usuario_id=usuario_id,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                limite=1000  # Sin límite práctico para reportes
+            )
+            
+            # Agrupar por tipo de acción
+            acciones_por_tipo = {}
+            for registro in registros:
+                tipo = registro.get("tipoAccion", "Desconocido")
+                acciones_por_tipo[tipo] = acciones_por_tipo.get(tipo, 0) + 1
+            
+            # Expedientes únicos tocados
+            expedientes_unicos = set()
+            for registro in registros:
+                if registro.get("expediente"):
+                    expedientes_unicos.add(registro["expediente"])
+            
+            return {
+                "usuario_id": usuario_id,
+                "periodo": {
+                    "inicio": fecha_inicio.isoformat(),
+                    "fin": fecha_fin.isoformat(),
+                    "dias": (fecha_fin - fecha_inicio).days
+                },
+                "total_acciones": len(registros),
+                "acciones_por_tipo": acciones_por_tipo,
+                "expedientes_consultados": len(expedientes_unicos),
+                "expedientes_unicos": list(expedientes_unicos),
+                "promedio_acciones_por_dia": round(
+                    len(registros) / max((fecha_fin - fecha_inicio).days, 1), 2
+                ),
+                "registros": registros[:100]  # Primeros 100 para el reporte
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generando reporte de usuario {usuario_id}: {e}")
+            return {
+                "usuario_id": usuario_id,
+                "error": str(e),
+                "total_acciones": 0
+            }
+    
+    
+    def generar_reporte_expediente(
+        self,
+        db: Session,
+        expediente_numero: str
+    ) -> Dict[str, Any]:
+        """
+        Genera un reporte completo de la historia de un expediente.
+        
+        Args:
+            db: Sesión de base de datos
+            expediente_numero: Número del expediente
+            
+        Returns:
+            Dict con timeline completo del expediente
+        """
+        try:
+            registros = self.obtener_por_expediente(
+                db=db,
+                expediente_numero=expediente_numero,
+                limite=500
+            )
+            
+            if not registros:
+                return {
+                    "expediente_numero": expediente_numero,
+                    "total_acciones": 0,
+                    "mensaje": "No se encontraron registros para este expediente"
+                }
+            
+            # Extraer fechas clave
+            primera_accion = registros[-1] if registros else None  # Último en lista (más antiguo)
+            ultima_accion = registros[0] if registros else None  # Primero en lista (más reciente)
+            
+            # Contar por tipo de acción
+            acciones_por_tipo = {}
+            usuarios_involucrados = set()
+            
+            for registro in registros:
+                tipo = registro.get("tipoAccion", "Desconocido")
+                acciones_por_tipo[tipo] = acciones_por_tipo.get(tipo, 0) + 1
+                
+                if registro.get("usuario"):
+                    usuarios_involucrados.add(registro["usuario"])
+            
+            return {
+                "expediente_numero": expediente_numero,
+                "total_acciones": len(registros),
+                "primera_accion": primera_accion,
+                "ultima_accion": ultima_accion,
+                "acciones_por_tipo": acciones_por_tipo,
+                "usuarios_involucrados": list(usuarios_involucrados),
+                "total_usuarios": len(usuarios_involucrados),
+                "timeline": registros  # Timeline completo ordenado por fecha
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generando reporte de expediente {expediente_numero}: {e}")
+            return {
+                "expediente_numero": expediente_numero,
+                "error": str(e),
+                "total_acciones": 0
+            }
+    
+    
+    # =====================================================================
+    # UTILIDADES
+    # =====================================================================
+    
+    def _expandir_registro(self, bitacora: T_Bitacora) -> Dict[str, Any]:
+        """
+        Expande un registro de bitácora con información de relaciones.
+        Compatible con la estructura esperada por el frontend.
+        
+        Args:
+            bitacora: Registro de bitácora
+            
+        Returns:
+            Dict con información expandida
+        """
+        return {
+            "id": bitacora.CN_Id_bitacora,
+            "fechaHora": bitacora.CF_Fecha_hora.isoformat() if bitacora.CF_Fecha_hora else None,
+            "texto": bitacora.CT_Texto,
+            "informacionAdicional": bitacora.CT_Informacion_adicional,
+            
+            # IDs originales
+            "idUsuario": bitacora.CN_Id_usuario,
+            "idTipoAccion": bitacora.CN_Id_tipo_accion,
+            "idExpediente": bitacora.CN_Id_expediente,
+            
+            # Información expandida (si existe)
+            "usuario": bitacora.usuario.CT_Nombre_usuario if bitacora.usuario else None,
+            "correoUsuario": bitacora.usuario.CT_Correo if bitacora.usuario else None,
+            "rolUsuario": bitacora.usuario.rol.CT_Nombre_rol if bitacora.usuario and bitacora.usuario.rol else None,
+            "tipoAccion": DESCRIPCIONES_TIPOS_ACCION.get(bitacora.CN_Id_tipo_accion) if bitacora.CN_Id_tipo_accion else None,
+            "expediente": bitacora.expediente.CT_Num_expediente if bitacora.expediente else None,
+            
+            # Estado (por defecto Procesado ya que se registró exitosamente)
+            "estado": "Procesado"
+        }
+    
+    
+    def parsear_info_adicional(self, bitacora: T_Bitacora) -> Optional[Dict[str, Any]]:
+        """
+        Parsea el campo CT_Informacion_adicional de JSON a dict.
+        
+        Args:
+            bitacora: Registro de bitácora
+            
+        Returns:
+            Optional[Dict]: Información adicional parseada o None
+        """
+        if not bitacora.CT_Informacion_adicional:
+            return None
+        
+        try:
+            return json.loads(bitacora.CT_Informacion_adicional)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Error parseando info_adicional de bitácora {bitacora.CN_Id_bitacora}: {e}")
+            return None
+
+
+# Instancia singleton del servicio de estadísticas
+bitacora_stats_service = BitacoraStatsService()

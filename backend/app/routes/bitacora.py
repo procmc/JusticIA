@@ -11,7 +11,8 @@ import logging
 
 from app.db.database import get_db
 from app.auth.jwt_auth import require_administrador, require_usuario_judicial
-from app.services.bitacora_service import bitacora_service
+from app.services.bitacora.bitacora_service import bitacora_service
+from app.services.bitacora.bitacora_stats_service import bitacora_stats_service
 from app.schemas.bitacora_schemas import BitacoraRespuesta, EstadisticasBitacora
 from app.constants.tipos_accion import TiposAccion
 
@@ -43,7 +44,7 @@ async def obtener_registros(
     - limite: Número máximo de registros (default: 200)
     """
     try:
-        registros = bitacora_service.obtener_con_filtros(
+        registros = bitacora_stats_service.obtener_con_filtros(
             db=db,
             usuario_id=usuario,
             tipo_accion_id=tipoAccion,
@@ -101,7 +102,7 @@ async def obtener_estadisticas(
     - accionesPorTipo: Array con {tipo, cantidad}
     """
     try:
-        estadisticas = bitacora_service.obtener_estadisticas(db=db, dias=dias)
+        estadisticas = bitacora_stats_service.obtener_estadisticas(db=db, dias=dias)
         return estadisticas
         
     except Exception as e:
@@ -125,7 +126,7 @@ async def obtener_mi_historial(
     Accesible para usuarios judiciales y administradores.
     """
     try:
-        registros = bitacora_service.obtener_con_filtros(
+        registros = bitacora_stats_service.obtener_con_filtros(
             db=db,
             usuario_id=current_user["user_id"],
             tipo_accion_id=tipoAccion,
@@ -155,7 +156,7 @@ async def obtener_historial_expediente(
     Útil para auditoría de expedientes.
     """
     try:
-        registros = bitacora_service.obtener_con_filtros(
+        registros = bitacora_stats_service.obtener_con_filtros(
             db=db,
             expediente_numero=expediente_numero,
             limite=limite
