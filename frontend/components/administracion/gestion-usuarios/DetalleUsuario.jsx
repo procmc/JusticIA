@@ -189,8 +189,11 @@ const DetalleUsuario = ({
       botonAccion={{
         texto: "Editar Usuario",
         onPress: () => {
-          onEditar(usuario);
-          onClose();
+          onClose(); // Cerrar primero el detalle
+          // Pequeño delay para que se cierre el modal antes de abrir el formulario
+          setTimeout(() => {
+            onEditar(usuario);
+          }, 100);
         },
         color: "primary"
       }}

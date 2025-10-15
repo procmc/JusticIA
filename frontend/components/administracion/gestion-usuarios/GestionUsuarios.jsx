@@ -99,29 +99,31 @@ const GestionUsuarios = () => {
         resultado = await crearUsuarioService(datosUsuario);
         if (resultado.success) {
           Toast.success('Éxito', 'Usuario creado exitosamente');
-          await cargarUsuarios(); // Recargar lista
+          setModalFormularioAbierto(false);
+          setUsuarioSeleccionado(null);
+          await cargarUsuarios(); // Recargar lista después de cerrar el modal
         } else {
           Toast.error('Error', resultado.message || 'Error al crear usuario');
-          return;
+          throw new Error(resultado.message); // Lanzar error para que el formulario no se cierre
         }
       } else if (modoFormulario === 'editar') {
         // Editar usuario
         resultado = await editarUsuarioService(usuarioSeleccionado.CN_Id_usuario, datosUsuario);
         if (resultado.success) {
           Toast.success('Éxito', 'Usuario actualizado exitosamente');
-          await cargarUsuarios(); // Recargar lista
+          setModalFormularioAbierto(false);
+          setUsuarioSeleccionado(null);
+          await cargarUsuarios(); // Recargar lista después de cerrar el modal
         } else {
           Toast.error('Error', resultado.message || 'Error al actualizar usuario');
-          return;
+          throw new Error(resultado.message); // Lanzar error para que el formulario no se cierre
         }
       }
       
-      setModalFormularioAbierto(false);
-      setUsuarioSeleccionado(null);
-      
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      Toast.error('Error', 'Error al guardar usuario');
+      // No cerramos el modal si hay error para que el usuario pueda corregir
+      throw error; // Re-lanzar el error para que FormularioUsuario lo maneje
     }
   };
 
@@ -183,8 +185,8 @@ const GestionUsuarios = () => {
 
       {/* Tabla de usuarios */}
       {loading ? (
-        <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary"></div>
         </div>
       ) : (
         <TablaUsuarios

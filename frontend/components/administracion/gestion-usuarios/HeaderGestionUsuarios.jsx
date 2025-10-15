@@ -15,45 +15,45 @@ const HeaderGestionUsuarios = ({
 }) => {
   return (
     <Card className="bg-primary text-white shadow-lg border-none">
-      <CardBody className="p-4 sm:p-6 lg:p-8">
-        <div className="space-y-6">
+      <CardBody className="p-4 sm:p-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Fila superior: Título, Input de búsqueda y botón */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             {/* Título y descripción */}
-            <div className="flex items-center gap-3 sm:gap-4 flex-1">
+            <div className="flex items-center gap-3 flex-1">
               <div className="p-2 sm:p-3 bg-white/15 rounded-xl border border-white/20 flex-shrink-0">
-                <IoPeople className="text-2xl sm:text-3xl lg:text-4xl text-white" />
+                <IoPeople className="text-2xl sm:text-3xl text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1 sm:mb-2 truncate">
+                <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 truncate">
                   Gestión de Usuarios
                 </h1>
-                <p className="text-white/80 text-sm sm:text-base">
+                <p className="text-white/80 text-sm">
                   Administra usuarios del sistema JusticIA
                 </p>
               </div>
             </div>
 
             {/* Input de búsqueda y Botón Agregar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Input de búsqueda */}
               <div className="relative w-full sm:w-52 lg:w-64 h-10 sm:h-12">
-                <IoSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 text-base sm:text-lg pointer-events-none" />
+                <IoSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 text-base pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Buscar usuarios..."
                   value={filtroTexto}
                   onChange={(e) => onFiltroChange(e.target.value)}
-                  className="w-full h-full bg-white/10 border border-white/20 rounded-xl pl-9 sm:pl-10 pr-3 sm:pr-4 text-sm sm:text-base text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15"
+                  className="w-full h-full bg-white/10 border border-white/20 rounded-xl pl-9 pr-3 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15"
                 />
               </div>
 
               {/* Botón Agregar */}
               <Button
                 color="secondary"
-                size="lg"
-                startContent={<IoAdd className="text-lg sm:text-xl" />}
-                className="bg-white text-primary font-bold hover:bg-white/95 px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-xl text-sm sm:text-base whitespace-nowrap"
+                size="md"
+                startContent={<IoAdd className="text-lg" />}
+                className="bg-white text-primary font-bold hover:bg-white/95 px-4 py-2 rounded-xl text-sm whitespace-nowrap h-10 sm:h-12"
                 onPress={onCrearUsuario}
               >
                 <span className="hidden sm:inline">Agregar Usuario</span>
