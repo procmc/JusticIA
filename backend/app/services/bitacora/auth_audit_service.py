@@ -53,7 +53,7 @@ class AuthAuditService:
                 }
             )
         except Exception as e:
-            logger.warning(f"⚠️ Error registrando login exitoso: {e}")
+            logger.warning(f"Error registrando login exitoso: {e}")
             return None
     
     
@@ -88,7 +88,41 @@ class AuthAuditService:
                 }
             )
         except Exception as e:
-            logger.warning(f"⚠️ Error registrando login fallido: {e}")
+            logger.warning(f"Error registrando login fallido: {e}")
+            return None
+    
+    
+    async def registrar_logout(
+        self,
+        db: Session,
+        usuario_id: str,
+        email: str
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra un cierre de sesión.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario (cédula)
+            email: Correo electrónico del usuario
+            
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error
+        """
+        try:
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=TiposAccion.LOGIN,
+                texto=f"Cierre de sesión: {email}",
+                info_adicional={
+                    "email": email,
+                    "accion": "logout",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando logout: {e}")
             return None
     
     
@@ -127,25 +161,21 @@ class AuthAuditService:
                 }
             )
         except Exception as e:
-            logger.warning(f"⚠️ Error registrando cambio de contraseña: {e}")
+            logger.warning(f"Error registrando cambio de contraseña: {e}")
             return None
     
     
     async def registrar_solicitud_recuperacion(
         self,
         db: Session,
-        usuario_id: str,
-        email: str,
-        token: str
+        email: str
     ) -> Optional[T_Bitacora]:
         """
         Registra una solicitud de recuperación de contraseña.
         
         Args:
             db: Sesión de base de datos
-            usuario_id: ID del usuario (cédula)
             email: Correo electrónico del usuario
-            token: Token de recuperación generado (se guarda solo parcialmente)
             
         Returns:
             T_Bitacora: Registro creado o None si hubo error
@@ -153,24 +183,23 @@ class AuthAuditService:
         try:
             return await self.bitacora_service.registrar(
                 db=db,
-                usuario_id=usuario_id,
+                usuario_id=None,  # No tenemos usuario autenticado
                 tipo_accion_id=TiposAccion.EDITAR_USUARIO,
-                texto="Solicitud de recuperación de contraseña",
+                texto=f"Solicitud de recuperación de contraseña para: {email}",
                 info_adicional={
                     "email": email,
-                    "token_generado": token[:10] + "...",  # Solo primeros caracteres por seguridad
+                    "accion": "solicitud_recuperacion",
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
         except Exception as e:
-            logger.warning(f"⚠️ Error registrando solicitud de recuperación: {e}")
+            logger.warning(f"Error registrando solicitud de recuperación: {e}")
             return None
     
     
     async def registrar_verificacion_codigo(
         self,
         db: Session,
-        usuario_id: str,
         email: str,
         exitoso: bool
     ) -> Optional[T_Bitacora]:
@@ -179,7 +208,6 @@ class AuthAuditService:
         
         Args:
             db: Sesión de base de datos
-            usuario_id: ID del usuario (cédula)
             email: Correo electrónico del usuario
             exitoso: Si la verificación fue exitosa
             
@@ -188,24 +216,25 @@ class AuthAuditService:
         """
         try:
             texto = (
-                "Código de recuperación verificado exitosamente"
+                f"Código de recuperación verificado exitosamente para: {email}"
                 if exitoso
-                else "Intento fallido de verificación de código"
+                else f"Intento fallido de verificación de código para: {email}"
             )
             
             return await self.bitacora_service.registrar(
                 db=db,
-                usuario_id=usuario_id,
+                usuario_id=None,  # No tenemos usuario autenticado
                 tipo_accion_id=TiposAccion.EDITAR_USUARIO,
                 texto=texto,
                 info_adicional={
                     "email": email,
                     "resultado": "exitoso" if exitoso else "fallido",
+                    "accion": "verificacion_codigo",
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
         except Exception as e:
-            logger.warning(f"⚠️ Error registrando verificación de código: {e}")
+            logger.warning(f"Error registrando verificación de código: {e}")
             return None
 
 
