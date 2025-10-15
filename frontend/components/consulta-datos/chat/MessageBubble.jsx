@@ -200,7 +200,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   };
   
   return (
-    <div className={`flex gap-2 sm:gap-4 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
+    <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
       <Avatar
         size="sm"
         className="sm:w-10 sm:h-10"
@@ -220,7 +220,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         showFallback
       />
       
-      <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'}`}>
+      <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'} group`}>
         <div className={`inline-block max-w-[calc(100%-5rem)] sm:max-w-[calc(100%-10rem)] break-words ${
           isUser 
             ? 'bg-gray-100 text-gray-800 rounded-2xl rounded-tr-md px-4 py-3 text-left' 
@@ -266,7 +266,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
             {message.timestamp && message.timestamp}
           </div>
           
-          {/* Botón de copiar - debajo del mensaje */}
+          {/* Botón de copiar - para mensajes del bot (siempre visible) */}
           {!isUser && message.text && !isStreaming && (
             <div className="relative group">
               <button
@@ -283,6 +283,29 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
               
               {/* Tooltip personalizado */}
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
+                {copied ? "¡Copiado!" : "Copiar"}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-100"></div>
+              </div>
+            </div>
+          )}
+          
+          {/* Botón de copiar - para mensajes del usuario (solo visible en hover) */}
+          {isUser && message.text && (
+            <div className="relative">
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 focus:outline-none text-gray-400 hover:text-gray-700 hover:scale-110 opacity-0 group-hover:opacity-100"
+                aria-label="Copiar mensaje"
+              >
+                {copied ? (
+                  <CheckIcon size={14} className="text-gray-600" />
+                ) : (
+                  <CopyIcon size={14} className="text-gray-500" />
+                )}
+              </button>
+              
+              {/* Tooltip personalizado */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
                 {copied ? "¡Copiado!" : "Copiar"}
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-100"></div>
               </div>
