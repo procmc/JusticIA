@@ -390,23 +390,24 @@ const ConsultaChat = () => {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Indicador de sesión activa */}
+      {/* Indicador de sesión activa - Estilo institucional */}
       {sessionId && messages.length > 0 && (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 bg-blue-50/80 border border-blue-200/50 rounded-full shadow-sm backdrop-blur-sm">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="font-medium">
-            Conversación activa ({messages.filter(m => m.isUser).length} mensajes)
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-md border border-blue-100">
+          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
+          <span>
+            Sesión activa · {messages.filter(m => m.isUser).length} {messages.filter(m => m.isUser).length === 1 ? 'consulta' : 'consultas'}
           </span>
         </div>
       )}
 
       {/* Controles de chat */}
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
         {/* Botón de historial */}
         <button
           onClick={() => setShowHistory(true)}
-          className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+          className="group flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-700 bg-white/50 hover:bg-white/90 rounded-md transition-colors duration-150"
           title="Ver historial de conversaciones"
+          aria-label="Ver historial de conversaciones"
         >
           <svg
             className="w-3.5 h-3.5"
@@ -417,14 +418,14 @@ const ConsultaChat = () => {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={1.5}
+              strokeWidth={2}
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span className="font-medium hidden sm:block">Historial</span>
+          <span className="hidden sm:inline">Historial</span>
         </button>
 
-        {/* Botón elegante y discreto de nuevo chat */}
+        {/* Botón de nueva conversación */}
         {messages.length > 0 && (
           <button
             onClick={() => {
@@ -463,11 +464,12 @@ const ConsultaChat = () => {
               }
               // Para modo general, simplemente se queda con mensajes vacíos (estado inicial limpio)
             }}
-            className="group flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-700 bg-white/80 hover:bg-white border border-gray-200/50 hover:border-gray-300 rounded-full shadow-sm hover:shadow transition-all duration-300 backdrop-blur-sm"
+            className="group flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-700 bg-white/50 hover:bg-white/90 rounded-md transition-colors duration-150"
             title="Nueva conversación"
+            aria-label="Iniciar nueva conversación"
           >
             <svg
-              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90"
+              className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -475,11 +477,11 @@ const ConsultaChat = () => {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={1.5}
+                strokeWidth={2}
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            <span className="font-medium hidden sm:block">Nueva</span>
+            <span className="hidden sm:inline">Nueva</span>
           </button>
         )}
       </div>
