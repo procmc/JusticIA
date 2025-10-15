@@ -8,7 +8,7 @@ from app.schemas.similarity_schemas import (
     RespuestaGenerarResumen,
 )
 from app.services.busqueda_similares.similarity_service import SimilarityService
-from app.services.bitacora_service import bitacora_service
+from app.services.bitacora.similarity_audit_service import similarity_audit_service
 from app.auth.jwt_auth import require_usuario_judicial
 import logging
 
@@ -27,7 +27,7 @@ async def search_similar_cases(
         result = await similarity_service.search_similar_cases(data)
         
         # Registrar búsqueda exitosa en bitácora
-        await bitacora_service.registrar_busqueda_similares(
+        await similarity_audit_service.registrar_busqueda_similares(
             db=db,
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
@@ -54,7 +54,7 @@ async def search_similar_cases(
         logger.warning(f"Error de validación en búsqueda: {e}")
         
         # Registrar error en bitácora
-        await bitacora_service.registrar_busqueda_similares(
+        await similarity_audit_service.registrar_busqueda_similares(
             db=db,
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
@@ -76,7 +76,7 @@ async def search_similar_cases(
         logger.error(f"Error interno en búsqueda: {e}", exc_info=True)
         
         # Registrar error en bitácora
-        await bitacora_service.registrar_busqueda_similares(
+        await similarity_audit_service.registrar_busqueda_similares(
             db=db,
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
@@ -106,7 +106,7 @@ async def generate_case_summary(
         result = await similarity_service.generate_case_summary(data.numero_expediente)
         
         # Registrar generación de resumen exitosa en bitácora
-        await bitacora_service.registrar_resumen_ia(
+        await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
             numero_expediente=data.numero_expediente,
@@ -130,7 +130,7 @@ async def generate_case_summary(
         logger.warning(f"Error de validación en resumen: {e}")
         
         # Registrar error en bitácora
-        await bitacora_service.registrar_resumen_ia(
+        await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
             numero_expediente=data.numero_expediente,
@@ -148,7 +148,7 @@ async def generate_case_summary(
         logger.error(f"Error interno en resumen: {e}", exc_info=True)
         
         # Registrar error en bitácora
-        await bitacora_service.registrar_resumen_ia(
+        await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
             numero_expediente=data.numero_expediente,

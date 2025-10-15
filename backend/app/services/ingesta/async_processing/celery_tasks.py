@@ -61,7 +61,7 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
         
         try:
             # Registrar inicio en bitácora
-            from app.services.bitacora_service import bitacora_service
+            from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
             asyncio.run(bitacora_service.registrar_ingesta(
                 db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "inicio"
             ))
@@ -130,7 +130,7 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
         logger.warning(f"Tarea {task_id} terminada forzosamente (cancelación)")
         tracker.mark_cancelled("Procesamiento interrumpido por cancelación")
         if 'db' in locals():
-            from app.services.bitacora_service import bitacora_service
+            from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
             asyncio.run(bitacora_service.registrar_ingesta(
                 db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "cancelado"
             ))

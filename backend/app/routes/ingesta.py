@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.documentos.file_management_service import file_management_service
-from app.services.bitacora_service import bitacora_service
+from app.services.bitacora.bitacora_service import bitacora_service
 from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult

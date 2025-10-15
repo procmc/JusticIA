@@ -384,7 +384,7 @@ async def process_single_file_with_content(
                 # Registrar en bitácora el almacenamiento vectorial
                 if usuario_id:
                     try:
-                        from app.services.bitacora_service import bitacora_service
+                        from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
                         await bitacora_service.registrar_almacenamiento_vectorial(
                             db=db,
                             usuario_id=usuario_id,
