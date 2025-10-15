@@ -3,15 +3,9 @@ from datetime import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 import logging
-import json
-import os
-from pathlib import Path
+from app.services.RAG.conversation_history_redis import get_redis_history
 
 logger = logging.getLogger(__name__)
-
-# Directorio para guardar conversaciones
-CONVERSATIONS_DIR = Path(__file__).parent.parent.parent.parent / "data" / "conversations"
-CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class InMemoryChatMessageHistory(BaseChatMessageHistory):
@@ -69,7 +63,8 @@ class ConversationMetadata:
 
 class ConversationStore:
     def __init__(self):
-        # Almacenamiento principal: {session_id: InMemoryChatMessageHistory}
+        # Almacenamiento principal EN MEMORIA: {session_id: InMemoryChatMessageHistory}
+        # Este maneja el CONTEXTO ACTIVO de las conversaciones
         self._store: Dict[str, InMemoryChatMessageHistory] = {}
         
         # Índice por usuario: {user_id: [session_ids]}
@@ -78,17 +73,27 @@ class ConversationStore:
         # Metadatos: {session_id: ConversationMetadata}
         self._metadata: Dict[str, ConversationMetadata] = {}
         
+        # Cliente Redis para persistencia de historial (OBLIGATORIO)
+        try:
+            self._redis_history = get_redis_history()
+            logger.info("✅ ConversationStore usando Redis para persistencia")
+        except Exception as e:
+            logger.error(f"❌ Redis no disponible - El historial NO se guardará: {e}")
+            raise RuntimeError(
+                "Redis es obligatorio para el sistema de conversaciones. "
+                "Verifica que Redis esté corriendo y REDIS_URL esté configurado."
+            ) from e
+        
         logger.info("ConversationStore inicializado")
         
-        # Cargar conversaciones existentes al iniciar
-        self._load_all_conversations()
-    
-    def _get_conversation_file_path(self, session_id: str) -> Path:
-        """Obtiene la ruta del archivo JSON para una sesión"""
-        return CONVERSATIONS_DIR / f"{session_id}.json"
+        # Redis carga conversaciones bajo demanda (no al inicio)
+        logger.info("✅ Redis listo - conversaciones se cargarán bajo demanda")
     
     def _save_conversation_to_file(self, session_id: str):
-        """Guarda una conversación en archivo JSON"""
+        """
+        Guarda una conversación en Redis.
+        NO afecta el contexto en memoria.
+        """
         try:
             if session_id not in self._store or session_id not in self._metadata:
                 logger.warning(f"No se puede guardar sesión {session_id}: no existe en memoria")
@@ -97,7 +102,7 @@ class ConversationStore:
             metadata = self._metadata[session_id]
             messages = self._store[session_id].messages
             
-            # Formatear mensajes para JSON
+            # Formatear mensajes para persistencia
             formatted_messages = []
             for msg in messages:
                 msg_dict = {
@@ -107,35 +112,38 @@ class ConversationStore:
                 }
                 formatted_messages.append(msg_dict)
             
-            # Estructura completa del archivo
-            conversation_data = {
-                "metadata": metadata.to_dict(),
-                "messages": formatted_messages
-            }
+            # Guardar en Redis
+            success = self._redis_history.save_conversation(
+                session_id=session_id,
+                user_id=metadata.user_id,
+                messages=formatted_messages,
+                metadata=metadata.to_dict()
+            )
             
-            # Guardar en archivo
-            file_path = self._get_conversation_file_path(session_id)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(conversation_data, f, ensure_ascii=False, indent=2)
-            
-            logger.info(f"Conversación {session_id} guardada en {file_path}")
+            if success:
+                logger.info(f"✅ Conversación {session_id} guardada en Redis")
+            else:
+                logger.error(f"❌ Error guardando conversación {session_id} en Redis")
             
         except Exception as e:
-            logger.error(f"Error guardando conversación {session_id}: {e}", exc_info=True)
+            logger.error(f"❌ Error guardando conversación {session_id}: {e}", exc_info=True)
     
     def _load_conversation_from_file(self, session_id: str) -> bool:
-        """Carga una conversación desde archivo JSON"""
+        """
+        Carga una conversación desde Redis.
+        Restaura en memoria para uso del contexto.
+        """
         try:
-            file_path = self._get_conversation_file_path(session_id)
+            # Cargar desde Redis
+            conversation_data = self._redis_history.load_conversation(session_id)
             
-            if not file_path.exists():
-                logger.debug(f"Archivo de conversación no existe: {file_path}")
+            if not conversation_data:
+                logger.debug(f"Conversación {session_id} no existe en Redis")
                 return False
             
-            with open(file_path, 'r', encoding='utf-8') as f:
-                conversation_data = json.load(f)
+            logger.info(f"✅ Conversación {session_id} cargada desde Redis")
             
-            # Restaurar metadatos
+            # RESTAURAR EN MEMORIA
             metadata_dict = conversation_data.get("metadata", {})
             metadata = ConversationMetadata(
                 session_id=metadata_dict["session_id"],
@@ -157,7 +165,7 @@ class ConversationStore:
             if session_id not in self._user_sessions[user_id]:
                 self._user_sessions[user_id].append(session_id)
             
-            # Restaurar mensajes
+            # Restaurar mensajes EN MEMORIA
             history = InMemoryChatMessageHistory(session_id)
             for msg_dict in conversation_data.get("messages", []):
                 msg_type = msg_dict.get("type")
@@ -170,34 +178,19 @@ class ConversationStore:
             
             self._store[session_id] = history
             
-            logger.info(f"Conversación {session_id} cargada desde archivo ({len(history.messages)} mensajes)")
+            logger.info(f"✅ Conversación {session_id} restaurada en memoria ({len(history.messages)} mensajes)")
             return True
             
         except Exception as e:
-            logger.error(f"Error cargando conversación {session_id}: {e}", exc_info=True)
+            logger.error(f"❌ Error cargando conversación {session_id}: {e}", exc_info=True)
             return False
     
     def _load_all_conversations(self):
-        """Carga todas las conversaciones guardadas al iniciar"""
-        try:
-            if not CONVERSATIONS_DIR.exists():
-                logger.info("Directorio de conversaciones no existe, creándolo...")
-                CONVERSATIONS_DIR.mkdir(parents=True, exist_ok=True)
-                return
-            
-            json_files = list(CONVERSATIONS_DIR.glob("*.json"))
-            logger.info(f"Encontrados {len(json_files)} archivos de conversaciones")
-            
-            loaded_count = 0
-            for file_path in json_files:
-                session_id = file_path.stem  # Nombre sin extensión
-                if self._load_conversation_from_file(session_id):
-                    loaded_count += 1
-            
-            logger.info(f"Conversaciones cargadas exitosamente: {loaded_count}/{len(json_files)}")
-            
-        except Exception as e:
-            logger.error(f"Error cargando conversaciones: {e}", exc_info=True)
+        """
+        Redis carga conversaciones bajo demanda (lazy loading).
+        No se cargan todas al inicio para mejor performance.
+        """
+        logger.info("✅ Redis configurado - conversaciones se cargarán bajo demanda")
     
     def save_all_conversations(self):
         """Guarda todas las conversaciones activas en archivos"""
@@ -299,18 +292,32 @@ class ConversationStore:
                     break
     
     def get_user_sessions(self, user_id: str) -> List[ConversationMetadata]:
-        session_ids = self._user_sessions.get(user_id, [])
-        
-        conversations = []
-        for session_id in session_ids:
-            if session_id in self._metadata:
-                conversations.append(self._metadata[session_id])
-        
-        # Ordenar por fecha de actualización (más reciente primero)
-        conversations.sort(key=lambda x: x.updated_at, reverse=True)
-        
-        logger.info(f"Usuario {user_id} tiene {len(conversations)} conversaciones")
-        return conversations
+        """
+        Obtiene lista de conversaciones de un usuario desde Redis.
+        """
+        try:
+            redis_conversations = self._redis_history.get_user_conversations(user_id)
+            
+            # Convertir de dict a ConversationMetadata
+            conversations = []
+            for conv_dict in redis_conversations:
+                metadata = ConversationMetadata(
+                    session_id=conv_dict["session_id"],
+                    user_id=conv_dict["user_id"],
+                    created_at=datetime.fromisoformat(conv_dict["created_at"]),
+                    updated_at=datetime.fromisoformat(conv_dict["updated_at"]),
+                    title=conv_dict.get("title", "Nueva conversación"),
+                    message_count=conv_dict.get("message_count", 0),
+                    expediente_number=conv_dict.get("expediente_number")
+                )
+                conversations.append(metadata)
+            
+            logger.info(f"✅ Usuario {user_id} tiene {len(conversations)} conversaciones")
+            return conversations
+            
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo conversaciones desde Redis: {e}", exc_info=True)
+            return []
     
     def get_session_detail(self, session_id: str) -> Optional[Dict]:
         # Si no está en memoria, intentar cargar desde archivo
@@ -349,7 +356,10 @@ class ConversationStore:
         }
     
     def delete_session(self, session_id: str, user_id: str) -> bool:
-        """Elimina una sesión tanto de memoria como del archivo"""
+        """
+        Elimina una sesión de Redis/JSON y memoria.
+        Mantiene validación de permisos.
+        """
         
         # Si la sesión no está en memoria, intentar cargarla primero
         if session_id not in self._metadata:
@@ -357,7 +367,6 @@ class ConversationStore:
             self._load_conversation_from_file(session_id)
         
         # Validar que la sesión pertenece al usuario
-        # Verificar en índice de usuario o en metadatos
         session_belongs_to_user = False
         
         if user_id in self._user_sessions and session_id in self._user_sessions[user_id]:
@@ -366,38 +375,28 @@ class ConversationStore:
             session_belongs_to_user = True
         
         if session_belongs_to_user:
-            # Eliminar archivo JSON
+            # 1. ELIMINAR DE REDIS
             try:
-                file_path = self._get_conversation_file_path(session_id)
-                if file_path.exists():
-                    file_path.unlink()
-                    logger.info(f"Archivo de conversación eliminado: {file_path}")
-                else:
-                    # Intentar con formato antiguo
-                    alt_session_id = session_id.replace('@', '_at_')
-                    alt_file_path = self._get_conversation_file_path(alt_session_id)
-                    if alt_file_path.exists():
-                        alt_file_path.unlink()
-                        logger.info(f"Archivo de conversación (formato antiguo) eliminado: {alt_file_path}")
+                redis_deleted = self._redis_history.delete_conversation(session_id, user_id)
+                if redis_deleted:
+                    logger.info(f"✅ Conversación {session_id} eliminada de Redis")
             except Exception as e:
-                logger.error(f"Error eliminando archivo de conversación: {e}", exc_info=True)
+                logger.error(f"❌ Error eliminando de Redis: {e}", exc_info=True)
             
-            # Eliminar del store
+            # 2. ELIMINAR DE MEMORIA
             if session_id in self._store:
                 del self._store[session_id]
             
-            # Eliminar metadatos
             if session_id in self._metadata:
                 del self._metadata[session_id]
             
-            # Eliminar del índice de usuario
             if user_id in self._user_sessions and session_id in self._user_sessions[user_id]:
                 self._user_sessions[user_id].remove(session_id)
             
-            logger.info(f"Sesión {session_id} eliminada para usuario {user_id}")
+            logger.info(f"✅ Sesión {session_id} eliminada completamente (usuario {user_id})")
             return True
         
-        logger.warning(f"Intento de eliminar sesión {session_id} falló (usuario: {user_id})")
+        logger.warning(f"❌ Intento de eliminar sesión {session_id} falló (usuario: {user_id})")
         return False
     
     def clear_user_sessions(self, user_id: str):
@@ -409,15 +408,29 @@ class ConversationStore:
         logger.info(f"Todas las sesiones de {user_id} eliminadas ({len(session_ids)} sesiones)")
     
     def get_stats(self) -> Dict:
-        """Obtiene estadísticas del store para debugging"""
-        return {
-            "total_sessions": len(self._store),
-            "total_users": len(self._user_sessions),
-            "total_messages": sum(
+        """
+        Obtiene estadísticas del store para debugging.
+        Incluye stats de Redis.
+        """
+        stats = {
+            "memory_sessions": len(self._store),
+            "memory_users": len(self._user_sessions),
+            "memory_messages": sum(
                 len(history.messages) 
                 for history in self._store.values()
-            )
+            ),
+            "using_redis": True
         }
+        
+        # Agregar stats de Redis
+        try:
+            redis_stats = self._redis_history.get_stats()
+            stats["redis"] = redis_stats
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo stats de Redis: {e}", exc_info=True)
+            stats["redis_error"] = str(e)
+        
+        return stats
 
 # Instancia global del store
 conversation_store = ConversationStore()
