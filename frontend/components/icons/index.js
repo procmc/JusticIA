@@ -7,3 +7,4 @@ export { default as LogoIcon } from "./Logo";
 export { default as LogoutIcon } from "./LogoutIcon";
 export { EyeFilledIcon as EyeIcon } from "./EyeIcon";
 export { default as SearchIcon } from "./SearchIcon";
+export { CopyIcon, CheckIcon } from "./CopyIcon";
