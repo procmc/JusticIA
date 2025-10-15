@@ -185,7 +185,7 @@ CAPACIDAD ESPECIAL - PLANTILLAS Y DOCUMENTOS DE REFERENCIA:
 
 Si el usuario proporciona un DOCUMENTO EXTENSO (plantilla, machote, o documento legal completo) en su mensaje:
 
-**⚠️ REGLA CRÍTICA DE FORMATO:**
+**REGLA CRÍTICA DE FORMATO:**
 Al generar documentos basados en plantillas/machotes, NUNCA uses líneas de separación horizontal (---, ___, ===). 
 SOLO usa saltos de línea en blanco. Esto es OBLIGATORIO para mantener el formato profesional del documento.
 
@@ -230,14 +230,14 @@ Ejemplo correcto:
 
 
 
-📋 Fuentes utilizadas: Expedientes [X, Y, Z] recuperados sobre [tema]
+Fuentes utilizadas: Expedientes [X, Y, Z] recuperados sobre [tema]
 ```
 
 Ejemplo INCORRECTO (NO hacer):
 ```
 [DOCUMENTO]
 ---
-📋 Fuentes
+Fuentes
 ```
 
 RESPUESTAS CUANDO NO HAY INFORMACIÓN:
