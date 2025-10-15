@@ -103,6 +103,36 @@ class AuthService {
   }
 
   /**
+   * Registrar cierre de sesión en el backend
+   */
+  async logout(usuarioId, email) {
+    try {
+      // Validar parámetros
+      if (!usuarioId || !email) {
+        console.warn('Logout sin datos de usuario - se omite registro en bitácora');
+        return { success: true };
+      }
+
+      const payload = {
+        usuario_id: String(usuarioId),
+        email: String(email)
+      };
+      
+      const data = await httpService.post('/auth/logout', payload);
+      
+      return { 
+        success: true, 
+        message: data?.message || 'Sesión cerrada correctamente' 
+      };
+      
+    } catch (error) {
+      console.warn('Error al registrar logout en bitácora:', error);
+      // No lanzamos error para no bloquear el cierre de sesión
+      return { success: true };
+    }
+  }
+
+  /**
    * Solicitar recuperación de contraseña (envía código por email)
    */
   async solicitarRecuperacion(email) {
@@ -252,6 +282,7 @@ export { AuthService };
 
 // Exportar funciones legacy para compatibilidad con código existente
 export const loginService = (email, password) => authService.login(email, password);
+export const logoutService = (usuarioId, email) => authService.logout(usuarioId, email);
 export const cambiarContraseñaService = (actual, nueva, cedula) => authService.cambiarContrasena(actual, nueva, cedula);
 export const solicitarRecuperacionService = (email) => authService.solicitarRecuperacion(email);
 export const verificarCodigoRecuperacionService = (token, codigo) => authService.verificarCodigoRecuperacion(token, codigo);

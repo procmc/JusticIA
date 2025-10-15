@@ -6,6 +6,7 @@ import Image from "next/image";
 import DrawerGeneral from "../ui/DrawerGeneral";
 import CambiarContraseña from "@/components/auth/cambioContraseña/CambiarContraseña";
 import { clearAllChatContext } from "../../utils/chatContextUtils";
+import authService from "@/services/authService";
 
 export function UserButton() {
     const { data: session, status } = useSession();
@@ -61,6 +62,9 @@ export function UserButton() {
 
     const handleLogout = useCallback(async () => {
         try {
+            // Registrar el logout en la bitácora del backend usando el servicio
+            await authService.logout(session?.user?.id, session?.user?.email);
+            
             // Limpiar contexto de chat usando utilidad centralizada
             clearAllChatContext();
             
@@ -73,7 +77,7 @@ export function UserButton() {
             // Fallback: redirigir manualmente si hay error
             router.push('/auth/login');
         }
-    }, [router]);
+    }, [router, session]);
 
     const handleOpenChangePassword = () => {
         setIsDrawerOpen(true);

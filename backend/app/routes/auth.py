@@ -11,7 +11,7 @@ from app.schemas.auth_schemas import (
     SolicitarRecuperacionRequest, SolicitarRecuperacionResponse,
     VerificarCodigoRequest, VerificarCodigoResponse,
     CambiarContrasenaRecuperacionRequest, RestablecerContrasenaRequest,
-    RestablecerContrasenaResponse, MensajeExito
+    RestablecerContrasenaResponse, MensajeExito, LogoutRequest
 )
 
 router = APIRouter()
@@ -68,6 +68,35 @@ async def login_usuario(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
+        )
+
+@router.post("/logout", response_model=MensajeExito)
+async def logout_usuario(
+    logout_data: LogoutRequest,
+    db: Session = Depends(get_db)
+):
+    """Registra el cierre de sesión de un usuario"""
+    try:
+        # El frontend ya maneja la limpieza del token
+        # Aquí solo registramos el evento en la bitácora
+        
+        await auth_audit_service.registrar_logout(
+            db=db,
+            usuario_id=logout_data.usuario_id,
+            email=logout_data.email
+        )
+        
+        return MensajeExito(
+            success=True,
+            message="Sesión cerrada correctamente"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error en logout: {e}")
+        # No lanzamos error para no interrumpir el cierre de sesión en el frontend
+        return MensajeExito(
+            success=True,
+            message="Sesión cerrada correctamente"
         )
 
 @router.put("/cambiar-contrasenna")
