@@ -33,7 +33,7 @@ class UsuarioRepository:
             .first()
         )
     
-    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
+    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
         """Edita los datos de un usuario incluyendo rol y estado"""
         usuario = self.obtener_usuario_por_id(db, usuario_id)
         if not usuario:
@@ -51,7 +51,7 @@ class UsuarioRepository:
         db.refresh(usuario)
         return usuario
     
-    def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, contrasenna: str, id_rol: int) -> T_Usuario:
+    def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, contrasenna: str, id_rol: int) -> T_Usuario:
         """Crea un nuevo usuario"""
         try:
             # Encriptar contraseña

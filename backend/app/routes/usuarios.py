@@ -4,30 +4,60 @@ from typing import List
 from app.db.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta
+from app.auth.jwt_auth import require_administrador
+from app.services.bitacora.usuarios_audit_service import usuarios_audit_service
 
 router = APIRouter()
 usuario_service = UsuarioService()
 
 @router.get("/", response_model=List[UsuarioRespuesta])
-def obtener_usuarios(db: Session = Depends(get_db)):
-    """Obtiene todos los usuarios"""
+async def obtener_usuarios(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """Obtiene todos los usuarios - Solo administradores"""
+    # obtener_todos_usuarios es un método síncrono
     usuarios = usuario_service.obtener_todos_usuarios(db)
+    
+    # Registrar consulta en bitácora (async)
+    await usuarios_audit_service.registrar_consulta_usuarios(
+        db=db,
+        usuario_admin_id=current_user["user_id"]
+    )
+    
     return usuarios
 
 @router.get("/{usuario_id}", response_model=UsuarioRespuesta)
-def obtener_usuario(usuario_id: str, db: Session = Depends(get_db)):
-    """Obtiene un usuario por ID (cédula)"""
+async def obtener_usuario(
+    usuario_id: str, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """Obtiene un usuario por ID (cédula) - Solo administradores"""
+    # obtener_usuario es un método síncrono
     usuario = usuario_service.obtener_usuario(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Registrar consulta en bitácora (async)
+    await usuarios_audit_service.registrar_consulta_usuario_especifico(
+        db=db,
+        usuario_admin_id=current_user["user_id"],
+        usuario_consultado_id=usuario_id
+    )
+    
     return usuario
 
 @router.post("/", response_model=UsuarioRespuesta)
-async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db)):
+async def crear_usuario(
+    usuario_data: UsuarioCrear, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
     """
     Crea un nuevo usuario con contraseña automática.
     SIEMPRE genera contraseña aleatoria y envía correo al usuario.
-    Similar a Node.js con nodemailer para envío automático.
+    Solo para administradores.
     """
     try:
         usuario = await usuario_service.crear_usuario(
@@ -37,6 +67,20 @@ async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db
         )
         if not usuario:
             raise HTTPException(status_code=500, detail="Error al crear usuario")
+        
+        # Registrar creación en bitácora
+        await usuarios_audit_service.registrar_creacion_usuario(
+            db=db,
+            usuario_admin_id=current_user["user_id"],
+            usuario_creado_cedula=usuario_data.cedula,
+            datos_usuario={
+                "nombre_usuario": usuario_data.nombre_usuario,
+                "nombre_completo": f"{usuario_data.nombre} {usuario_data.apellido_uno} {usuario_data.apellido_dos or ''}".strip(),
+                "correo": usuario_data.correo,
+                "id_rol": usuario_data.id_rol
+            }
+        )
+        
         return usuario
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -45,8 +89,14 @@ async def crear_usuario(usuario_data: UsuarioCrear, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @router.put("/{usuario_id}", response_model=UsuarioRespuesta)
-def editar_usuario(usuario_id: str, usuario_data: UsuarioEditar, db: Session = Depends(get_db)):
-    """Edita un usuario incluyendo rol y estado"""
+async def editar_usuario(
+    usuario_id: str, 
+    usuario_data: UsuarioEditar, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """Edita un usuario incluyendo rol y estado - Solo administradores"""
+    # editar_usuario es un método síncrono
     usuario = usuario_service.editar_usuario(
         db, usuario_id, usuario_data.nombre_usuario, usuario_data.nombre,
         usuario_data.apellido_uno, usuario_data.apellido_dos, usuario_data.correo, 
@@ -54,18 +104,52 @@ def editar_usuario(usuario_id: str, usuario_data: UsuarioEditar, db: Session = D
     )
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Registrar edición en bitácora (async)
+    await usuarios_audit_service.registrar_edicion_usuario(
+        db=db,
+        usuario_admin_id=current_user["user_id"],
+        usuario_editado_id=usuario_id,
+        cambios={
+            "nombre_usuario": usuario_data.nombre_usuario,
+            "nombre": usuario_data.nombre,
+            "apellido_uno": usuario_data.apellido_uno,
+            "apellido_dos": usuario_data.apellido_dos,
+            "correo": usuario_data.correo,
+            "id_rol": usuario_data.id_rol,
+            "id_estado": usuario_data.id_estado
+        }
+    )
+    
     return usuario
 
 @router.patch("/{usuario_id}/ultimo-acceso", response_model=UsuarioRespuesta)
-def actualizar_ultimo_acceso(usuario_id: str, db: Session = Depends(get_db)):
-    """Actualiza el último acceso del usuario"""
+async def actualizar_ultimo_acceso(
+    usuario_id: str, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """Actualiza el último acceso del usuario - Solo administradores"""
+    # actualizar_ultimo_acceso es un método síncrono
     usuario = usuario_service.actualizar_ultimo_acceso(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Registrar actualización en bitácora (async)
+    await usuarios_audit_service.registrar_actualizacion_ultimo_acceso(
+        db=db,
+        usuario_admin_id=current_user["user_id"],
+        usuario_actualizado_id=usuario_id
+    )
+    
     return usuario
 
 @router.post("/{usuario_id}/resetear-contrasenna", response_model=MensajeRespuesta)
-async def resetear_contrasenna(usuario_id: str, db: Session = Depends(get_db)):
+async def resetear_contrasenna(
+    usuario_id: str, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
     """
     Resetea la contraseña de un usuario y envía la nueva por correo.
     Solo para administradores.
@@ -74,6 +158,13 @@ async def resetear_contrasenna(usuario_id: str, db: Session = Depends(get_db)):
         usuario = await usuario_service.resetear_contrasenna_usuario(db, usuario_id)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Registrar reseteo en bitácora
+        await usuarios_audit_service.registrar_reseteo_contrasena(
+            db=db,
+            usuario_admin_id=current_user["user_id"],
+            usuario_reseteado_id=usuario_id
+        )
         
         return MensajeRespuesta(mensaje="Contraseña reseteada exitosamente. Se envió un correo con la nueva contraseña al usuario.")
         

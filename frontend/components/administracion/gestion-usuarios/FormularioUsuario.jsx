@@ -126,6 +126,10 @@ const FormularioUsuario = ({
       nuevosErrores.CT_Apellido_uno = 'El primer apellido es requerido';
     }
 
+    if (!formData.CT_Apellido_dos.trim()) {
+      nuevosErrores.CT_Apellido_dos = 'El segundo apellido es requerido';
+    }
+
     if (!formData.CT_Correo.trim()) {
       nuevosErrores.CT_Correo = 'El correo es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.CT_Correo)) {
@@ -154,7 +158,7 @@ const FormularioUsuario = ({
         nombre_usuario: formData.CT_Correo.trim().split('@')[0], // Usar solo la parte antes del @ como nombre de usuario
         nombre: formData.CT_Nombre.trim(),
         apellido_uno: formData.CT_Apellido_uno.trim(),
-        apellido_dos: formData.CT_Apellido_dos.trim() || null,
+        apellido_dos: formData.CT_Apellido_dos.trim(), // Ahora requerido
         correo: formData.CT_Correo.trim(),
         id_rol: formData.CN_Id_rol,
         id_estado: formData.CN_Id_estado || 1
@@ -164,7 +168,6 @@ const FormularioUsuario = ({
       
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      // Aquí podrías mostrar un mensaje de error al usuario
     } finally {
       setCargando(false);
     }
@@ -265,11 +268,14 @@ const FormularioUsuario = ({
           />
 
           <Input
-            label="Segundo Apellido (Opcional)"
+            label="Segundo Apellido"
             placeholder="López"
             type="text"
             value={formData.CT_Apellido_dos}
             onValueChange={(valor) => handleInputChange('CT_Apellido_dos', valor)}
+            isInvalid={!!errores.CT_Apellido_dos}
+            errorMessage={errores.CT_Apellido_dos}
+            isRequired
             variant="bordered"
             color='primary'
           />
