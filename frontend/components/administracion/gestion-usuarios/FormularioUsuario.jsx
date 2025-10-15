@@ -168,7 +168,6 @@ const FormularioUsuario = ({
       
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      // Aquí podrías mostrar un mensaje de error al usuario
     } finally {
       setCargando(false);
     }
