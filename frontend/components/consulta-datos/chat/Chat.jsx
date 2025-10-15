@@ -390,16 +390,6 @@ const ConsultaChat = () => {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      {/* Indicador de sesión activa - Estilo institucional */}
-      {sessionId && messages.length > 0 && (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-md border border-blue-100">
-          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
-          <span>
-            Sesión activa · {messages.filter(m => m.isUser).length} {messages.filter(m => m.isUser).length === 1 ? 'consulta' : 'consultas'}
-          </span>
-        </div>
-      )}
-
       {/* Controles de chat */}
       <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
         {/* Botón de historial */}
