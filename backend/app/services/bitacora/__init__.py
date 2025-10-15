@@ -30,6 +30,7 @@ from .bitacora_stats_service import bitacora_stats_service, BitacoraStatsService
 from .auth_audit_service import auth_audit_service, AuthAuditService
 from .ingesta_audit_service import ingesta_audit_service, IngestaAuditService
 from .similarity_audit_service import similarity_audit_service, SimilarityAuditService
+from .usuarios_audit_service import usuarios_audit_service, UsuariosAuditService
 
 __all__ = [
     # General (Write)
@@ -45,4 +46,6 @@ __all__ = [
     "IngestaAuditService",
     "similarity_audit_service",
     "SimilarityAuditService",
+    "usuarios_audit_service",
+    "UsuariosAuditService",
 ]

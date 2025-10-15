@@ -4,7 +4,9 @@ from app.repositories.usuario_repository import UsuarioRepository
 from app.db.models.usuario import T_Usuario
 from app.schemas.usuario_schemas import UsuarioRespuesta, RolInfo, EstadoInfo
 from app.email import EmailService, get_email_config_from_env
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UsuarioService:
@@ -13,12 +15,12 @@ class UsuarioService:
     def __init__(self):
         self.repository = UsuarioRepository()
         
-        # Inicializar servicio de correo (como nodemailer transporter)
+        # Inicializar servicio de correo
         try:
             email_config = get_email_config_from_env()
             self.email_service = EmailService(email_config)
         except Exception as e:
-            print(f"Warning: No se pudo inicializar el servicio de correo: {e}")
+            logger.warning(f"No se pudo inicializar el servicio de correo: {e}")
             self.email_service = None
     
     def _mapear_usuario_respuesta(self, usuario: T_Usuario) -> UsuarioRespuesta:
@@ -56,16 +58,14 @@ class UsuarioService:
             return self._mapear_usuario_respuesta(usuario)
         return None
     
-    async def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int) -> UsuarioRespuesta:
+    async def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, id_rol: int) -> UsuarioRespuesta:
         """
         Crea un nuevo usuario con contraseña automática y envía correo
-        Siempre genera contraseña y envía correo (como en Node.js con nodemailer)
         """
-        # Siempre generar contraseña aleatoria
+        # Generar contraseña aleatoria
         if self.email_service:
             contrasenna = self.email_service.generate_random_password()
         else:
-            # Fallback si no hay servicio de correo
             import secrets
             import string
             contrasenna = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
@@ -73,32 +73,24 @@ class UsuarioService:
         # Crear usuario en la base de datos
         usuario = self.repository.crear_usuario(db, cedula, nombre_usuario, nombre, apellido_uno, apellido_dos, correo, contrasenna, id_rol)
         
-        # Siempre enviar correo con la contraseña (async correcto)
+        # Enviar correo con la contraseña
         if self.email_service and usuario:
             try:
-                # Envío async correcto (sin loops anidados)
                 await self.email_service.send_password_email(
                     to=correo,
                     password=contrasenna,
                     usuario_nombre=nombre_usuario
                 )
-                print(f"✅ Correo enviado exitosamente a {correo}")
-                
-                # Solo para debug en desarrollo (comentar en producción)
-                debug_mode = os.getenv("DEBUG_PASSWORDS", "false").lower() == "true"
-                if debug_mode:
-                    print(f"🐛 [DEBUG] Contraseña generada: {contrasenna}")
-                    
+                logger.info(f"Correo enviado exitosamente a {correo}")
             except Exception as e:
-                print(f"❌ Error enviando correo a {correo}: {e}")
-                print(f"⚠️ Usuario creado pero correo no enviado - Verificar configuración de email")
-                # El usuario se crea de todas formas, solo falla el correo
+                logger.error(f"Error enviando correo a {correo}: {e}")
+                logger.warning("Usuario creado pero correo no enviado")
         else:
-            print(f"⚠️ Sin servicio de correo configurado - Usuario creado sin notificación")
+            logger.warning("Sin servicio de correo configurado - Usuario creado sin notificación")
         
         return self._mapear_usuario_respuesta(usuario)
     
-    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: Optional[str], correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
+    def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, id_rol: int, id_estado: int) -> Optional[UsuarioRespuesta]:
         """Edita un usuario incluyendo rol y estado"""
         usuario = self.repository.editar_usuario(db, usuario_id, nombre_usuario, nombre, apellido_uno, apellido_dos, correo, id_rol, id_estado)
         if usuario:
@@ -126,7 +118,6 @@ class UsuarioService:
         if self.email_service:
             nueva_contrasenna = self.email_service.generate_random_password()
         else:
-            # Fallback si no hay servicio de correo
             import secrets
             import string
             nueva_contrasenna = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
@@ -144,17 +135,11 @@ class UsuarioService:
                     password=nueva_contrasenna,
                     usuario_nombre=usuario.CT_Nombre_usuario
                 )
-                print(f"✅ Contraseña reseteada y correo enviado a {usuario.CT_Correo}")
-                
-                # Solo para debug en desarrollo
-                debug_mode = os.getenv("DEBUG_PASSWORDS", "false").lower() == "true"
-                if debug_mode:
-                    print(f"🐛 [DEBUG] Nueva contraseña: {nueva_contrasenna}")
-                    
+                logger.info(f"Contraseña reseteada y correo enviado a {usuario.CT_Correo}")
             except Exception as e:
-                print(f"❌ Error enviando correo a {usuario.CT_Correo}: {e}")
-                print(f"⚠️ Contraseña reseteada pero correo no enviado")
+                logger.error(f"Error enviando correo a {usuario.CT_Correo}: {e}")
+                logger.warning("Contraseña reseteada pero correo no enviado")
         else:
-            print(f"⚠️ Sin servicio de correo configurado - Contraseña reseteada sin notificación")
+            logger.warning("Sin servicio de correo configurado - Contraseña reseteada sin notificación")
         
         return self._mapear_usuario_respuesta(usuario_actualizado)
