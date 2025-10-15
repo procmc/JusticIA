@@ -377,6 +377,7 @@ async def get_conversations_stats(
 ):
     """
     Obtiene estadísticas generales del sistema de conversaciones.
+    Incluye información de Redis si está disponible.
     Solo para debugging/monitoreo.
     """
     try:
@@ -394,4 +395,41 @@ async def get_conversations_stats(
             detail=f"Error obteniendo estadísticas: {str(e)}"
         )
 
+
+@router.get("/health/redis")
+async def redis_health_check(
+    current_user: dict = Depends(require_usuario_judicial)
+):
+    """
+    Verifica el estado de conexión a Redis.
+    Útil para debugging y monitoreo.
+    """
+    try:
+        from app.services.RAG.conversation_history_redis import get_redis_history
+        
+        redis_history = get_redis_history()
+        is_healthy = redis_history.health_check()
+        
+        if is_healthy:
+            stats = redis_history.get_stats()
+            return {
+                "success": True,
+                "status": "connected",
+                "message": "Redis está funcionando correctamente",
+                "stats": stats
+            }
+        else:
+            return {
+                "success": False,
+                "status": "disconnected",
+                "message": "Redis no responde"
+            }
+    
+    except Exception as e:
+        logger.error(f"Error en health check de Redis: {e}", exc_info=True)
+        return {
+            "success": False,
+            "status": "error",
+            "message": f"Error verificando Redis: {str(e)}"
+        }
 
