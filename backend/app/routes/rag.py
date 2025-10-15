@@ -33,34 +33,7 @@ async def consulta_con_historial_stream(
     request: ConsultaConHistorialRequest,
     rag_service=Depends(get_rag_service)
 ):
-    """
-    Endpoint NUEVO con gestión automática de historial conversacional.
-    
-    Diferencias con /consulta-general-stream:
-    - Recibe `session_id` en lugar de enviar todo el contexto histórico
-    - Backend gestiona historial automáticamente con LangChain
-    - Reformulación automática de preguntas con contexto
-    - Detección mejorada de referencias ("ese caso", "el último", etc.)
-    
-    Request Body:
-    {
-        "query": "¿Qué más se menciona?",  // Solo la pregunta actual
-        "session_id": "session_user@example.com_1696425015000",  // ID de sesión
-        "top_k": 15,  // Opcional, default 15
-        "expediente_number": "2022-123456-7890-LA"  // Opcional
-    }
-    
-    Response:
-    - Streaming SSE con chunks de respuesta
-    - Historial se guarda automáticamente en backend
-    - Frontend no necesita enviar mensajes previos
-    
-    Ventajas:
-    - Payloads más pequeños (solo query + session_id)
-    - Reformulación automática con LLM
-    - Backend como fuente única de verdad para historial
-    - Mejor detección de referencias contextuales
-    """
+
     try:
         # Validar entrada
         if not request.query.strip():
@@ -177,9 +150,6 @@ async def get_user_conversations(
 ):
     """
     Obtiene todas las conversaciones del usuario autenticado.
-    
-    Retorna una lista de conversaciones con sus metadatos (título, fecha, etc.)
-    ordenadas por fecha de última actualización.
     """
     try:
         # El username es el email del usuario en este sistema
