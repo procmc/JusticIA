@@ -92,6 +92,40 @@ class AuthAuditService:
             return None
     
     
+    async def registrar_logout(
+        self,
+        db: Session,
+        usuario_id: str,
+        email: str
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra un cierre de sesión.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario (cédula)
+            email: Correo electrónico del usuario
+            
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error
+        """
+        try:
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=TiposAccion.LOGIN,
+                texto=f"Cierre de sesión: {email}",
+                info_adicional={
+                    "email": email,
+                    "accion": "logout",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando logout: {e}")
+            return None
+    
+    
     async def registrar_cambio_password(
         self,
         db: Session,
