@@ -12,7 +12,11 @@ const HeaderBitacora = ({
   onVistaChange, 
   estadisticas, 
   registrosFiltrados,
-  filtrosActivos = false
+  filtrosActivos = false,
+  paginacion = { total: 0 },
+  onExportarPDF,
+  exportando = false,
+  cargandoRegistros = false
 }) => {
   return (
     <Card className="bg-primary text-white shadow-lg border-none">
@@ -34,14 +38,35 @@ const HeaderBitacora = ({
               </div>
             </div>
 
-            {/* Indicador de filtros activos - Arriba derecha */}
-            {vistaActual === 'registros' && filtrosActivos && (
-              <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
-                <IoFunnel className="text-white/90 text-sm" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-white/90 font-semibold text-sm">{registrosFiltrados.length}</span>
-                  <span className="text-white/70 text-xs font-medium uppercase">Registros Filtrados</span>
-                </div>
+            {/* Indicador de registros y botón de exportación */}
+            {vistaActual === 'registros' && (
+              <div className="flex items-center gap-3">
+                {/* Contador de registros */}
+                {filtrosActivos && (
+                  <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
+                    <IoFunnel className="text-white/90 text-sm" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white/90 font-semibold text-sm">{paginacion.total}</span>
+                      <span className="text-white/70 text-xs font-medium uppercase">
+                        {paginacion.total === 1 ? 'Registro' : 'Registros'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Botón de exportar PDF */}
+                <Button
+                  color="default"
+                  variant="flat"
+                  size="md"
+                  onPress={onExportarPDF}
+                  isLoading={exportando}
+                  isDisabled={paginacion.total === 0 || cargandoRegistros}
+                  className="bg-white/15 text-white border-white/30 hover:bg-white/25"
+                  startContent={!exportando && <IoDocumentText className="w-5 h-5" />}
+                >
+                  Exportar PDF
+                </Button>
               </div>
             )}
           </div>

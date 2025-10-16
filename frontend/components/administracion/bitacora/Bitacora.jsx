@@ -8,6 +8,7 @@ import TablaBitacora from './TablaBitacora';
 import DetalleEvento from './DetalleEvento';
 import DashboardEstadisticas from './DashboardEstadisticas';
 import bitacoraService from '../../../services/bitacoraService';
+import { exportarBitacoraPDF } from '../../../services/exportService';
 
 const Bitacora = () => {
   const [vistaActual, setVistaActual] = useState('registros'); // 'registros' o 'estadisticas'
@@ -18,6 +19,7 @@ const Bitacora = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cargandoRegistros, setCargandoRegistros] = useState(false);
   const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [filtros, setFiltros] = useState({
     usuario: '',
     tipoAccion: '',
@@ -152,6 +154,74 @@ const Bitacora = () => {
     setRegistroSeleccionado(null);
   };
 
+  /**
+   * Obtener TODOS los registros con paginación automática
+   */
+  const obtenerTodosLosRegistros = async () => {
+    const todosLosRegistros = [];
+    let paginaActual = 1;
+    const limitePorPagina = 100; // Máximo permitido por el backend
+    let hayMasRegistros = true;
+
+    while (hayMasRegistros) {
+      const response = await bitacoraService.obtenerRegistros({
+        ...filtros,
+        limit: limitePorPagina,
+        page: paginaActual
+      });
+
+      const registrosPagina = response.registros || [];
+      todosLosRegistros.push(...registrosPagina);
+
+      // Si recibimos menos registros que el límite, ya no hay más
+      if (registrosPagina.length < limitePorPagina) {
+        hayMasRegistros = false;
+      } else {
+        paginaActual++;
+      }
+
+      // Seguridad: evitar loops infinitos
+      if (paginaActual > 1000) {
+        console.warn('Se alcanzó el límite de 100,000 registros');
+        break;
+      }
+    }
+
+    return todosLosRegistros;
+  };
+
+  /**
+   * Exportar a PDF - obtiene TODOS los registros con los filtros actuales
+   */
+  const handleExportarPDF = async () => {
+    try {
+      setExportando(true);
+      
+      // Verificar que hay registros
+      if (paginacion.total === 0) {
+        Toast.warning('No hay registros para exportar');
+        return;
+      }
+      
+      // Obtener TODOS los registros (con múltiples peticiones si es necesario)
+      const todosLosRegistros = await obtenerTodosLosRegistros();
+      
+      if (todosLosRegistros.length === 0) {
+        Toast.warning('No hay registros para exportar');
+        return;
+      }
+      
+      // Exportar a PDF
+      exportarBitacoraPDF(todosLosRegistros, filtros);
+      Toast.success(`PDF generado con ${todosLosRegistros.length} registros`);
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      Toast.error('Error al generar el PDF');
+    } finally {
+      setExportando(false);
+    }
+  };
+
   // Verificar si hay filtros activos
   const filtrosActivos = Object.entries(filtros).some(
     ([key, valor]) => key !== 'limite' && valor !== '' && valor !== null
@@ -175,6 +245,10 @@ const Bitacora = () => {
         registrosFiltrados={registrosFiltrados}
         filtrosActivos={filtrosActivos}
         onRefresh={vistaActual === 'registros' ? cargarRegistros : cargarEstadisticas}
+        paginacion={paginacion}
+        onExportarPDF={handleExportarPDF}
+        exportando={exportando}
+        cargandoRegistros={cargandoRegistros}
       />
 
       {/* Contenido según la vista seleccionada */}
