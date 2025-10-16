@@ -37,10 +37,11 @@ class BitacoraStatsService:
         expediente_numero: Optional[str] = None,
         fecha_inicio: Optional[datetime] = None,
         fecha_fin: Optional[datetime] = None,
-        limite: int = 200
-    ) -> List[Dict[str, Any]]:
+        limite: int = 10,
+        offset: int = 0
+    ) -> Dict[str, Any]:
         """
-        Obtiene registros de bitácora con filtros múltiples.
+        Obtiene registros de bitácora con filtros múltiples y paginación.
         Compatible con FiltrosBitacora.jsx del frontend.
         
         Args:
@@ -50,28 +51,50 @@ class BitacoraStatsService:
             expediente_numero: Filtrar por número de expediente
             fecha_inicio: Fecha de inicio del rango
             fecha_fin: Fecha de fin del rango
-            limite: Número máximo de registros
+            limite: Número máximo de registros por página (default: 10)
+            offset: Número de registros a saltar (default: 0)
             
         Returns:
-            list: Lista de registros de bitácora con información expandida
+            Dict con: items (lista de registros), total (count total), page (página actual), pages (total páginas)
         """
         try:
-            registros = self.repo.obtener_con_filtros(
+            registros, total_count = self.repo.obtener_con_filtros(
                 db=db,
                 usuario_id=usuario_id,
                 tipo_accion_id=tipo_accion_id,
                 expediente_numero=expediente_numero,
                 fecha_inicio=fecha_inicio,
                 fecha_fin=fecha_fin,
-                limite=limite
+                limite=limite,
+                offset=offset
             )
             
             # Expandir información para el frontend
-            return [self._expandir_registro(r) for r in registros]
+            items = [self._expandir_registro(r) for r in registros]
+            
+            # Calcular metadatos de paginación
+            current_page = (offset // limite) + 1 if limite > 0 else 1
+            total_pages = (total_count + limite - 1) // limite if limite > 0 else 1
+            
+            return {
+                "items": items,
+                "total": total_count,
+                "page": current_page,
+                "pages": total_pages,
+                "limit": limite,
+                "offset": offset
+            }
             
         except Exception as e:
             logger.error(f"Error obteniendo bitácora con filtros: {e}")
-            return []
+            return {
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "pages": 1,
+                "limit": limite,
+                "offset": 0
+            }
     
     
     def obtener_por_usuario(

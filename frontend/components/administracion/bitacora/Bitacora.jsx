@@ -12,6 +12,7 @@ import bitacoraService from '../../../services/bitacoraService';
 const Bitacora = () => {
   const [vistaActual, setVistaActual] = useState('registros'); // 'registros' o 'estadisticas'
   const [registrosFiltrados, setRegistrosFiltrados] = useState([]);
+  const [paginacion, setPaginacion] = useState({ total: 0, page: 1, pages: 1 });
   const [estadisticas, setEstadisticas] = useState(null);
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -23,7 +24,8 @@ const Bitacora = () => {
     expediente: '',
     fechaInicio: '',
     fechaFin: '',
-    limite: 200
+    page: 1,
+    limit: 10
   });
 
   // Cargar registros y estadísticas al inicializar
@@ -64,13 +66,19 @@ const Bitacora = () => {
         return acc;
       }, {});
 
-      const registros = await bitacoraService.obtenerRegistros(filtrosLimpios);
-      setRegistrosFiltrados(registros);
+      const resultado = await bitacoraService.obtenerRegistros(filtrosLimpios);
+      setRegistrosFiltrados(resultado.registros);
+      setPaginacion({
+        total: resultado.total,
+        page: resultado.page,
+        pages: resultado.pages
+      });
       
     } catch (error) {
       console.error('Error cargando registros:', error);
       Toast.error('Error al cargar registros de bitácora');
       setRegistrosFiltrados([]);
+      setPaginacion({ total: 0, page: 1, pages: 1 });
     } finally {
       setCargandoRegistros(false);
     }
@@ -96,7 +104,10 @@ const Bitacora = () => {
    * Aplicar filtros (callback del componente FiltrosBitacora)
    */
   const aplicarFiltros = () => {
-    cargarRegistros();
+    // Resetear a página 1 cuando se aplican filtros
+    const nuevosFiltros = { ...filtros, page: 1 };
+    setFiltros(nuevosFiltros);
+    cargarRegistros(nuevosFiltros);
   };
 
   /**
@@ -109,10 +120,20 @@ const Bitacora = () => {
       expediente: '',
       fechaInicio: '',
       fechaFin: '',
-      limite: 200
+      page: 1,
+      limit: 10
     };
     setFiltros(filtrosVacios);
     cargarRegistros(filtrosVacios);
+  };
+
+  /**
+   * Cambiar de página en la paginación
+   */
+  const cambiarPagina = (nuevaPagina) => {
+    const nuevosFiltros = { ...filtros, page: nuevaPagina };
+    setFiltros(nuevosFiltros);
+    cargarRegistros(nuevosFiltros);
   };
 
   /**
@@ -173,6 +194,8 @@ const Bitacora = () => {
             registros={registrosFiltrados}
             onVerDetalle={verDetalle}
             cargando={cargandoRegistros}
+            paginacion={paginacion}
+            onCambiarPagina={cambiarPagina}
           />
         </div>
       ) : (
