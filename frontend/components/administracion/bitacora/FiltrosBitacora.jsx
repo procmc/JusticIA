@@ -5,17 +5,17 @@ import { IoFunnel, IoSearch } from 'react-icons/io5';
 import { PiBroomLight } from 'react-icons/pi';
 import { SearchIcon } from '../../icons';
 
-const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }) => {
+const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, disabled = false }) => {
+    // Tipos de acción actualizados según el backend (8 tipos)
     const tiposAccion = [
-        { key: 'consulta', label: 'Consulta' },
-        { key: 'carga', label: 'Carga' },
-        { key: 'busqueda-similares', label: 'Búsqueda similares' }
-    ];
-
-    const estados = [
-        { key: 'pendiente', label: 'Pendiente' },
-        { key: 'procesado', label: 'Procesado' },
-        { key: 'error', label: 'Error' }
+        { key: '1', label: 'Consulta' },
+        { key: '2', label: 'Carga de Documentos' },
+        { key: '3', label: 'Búsqueda de Casos Similares' },
+        { key: '4', label: 'Inicio de Sesión' },
+        { key: '5', label: 'Creación de Usuario' },
+        { key: '6', label: 'Edición de Usuario' },
+        { key: '7', label: 'Consulta de Bitácora' },
+        { key: '8', label: 'Exportación de Bitácora' }
     ];
 
     const handleInputChange = (campo, valor) => {
@@ -63,8 +63,8 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                             color="primary"
                             size="md"
                             startContent={<IoSearch className="w-4 h-4" />}
-                            isDisabled={isButtonDisabled}
-                            className={`flex-1 sm:flex-none px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled
+                            isDisabled={isButtonDisabled || disabled}
+                            className={`flex-1 sm:flex-none px-4 font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 text-sm ${isButtonDisabled || disabled
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:scale-105'
                               }`}
@@ -79,10 +79,11 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                             variant="flat"
                             size="md"
                             startContent={<PiBroomLight className="w-4 h-4" />}
-                            isDisabled={!hasContent()}
+                            isDisabled={!hasContent() || disabled}
                             className="px-4 font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 text-sm"
                             radius="md"
                         >
+                            Limpiar
                         </Button>            
                     </div>
                 </div>
@@ -139,31 +140,6 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar }
                                 {tiposAccion.map((tipo) => (
                                     <SelectItem key={tipo.key} value={tipo.key}>
                                         {tipo.label}
-                                    </SelectItem>
-                                ))}
-                            </Select>
-                        </div>
-
-                        {/* Filtro por Estado */}
-                        <div className="w-full xl:col-span-1 2xl:col-span-1">
-                            <Select
-                                label="Estado"
-                                labelPlacement='outside'
-                                placeholder="Selecciona un estado"
-                                color='primary'
-                                selectedKeys={filtros.estado ? [filtros.estado.toLowerCase()] : []}
-                                onSelectionChange={(keys) => {
-                                    const selectedKey = Array.from(keys)[0];
-                                    const selectedLabel = estados.find(e => e.key === selectedKey)?.label || '';
-                                    handleInputChange('estado', selectedLabel);
-                                }}
-                                variant="bordered"
-                                size="lg"
-                                className="w-full"
-                            >
-                                {estados.map((estado) => (
-                                    <SelectItem key={estado.key} value={estado.key}>
-                                        {estado.label}
                                     </SelectItem>
                                 ))}
                             </Select>

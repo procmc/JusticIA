@@ -433,27 +433,82 @@ class BitacoraStatsService:
         Returns:
             Dict con información expandida
         """
-        return {
-            "id": bitacora.CN_Id_bitacora,
-            "fechaHora": bitacora.CF_Fecha_hora.isoformat() if bitacora.CF_Fecha_hora else None,
-            "texto": bitacora.CT_Texto,
-            "informacionAdicional": bitacora.CT_Informacion_adicional,
+        try:
+            # Intentar acceder a las relaciones de forma segura
+            usuario_nombre = None
+            correo_usuario = None
+            rol_usuario = None
+            tipo_accion_nombre = None
+            expediente_numero = None
             
-            # IDs originales
-            "idUsuario": bitacora.CN_Id_usuario,
-            "idTipoAccion": bitacora.CN_Id_tipo_accion,
-            "idExpediente": bitacora.CN_Id_expediente,
+            # Acceder a usuario
+            try:
+                if hasattr(bitacora, 'usuario') and bitacora.usuario:
+                    # Construir nombre completo (Nombre Apellido1 Apellido2)
+                    nombre_completo_partes = [bitacora.usuario.CT_Nombre]
+                    if bitacora.usuario.CT_Apellido_uno:
+                        nombre_completo_partes.append(bitacora.usuario.CT_Apellido_uno)
+                    if bitacora.usuario.CT_Apellido_dos:
+                        nombre_completo_partes.append(bitacora.usuario.CT_Apellido_dos)
+                    usuario_nombre = " ".join(nombre_completo_partes)
+                    
+                    correo_usuario = bitacora.usuario.CT_Correo
+                    # Acceder a rol
+                    if hasattr(bitacora.usuario, 'rol') and bitacora.usuario.rol:
+                        rol_usuario = bitacora.usuario.rol.CT_Nombre_rol
+            except Exception as e:
+                logger.warning(f"Error accediendo a usuario: {e}")
             
-            # Información expandida (si existe)
-            "usuario": bitacora.usuario.CT_Nombre_usuario if bitacora.usuario else None,
-            "correoUsuario": bitacora.usuario.CT_Correo if bitacora.usuario else None,
-            "rolUsuario": bitacora.usuario.rol.CT_Nombre_rol if bitacora.usuario and bitacora.usuario.rol else None,
-            "tipoAccion": DESCRIPCIONES_TIPOS_ACCION.get(bitacora.CN_Id_tipo_accion) if bitacora.CN_Id_tipo_accion else None,
-            "expediente": bitacora.expediente.CT_Num_expediente if bitacora.expediente else None,
+            # Acceder a tipo de acción desde el diccionario
+            if bitacora.CN_Id_tipo_accion:
+                tipo_accion_nombre = DESCRIPCIONES_TIPOS_ACCION.get(bitacora.CN_Id_tipo_accion)
             
-            # Estado (por defecto Procesado ya que se registró exitosamente)
-            "estado": "Procesado"
-        }
+            # Acceder a expediente
+            try:
+                if hasattr(bitacora, 'expediente') and bitacora.expediente:
+                    expediente_numero = bitacora.expediente.CT_Num_expediente
+            except Exception as e:
+                logger.warning(f"Error accediendo a expediente: {e}")
+            
+            return {
+                "id": bitacora.CN_Id_bitacora,
+                "fechaHora": bitacora.CF_Fecha_hora.isoformat() if bitacora.CF_Fecha_hora else None,
+                "texto": bitacora.CT_Texto,
+                "informacionAdicional": bitacora.CT_Informacion_adicional,
+                
+                # IDs originales
+                "idUsuario": bitacora.CN_Id_usuario,
+                "idTipoAccion": bitacora.CN_Id_tipo_accion,
+                "idExpediente": bitacora.CN_Id_expediente,
+                
+                # Información expandida
+                "usuario": usuario_nombre,
+                "correoUsuario": correo_usuario,
+                "rolUsuario": rol_usuario,
+                "tipoAccion": tipo_accion_nombre,
+                "expediente": expediente_numero,
+                
+                # Estado (por defecto Procesado ya que se registró exitosamente)
+                "estado": "Procesado"
+            }
+        except Exception as e:
+            logger.error(f"Error expandiendo registro {bitacora.CN_Id_bitacora}: {e}")
+            # Retornar estructura mínima en caso de error
+            return {
+                "id": bitacora.CN_Id_bitacora,
+                "fechaHora": bitacora.CF_Fecha_hora.isoformat() if bitacora.CF_Fecha_hora else None,
+                "texto": bitacora.CT_Texto,
+                "informacionAdicional": bitacora.CT_Informacion_adicional,
+                "idUsuario": bitacora.CN_Id_usuario,
+                "idTipoAccion": bitacora.CN_Id_tipo_accion,
+                "idExpediente": bitacora.CN_Id_expediente,
+                "usuario": None,
+                "correoUsuario": None,
+                "rolUsuario": None,
+                "tipoAccion": DESCRIPCIONES_TIPOS_ACCION.get(bitacora.CN_Id_tipo_accion) if bitacora.CN_Id_tipo_accion else None,
+                "expediente": None,
+                "estado": "Procesado"
+            }
     
     
     def parsear_info_adicional(self, bitacora: T_Bitacora) -> Optional[Dict[str, Any]]:
