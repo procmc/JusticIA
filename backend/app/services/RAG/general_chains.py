@@ -15,7 +15,6 @@ from .formatted_retriever import FormattedRetriever
 
 logger = logging.getLogger(__name__)
 
-
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Eres JusticBot, experto en reformular preguntas legales para búsqueda vectorial en expedientes judiciales costarricenses.
 
 Tu misión es transformar cada pregunta en una consulta ENRIQUECIDA que maximice la recuperación de documentos relevantes.
@@ -321,15 +320,6 @@ async def create_conversational_rag_chain(
 
 
 async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[str, Any], http_request=None):
-    """
-    Wrapper para hacer streaming de respuestas de una chain.
-    
-    Args:
-        chain: La chain de LangChain a ejecutar
-        input_dict: El diccionario de entrada para la chain
-        config: Configuración de la chain (incluye session_id)
-        http_request: Objeto Request de FastAPI para detectar desconexión del cliente
-    """
     total_chars = 0
     client_disconnected = False
     

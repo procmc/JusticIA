@@ -1,8 +1,3 @@
-"""
-Estrategias de búsqueda con fallback inteligente.
-
-Implementa búsqueda con múltiples intentos si la primera búsqueda no encuentra suficientes resultados.
-"""
 import logging
 from typing import List, Dict, Any, Optional
 
@@ -11,14 +6,7 @@ from app.vectorstore.vectorstore import search_by_text
 
 logger = logging.getLogger(__name__)
 
-
 class SearchStrategyManager:
-    """
-    Maneja búsqueda con fallback automático.
-    
-    Si la búsqueda inicial no encuentra suficientes resultados, 
-    intenta automáticamente con umbrales más permisivos.
-    """
     
     def __init__(self):
         self.config = rag_config
@@ -33,24 +21,7 @@ class SearchStrategyManager:
         expediente_filter: Optional[str] = None,
         min_results: Optional[int] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Búsqueda con fallback automático si no hay suficientes resultados.
-        
-        Estrategias:
-        1. Búsqueda normal con parámetros dados
-        2. Relajar umbral (70% del original)
-        3. Umbral mínimo con top_k aumentado
-        
-        Args:
-            query_text: Texto de búsqueda
-            top_k: Máximo de resultados deseados
-            threshold: Umbral de similitud inicial
-            expediente_filter: Filtro opcional por expediente
-            min_results: Mínimo de resultados para considerar exitosa la búsqueda
-        
-        Returns:
-            Lista de documentos encontrados
-        """
+
         self.total_searches += 1
         
         if min_results is None:
