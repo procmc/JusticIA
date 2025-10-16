@@ -1,5 +1,6 @@
 from typing import Optional
 from fastapi.responses import StreamingResponse
+from fastapi import Request
 import re
 import logging
 import json
@@ -29,7 +30,8 @@ class RAGChainService:
         pregunta: str,
         session_id: str,
         top_k: int = 15,
-        expediente_filter: Optional[str] = None
+        expediente_filter: Optional[str] = None,
+        http_request: Optional[Request] = None
     ):
         # 1. Actualizar la información de la conversación
         conversation_store.update_metadata(session_id)
@@ -41,7 +43,8 @@ class RAGChainService:
             return await self._consulta_expediente_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
-                expediente_numero=expediente_filter.strip()
+                expediente_numero=expediente_filter.strip(),
+                http_request=http_request
             )
         else:
             logger.info(f"FLUJO: GENERAL CON HISTORIAL")
@@ -49,7 +52,8 @@ class RAGChainService:
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
-                top_k=top_k
+                top_k=top_k,
+                http_request=http_request
             )
     
     # Consulta general con historial
@@ -57,7 +61,8 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        top_k: int = None  # None = usar valor del config
+        top_k: int = 15,
+        http_request: Optional[Request] = None
     ):
         # Usar valor del config si no se especifica
         if top_k is None:
@@ -97,9 +102,11 @@ class RAGChainService:
         # Streaming response
         async def event_generator():
             try:
-                async for chunk in stream_chain_response(chain, input_dict, config):
+                logger.info(f"🚀 Iniciando streaming para session: {session_id}")
+                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
                     yield chunk
                 
+                logger.info(f"✅ Streaming finalizado para session: {session_id}")
                 # Auto-generar título si es el primer mensaje
                 conversation_store.auto_generate_title(session_id)
                 
@@ -128,7 +135,8 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        expediente_numero: str
+        expediente_numero: str,
+        http_request: Optional[Request] = None
     ):
         """
         Consulta de expediente específico usando LangChain chains con historial.
@@ -144,7 +152,8 @@ class RAGChainService:
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
-                top_k=None  # Usar valor del config
+                top_k=15,  # Usar valor por defecto
+                http_request=http_request
             )
         
         # Actualizar la información de la conversación
@@ -190,9 +199,11 @@ class RAGChainService:
         # Streaming response
         async def event_generator():
             try:
-                async for chunk in stream_chain_response(chain, input_dict, config):
+                logger.info(f"🚀 Iniciando streaming para expediente: {expediente_numero}, session: {session_id}")
+                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
                     yield chunk # Envía cada pedacito al frontend
                 
+                logger.info(f"✅ Streaming finalizado para expediente: {expediente_numero}, session: {session_id}")
                 # Cuando termina, genera título automático
                 conversation_store.auto_generate_title(session_id)
                 

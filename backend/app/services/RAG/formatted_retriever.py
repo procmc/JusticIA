@@ -1,10 +1,3 @@
-"""
-Retriever wrapper que formatea documentos con metadata para el LLM.
-
-Este retriever envuelve otro retriever base y formatea los documentos
-recuperados agregando metadata visible (expediente, archivo, chunk, páginas)
-y agrupándolos por expediente.
-"""
 from typing import List, Any
 from collections import defaultdict
 from langchain_core.retrievers import BaseRetriever
@@ -18,19 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class FormattedRetriever(BaseRetriever):
-    """
-    Retriever que formatea documentos con metadata visible y los agrupa por expediente.
-    
-    Este retriever envuelve un retriever base y post-procesa los documentos recuperados
-    para hacerlos más legibles para el LLM, agregando:
-    - Headers de expediente para agrupar documentos
-    - Metadata visible en cada documento (expediente, archivo, chunk, páginas)
-    - Formato estructurado con separadores visuales
-    
-    Attributes:
-        base_retriever: El retriever base que se envuelve
-    """
-    
     base_retriever: Any = Field(description="The base retriever to wrap")
     
     def __init__(self, base_retriever, **kwargs):
@@ -44,23 +24,6 @@ class FormattedRetriever(BaseRetriever):
         super().__init__(base_retriever=base_retriever, **kwargs)
     
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
-        """
-        Recupera documentos relevantes y los formatea con metadata.
-        
-        Proceso:
-        1. Invoca el retriever base para obtener documentos
-        2. Agrupa documentos por expediente
-        3. Para cada expediente:
-           - Agrega un header de expediente
-           - Formatea cada documento con su metadata
-        4. Retorna lista ordenada de documentos formateados
-        
-        Args:
-            query: Consulta de búsqueda
-            
-        Returns:
-            List[Document]: Documentos formateados y agrupados por expediente
-        """
         # Obtener documentos del retriever base
         docs = await self.base_retriever.ainvoke(query)
         
@@ -105,14 +68,5 @@ class FormattedRetriever(BaseRetriever):
         return formatted_docs
     
     def _get_relevant_documents(self, query: str) -> List[Document]:
-        """
-        Versión síncrona de _aget_relevant_documents.
-        
-        Args:
-            query: Consulta de búsqueda
-            
-        Returns:
-            List[Document]: Documentos formateados
-        """
         import asyncio
         return asyncio.run(self._aget_relevant_documents(query))
