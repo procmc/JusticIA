@@ -137,10 +137,11 @@ class BitacoraRepository:
         tipo_accion_id: Optional[int] = None,
         usuario_id: Optional[str] = None,
         expediente_numero: Optional[str] = None,
-        limite: int = 200
-    ) -> List[T_Bitacora]:
+        limite: int = 10,
+        offset: int = 0
+    ) -> tuple[List[T_Bitacora], int]:
         """
-        Obtiene registros de bitácora con múltiples filtros.
+        Obtiene registros de bitácora con múltiples filtros y paginación.
         
         Args:
             db: Sesión de base de datos
@@ -149,10 +150,11 @@ class BitacoraRepository:
             tipo_accion_id: Filtrar por tipo de acción (opcional)
             usuario_id: Filtrar por usuario (opcional)
             expediente_numero: Filtrar por número de expediente (opcional)
-            limite: Número máximo de registros a retornar
+            limite: Número máximo de registros por página (default: 10)
+            offset: Número de registros a saltar para paginación (default: 0)
             
         Returns:
-            List[T_Bitacora]: Lista de registros ordenados por fecha descendente
+            tuple[List[T_Bitacora], int]: (Lista de registros, Total de registros que coinciden con filtros)
         """
         try:
             from sqlalchemy.orm import joinedload
@@ -205,11 +207,21 @@ class BitacoraRepository:
             if conditions:
                 query = query.where(and_(*conditions))
             
-            query = query.order_by(desc(T_Bitacora.CF_Fecha_hora)).limit(limite)
+            # Contar total de registros que coinciden con los filtros (antes de limit/offset)
+            count_query = select(func.count()).select_from(T_Bitacora)
+            if conditions:
+                count_query = count_query.where(and_(*conditions))
+            
+            total_count = db.execute(count_query).scalar() or 0
+            
+            # Aplicar ordenamiento, paginación
+            query = query.order_by(desc(T_Bitacora.CF_Fecha_hora)).limit(limite).offset(offset)
             
             # IMPORTANTE: usar unique() para manejar los joins correctamente
             result = db.execute(query)
-            return result.unique().scalars().all()
+            registros = result.unique().scalars().all()
+            
+            return registros, total_count
             
         except Exception as e:
             logger.error(f"Error obteniendo bitácora con filtros: {e}")

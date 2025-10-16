@@ -16,7 +16,7 @@ class BitacoraService {
   }
 
   /**
-   * Obtener registros de bitácora con filtros múltiples
+   * Obtener registros de bitácora con filtros múltiples y paginación server-side
    * Solo accesible para administradores
    * 
    * @param {Object} filtros - Filtros de búsqueda
@@ -25,8 +25,9 @@ class BitacoraService {
    * @param {string} filtros.expediente - Número de expediente
    * @param {string} filtros.fechaInicio - Fecha inicio ISO
    * @param {string} filtros.fechaFin - Fecha fin ISO
-   * @param {number} filtros.limite - Número máximo de registros (default: 200)
-   * @returns {Promise<Array>} Array de registros
+   * @param {number} filtros.page - Número de página (default: 1)
+   * @param {number} filtros.limit - Registros por página (default: 10, max: 100)
+   * @returns {Promise<Object>} { items: Array, total: number, page: number, pages: number }
    */
   async obtenerRegistros(filtros = {}) {
     try {
@@ -47,18 +48,27 @@ class BitacoraService {
         params.append('fechaFin', `${filtros.fechaFin}T23:59:59`);
       }
       
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // Paginación
+      const page = filtros.page || 1;
+      const limit = filtros.limit || 10;
+      const offset = (page - 1) * limit;
+      
+      params.append('limite', limit);
+      params.append('offset', offset);
 
       const queryString = params.toString();
       const url = `${this.baseURL}/registros${queryString ? `?${queryString}` : ''}`;
 
-      console.log('🔍 Filtros aplicados:', filtros);
-      console.log('🔍 URL de solicitud:', url);
-
       const data = await httpService.get(url);
     
       // Mapear campos del backend al formato del frontend
-      return this._mapearRegistros(data);
+      return {
+        registros: this._mapearRegistros(data.items || []),
+        total: data.total || 0,
+        page: data.page || 1,
+        pages: data.pages || 1,
+        limit: data.limit || limit
+      };
       
     } catch (error) {
       console.error('Error obteniendo registros de bitácora:', error);

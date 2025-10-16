@@ -20,19 +20,20 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/registros", response_model=List[dict])
+@router.get("/registros", response_model=dict)
 async def obtener_registros(
     usuario: Optional[str] = Query(None, description="Filtrar por nombre o correo de usuario"),
     tipoAccion: Optional[int] = Query(None, ge=1, le=8, description="Filtrar por tipo de acción (ID)"),
     expediente: Optional[str] = Query(None, description="Filtrar por número de expediente"),
     fechaInicio: Optional[datetime] = Query(None, description="Fecha de inicio del rango"),
     fechaFin: Optional[datetime] = Query(None, description="Fecha de fin del rango"),
-    limite: int = Query(200, ge=1, le=500, description="Número máximo de registros"),
+    limite: int = Query(10, ge=1, le=100, description="Registros por página (default: 10, max: 100)"),
+    offset: int = Query(0, ge=0, description="Registros a saltar para paginación (default: 0)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_administrador)
 ):
     """
-    Obtiene registros de bitácora con filtros múltiples.
+    Obtiene registros de bitácora con filtros múltiples y paginación server-side.
     Endpoint principal para el componente Bitacora.jsx
     Solo accesible para administradores.
     
@@ -41,38 +42,35 @@ async def obtener_registros(
     - tipoAccion: ID del tipo de acción (1-8)
     - expediente: Número de expediente
     - fechaInicio, fechaFin: Rango de fechas
-    - limite: Número máximo de registros (default: 200)
+    - limite: Registros por página (default: 10, max: 100)
+    - offset: Registros a saltar (default: 0, calculado automáticamente por frontend)
+    
+    Returns:
+        {
+            "items": [...],      // Lista de registros
+            "total": 1523,       // Total de registros que coinciden con filtros
+            "page": 2,           // Página actual
+            "pages": 31,         // Total de páginas
+            "limit": 50,         // Registros por página
+            "offset": 50         // Offset usado
+        }
     """
     try:
-        registros = bitacora_stats_service.obtener_con_filtros(
+        resultado = bitacora_stats_service.obtener_con_filtros(
             db=db,
             usuario_id=usuario,
             tipo_accion_id=tipoAccion,
             expediente_numero=expediente,
             fecha_inicio=fechaInicio,
             fecha_fin=fechaFin,
-            limite=limite
+            limite=limite,
+            offset=offset
         )
         
-        # Registrar consulta en bitácora
-        await bitacora_service.registrar(
-            db=db,
-            usuario_id=current_user["user_id"],
-            tipo_accion_id=TiposAccion.CONSULTAR_BITACORA,
-            texto=f"Consulta de bitácora con {len(registros)} resultados",
-            info_adicional={
-                "filtros_aplicados": {
-                    "usuario": usuario,
-                    "tipoAccion": tipoAccion,
-                    "expediente": expediente,
-                    "fechaInicio": fechaInicio.isoformat() if fechaInicio else None,
-                    "fechaFin": fechaFin.isoformat() if fechaFin else None
-                },
-                "total_registros": len(registros)
-            }
-        )
+        # NOTA: NO se registra la consulta de bitácora para evitar loop infinito
+        # (consultar bitácora → registrar consulta → aparece en bitácora → registrar consulta → ...)
         
-        return registros
+        return resultado
         
     except Exception as e:
         logger.error(f"Error obteniendo registros de bitácora: {e}")

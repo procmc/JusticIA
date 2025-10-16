@@ -18,27 +18,34 @@ import { es } from 'date-fns/locale';
 import { IoList, IoDocumentText } from 'react-icons/io5';
 import { EyeIcon } from '../../icons';
 
-const TablaBitacora = ({ registros, onVerDetalle, cargando = false }) => {
-  const [paginaActual, setPaginaActual] = useState(1);
+const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion = null, onCambiarPagina = null }) => {
+  // Si hay paginación server-side, usarla; si no, paginación client-side (legacy)
+  const usarPaginacionServidor = paginacion && onCambiarPagina;
+  
+  // Paginación client-side (solo si no hay paginación server-side)
+  const [paginaActualLocal, setPaginaActualLocal] = useState(1);
   const registrosPorPagina = 10;
 
-  // Resetear a página 1 cuando cambien los registros (por filtros)
+  // Resetear a página 1 cuando cambien los registros (por filtros) - solo client-side
   useEffect(() => {
-    setPaginaActual(1);
-  }, [registros.length]);
-
-  // Calcular registros para la página actual
-  const indiceInicio = (paginaActual - 1) * registrosPorPagina;
-  const indiceFin = indiceInicio + registrosPorPagina;
-  const registrosPagina = registros.slice(indiceInicio, indiceFin);
-  const totalPaginas = Math.ceil(registros.length / registrosPorPagina);
-
-  // Ajustar página si está fuera de rango (por ejemplo, después de filtrar)
-  useEffect(() => {
-    if (totalPaginas > 0 && paginaActual > totalPaginas) {
-      setPaginaActual(totalPaginas);
+    if (!usarPaginacionServidor) {
+      setPaginaActualLocal(1);
     }
-  }, [totalPaginas, paginaActual]);
+  }, [registros.length, usarPaginacionServidor]);
+
+  // Calcular registros para la página actual - solo client-side
+  const indiceInicio = (paginaActualLocal - 1) * registrosPorPagina;
+  const indiceFin = indiceInicio + registrosPorPagina;
+  const registrosPagina = usarPaginacionServidor ? registros : registros.slice(indiceInicio, indiceFin);
+  const totalPaginas = usarPaginacionServidor ? paginacion.pages : Math.ceil(registros.length / registrosPorPagina);
+  const paginaActual = usarPaginacionServidor ? paginacion.page : paginaActualLocal;
+
+  // Ajustar página si está fuera de rango - solo client-side
+  useEffect(() => {
+    if (!usarPaginacionServidor && totalPaginas > 0 && paginaActualLocal > totalPaginas) {
+      setPaginaActualLocal(totalPaginas);
+    }
+  }, [totalPaginas, paginaActualLocal, usarPaginacionServidor]);
 
   const obtenerColorTipoAccion = (tipo) => {
     if (!tipo) return 'default';
@@ -235,31 +242,43 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false }) => {
       </CardBody>
 
       {/* Paginación mejorada y responsive */}
-      {registros.length > 0 && totalPaginas > 1 && (
+      {!cargando && totalPaginas > 0 && (
         <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4 px-4 sm:px-6 py-4 border-t border-gray-200">
-          {/* Información de resultados - Oculta en móvil, visible en tablet+ */}
+          {/* Información de resultados */}
           <div className="hidden sm:block text-small text-default-700">
-            Mostrando {indiceInicio + 1} a {Math.min(indiceFin, registros.length)} de {registros.length} resultados
+            {usarPaginacionServidor ? (
+              // Paginación server-side: mostrar total real de registros
+              <>
+                Mostrando {((paginacion.page - 1) * 10) + 1} a {Math.min(paginacion.page * 10, paginacion.total)} de <strong>{paginacion.total.toLocaleString()}</strong> resultados
+              </>
+            ) : (
+              // Paginación client-side: mostrar registros locales
+              <>Mostrando {indiceInicio + 1} a {Math.min(indiceFin, registros.length)} de {registros.length} resultados</>
+            )}
           </div>
           
           {/* Información compacta para móvil */}
           <div className="block sm:hidden text-tiny text-default-700 text-center">
-            {indiceInicio + 1}-{Math.min(indiceFin, registros.length)} de {registros.length}
+            {usarPaginacionServidor ? (
+              <>{((paginacion.page - 1) * 10) + 1}-{Math.min(paginacion.page * 10, paginacion.total)} de {paginacion.total.toLocaleString()}</>
+            ) : (
+              <>{indiceInicio + 1}-{Math.min(indiceFin, registros.length)} de {registros.length}</>
+            )}
           </div>
           
           {/* Paginación adaptativa */}
           <div className="flex justify-center w-full sm:w-auto">
             <Pagination
               isCompact
-              showControls={totalPaginas > 3} // Solo mostrar controles si hay muchas páginas
+              showControls={totalPaginas > 3}
               showShadow
               color="primary"
               page={paginaActual}
               total={totalPaginas}
-              onChange={setPaginaActual}
+              onChange={usarPaginacionServidor ? onCambiarPagina : setPaginaActualLocal}
               initialPage={1}
-              size="sm" // Tamaño pequeño para mejor responsive
-              siblings={1} // Menos números de página en móvil
+              size="sm"
+              siblings={1}
               boundaries={1}
             />
           </div>
