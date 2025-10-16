@@ -1,23 +1,6 @@
-"""
-Utilidades para formatear documentos con metadata para el LLM.
-
-Este módulo proporciona funciones para agregar metadata visible
-(expediente, archivo, chunk, páginas) al contenido de los documentos
-antes de enviarlos al LLM.
-"""
 from langchain_core.documents import Document
 
-
 def format_document_with_metadata(doc: Document) -> str:
-    """
-    Formatea un documento con su metadata visible para el LLM.
-    
-    Args:
-        doc: Documento de LangChain con metadata
-        
-    Returns:
-        str: Contenido formateado con header de metadata
-    """
     metadata = doc.metadata
     
     # Extraer información de páginas si existe
@@ -47,18 +30,7 @@ def format_document_with_metadata(doc: Document) -> str:
     
     return f"{header}{doc.page_content}\n---\n"
 
-
 def create_expediente_header(expediente_numero: str, num_docs: int) -> str:
-    """
-    Crea un header visual para agrupar documentos de un expediente.
-    
-    Args:
-        expediente_numero: Número del expediente
-        num_docs: Cantidad de documentos del expediente
-        
-    Returns:
-        str: Header formateado
-    """
     return (
         f"\n{'='*80}\n"
         f"EXPEDIENTE: {expediente_numero} ({num_docs} documentos)\n"

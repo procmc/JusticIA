@@ -14,13 +14,6 @@ class FormattedRetriever(BaseRetriever):
     base_retriever: Any = Field(description="The base retriever to wrap")
     
     def __init__(self, base_retriever, **kwargs):
-        """
-        Inicializa el FormattedRetriever.
-        
-        Args:
-            base_retriever: Retriever base a envolver (debe tener método ainvoke)
-            **kwargs: Argumentos adicionales para BaseRetriever
-        """
         super().__init__(base_retriever=base_retriever, **kwargs)
     
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
