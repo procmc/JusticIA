@@ -102,11 +102,11 @@ class RAGChainService:
         # Streaming response
         async def event_generator():
             try:
-                logger.info(f"🚀 Iniciando streaming para session: {session_id}")
+                logger.info(f"Iniciando streaming para session: {session_id}")
                 async for chunk in stream_chain_response(chain, input_dict, config, http_request):
                     yield chunk
                 
-                logger.info(f"✅ Streaming finalizado para session: {session_id}")
+                logger.info(f"Streaming finalizado para session: {session_id}")
                 # Auto-generar título si es el primer mensaje
                 conversation_store.auto_generate_title(session_id)
                 
@@ -138,10 +138,6 @@ class RAGChainService:
         expediente_numero: str,
         http_request: Optional[Request] = None
     ):
-        """
-        Consulta de expediente específico usando LangChain chains con historial.
-        Usa configuración optimizada para expedientes específicos.
-        """
         logger.info(f"Expediente con historial - Número: {expediente_numero}")
         
         # Validar formato del expediente ingresado

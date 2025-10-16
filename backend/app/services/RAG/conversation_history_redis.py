@@ -220,12 +220,6 @@ class RedisConversationHistory:
             return {}
     
     def health_check(self) -> bool:
-        """
-        Verifica que Redis esté funcionando.
-        
-        Returns:
-            bool: True si Redis responde
-        """
         try:
             self.redis_client.ping()
             return True
@@ -243,7 +237,6 @@ redis_history = None
 def get_redis_history() -> RedisConversationHistory:
     """
     Obtiene instancia singleton de RedisConversationHistory.
-    Lazy initialization para evitar errores en entornos sin Redis.
     """
     global redis_history
     

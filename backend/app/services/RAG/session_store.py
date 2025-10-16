@@ -399,10 +399,6 @@ class ConversationStore:
         logger.info(f"Todas las sesiones de {user_id} eliminadas ({len(session_ids)} sesiones)")
     
     def get_stats(self) -> Dict:
-        """
-        Obtiene estadísticas del store para debugging.
-        Incluye stats de Redis.
-        """
         stats = {
             "memory_sessions": len(self._store),
             "memory_users": len(self._user_sessions),
