@@ -30,6 +30,7 @@ class UpdateExpedienteContextRequest(BaseModel):
 
 @router.post("/consulta-con-historial-stream")
 async def consulta_con_historial_stream(
+    http_request: Request,
     request: ConsultaConHistorialRequest,
     rag_service=Depends(get_rag_service)
 ):
@@ -55,12 +56,13 @@ async def consulta_con_historial_stream(
         logger.info(f"Query: {query_to_use[:100]}...")
         logger.info(f"Expediente: {request.expediente_number or 'None'}")
         
-        # Llamar al nuevo método con gestión de historial
+        # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
         return await rag_service.consulta_con_historial_streaming(
             pregunta=query_to_use,
             session_id=request.session_id,
             top_k=min(request.top_k, 30),
-            expediente_filter=request.expediente_number
+            expediente_filter=request.expediente_number,
+            http_request=http_request
         )
     
     except HTTPException:
