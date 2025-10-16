@@ -22,14 +22,82 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
     }
   }, [message.text, message.renderKey, isUser]);
 
-  // Función para copiar al portapapeles
+  // Función para convertir Markdown a HTML para copiar con formato
+  const markdownToHtml = (text) => {
+    if (!text) return '';
+    
+    let html = text
+      // Convertir negritas
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      // Convertir itálicas
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      // Convertir encabezados
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Convertir enlaces [texto](url) -> texto
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      // Convertir bloques de código inline
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Convertir citas en bloque
+      .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
+      // Convertir listas con viñetas (detectar líneas que empiezan con -, *, +)
+      .replace(/^\s*[-*+]\s+(.+)$/gm, '<li>$1</li>')
+      // Convertir listas numeradas
+      .replace(/^\s*\d+\.\s+(.+)$/gm, '<li>$1</li>')
+      // Convertir saltos de línea
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+    
+    // Envolver listas en <ul>
+    html = html.replace(/(<li>.*?<\/li>)/gs, (match) => {
+      return `<ul>${match}</ul>`;
+    });
+    
+    // Envolver en párrafos si no tiene tags de bloque
+    if (!html.includes('<h') && !html.includes('<ul>') && !html.includes('<blockquote>')) {
+      html = `<p>${html}</p>`;
+    }
+    
+    return html;
+  };
+
+  // Función para copiar al portapapeles con formato
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(message.text);
+      const html = markdownToHtml(message.text);
+      const plainText = message.text
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^\s*[-*+]\s+/gm, '• ')
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1');
+      
+      // Crear un blob con HTML
+      const blob = new Blob([html], { type: 'text/html' });
+      const blobPlain = new Blob([plainText], { type: 'text/plain' });
+      
+      // Usar ClipboardItem para copiar con formato
+      const clipboardItem = new ClipboardItem({
+        'text/html': blob,
+        'text/plain': blobPlain
+      });
+      
+      await navigator.clipboard.write([clipboardItem]);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Volver al estado normal después de 2 segundos
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Error al copiar:', err);
+      // Fallback a texto plano si falla
+      try {
+        await navigator.clipboard.writeText(message.text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (fallbackErr) {
+        console.error('Error en fallback:', fallbackErr);
+      }
     }
   };
 
