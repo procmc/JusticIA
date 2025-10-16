@@ -6,6 +6,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import DrawerGeneral from '../../ui/DrawerGeneral';
+import InformacionAdicionalRenderer from './InformacionAdicionalRenderer';
 
 const DetalleEvento = ({ registro, isOpen, onClose }) => {
   if (!registro) return null;
@@ -70,30 +71,32 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
               </div>
               <div className="ml-4 space-y-1">
                 <p className="font-semibold text-gray-900 text-lg">
-                  {format(registro.fechaHora, 'dd/MM/yyyy', { locale: es })}
+                  {format(new Date(registro.fechaHora), 'dd/MM/yyyy', { locale: es })}
                 </p>
                 <p className="text-sm text-gray-600 font-mono">
-                  {format(registro.fechaHora, 'HH:mm:ss')}
+                  {format(new Date(registro.fechaHora), 'HH:mm:ss')}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Estado</p>
+            {registro.estado && (
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Estado</p>
+                </div>
+                <div className="ml-4">
+                  <Chip 
+                    color={obtenerColorEstado(registro.estado)}
+                    variant="flat"
+                    size="md"
+                    className="font-medium"
+                  >
+                    {registro.estado}
+                  </Chip>
+                </div>
               </div>
-              <div className="ml-4">
-                <Chip 
-                  color={obtenerColorEstado(registro.estado)}
-                  variant="flat"
-                  size="md"
-                  className="font-medium"
-                >
-                  {registro.estado}
-                </Chip>
-              </div>
-            </div>
+            )}
 
             <div className="flex flex-col space-y-2">
               <div className="flex items-center gap-2">
@@ -118,9 +121,13 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
                 <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Expediente</p>
               </div>
               <div className="ml-4">
-                <code className="text-sm font-mono bg-gray-100 px-3 py-1 rounded text-gray-800">
-                  {registro.expediente}
-                </code>
+                {registro.expediente ? (
+                  <code className="text-sm font-mono bg-gray-100 px-3 py-1 rounded text-gray-800">
+                    {registro.expediente}
+                  </code>
+                ) : (
+                  <span className="text-sm text-gray-400">Sin expediente asociado</span>
+                )}
               </div>
             </div>
           </div>
@@ -145,26 +152,39 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
             <div className="flex flex-col space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Usuario</p>
+                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Nombre Completo</p>
               </div>
-              <p className="ml-4 text-gray-900 font-medium text-base">{registro.usuario}</p>
+              <p className="ml-4 text-gray-900 font-medium text-base">
+                {registro.usuario || 'Usuario no especificado'}
+              </p>
             </div>
 
             <div className="flex flex-col space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Correo</p>
+                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Correo Electrónico</p>
               </div>
-              <p className="ml-4 text-gray-900 font-medium text-base">{registro.correoUsuario}</p>
+              <p className="ml-4 text-gray-900 font-medium text-base">
+                {registro.correoUsuario || 'Sin correo'}
+              </p>
             </div>
 
-            <div className="flex flex-col space-y-2 lg:col-span-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Rol del Sistema</p>
+            {registro.rolUsuario && (
+              <div className="flex flex-col space-y-2 lg:col-span-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Rol del Sistema</p>
+                </div>
+                <Chip 
+                  color="primary"
+                  variant="flat"
+                  size="md"
+                  className="font-medium w-fit ml-4"
+                >
+                  {registro.rolUsuario}
+                </Chip>
               </div>
-              <p className="ml-4 text-gray-900 font-medium text-base">{registro.rolUsuario}</p>
-            </div>
+            )}
           </div>
         </div>
 
@@ -202,10 +222,11 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
                   <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
                   <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Información Adicional</p>
                 </div>
-                <div className="ml-4 pl-4 border-l-2 border-gray-200">
-                  <p className="text-gray-800 text-base leading-relaxed">
-                    {registro.informacionAdicional}
-                  </p>
+                <div className="ml-4">
+                  <InformacionAdicionalRenderer 
+                    informacionAdicional={registro.informacionAdicional}
+                    tipoAccionId={registro.idTipoAccion}
+                  />
                 </div>
               </div>
             )}

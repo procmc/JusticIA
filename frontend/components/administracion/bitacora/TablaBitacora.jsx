@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableHeader,
@@ -23,15 +23,23 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const registrosPorPagina = 10;
 
-  // DEBUG: Ver qué registros llegan a la tabla
-  console.log('🎨 TablaBitacora - Total registros:', registros?.length);
-  console.log('🎨 TablaBitacora - Primer registro:', registros?.[0]);
+  // Resetear a página 1 cuando cambien los registros (por filtros)
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [registros.length]);
 
   // Calcular registros para la página actual
   const indiceInicio = (paginaActual - 1) * registrosPorPagina;
   const indiceFin = indiceInicio + registrosPorPagina;
   const registrosPagina = registros.slice(indiceInicio, indiceFin);
   const totalPaginas = Math.ceil(registros.length / registrosPorPagina);
+
+  // Ajustar página si está fuera de rango (por ejemplo, después de filtrar)
+  useEffect(() => {
+    if (totalPaginas > 0 && paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [totalPaginas, paginaActual]);
 
   const obtenerColorTipoAccion = (tipo) => {
     if (!tipo) return 'default';

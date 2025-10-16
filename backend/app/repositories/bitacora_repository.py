@@ -5,7 +5,7 @@ Maneja todas las consultas y operaciones CRUD sobre T_Bitacora.
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, desc, func
+from sqlalchemy import select, and_, or_, desc, func
 import logging
 
 from app.db.models.bitacora import T_Bitacora
@@ -188,7 +188,17 @@ class BitacoraRepository:
             if tipo_accion_id:
                 conditions.append(T_Bitacora.CN_Id_tipo_accion == tipo_accion_id)
             if usuario_id:
-                conditions.append(T_Bitacora.CN_Id_usuario == usuario_id)
+                # Buscar por ID exacto (cédula), correo o nombre del usuario
+                usuario_subquery = select(T_Usuario.CN_Id_usuario).where(
+                    or_(
+                        T_Usuario.CN_Id_usuario == usuario_id,
+                        T_Usuario.CT_Correo.ilike(f"%{usuario_id}%"),
+                        T_Usuario.CT_Nombre.ilike(f"%{usuario_id}%"),
+                        T_Usuario.CT_Apellido_uno.ilike(f"%{usuario_id}%"),
+                        T_Usuario.CT_Apellido_dos.ilike(f"%{usuario_id}%")
+                    )
+                )
+                conditions.append(T_Bitacora.CN_Id_usuario.in_(usuario_subquery))
             if expediente_id:
                 conditions.append(T_Bitacora.CN_Id_expediente == expediente_id)
             
