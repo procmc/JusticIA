@@ -11,16 +11,21 @@ import {
   Pagination,
   Card,
   CardBody,
-  CardHeader
+  CardHeader,
+  Spinner
 } from '@heroui/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { IoList, IoDocumentText } from 'react-icons/io5';
 import { EyeIcon } from '../../icons';
 
-const TablaBitacora = ({ registros, onVerDetalle }) => {
+const TablaBitacora = ({ registros, onVerDetalle, cargando = false }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const registrosPorPagina = 10;
+
+  // DEBUG: Ver qué registros llegan a la tabla
+  console.log('🎨 TablaBitacora - Total registros:', registros?.length);
+  console.log('🎨 TablaBitacora - Primer registro:', registros?.[0]);
 
   // Calcular registros para la página actual
   const indiceInicio = (paginaActual - 1) * registrosPorPagina;
@@ -28,30 +33,20 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
   const registrosPagina = registros.slice(indiceInicio, indiceFin);
   const totalPaginas = Math.ceil(registros.length / registrosPorPagina);
 
-  const obtenerColorEstado = (estado) => {
-    switch (estado) {
-      case 'Procesado':
-        return 'success';
-      case 'Pendiente':
-        return 'warning';
-      case 'Error':
-        return 'danger';
-      default:
-        return 'default';
-    }
-  };
-
   const obtenerColorTipoAccion = (tipo) => {
-    switch (tipo) {
-      case 'Consulta':
-        return 'primary';
-      case 'Carga':
-        return 'secondary';
-      case 'Búsqueda similares':
-        return 'warning';
-      default:
-        return 'default';
-    }
+    if (!tipo) return 'default';
+    
+    // Normalizar el tipo para comparación
+    const tipoNormalizado = tipo.toLowerCase();
+    
+    if (tipoNormalizado.includes('consulta')) return 'primary';
+    if (tipoNormalizado.includes('carga') || tipoNormalizado.includes('documento')) return 'secondary';
+    if (tipoNormalizado.includes('búsqueda') || tipoNormalizado.includes('similares')) return 'warning';
+    if (tipoNormalizado.includes('login') || tipoNormalizado.includes('sesión')) return 'success';
+    if (tipoNormalizado.includes('usuario') || tipoNormalizado.includes('creación') || tipoNormalizado.includes('edición')) return 'primary';
+    if (tipoNormalizado.includes('bitácora') || tipoNormalizado.includes('exportar')) return 'default';
+    
+    return 'default';
   };
 
   const columns = [
@@ -59,7 +54,6 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
     { key: "usuario", label: "USUARIO" },
     { key: "accion", label: "ACCIÓN" },
     { key: "expediente", label: "EXPEDIENTE" },
-    { key: "estado", label: "ESTADO" },
     { key: "descripcion", label: "DESCRIPCIÓN" },
     { key: "acciones", label: "ACCIONES" },
   ];
@@ -67,21 +61,36 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
   const renderCell = (registro, columnKey) => {
     switch (columnKey) {
       case "fechaHora":
+        // Validar y convertir fecha de manera segura
+        const fecha = registro.fechaHora ? new Date(registro.fechaHora) : null;
+        const fechaValida = fecha && !isNaN(fecha.getTime());
+        
         return (
           <div className="flex flex-col">
             <p className="font-medium text-small">
-              {format(registro.fechaHora, 'dd/MM/yyyy', { locale: es })}
+              {fechaValida ? format(fecha, 'dd/MM/yyyy', { locale: es }) : 'Fecha inválida'}
             </p>
             <p className="text-tiny text-default-700">
-              {format(registro.fechaHora, 'HH:mm:ss')}
+              {fechaValida ? format(fecha, 'HH:mm:ss') : '--:--:--'}
             </p>
           </div>
         );
       case "usuario":
+        // Si no hay usuario, mostrar guión
+        if (!registro.usuario && !registro.correoUsuario) {
+          return (
+            <span className="text-small text-gray-400 font-medium">-</span>
+          );
+        }
+        
         return (
           <div className="flex flex-col">
-            <p className="font-medium text-small">{registro.usuario}</p>
-            <p className="text-tiny text-default-700">{registro.rolUsuario}</p>
+            <p className="font-semibold text-small text-gray-900">
+              {registro.usuario || '-'}
+            </p>
+            <p className="text-tiny text-gray-600 font-medium">
+              {registro.correoUsuario || '-'}
+            </p>
           </div>
         );
       case "accion":
@@ -91,24 +100,16 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
             size="sm"
             variant="flat"
           >
-            {registro.tipoAccion}
+            {registro.tipoAccion || 'Sin especificar'}
           </Chip>
         );
       case "expediente":
-        return (
-          <code className="text-small font-mono">
+        return registro.expediente ? (
+          <code className="text-small font-mono text-gray-700">
             {registro.expediente}
           </code>
-        );
-      case "estado":
-        return (
-          <Chip
-            color={obtenerColorEstado(registro.estado)}
-            size="sm"
-            variant="flat"
-          >
-            {registro.estado}
-          </Chip>
+        ) : (
+          <span className="text-small text-gray-400 font-medium">-</span>
         );
       case "descripcion":
         return (
@@ -162,7 +163,11 @@ const TablaBitacora = ({ registros, onVerDetalle }) => {
         </div>
       </CardHeader>
       <CardBody className="px-0 py-0">
-        {registros.length === 0 ? (
+        {cargando ? (
+          <div className="flex flex-col items-center justify-center p-12">
+            <Spinner size="lg" label="Cargando registros..." />
+          </div>
+        ) : registros.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12">
             <div className="bg-gray-100 rounded-full p-6 mb-4">
               <svg

@@ -136,6 +136,7 @@ class BitacoraRepository:
         fecha_fin: Optional[datetime] = None,
         tipo_accion_id: Optional[int] = None,
         usuario_id: Optional[str] = None,
+        expediente_numero: Optional[str] = None,
         limite: int = 200
     ) -> List[T_Bitacora]:
         """
@@ -147,13 +148,36 @@ class BitacoraRepository:
             fecha_fin: Fecha de fin del rango (opcional)
             tipo_accion_id: Filtrar por tipo de acción (opcional)
             usuario_id: Filtrar por usuario (opcional)
+            expediente_numero: Filtrar por número de expediente (opcional)
             limite: Número máximo de registros a retornar
             
         Returns:
             List[T_Bitacora]: Lista de registros ordenados por fecha descendente
         """
         try:
-            query = select(T_Bitacora)
+            from sqlalchemy.orm import joinedload
+            from app.db.models.usuario import T_Usuario
+            from app.db.models.expediente import T_Expediente
+            from app.db.models.tipo_accion import T_Tipo_accion
+            
+            # Si se busca por número de expediente, primero obtener el ID
+            expediente_id = None
+            if expediente_numero:
+                from app.repositories.expediente_repository import ExpedienteRepository
+                exp_repo = ExpedienteRepository()
+                expediente_obj = exp_repo.obtener_por_numero(db, expediente_numero)
+                if expediente_obj:
+                    expediente_id = expediente_obj.CN_Id_expediente
+                else:
+                    # Si no se encuentra el expediente, retornar vacío
+                    return []
+            
+            # Query con eager loading de relaciones
+            query = select(T_Bitacora).options(
+                joinedload(T_Bitacora.usuario).joinedload(T_Usuario.rol),
+                joinedload(T_Bitacora.expediente),
+                joinedload(T_Bitacora.tipo_accion)
+            )
             
             # Construir condiciones de filtro
             conditions = []
@@ -165,14 +189,17 @@ class BitacoraRepository:
                 conditions.append(T_Bitacora.CN_Id_tipo_accion == tipo_accion_id)
             if usuario_id:
                 conditions.append(T_Bitacora.CN_Id_usuario == usuario_id)
+            if expediente_id:
+                conditions.append(T_Bitacora.CN_Id_expediente == expediente_id)
             
             if conditions:
                 query = query.where(and_(*conditions))
             
             query = query.order_by(desc(T_Bitacora.CF_Fecha_hora)).limit(limite)
             
+            # IMPORTANTE: usar unique() para manejar los joins correctamente
             result = db.execute(query)
-            return result.scalars().all()
+            return result.unique().scalars().all()
             
         except Exception as e:
             logger.error(f"Error obteniendo bitácora con filtros: {e}")
@@ -309,6 +336,304 @@ class BitacoraRepository:
         except Exception as e:
             logger.error(f"Error obteniendo última acción de usuario {usuario_id}: {e}")
             raise
+    
+    
+    def contar_total(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> int:
+        """
+        Cuenta el total de registros de bitácora.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            
+        Returns:
+            int: Número total de registros
+        """
+        try:
+            query = select(func.count(T_Bitacora.CN_Id_bitacora))
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            result = db.execute(query)
+            return result.scalar() or 0
+            
+        except Exception as e:
+            logger.error(f"Error contando total de registros: {e}")
+            return 0
+    
+    
+    def contar_usuarios_unicos(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> int:
+        """
+        Cuenta el número de usuarios únicos que tienen actividad.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            
+        Returns:
+            int: Número de usuarios únicos
+        """
+        try:
+            query = select(func.count(func.distinct(T_Bitacora.CN_Id_usuario)))
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            result = db.execute(query)
+            return result.scalar() or 0
+            
+        except Exception as e:
+            logger.error(f"Error contando usuarios únicos: {e}")
+            return 0
+    
+    
+    def contar_expedientes_unicos(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> int:
+        """
+        Cuenta el número de expedientes únicos con actividad.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            
+        Returns:
+            int: Número de expedientes únicos
+        """
+        try:
+            query = select(func.count(func.distinct(T_Bitacora.CN_Id_expediente))).where(
+                T_Bitacora.CN_Id_expediente.isnot(None)
+            )
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            result = db.execute(query)
+            return result.scalar() or 0
+            
+        except Exception as e:
+            logger.error(f"Error contando expedientes únicos: {e}")
+            return 0
+    
+    
+    def contar_por_periodo(
+        self,
+        db: Session,
+        fecha_inicio: datetime,
+        fecha_fin: datetime
+    ) -> int:
+        """
+        Cuenta registros en un período específico.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del período
+            fecha_fin: Fecha de fin del período
+            
+        Returns:
+            int: Número de registros en el período
+        """
+        try:
+            query = select(func.count(T_Bitacora.CN_Id_bitacora)).where(
+                and_(
+                    T_Bitacora.CF_Fecha_hora >= fecha_inicio,
+                    T_Bitacora.CF_Fecha_hora <= fecha_fin
+                )
+            )
+            
+            result = db.execute(query)
+            return result.scalar() or 0
+            
+        except Exception as e:
+            logger.error(f"Error contando registros por período: {e}")
+            return 0
+    
+    
+    def obtener_acciones_por_tipo(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> List[dict]:
+        """
+        Obtiene el conteo de acciones agrupadas por tipo.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            
+        Returns:
+            List[dict]: Lista de {'tipo_id': int, 'cantidad': int}
+        """
+        try:
+            query = select(
+                T_Bitacora.CN_Id_tipo_accion,
+                func.count(T_Bitacora.CN_Id_bitacora)
+            )
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            query = query.group_by(T_Bitacora.CN_Id_tipo_accion)
+            
+            result = db.execute(query)
+            
+            return [
+                {"tipo_id": row[0], "cantidad": row[1]}
+                for row in result.all()
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo acciones por tipo: {e}")
+            return []
+    
+    
+    def obtener_usuarios_mas_activos(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None,
+        limite: int = 10
+    ) -> List[dict]:
+        """
+        Obtiene los usuarios más activos con su conteo de acciones.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            limite: Número máximo de usuarios a retornar
+            
+        Returns:
+            List[dict]: Lista de {'usuario_id': str, 'cantidad': int}
+        """
+        try:
+            query = select(
+                T_Bitacora.CN_Id_usuario,
+                func.count(T_Bitacora.CN_Id_bitacora)
+            )
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            query = (
+                query.group_by(T_Bitacora.CN_Id_usuario)
+                .order_by(desc(func.count(T_Bitacora.CN_Id_bitacora)))
+                .limit(limite)
+            )
+            
+            result = db.execute(query)
+            
+            return [
+                {"usuario_id": row[0], "cantidad": row[1]}
+                for row in result.all()
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo usuarios más activos: {e}")
+            return []
+    
+    
+    def obtener_expedientes_mas_consultados(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None,
+        limite: int = 10
+    ) -> List[dict]:
+        """
+        Obtiene los expedientes más consultados con su conteo.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            limite: Número máximo de expedientes a retornar
+            
+        Returns:
+            List[dict]: Lista de {'expediente_id': int, 'cantidad': int}
+        """
+        try:
+            query = select(
+                T_Bitacora.CN_Id_expediente,
+                func.count(T_Bitacora.CN_Id_bitacora)
+            ).where(
+                T_Bitacora.CN_Id_expediente.isnot(None)
+            )
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Bitacora.CF_Fecha_hora >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Bitacora.CF_Fecha_hora <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            query = (
+                query.group_by(T_Bitacora.CN_Id_expediente)
+                .order_by(desc(func.count(T_Bitacora.CN_Id_bitacora)))
+                .limit(limite)
+            )
+            
+            result = db.execute(query)
+            
+            return [
+                {"expediente_id": row[0], "cantidad": row[1]}
+                for row in result.all()
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo expedientes más consultados: {e}")
+            return []
 
 
 # Instancia singleton del repository
