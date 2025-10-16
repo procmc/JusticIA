@@ -11,8 +11,7 @@ import {
   Pagination,
   Card,
   CardBody,
-  CardHeader,
-  Spinner
+  CardHeader
 } from '@heroui/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -172,8 +171,10 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false }) => {
       </CardHeader>
       <CardBody className="px-0 py-0">
         {cargando ? (
-          <div className="flex flex-col items-center justify-center p-12">
-            <Spinner size="lg" label="Cargando registros..." />
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-600 font-medium">Cargando registros...</p>
+            <p className="text-sm text-gray-500 mt-2">Por favor, espera un momento</p>
           </div>
         ) : registros.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12">

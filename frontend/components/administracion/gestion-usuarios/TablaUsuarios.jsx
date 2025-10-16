@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   TableHeader, 
@@ -33,6 +33,7 @@ import {
 
 const TablaUsuarios = ({ 
   usuarios, 
+  cargando = false,
   onVerDetalle, 
   onEditarUsuario, 
   onResetearContrasena 
@@ -40,11 +41,23 @@ const TablaUsuarios = ({
   const [paginaActual, setPaginaActual] = useState(1);
   const usuariosPorPagina = 10;
 
+  // Resetear a página 1 cuando cambien los usuarios (por filtros)
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [usuarios.length]);
+
   // Calcular usuarios para la página actual
   const indiceInicio = (paginaActual - 1) * usuariosPorPagina;
   const indiceFin = indiceInicio + usuariosPorPagina;
   const usuariosPagina = usuarios.slice(indiceInicio, indiceFin);
   const totalPaginas = Math.ceil(usuarios.length / usuariosPorPagina);
+
+  // Ajustar página si está fuera de rango (por ejemplo, después de filtrar)
+  useEffect(() => {
+    if (totalPaginas > 0 && paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [totalPaginas, paginaActual]);
 
   const obtenerColorEstado = (estado) => {
     return estado === 'Activo' ? 'success' : 'danger';
@@ -240,7 +253,13 @@ const TablaUsuarios = ({
       </CardHeader>
       
       <CardBody className="px-0 py-0">
-        {usuarios.length === 0 ? (
+        {cargando ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-600 font-medium">Cargando usuarios...</p>
+            <p className="text-sm text-gray-500 mt-2">Por favor, espera un momento</p>
+          </div>
+        ) : usuarios.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12">
             <div className="bg-gray-100 rounded-full p-6 mb-4">
               <IoPeople className="w-14 h-14 text-gray-400" />
@@ -287,7 +306,7 @@ const TablaUsuarios = ({
       </CardBody>
 
       {/* Paginación mejorada y responsive */}
-      {usuarios.length > 0 && totalPaginas > 1 && (
+      {!cargando && usuarios.length > 0 && totalPaginas > 1 && (
         <div className="flex flex-col sm:flex-row w-full justify-between items-center gap-4 px-4 sm:px-6 py-4 border-t border-gray-200">
           {/* Información de resultados - Oculta en móvil, visible en tablet+ */}
           <div className="hidden sm:block text-small text-default-700">

@@ -184,18 +184,13 @@ const GestionUsuarios = () => {
       />
 
       {/* Tabla de usuarios */}
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <TablaUsuarios
-          usuarios={usuariosFiltrados}
-          onVerDetalle={handleVerDetalle}
-          onEditarUsuario={handleEditarUsuario}
-          onResetearContrasena={handleResetearContrasena}
-        />
-      )}
+      <TablaUsuarios
+        usuarios={usuariosFiltrados}
+        cargando={loading}
+        onVerDetalle={handleVerDetalle}
+        onEditarUsuario={handleEditarUsuario}
+        onResetearContrasena={handleResetearContrasena}
+      />
 
       {/* Modales */}
       <DetalleUsuario
