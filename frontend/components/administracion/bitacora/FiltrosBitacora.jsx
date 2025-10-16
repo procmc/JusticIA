@@ -6,7 +6,7 @@ import { PiBroomLight } from 'react-icons/pi';
 import { SearchIcon } from '../../icons';
 
 const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, disabled = false }) => {
-    // Tipos de acción actualizados según el backend (8 tipos)
+    // Tipos de acción - Sincronizados con backend/app/constants/tipos_accion.py
     const tiposAccion = [
         { key: '1', label: 'Consulta' },
         { key: '2', label: 'Carga de Documentos' },
@@ -23,9 +23,36 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
     };
 
     const handleDateChange = (campo, date) => {
-        // Convertir el objeto de fecha a string ISO para almacenamiento
-        const dateString = date ? date.toString() : '';
-        onFiltroChange({ ...filtros, [campo]: dateString });
+        // Convertir el objeto de fecha a string ISO para el backend
+        // El DatePicker devuelve un objeto CalendarDate de @internationalized/date
+        if (date) {
+            // Construir fecha ISO: YYYY-MM-DD
+            const year = date.year;
+            const month = String(date.month).padStart(2, '0');
+            const day = String(date.day).padStart(2, '0');
+            const isoString = `${year}-${month}-${day}`;
+            
+            // Validar que fechaFin no sea menor que fechaInicio
+            if (campo === 'fechaFin' && filtros.fechaInicio) {
+                if (isoString < filtros.fechaInicio) {
+                    // No permitir fecha fin menor que fecha inicio
+                    return;
+                }
+            }
+            
+            // Validar que fechaInicio no sea mayor que fechaFin
+            if (campo === 'fechaInicio' && filtros.fechaFin) {
+                if (isoString > filtros.fechaFin) {
+                    // Si fecha inicio es mayor, limpiar fecha fin
+                    onFiltroChange({ ...filtros, [campo]: isoString, fechaFin: '' });
+                    return;
+                }
+            }
+            
+            onFiltroChange({ ...filtros, [campo]: isoString });
+        } else {
+            onFiltroChange({ ...filtros, [campo]: '' });
+        }
     };
 
     // Verificar si hay contenido en los filtros
@@ -95,7 +122,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                             <Input
                                 label="Usuario"
                                 labelPlacement='outside'
-                                placeholder="Nombre del usuario"
+                                placeholder="Nombre, apellido o correo"
                                 color="primary"
                                 value={filtros.usuario}
                                 onChange={(e) => handleInputChange('usuario', e.target.value)}
@@ -127,11 +154,11 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 labelPlacement='outside'
                                 placeholder="Selecciona un tipo"
                                 color='primary'
-                                selectedKeys={filtros.tipoAccion ? [filtros.tipoAccion.toLowerCase().replace(' ', '-')] : []}
+                                selectedKeys={filtros.tipoAccion ? [filtros.tipoAccion.toString()] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
-                                    const selectedLabel = tiposAccion.find(t => t.key === selectedKey)?.label || '';
-                                    handleInputChange('tipoAccion', selectedLabel);
+                                    // Enviar el ID numérico (1-8) en lugar del label
+                                    handleInputChange('tipoAccion', selectedKey ? parseInt(selectedKey) : '');
                                 }}
                                 variant="bordered"
                                 size="lg"
@@ -156,6 +183,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
+                                maxValue={filtros.fechaFin ? parseDate(filtros.fechaFin) : undefined}
                                 className="w-full"
                             />
                         </div>
@@ -171,6 +199,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
+                                minValue={filtros.fechaInicio ? parseDate(filtros.fechaInicio) : undefined}
                                 className="w-full"
                             />
                         </div>

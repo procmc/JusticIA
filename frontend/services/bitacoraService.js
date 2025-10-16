@@ -36,12 +36,24 @@ class BitacoraService {
       if (filtros.usuario) params.append('usuario', filtros.usuario);
       if (filtros.tipoAccion) params.append('tipoAccion', filtros.tipoAccion);
       if (filtros.expediente) params.append('expediente', filtros.expediente);
-      if (filtros.fechaInicio) params.append('fechaInicio', filtros.fechaInicio);
-      if (filtros.fechaFin) params.append('fechaFin', filtros.fechaFin);
+      
+      // Convertir fechas a formato ISO completo (con hora) para FastAPI
+      if (filtros.fechaInicio) {
+        // Agregar 00:00:00 al inicio del día
+        params.append('fechaInicio', `${filtros.fechaInicio}T00:00:00`);
+      }
+      if (filtros.fechaFin) {
+        // Agregar 23:59:59 al final del día
+        params.append('fechaFin', `${filtros.fechaFin}T23:59:59`);
+      }
+      
       if (filtros.limite) params.append('limite', filtros.limite);
 
       const queryString = params.toString();
       const url = `${this.baseURL}/registros${queryString ? `?${queryString}` : ''}`;
+
+      console.log('🔍 Filtros aplicados:', filtros);
+      console.log('🔍 URL de solicitud:', url);
 
       const data = await httpService.get(url);
     
@@ -50,9 +62,22 @@ class BitacoraService {
       
     } catch (error) {
       console.error('Error obteniendo registros de bitácora:', error);
-      throw new Error(
-        error.message || 'Error al obtener registros de bitácora'
-      );
+      
+      // Extraer mensaje de error detallado
+      let mensajeError = 'Error al obtener registros de bitácora';
+      
+      if (error.data?.detail) {
+        // FastAPI 422 devuelve detail como array o string
+        if (Array.isArray(error.data.detail)) {
+          mensajeError = error.data.detail.map(e => e.msg || e.message).join(', ');
+        } else {
+          mensajeError = error.data.detail;
+        }
+      } else if (error.message) {
+        mensajeError = error.message;
+      }
+      
+      throw new Error(mensajeError);
     }
   }
 
@@ -154,10 +179,10 @@ class BitacoraService {
         idExpediente: registro.CN_Id_expediente || registro.id_expediente || registro.idExpediente,
         
         // Datos relacionados (si están expandidos)
-        usuario: registro.nombre_usuario || registro.usuario || 'Usuario desconocido',
-        correoUsuario: registro.correo_usuario || registro.correoUsuario || null,
-        tipoAccion: registro.nombre_tipo_accion || registro.tipo_accion || registro.tipoAccion || this._mapearTipoAccion(registro.CN_Id_tipo_accion || registro.id_tipo_accion || registro.idTipoAccion),
-        expediente: registro.numero_expediente || registro.expediente || null,
+        usuario: registro.usuario || registro.nombre_usuario || 'Usuario desconocido',
+        correoUsuario: registro.correoUsuario || registro.correo_usuario || null,
+        tipoAccion: registro.tipoAccion || registro.tipo_accion || registro.nombre_tipo_accion || this._mapearTipoAccion(registro.idTipoAccion || registro.CN_Id_tipo_accion || registro.id_tipo_accion),
+        expediente: registro.expediente || registro.numero_expediente || null,
         
         // Campos adicionales útiles para UI
         rolUsuario: registro.rol_usuario || registro.rolUsuario || null,
