@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Card, CardBody, Tabs, Tab, Spinner } from '@heroui/react';
+import { Button, Card, CardBody, Tabs, Tab } from '@heroui/react';
 import { IoDocumentText, IoStatsChart, IoCalendar, IoShield } from 'react-icons/io5';
 import { Toast } from '../../ui/CustomAlert';
 import HeaderBitacora from './HeaderBitacora';
@@ -179,9 +179,15 @@ const Bitacora = () => {
         <div>
           {/* Dashboard de Estadísticas */}
           {cargandoEstadisticas ? (
-            <div className="flex justify-center items-center py-12">
-              <Spinner size="lg" label="Cargando estadísticas..." />
-            </div>
+            <Card>
+              <CardBody>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-4"></div>
+                  <p className="text-gray-600 font-medium">Cargando estadísticas...</p>
+                  <p className="text-sm text-gray-500 mt-2">Procesando datos del sistema</p>
+                </div>
+              </CardBody>
+            </Card>
           ) : estadisticas ? (
             <DashboardEstadisticas
               estadisticas={estadisticas}
@@ -189,8 +195,16 @@ const Bitacora = () => {
             />
           ) : (
             <Card>
-              <CardBody className="text-center py-12">
-                <p className="text-gray-500">No hay estadísticas disponibles</p>
+              <CardBody>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="bg-gray-100 rounded-full p-6 mb-4">
+                    <IoStatsChart className="w-14 h-14 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No hay estadísticas disponibles</h3>
+                  <p className="text-sm text-gray-500 text-center max-w-sm">
+                    Aún no se han generado estadísticas para este período
+                  </p>
+                </div>
               </CardBody>
             </Card>
           )}
