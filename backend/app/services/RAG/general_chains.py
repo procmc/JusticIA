@@ -320,13 +320,34 @@ async def create_conversational_rag_chain(
     return rag_chain
 
 
-async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[str, Any]):
-    """Wrapper para hacer streaming de respuestas de una chain."""
+async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[str, Any], http_request=None):
+    """
+    Wrapper para hacer streaming de respuestas de una chain.
+    
+    Args:
+        chain: La chain de LangChain a ejecutar
+        input_dict: El diccionario de entrada para la chain
+        config: Configuración de la chain (incluye session_id)
+        http_request: Objeto Request de FastAPI para detectar desconexión del cliente
+    """
     total_chars = 0
+    client_disconnected = False
     
     try:
         # Stream desde la chain
         async for chunk in chain.astream(input_dict, config=config):
+            # Verificar si el cliente se desconectó ANTES de procesar el chunk
+            if http_request:
+                try:
+                    # Verificar si el cliente sigue conectado
+                    if await http_request.is_disconnected():
+                        logger.warning("Cliente desconectado detectado - Deteniendo generación de respuesta")
+                        client_disconnected = True
+                        break
+                except Exception as e:
+                    # Si hay algún error verificando la conexión, continuar
+                    logger.debug(f"No se pudo verificar estado de conexión: {e}")
+            
             # Las chains de LangChain emiten dicts, extraer 'answer'
             if isinstance(chunk, dict) and "answer" in chunk:
                 content = chunk["answer"]
@@ -343,24 +364,42 @@ async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[
                             "content": content_str,
                             "done": False
                         }
-                        yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                        try:
+                            yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                        except Exception as yield_error:
+                            # Si falla el yield, probablemente el cliente se desconectó
+                            logger.warning(f"Error al enviar chunk (cliente desconectado): {yield_error}")
+                            client_disconnected = True
+                            break
         
-        logger.info(f"Streaming completado: {total_chars} caracteres generados")
+        # Log final dependiendo de si se completó o se detuvo
+        if client_disconnected:
+            logger.info(f"Streaming detenido por desconexión del cliente - {total_chars} caracteres generados antes de detener")
+        else:
+            logger.info(f"Streaming completado: {total_chars} caracteres generados")
         
-        # Detectar respuestas vacías y enviar fallback ANTES del done
-        if total_chars == 0:
-            logger.warning("No se generó contenido, enviando mensaje de fallback")
-            fallback_message = "No encontré información relevante en los documentos recuperados para responder tu pregunta."
-            fallback_data = {
-                "type": "chunk",
-                "content": fallback_message,
-                "done": False
-            }
-            yield f"data: {json.dumps(fallback_data, ensure_ascii=False)}\n\n"
-        
-        # Señal de finalización SIEMPRE al final
-        done_data = {"type": "done", "content": "", "done": True}
-        yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
+        # Solo enviar mensajes finales si el cliente NO se desconectó
+        if not client_disconnected:
+            # Detectar respuestas vacías y enviar fallback ANTES del done
+            if total_chars == 0:
+                logger.warning("No se generó contenido, enviando mensaje de fallback")
+                fallback_message = "No encontré información relevante en los documentos recuperados para responder tu pregunta."
+                fallback_data = {
+                    "type": "chunk",
+                    "content": fallback_message,
+                    "done": False
+                }
+                try:
+                    yield f"data: {json.dumps(fallback_data, ensure_ascii=False)}\n\n"
+                except:
+                    pass  # Cliente ya desconectado
+            
+            # Señal de finalización SIEMPRE al final
+            done_data = {"type": "done", "content": "", "done": True}
+            try:
+                yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
+            except:
+                pass  # Cliente ya desconectado
         
     except Exception as e:
         logger.error(f"Error en streaming: {e}", exc_info=True)
