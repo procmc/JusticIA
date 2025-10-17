@@ -108,7 +108,10 @@ class BitacoraService {
         totalRegistros: data.totalRegistros || 0,
         usuariosUnicos: data.usuariosUnicos || 0,
         expedientesUnicos: data.expedientesUnicos || 0,
-        accionesPorTipo: data.accionesPorTipo || []
+        accionesPorTipo: data.accionesPorTipo || [],
+        usuariosMasActivos: data.usuariosMasActivos || [],
+        expedientesMasConsultados: data.expedientesMasConsultados || [],
+        actividadPorDia: data.actividadPorDia || []
       };
       
     } catch (error) {
@@ -139,6 +142,19 @@ class BitacoraService {
       throw new Error(
         error.message || 'Error al obtener tu historial'
       );
+    }
+  }
+
+  /**
+   * Registrar exportación de bitácora
+   * Llama al backend para registrar la acción de exportación
+   */
+  async registrarExportacion() {
+    try {
+      await httpService.post(`${this.baseURL}/registrar-exportacion`);
+    } catch (error) {
+      // No lanzamos error para no bloquear la exportación
+      console.error('Error registrando exportación en bitácora:', error);
     }
   }
 

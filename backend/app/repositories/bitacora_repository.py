@@ -5,10 +5,12 @@ Maneja todas las consultas y operaciones CRUD sobre T_Bitacora.
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy import select, and_, or_, desc, func, Date, cast
 import logging
 
 from app.db.models.bitacora import T_Bitacora
+from app.db.models.usuario import T_Usuario
+from app.db.models.expediente import T_Expediente
 
 logger = logging.getLogger(__name__)
 
@@ -569,12 +571,24 @@ class BitacoraRepository:
             limite: Número máximo de usuarios a retornar
             
         Returns:
-            List[dict]: Lista de {'usuario_id': str, 'cantidad': int}
+            List[dict]: Lista de {'nombre': str, 'cantidad': int}
         """
         try:
+            # Concatenar nombre completo
+            nombre_completo = func.concat(
+                T_Usuario.CT_Nombre,
+                ' ',
+                func.coalesce(T_Usuario.CT_Apellido_uno, ''),
+                ' ',
+                func.coalesce(T_Usuario.CT_Apellido_dos, '')
+            ).label('nombre')
+            
             query = select(
-                T_Bitacora.CN_Id_usuario,
-                func.count(T_Bitacora.CN_Id_bitacora)
+                nombre_completo,
+                func.count(T_Bitacora.CN_Id_bitacora).label('cantidad')
+            ).select_from(T_Bitacora).join(
+                T_Usuario,
+                T_Bitacora.CN_Id_usuario == T_Usuario.CN_Id_usuario
             )
             
             conditions = []
@@ -587,15 +601,15 @@ class BitacoraRepository:
                 query = query.where(and_(*conditions))
             
             query = (
-                query.group_by(T_Bitacora.CN_Id_usuario)
-                .order_by(desc(func.count(T_Bitacora.CN_Id_bitacora)))
+                query.group_by(T_Usuario.CN_Id_usuario, T_Usuario.CT_Nombre, T_Usuario.CT_Apellido_uno, T_Usuario.CT_Apellido_dos)
+                .order_by(desc('cantidad'))
                 .limit(limite)
             )
             
             result = db.execute(query)
             
             return [
-                {"usuario_id": row[0], "cantidad": row[1]}
+                {"nombre": row.nombre.strip(), "cantidad": row.cantidad}
                 for row in result.all()
             ]
             
@@ -621,12 +635,15 @@ class BitacoraRepository:
             limite: Número máximo de expedientes a retornar
             
         Returns:
-            List[dict]: Lista de {'expediente_id': int, 'cantidad': int}
+            List[dict]: Lista de {'numero': str, 'cantidad': int}
         """
         try:
             query = select(
-                T_Bitacora.CN_Id_expediente,
-                func.count(T_Bitacora.CN_Id_bitacora)
+                T_Expediente.CT_Num_expediente.label('numero'),
+                func.count(T_Bitacora.CN_Id_bitacora).label('cantidad')
+            ).select_from(T_Bitacora).join(
+                T_Expediente,
+                T_Bitacora.CN_Id_expediente == T_Expediente.CN_Id_expediente
             ).where(
                 T_Bitacora.CN_Id_expediente.isnot(None)
             )
@@ -641,20 +658,67 @@ class BitacoraRepository:
                 query = query.where(and_(*conditions))
             
             query = (
-                query.group_by(T_Bitacora.CN_Id_expediente)
-                .order_by(desc(func.count(T_Bitacora.CN_Id_bitacora)))
+                query.group_by(T_Expediente.CN_Id_expediente, T_Expediente.CT_Num_expediente)
+                .order_by(desc('cantidad'))
                 .limit(limite)
             )
             
             result = db.execute(query)
             
             return [
-                {"expediente_id": row[0], "cantidad": row[1]}
+                {"numero": row.numero, "cantidad": row.cantidad}
                 for row in result.all()
             ]
             
         except Exception as e:
             logger.error(f"Error obteniendo expedientes más consultados: {e}")
+            return []
+    
+    
+    def obtener_actividad_por_dia(
+        self,
+        db: Session,
+        fecha_inicio: datetime,
+        fecha_fin: datetime
+    ) -> List[dict]:
+        """
+        Obtiene la cantidad de registros por día en un rango de fechas.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango
+            fecha_fin: Fecha de fin del rango
+            
+        Returns:
+            List[dict]: Lista de {'fecha': date, 'cantidad': int}
+        """
+        try:
+            # Usar CAST para convertir datetime a date (compatible con SQL Server)
+            fecha_columna = cast(T_Bitacora.CF_Fecha_hora, Date)
+            
+            query = select(
+                fecha_columna.label('fecha'),
+                func.count(T_Bitacora.CN_Id_bitacora).label('cantidad')
+            ).where(
+                and_(
+                    T_Bitacora.CF_Fecha_hora >= fecha_inicio,
+                    T_Bitacora.CF_Fecha_hora <= fecha_fin
+                )
+            ).group_by(
+                fecha_columna
+            ).order_by(
+                fecha_columna
+            )
+            
+            result = db.execute(query)
+            
+            return [
+                {"fecha": row.fecha, "cantidad": row.cantidad}
+                for row in result.all()
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo actividad por día: {e}")
             return []
 
 

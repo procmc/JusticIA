@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Desactivado para evitar double-render y duplicación de registros en bitácora
   allowedDevOrigins: [
     'http://localhost:3000',
     'http://192.168.1.254:3000',
