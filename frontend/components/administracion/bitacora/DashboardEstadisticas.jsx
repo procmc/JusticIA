@@ -12,8 +12,8 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import { IoDocumentText, IoPersonAdd, IoFolderOpen, IoToday, IoRefresh } from 'react-icons/io5';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { IoDocumentText, IoPersonAdd, IoFolderOpen, IoToday, IoRefresh, IoPeople, IoCalendarOutline, IoStatsChart } from 'react-icons/io5';
 
 ChartJS.register(
   CategoryScale,
@@ -28,6 +28,18 @@ ChartJS.register(
 );
 
 const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
+  // Función para formatear números grandes de manera elegante
+  const formatearNumeroGrande = (numero) => {
+    if (numero >= 1000000000) {
+      return `${(numero / 1000000000).toFixed(1)}B`; // Billones
+    } else if (numero >= 1000000) {
+      return `${(numero / 1000000).toFixed(1)}M`; // Millones
+    } else if (numero >= 1000) {
+      return `${(numero / 1000).toFixed(1)}K`; // Miles
+    }
+    return numero.toLocaleString('es-ES');
+  };
+
   // Preparar datos para el gráfico de barras por tipo de acción
   const prepararDatosAcciones = () => {
     if (!estadisticas?.accionesPorTipo) return null;
@@ -83,6 +95,80 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
   };
 
   const datosAcciones = prepararDatosAcciones();
+
+  // Preparar datos para usuarios más activos (Top 5)
+  const prepararDatosUsuarios = () => {
+    if (!estadisticas?.usuariosMasActivos || estadisticas.usuariosMasActivos.length === 0) return null;
+
+    return {
+      labels: estadisticas.usuariosMasActivos.map(u => u.nombre || 'Usuario desconocido'),
+      datasets: [
+        {
+          label: 'Acciones realizadas',
+          data: estadisticas.usuariosMasActivos.map(u => u.cantidad || 0),
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(147, 51, 234, 0.8)',
+            'rgba(34, 197, 94, 0.8)',
+            'rgba(249, 115, 22, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+          ],
+          borderColor: [
+            'rgb(59, 130, 246)',
+            'rgb(147, 51, 234)',
+            'rgb(34, 197, 94)',
+            'rgb(249, 115, 22)',
+            'rgb(239, 68, 68)',
+          ],
+          borderWidth: 2,
+        },
+      ],
+    };
+  };
+
+  // Preparar datos para expedientes más consultados (Top 5)
+  const prepararDatosExpedientes = () => {
+    if (!estadisticas?.expedientesMasConsultados || estadisticas.expedientesMasConsultados.length === 0) return null;
+
+    return {
+      labels: estadisticas.expedientesMasConsultados.map(e => e.numero || 'Sin número'),
+      datasets: [
+        {
+          label: 'Consultas',
+          data: estadisticas.expedientesMasConsultados.map(e => e.cantidad || 0),
+          backgroundColor: 'rgba(34, 197, 94, 0.8)',
+          borderColor: 'rgb(34, 197, 94)',
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  // Preparar datos para actividad por día (últimos 7 días)
+  const prepararDatosActividadDiaria = () => {
+    if (!estadisticas?.actividadPorDia || estadisticas.actividadPorDia.length === 0) return null;
+
+    return {
+      labels: estadisticas.actividadPorDia.map(d => {
+        const fecha = new Date(d.fecha);
+        return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+      }),
+      datasets: [
+        {
+          label: 'Registros por día',
+          data: estadisticas.actividadPorDia.map(d => d.cantidad || 0),
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.4,
+        },
+      ],
+    };
+  };
+
+  const datosUsuarios = prepararDatosUsuarios();
+  const datosExpedientes = prepararDatosExpedientes();
+  const datosActividad = prepararDatosActividadDiaria();
 
   return (
     <div 
@@ -190,37 +276,120 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
 
       {/* Gráfico de acciones por tipo */}
       {datosAcciones && datosAcciones.labels.length > 0 && (
-        <div className="grid grid-cols-1 gap-6">
+        <Card className="border-none shadow-lg">
+          <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Distribución por Tipo de Acción</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Acciones registradas en los últimos 30 días
+              </p>
+            </div>
+          </CardHeader>
+          <CardBody className="p-8">
+            <div style={{ height: '400px' }}>
+              <Bar data={datosAcciones} options={opcionesGraficos} />
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Grid con gráficos secundarios */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de actividad por día */}
+        {datosActividad && datosActividad.labels.length > 0 && (
           <Card className="border-none shadow-lg">
-            <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Distribución por Tipo de Acción</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Acciones registradas en los últimos 30 días
-                </p>
+            <CardHeader className="bg-white px-6 pt-5 pb-3 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <IoCalendarOutline className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Actividad Diaria</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">Últimos 7 días</p>
+                </div>
               </div>
             </CardHeader>
-            <CardBody className="p-8">
-              <div style={{ height: '400px' }}>
-                <Bar data={datosAcciones} options={opcionesGraficos} />
+            <CardBody className="p-6">
+              <div style={{ height: '300px' }}>
+                <Line 
+                  data={datosActividad} 
+                  options={{
+                    ...opcionesGraficos,
+                    plugins: {
+                      legend: {
+                        display: false,
+                      },
+                    },
+                  }} 
+                />
               </div>
             </CardBody>
           </Card>
-        </div>
-      )}
+        )}
 
-      {/* Resumen total */}
-      <Card className="border-none shadow-lg bg-gradient-to-br from-gray-50 to-gray-100">
-        <CardBody className="p-6">
-          <div className="text-center">
-            <h3 className="text-4xl font-bold text-gray-900 mb-2">
-              {estadisticas.totalRegistros?.toLocaleString() || 0}
-            </h3>
-            <p className="text-lg font-medium text-gray-700">Total de Registros Históricos</p>
-            <p className="text-sm text-gray-600 mt-1">Desde el inicio del sistema</p>
-          </div>
-        </CardBody>
-      </Card>
+        {/* Gráfico de usuarios más activos */}
+        {datosUsuarios && datosUsuarios.labels.length > 0 && (
+          <Card className="border-none shadow-lg">
+            <CardHeader className="bg-white px-6 pt-5 pb-3 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <IoPeople className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Usuarios Más Activos</h3>
+                  <p className="text-xs text-gray-600 mt-0.5">Top 5 del período</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-6">
+              <div style={{ height: '300px' }}>
+                <Doughnut 
+                  data={datosUsuarios} 
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                    },
+                  }} 
+                />
+              </div>
+            </CardBody>
+          </Card>
+        )}
+      </div>
+
+      {/* Gráfico de expedientes más consultados */}
+      {datosExpedientes && datosExpedientes.labels.length > 0 && (
+        <Card className="border-none shadow-lg">
+          <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Expedientes Más Consultados</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Top 5 de expedientes con más actividad
+              </p>
+            </div>
+          </CardHeader>
+          <CardBody className="p-8">
+            <div style={{ height: '300px' }}>
+              <Bar 
+                data={datosExpedientes} 
+                options={{
+                  ...opcionesGraficos,
+                  indexAxis: 'y',
+                  plugins: {
+                    legend: {
+                      display: false,
+                    },
+                  },
+                }} 
+              />
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 };

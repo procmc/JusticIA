@@ -94,6 +94,7 @@ const Bitacora = () => {
     try {
       const stats = await bitacoraService.obtenerEstadisticas(30);
       setEstadisticas(stats);
+      console.log(stats);
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
       Toast.error('Error al cargar estadísticas');
@@ -213,6 +214,12 @@ const Bitacora = () => {
       
       // Exportar a PDF
       exportarBitacoraPDF(todosLosRegistros, filtros);
+      
+      // Registrar la exportación en bitácora (async sin await para no bloquear)
+      bitacoraService.registrarExportacion().catch(err => 
+        console.error('Error al registrar exportación:', err)
+      );
+      
       Toast.success(`PDF generado con ${todosLosRegistros.length} registros`);
     } catch (error) {
       console.error('Error al exportar PDF:', error);

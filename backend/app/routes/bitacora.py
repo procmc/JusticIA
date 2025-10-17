@@ -168,3 +168,28 @@ async def obtener_historial_expediente(
             status_code=500,
             detail=f"Error al obtener historial: {str(e)}"
         )
+
+
+@router.post("/registrar-exportacion")
+async def registrar_exportacion(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """
+    Registra la acción de exportación de bitácora a PDF.
+    Se llama desde el frontend después de generar el PDF exitosamente.
+    """
+    try:
+        await bitacora_service.registrar(
+            db=db,
+            usuario_id=current_user["user_id"],
+            tipo_accion_id=TiposAccion.EXPORTAR_BITACORA,
+            texto="Exportación de reporte de bitácora a PDF"
+        )
+        
+        return {"success": True, "message": "Exportación registrada en bitácora"}
+        
+    except Exception as e:
+        logger.error(f"Error registrando exportación: {e}")
+        # No lanzamos error para no bloquear la exportación
+        return {"success": False, "message": "Error al registrar exportación"}

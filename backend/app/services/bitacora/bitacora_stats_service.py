@@ -206,6 +206,36 @@ class BitacoraStatsService:
                 for item in acciones_por_tipo_raw
             ]
             
+            # Top 5 usuarios más activos
+            usuarios_activos_raw = self.repo.obtener_usuarios_mas_activos(db, inicio_30dias, ahora, limite=5)
+            usuarios_mas_activos = [
+                {
+                    "nombre": item["nombre"],
+                    "cantidad": item["cantidad"]
+                }
+                for item in usuarios_activos_raw
+            ]
+            
+            # Top 5 expedientes más consultados
+            expedientes_raw = self.repo.obtener_expedientes_mas_consultados(db, inicio_30dias, ahora, limite=5)
+            expedientes_mas_consultados = [
+                {
+                    "numero": item["numero"],
+                    "cantidad": item["cantidad"]
+                }
+                for item in expedientes_raw
+            ]
+            
+            # Actividad por día (últimos 7 días)
+            actividad_diaria_raw = self.repo.obtener_actividad_por_dia(db, inicio_7dias, ahora)
+            actividad_por_dia = [
+                {
+                    "fecha": item["fecha"].isoformat() if item["fecha"] else None,
+                    "cantidad": item["cantidad"]
+                }
+                for item in actividad_diaria_raw
+            ]
+            
             return {
                 "registrosHoy": registros_hoy,
                 "registros7Dias": registros_7dias,
@@ -213,7 +243,10 @@ class BitacoraStatsService:
                 "totalRegistros": total_registros,
                 "usuariosUnicos": usuarios_unicos,
                 "expedientesUnicos": expedientes_unicos,
-                "accionesPorTipo": acciones_por_tipo
+                "accionesPorTipo": acciones_por_tipo,
+                "usuariosMasActivos": usuarios_mas_activos,
+                "expedientesMasConsultados": expedientes_mas_consultados,
+                "actividadPorDia": actividad_por_dia
             }
             
         except Exception as e:
@@ -225,7 +258,10 @@ class BitacoraStatsService:
                 "totalRegistros": 0,
                 "usuariosUnicos": 0,
                 "expedientesUnicos": 0,
-                "accionesPorTipo": []
+                "accionesPorTipo": [],
+                "usuariosMasActivos": [],
+                "expedientesMasConsultados": [],
+                "actividadPorDia": []
             }
     
     
