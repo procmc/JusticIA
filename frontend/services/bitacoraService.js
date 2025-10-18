@@ -21,7 +21,7 @@ class BitacoraService {
    * 
    * @param {Object} filtros - Filtros de búsqueda
    * @param {string} filtros.usuario - Nombre o correo de usuario
-   * @param {number} filtros.tipoAccion - ID del tipo de acción (1-8)
+   * @param {number} filtros.tipoAccion - ID del tipo de acción (1-15)
    * @param {string} filtros.expediente - Número de expediente
    * @param {string} filtros.fechaInicio - Fecha inicio ISO
    * @param {string} filtros.fechaFin - Fecha fin ISO
@@ -241,14 +241,21 @@ class BitacoraService {
    */
   _mapearTipoAccion(idTipo) {
     const tipos = {
-      1: 'Consulta',
+      1: 'Búsqueda de Casos Similares',
       2: 'Carga de Documentos',
-      3: 'Búsqueda de Casos Similares',
-      4: 'Inicio de Sesión',
-      5: 'Creación de Usuario',
-      6: 'Edición de Usuario',
-      7: 'Consulta de Bitácora',
-      8: 'Exportación de Bitácora'
+      3: 'Login',
+      4: 'Logout',
+      5: 'Cambio de Contraseña',
+      6: 'Recuperación de Contraseña',
+      7: 'Crear Usuario',
+      8: 'Editar Usuario',
+      9: 'Consultar Usuarios',
+      10: 'Descargar Archivo',
+      11: 'Listar Archivos',
+      12: 'Consulta RAG',
+      13: 'Generar Resumen',
+      14: 'Consultar Bitácora',
+      15: 'Exportar Bitácora'
     };
     
     return tipos[idTipo] || `Acción ${idTipo}`;

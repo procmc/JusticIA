@@ -179,7 +179,7 @@ class SimilarityAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=usuario_id,
-                tipo_accion_id=TiposAccion.BUSQUEDA_SIMILARES,  # Usamos el mismo tipo ya que está relacionado
+                tipo_accion_id=TiposAccion.GENERAR_RESUMEN,
                 texto=texto_registro,
                 expediente_id=expediente_db_id,
                 info_adicional=info

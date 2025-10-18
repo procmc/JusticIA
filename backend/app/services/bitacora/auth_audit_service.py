@@ -113,7 +113,7 @@ class AuthAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=usuario_id,
-                tipo_accion_id=TiposAccion.LOGIN,
+                tipo_accion_id=TiposAccion.LOGOUT,
                 texto=f"Cierre de sesión: {email}",
                 info_adicional={
                     "email": email,
@@ -153,7 +153,7 @@ class AuthAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=usuario_id,
-                tipo_accion_id=TiposAccion.EDITAR_USUARIO,
+                tipo_accion_id=TiposAccion.CAMBIO_CONTRASENA,
                 texto=texto,
                 info_adicional={
                     "tipo_cambio": tipo_cambio,
@@ -184,7 +184,7 @@ class AuthAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=None,  # No tenemos usuario autenticado
-                tipo_accion_id=TiposAccion.EDITAR_USUARIO,
+                tipo_accion_id=TiposAccion.RECUPERACION_CONTRASENA,
                 texto=f"Solicitud de recuperación de contraseña para: {email}",
                 info_adicional={
                     "email": email,
@@ -224,7 +224,7 @@ class AuthAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=None,  # No tenemos usuario autenticado
-                tipo_accion_id=TiposAccion.EDITAR_USUARIO,
+                tipo_accion_id=TiposAccion.RECUPERACION_CONTRASENA,
                 texto=texto,
                 info_adicional={
                     "email": email,

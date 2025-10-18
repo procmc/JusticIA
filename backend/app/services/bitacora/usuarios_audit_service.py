@@ -39,7 +39,7 @@ class UsuariosAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=str(usuario_admin_id),
-                tipo_accion_id=TiposAccion.CONSULTAR_BITACORA,
+                tipo_accion_id=TiposAccion.CONSULTAR_USUARIOS,
                 texto=f"Consulta de lista de usuarios del sistema",
                 info_adicional={
                     "accion": "listar_usuarios",
@@ -73,7 +73,7 @@ class UsuariosAuditService:
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=str(usuario_admin_id),
-                tipo_accion_id=TiposAccion.CONSULTAR_BITACORA,
+                tipo_accion_id=TiposAccion.CONSULTAR_USUARIOS,
                 texto=f"Consulta de usuario: {usuario_consultado_id}",
                 info_adicional={
                     "usuario_consultado_id": usuario_consultado_id,
