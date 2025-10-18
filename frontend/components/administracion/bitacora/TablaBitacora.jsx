@@ -13,10 +13,9 @@ import {
   CardBody,
   CardHeader
 } from '@heroui/react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { IoList, IoDocumentText } from 'react-icons/io5';
 import { EyeIcon } from '../../icons';
+import { formatearSoloFechaCostaRica, formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
 const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion = null, onCambiarPagina = null }) => {
   // Si hay paginación server-side, usarla; si no, paginación client-side (legacy)
@@ -82,10 +81,10 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion =
         return (
           <div className="flex flex-col">
             <p className="font-medium text-small">
-              {fechaValida ? format(fecha, 'dd/MM/yyyy', { locale: es }) : 'Fecha inválida'}
+              {fechaValida ? formatearSoloFechaCostaRica(registro.fechaHora) : 'Fecha inválida'}
             </p>
             <p className="text-tiny text-default-700">
-              {fechaValida ? format(fecha, 'HH:mm:ss') : '--:--:--'}
+              {fechaValida ? formatearSoloHoraCostaRica(registro.fechaHora) : '--:--:--'}
             </p>
           </div>
         );

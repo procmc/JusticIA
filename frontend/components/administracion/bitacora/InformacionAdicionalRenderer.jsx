@@ -1,5 +1,6 @@
 import React from 'react';
 import { Chip } from '@heroui/react';
+import { formatearFechaHoraCompleta } from '../../../utils/dateUtils';
 
 /**
  * InformacionAdicionalRenderer
@@ -34,6 +35,24 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  };
+
+  // Función helper para detectar si un valor es un timestamp y formatearlo
+  const formatearSiEsTimestamp = (valor, label) => {
+    // Detectar si es un timestamp basándose en el label o el formato del valor
+    const esTimestamp = 
+      (typeof label === 'string' && label.toLowerCase().includes('timestamp')) ||
+      (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(valor));
+    
+    if (esTimestamp && valor) {
+      try {
+        return formatearFechaHoraCompleta(valor);
+      } catch (error) {
+        return valor;
+      }
+    }
+    
+    return valor;
   };
 
   // Función helper para renderizar un campo simple
@@ -110,6 +129,9 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
     }
 
     // Valor simple
+    // Formatear si es un timestamp
+    const valorFormateado = formatearSiEsTimestamp(valor, label);
+    
     return (
       <div key={label} className={`flex flex-col space-y-1 bg-gray-50 p-3 rounded-lg ${fullWidth ? 'col-span-2' : ''}`}>
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -117,15 +139,15 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         </span>
         {badge ? (
           <Chip size="sm" variant="flat" color={highlight ? "success" : "default"}>
-            {String(valor)}
+            {String(valorFormateado)}
           </Chip>
         ) : codigo ? (
           <code className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border border-gray-200">
-            {String(valor)}
+            {String(valorFormateado)}
           </code>
         ) : (
           <span className={`text-sm font-medium ${highlight ? 'text-primary-600 font-semibold' : 'text-gray-900'}`}>
-            {String(valor)}
+            {String(valorFormateado)}
           </span>
         )}
       </div>

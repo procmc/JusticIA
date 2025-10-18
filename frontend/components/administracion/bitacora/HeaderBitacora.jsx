@@ -109,21 +109,18 @@ const HeaderBitacora = ({
             </Tabs>
 
             {/* Indicador de registros y botón de exportación */}
-            {/* Indicador de registros y botón de exportación */}
             {vistaActual === 'registros' && (
               <div className="flex items-center gap-3">
-                {/* Contador de registros */}
-                {filtrosActivos && (
-                  <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
-                    <IoFunnel className="text-white/90 text-sm" />
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-white/90 font-semibold text-sm">{paginacion.total}</span>
-                      <span className="text-white/70 text-xs font-medium uppercase">
-                        {paginacion.total === 1 ? 'Registro' : 'Registros'}
-                      </span>
-                    </div>
+                {/* Contador de registros - Siempre visible */}
+                <div className="flex items-center gap-2 bg-white/15 px-4 py-2 rounded-lg border border-white/30">
+                  <IoFunnel className="text-white/90 text-sm" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/90 font-semibold text-sm">{paginacion.total}</span>
+                    <span className="text-white/70 text-xs font-medium uppercase">
+                      {paginacion.total === 1 ? 'Registro' : 'Registros'} {filtrosActivos && 'encontrados'}
+                    </span>
                   </div>
-                )}
+                </div>
                 
                 {/* Botón de exportar PDF */}
                 <Button
