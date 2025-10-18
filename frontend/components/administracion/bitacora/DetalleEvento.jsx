@@ -3,10 +3,9 @@ import {
   Chip,
   Divider
 } from '@heroui/react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import DrawerGeneral from '../../ui/DrawerGeneral';
 import InformacionAdicionalRenderer from './InformacionAdicionalRenderer';
+import { formatearSoloFechaCostaRica, formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
 const DetalleEvento = ({ registro, isOpen, onClose }) => {
   if (!registro) return null;
@@ -71,32 +70,13 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
               </div>
               <div className="ml-4 space-y-1">
                 <p className="font-semibold text-gray-900 text-lg">
-                  {format(new Date(registro.fechaHora), 'dd/MM/yyyy', { locale: es })}
+                  {formatearSoloFechaCostaRica(registro.fechaHora)}
                 </p>
                 <p className="text-sm text-gray-600 font-mono">
-                  {format(new Date(registro.fechaHora), 'HH:mm:ss')}
+                  {formatearSoloHoraCostaRica(registro.fechaHora)}
                 </p>
               </div>
             </div>
-
-            {registro.estado && (
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Estado</p>
-                </div>
-                <div className="ml-4">
-                  <Chip 
-                    color={obtenerColorEstado(registro.estado)}
-                    variant="flat"
-                    size="md"
-                    className="font-medium"
-                  >
-                    {registro.estado}
-                  </Chip>
-                </div>
-              </div>
-            )}
 
             <div className="flex flex-col space-y-2">
               <div className="flex items-center gap-2">

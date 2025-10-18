@@ -18,8 +18,6 @@ import {
   DropdownItem,
   Tooltip
 } from '@heroui/react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { 
   IoPeople, 
   IoEllipsisVertical, 
@@ -30,6 +28,7 @@ import {
   IoPerson,
   IoPersonAdd
 } from 'react-icons/io5';
+import { formatearSoloFechaCostaRica, formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
 const TablaUsuarios = ({ 
   usuarios, 
@@ -74,11 +73,7 @@ const TablaUsuarios = ({
   const formatearFecha = (fechaString, esUltimoAcceso = false) => {
     if (!fechaString) return esUltimoAcceso ? 'Nunca' : 'N/A';
     try {
-      if (typeof window === 'undefined') {
-        // En el servidor, devolver un formato básico
-        return new Date(fechaString).toLocaleDateString('es-ES');
-      }
-      return format(new Date(fechaString), 'dd/MM/yyyy', { locale: es });
+      return formatearSoloFechaCostaRica(fechaString);
     } catch (error) {
       return esUltimoAcceso ? 'Nunca' : 'N/A';
     }
@@ -87,15 +82,7 @@ const TablaUsuarios = ({
   const formatearHora = (fechaString) => {
     if (!fechaString) return '';
     try {
-      if (typeof window === 'undefined') {
-        // En el servidor, devolver un formato básico
-        return new Date(fechaString).toLocaleTimeString('es-ES', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          second: '2-digit'
-        });
-      }
-      return format(new Date(fechaString), 'HH:mm:ss');
+      return formatearSoloHoraCostaRica(fechaString);
     } catch (error) {
       return '';
     }
