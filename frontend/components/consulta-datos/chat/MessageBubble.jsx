@@ -121,7 +121,40 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         .replace(/<[^>]+>/g, '');
     };
 
-    const cleanContent = preprocessContent(content);
+    // Función para convertir rutas de archivo en enlaces descargables
+    const processFileLinks = (text) => {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      let resultado = text;
+      
+      // Patrón 1: Formato correcto con paréntesis (uploads/...)
+      const rutaParentesisPattern = /\(([^)]*uploads\/[^)]+)\)/g;
+      resultado = resultado.replace(rutaParentesisPattern, (match, ruta) => {
+        const rutaLimpia = ruta.trim();
+        const downloadUrl = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaLimpia)}`;
+        const fileName = rutaLimpia.split('/').pop() || 'archivo';
+        
+        return `([📄 ${fileName}](${downloadUrl}))`;
+      });
+      
+      // Patrón 2: Cualquier ruta uploads/ suelta en el texto (como en las tablas)
+      const rutaSueltaPattern = /(uploads\/[\w\-\.\/]+)/g;
+      resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
+        // Solo convertir si no está ya dentro de un enlace markdown
+        if (resultado.indexOf(`[📄`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`[📄`)) {
+          return match; // Ya está procesada
+        }
+        
+        const rutaLimpia = ruta.trim();
+        const downloadUrl = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaLimpia)}`;
+        const fileName = rutaLimpia.split('/').pop() || 'archivo';
+        
+        return `[📄 ${fileName}](${downloadUrl})`;
+      });
+      
+      return resultado;
+    };
+
+    const cleanContent = processFileLinks(preprocessContent(content));
 
     // Componentes personalizados para elementos Markdown
     const components = {
@@ -206,16 +239,35 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       ),
       
       // Enlaces
-      a: ({ href, children }) => (
-        <a 
-          href={href} 
-          className="text-blue-600 hover:text-blue-800 underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {children}
-        </a>
-      ),
+      a: ({ href, children }) => {
+        // Si es un enlace de descarga de archivo
+        if (href && href.includes('/archivos/download')) {
+          return (
+            <a 
+              href={href} 
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Hacer clic para descargar el archivo"
+            >
+              {children}
+            </a>
+          );
+        }
+        
+        // Enlace normal
+        return (
+          <a 
+            href={href} 
+            className="text-blue-600 hover:text-blue-800 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        );
+      },
       
       // Citas/blockquotes
       blockquote: ({ children }) => (

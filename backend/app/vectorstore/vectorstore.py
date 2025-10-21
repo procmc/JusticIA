@@ -504,7 +504,7 @@ async def get_expedient_documents(expedient_id: str) -> List[Document]:
         query_results = client.query(
             collection_name=COLLECTION_NAME,
             filter=f'numero_expediente == "{expedient_id}"',
-            output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "indice_chunk", "tipo_documento"],
+            output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "indice_chunk", "tipo_documento", "meta"],
             limit=1000  # Límite alto para expedientes grandes
         )
         
@@ -521,13 +521,18 @@ async def get_expedient_documents(expedient_id: str) -> List[Document]:
             try:
                 content = doc.get("texto", "")
                 if content.strip():
+                    # Extraer ruta del campo meta
+                    meta_data = doc.get("meta", {})
+                    ruta_archivo = meta_data.get("ruta_archivo", "") if isinstance(meta_data, dict) else ""
+                    
                     metadata = {
                         "numero_expediente": doc.get("numero_expediente", expedient_id),
                         "id_expediente": doc.get("numero_expediente", expedient_id),
                         "archivo": doc.get("nombre_archivo", ""),
                         "chunk_id": doc.get("id_chunk", ""),
                         "indice_chunk": doc.get("indice_chunk", 0),
-                        "tipo_documento": doc.get("tipo_documento", "")
+                        "tipo_documento": doc.get("tipo_documento", ""),
+                        "ruta_archivo": ruta_archivo
                     }
                     
                     langchain_docs.append(Document(
