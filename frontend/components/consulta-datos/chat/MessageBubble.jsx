@@ -148,7 +148,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         const downloadUrl = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaLimpia)}`;
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
         
-        return `[📄 ${fileName}](${downloadUrl})`;
+        return `[${fileName}](${downloadUrl})`;
       });
       
       return resultado;
