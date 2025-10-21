@@ -19,12 +19,24 @@ def format_document_with_metadata(doc: Document) -> str:
     tipo_doc = metadata.get("tipo_documento", "").strip()
     tipo_doc_str = f"**Tipo:** {tipo_doc}\n" if tipo_doc else ""
     
+    # Ruta del archivo (si existe)
+    ruta_archivo = metadata.get("ruta_archivo", "").strip()
+    ruta_str = f"**Ruta:** {ruta_archivo}\n" if ruta_archivo else ""
+    
+    # Usar el nombre real del archivo desde la ruta si está disponible
+    if ruta_archivo:
+        nombre_real_archivo = ruta_archivo.split('/')[-1]
+        archivo_mostrar = nombre_real_archivo
+    else:
+        archivo_mostrar = metadata.get('archivo', 'N/A')
+    
     # Construir header con metadata
     header = (
         f"\n**Expediente:** {metadata.get('expediente_numero', 'N/A')} | "
-        f"**Archivo:** {metadata.get('archivo', 'N/A')} | "
+        f"**Archivo:** {archivo_mostrar} | "
         f"**Chunk:** {metadata.get('indice_chunk', 0)}{paginas_str}\n"
         f"{tipo_doc_str}"
+        f"{ruta_str}"
         f"---\n"
     )
     

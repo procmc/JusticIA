@@ -127,6 +127,7 @@ class DynamicJusticIARetriever(BaseRetriever):
                         
                         # Extraer metadata completa de Milvus
                         milvus_metadata = doc.get("metadata", {})
+                        meta_data = milvus_metadata.get("meta", {})
                         
                         # Construir metadata enriquecida para el LLM
                         enriched_metadata = {
@@ -145,6 +146,9 @@ class DynamicJusticIARetriever(BaseRetriever):
                             
                             # Tipo de documento (sentencia, resolución, etc.)
                             "tipo_documento": milvus_metadata.get("tipo_documento", ""),
+                            
+                            # Ruta del archivo para descarga (desde meta)
+                            "ruta_archivo": meta_data.get("ruta_archivo", ""),
                             
                             # Score de similitud
                             MF.SIMILARITY_SCORE: doc.get("similarity_score", 0.0)

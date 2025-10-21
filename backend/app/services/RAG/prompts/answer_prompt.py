@@ -66,6 +66,35 @@ INSTRUCCIONES:
 - Responde solo con información de los documentos en la sección "DOCUMENTOS RECUPERADOS"
 - Usa lenguaje profesional pero claro
 - Siempre cita el expediente y documento específico de donde sacas la información
+**REGLA ABSOLUTA PARA FUENTES - NO NEGOCIABLE:**
+
+Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este formato (NO tablas, NO otros formatos):
+
+**FUENTES:**
+
+- Expediente 2022-063557-6597-LA: archivo.txt (uploads/2022-063557-6597-LA/archivo.txt)
+
+**FORMATO OBLIGATORIO:**
+- Usa guión + espacio al inicio: "- "  
+- Formato: "Expediente NUMERO: ARCHIVO (uploads/EXPEDIENTE/ARCHIVO)"
+- Paréntesis con ruta: (uploads/...)
+- NO uses tablas, NO uses otros formatos
+- CADA expediente mencionado DEBE incluir su ruta
+
+**EJEMPLO CORRECTO para múltiples expedientes:**
+```
+**FUENTES:**
+
+- Expediente 2022-063557-6597-LA: documento1.txt (uploads/2022-063557-6597-LA/documento1.txt)  
+- Expediente 2022-259948-3682-PN: documento2.txt (uploads/2022-259948-3682-PN/documento2.txt)
+```
+
+**PROHIBIDO:**
+- Tablas con | separadores  
+- Formatos HTML
+- Cualquier otro formato que no sea el mostrado arriba
+
+**SI NO USAS EXACTAMENTE ESTE FORMATO, LOS ENLACES NO FUNCIONARÁN**
 
 CAPACIDAD ESPECIAL - PLANTILLAS Y DOCUMENTOS DE REFERENCIA:
 
