@@ -2,11 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
+from sqlalchemy.orm import Session
 from app.services.RAG.rag_chain_service import get_rag_service
 from app.services.RAG.session_store import conversation_store
 from app.auth.jwt_auth import require_usuario_judicial
+from app.db.database import get_db
+from app.services.bitacora.rag_audit_service import rag_audit_service
 import logging
 import json
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +36,11 @@ class UpdateExpedienteContextRequest(BaseModel):
 async def consulta_con_historial_stream(
     http_request: Request,
     request: ConsultaConHistorialRequest,
-    rag_service=Depends(get_rag_service)
+    rag_service=Depends(get_rag_service),
+    current_user: dict = Depends(require_usuario_judicial),
+    db: Session = Depends(get_db)
 ):
+    start_time = time.time()
 
     try:
         # Validar entrada
@@ -55,15 +62,40 @@ async def consulta_con_historial_stream(
         logger.info(f"Consulta con historial - Session: {request.session_id}")
         logger.info(f"Query: {query_to_use[:100]}...")
         logger.info(f"Expediente: {request.expediente_number or 'None'}")
+        logger.info(f"Usuario: {current_user.get('user_id', 'Unknown')} ({current_user.get('username', 'No email')})")
         
         # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
-        return await rag_service.consulta_con_historial_streaming(
+        response = await rag_service.consulta_con_historial_streaming(
             pregunta=query_to_use,
             session_id=request.session_id,
             top_k=min(request.top_k, 30),
             expediente_filter=request.expediente_number,
             http_request=http_request
         )
+        
+        # 🔥 AUDITORÍA: Registrar la consulta RAG exitosa
+        end_time = time.time()
+        tiempo_procesamiento = round(end_time - start_time, 2)
+        
+        # Determinar tipo de consulta
+        tipo_consulta = "expediente" if request.expediente_number else "general"
+        
+        # Registrar en bitácora (async pero sin esperar para no afectar performance)
+        try:
+            await rag_audit_service.registrar_consulta_rag(
+                db=db,
+                usuario_id=current_user.get("user_id"),  # Usar cédula en lugar de email
+                pregunta=request.query,
+                session_id=request.session_id,
+                tipo_consulta=tipo_consulta,
+                expediente_numero=request.expediente_number,
+                tiempo_procesamiento=tiempo_procesamiento
+            )
+        except Exception as audit_error:
+            # Log error pero no fallar la consulta
+            logger.warning(f"Error en auditoría RAG: {audit_error}")
+        
+        return response
     
     except HTTPException:
         raise
@@ -78,7 +110,8 @@ async def consulta_con_historial_stream(
 @router.post("/update-expediente-context")
 async def update_expediente_context(
     request: UpdateExpedienteContextRequest,
-    rag_service=Depends(get_rag_service)
+    rag_service=Depends(get_rag_service),
+    current_user: dict = Depends(require_usuario_judicial)
 ):
     """
     Actualiza el contexto de expediente en una sesión sin hacer consulta.
