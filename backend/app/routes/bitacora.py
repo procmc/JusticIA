@@ -111,6 +111,39 @@ async def obtener_estadisticas(
         )
 
 
+@router.get("/estadisticas-rag", response_model=dict)
+async def obtener_estadisticas_rag(
+    dias: int = Query(30, ge=1, le=365, description="Número de días hacia atrás"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_administrador)
+):
+    """
+    Obtiene estadísticas específicas de consultas RAG distinguiendo entre
+    consultas generales y consultas por expediente específico.
+    
+    Retorna:
+    - totalConsultasRAG: Total de consultas RAG
+    - consultasGenerales: Consultas sin expediente específico
+    - consultasExpediente: Consultas con expediente específico
+    - porcentajeGenerales: % de consultas generales
+    - porcentajeExpedientes: % de consultas por expediente
+    - usuariosActivosRAG: Usuarios únicos que usan RAG
+    - expedientesConsultadosRAG: Expedientes únicos consultados
+    - expedientesMasConsultadosRAG: Top 5 expedientes más consultados
+    - actividadRAGPorDia: Actividad diaria últimos 7 días
+    """
+    try:
+        estadisticas_rag = bitacora_stats_service.obtener_estadisticas_rag(db=db, dias=dias)
+        return estadisticas_rag
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo estadísticas RAG: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estadísticas RAG: {str(e)}"
+        )
+
+
 @router.get("/mi-historial", response_model=List[dict])
 async def obtener_mi_historial(
     limite: int = Query(100, ge=1, le=500, description="Número máximo de registros"),

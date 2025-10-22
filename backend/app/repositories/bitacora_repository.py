@@ -702,7 +702,8 @@ class BitacoraRepository:
         self,
         db: Session,
         fecha_inicio: datetime,
-        fecha_fin: datetime
+        fecha_fin: datetime,
+        tipo_accion_id: Optional[int] = None
     ) -> List[dict]:
         """
         Obtiene la cantidad de registros por día en un rango de fechas.
@@ -711,6 +712,7 @@ class BitacoraRepository:
             db: Sesión de base de datos
             fecha_inicio: Fecha de inicio del rango
             fecha_fin: Fecha de fin del rango
+            tipo_accion_id: Filtrar por tipo de acción específico (opcional)
             
         Returns:
             List[dict]: Lista de {'fecha': date, 'cantidad': int}
@@ -719,14 +721,21 @@ class BitacoraRepository:
             # Usar CAST para convertir datetime a date (compatible con SQL Server)
             fecha_columna = cast(T_Bitacora.CF_Fecha_hora, Date)
             
+            # Construir condiciones WHERE
+            condiciones = [
+                T_Bitacora.CF_Fecha_hora >= fecha_inicio,
+                T_Bitacora.CF_Fecha_hora <= fecha_fin
+            ]
+            
+            # Agregar filtro por tipo de acción si se especifica
+            if tipo_accion_id is not None:
+                condiciones.append(T_Bitacora.CN_Id_tipo_accion == tipo_accion_id)
+            
             query = select(
                 fecha_columna.label('fecha'),
                 func.count(T_Bitacora.CN_Id_bitacora).label('cantidad')
             ).where(
-                and_(
-                    T_Bitacora.CF_Fecha_hora >= fecha_inicio,
-                    T_Bitacora.CF_Fecha_hora <= fecha_fin
-                )
+                and_(*condiciones)
             ).group_by(
                 fecha_columna
             ).order_by(

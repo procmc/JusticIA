@@ -123,6 +123,37 @@ class BitacoraService {
   }
 
   /**
+   * Obtener estadísticas específicas de RAG
+   * Solo accesible para administradores
+   */
+  async obtenerEstadisticasRAG(dias = 30) {
+    try {
+      const data = await httpService.get(
+        `${this.baseURL}/estadisticas-rag?dias=${dias}`
+      );
+      
+      return {
+        totalConsultasRAG: data.totalConsultasRAG || 0,
+        consultasGenerales: data.consultasGenerales || 0,
+        consultasExpediente: data.consultasExpediente || 0,
+        porcentajeGenerales: data.porcentajeGenerales || 0,
+        porcentajeExpedientes: data.porcentajeExpedientes || 0,
+        usuariosActivosRAG: data.usuariosActivosRAG || 0,
+        expedientesConsultadosRAG: data.expedientesConsultadosRAG || 0,
+        expedientesMasConsultadosRAG: data.expedientesMasConsultadosRAG || [],
+        actividadRAGPorDia: data.actividadRAGPorDia || [],
+        periodo: data.periodo || {}
+      };
+      
+    } catch (error) {
+      console.error('Error obteniendo estadísticas RAG:', error);
+      throw new Error(
+        error.message || 'Error al obtener estadísticas RAG'
+      );
+    }
+  }
+
+  /**
    * Obtener historial del usuario autenticado
    * Accesible para usuarios judiciales y administradores
    */
