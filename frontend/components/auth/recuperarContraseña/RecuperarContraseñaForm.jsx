@@ -148,47 +148,82 @@ const RecuperarContraseñaForm = () => {
 
     // PASO 3: Cambiar contraseña
     const handleCambiarContraseña = async (e) => {
-        e.preventDefault();
-
-        const newErrors = {};
-
-        if (!formData.nuevaContraseña.trim()) {
-            newErrors.nuevaContraseña = "La nueva contraseña es requerida";
-        } else if (formData.nuevaContraseña.length < 8) {
-            newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
-        }
-
-        if (!formData.confirmarContraseña.trim()) {
-            newErrors.confirmarContraseña = "Debe confirmar la nueva contraseña";
-        } else if (formData.nuevaContraseña !== formData.confirmarContraseña) {
-            newErrors.confirmarContraseña = "Las contraseñas no coinciden";
-        }
-
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
-
-        setLoading(true);
-        setErrors({});
-
         try {
-            const result = await cambiarContraseñaRecuperacionService(
-                verificationToken,
-                formData.nuevaContraseña
-            );
+            e.preventDefault();
 
-            if (result.error) {
-                Toast.error("Error", result.message);
-            } else {
-                Toast.success("Éxito", "Contraseña recuperada exitosamente");
-                setTimeout(() => {
-                    router.push('/auth/login');
-                }, 2000);
+            const newErrors = {};
+
+            if (!formData.nuevaContraseña.trim()) {
+                newErrors.nuevaContraseña = "La nueva contraseña es requerida";
+            } else if (formData.nuevaContraseña.length < 8) {
+                newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
+            }
+
+            if (!formData.confirmarContraseña.trim()) {
+                newErrors.confirmarContraseña = "Debe confirmar la nueva contraseña";
+            } else if (formData.nuevaContraseña !== formData.confirmarContraseña) {
+                newErrors.confirmarContraseña = "Las contraseñas no coinciden";
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                return;
+            }
+
+            setLoading(true);
+            setErrors({});
+
+            try {
+                const result = await cambiarContraseñaRecuperacionService(
+                    verificationToken,
+                    formData.nuevaContraseña
+                );
+
+                if (result.error) {
+                    // Detectar error específico: contraseña nueva igual a la actual
+                    const mensajeError = result.message || "Error al cambiar contraseña";
+                    
+                    if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
+                        mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
+                        // Mostrar error en el campo de nueva contraseña
+                        setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
+                    } else {
+                        // Otros errores se muestran como toast
+                        Toast.error("Error", mensajeError);
+                    }
+                } else {
+                    Toast.success("Éxito", "Contraseña recuperada exitosamente");
+                    setTimeout(() => {
+                        router.push('/auth/login');
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error("Error al cambiar contraseña:", error);
+                
+                // Intentar extraer mensaje del error
+                const mensajeError = error.message || "Error inesperado al cambiar contraseña";
+                
+                // Verificar si es el error de contraseña repetida
+                if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
+                    mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
+                    setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
+                } else {
+                    Toast.error("Error", mensajeError);
+                }
+            } finally {
+                setLoading(false);
             }
         } catch (error) {
-            Toast.error("Error", "Error inesperado al cambiar contraseña");
-        } finally {
+            // Catch externo para capturar CUALQUIER error no manejado
+            console.error("Error no manejado en handleCambiarContraseña:", error);
+            const mensajeError = error.message || "Error inesperado";
+            
+            if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
+                mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
+                setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
+            } else {
+                Toast.error("Error", mensajeError);
+            }
             setLoading(false);
         }
     };
