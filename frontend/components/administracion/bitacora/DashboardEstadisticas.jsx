@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Chip, Button } from '@heroui/react';
+import React from 'react';
+import { Card, CardBody, CardHeader, Button } from '@heroui/react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,8 +14,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { IoDocumentText, IoPersonAdd, IoFolderOpen, IoToday, IoRefresh, IoPeople, IoCalendarOutline, IoStatsChart, IoChatbubbleEllipses, IoPieChart } from 'react-icons/io5';
-import bitacoraService from '../../../services/bitacoraService';
+import { IoDocumentText, IoPersonAdd, IoFolderOpen, IoToday, IoRefresh, IoChatbubbleEllipses, IoPieChart, IoCalendarOutline, IoPeople } from 'react-icons/io5';
 
 ChartJS.register(
   CategoryScale,
@@ -30,28 +29,58 @@ ChartJS.register(
   Filler
 );
 
-const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
-  // Las estadísticas RAG ahora vienen incluidas en las estadísticas principales
-  const estadisticasRAG = estadisticas?.rag;
-  const cargandoRAG = false; // Ya no cargamos por separado
+// Configuraciones de colores reutilizables
+const COLORES = {
+  azul: { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgb(59, 130, 246)' },
+  purpura: { bg: 'rgba(147, 51, 234, 0.8)', border: 'rgb(147, 51, 234)' },
+  naranja: { bg: 'rgba(249, 115, 22, 0.8)', border: 'rgb(249, 115, 22)' },
+  verde: { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgb(34, 197, 94)' },
+  rojo: { bg: 'rgba(239, 68, 68, 0.8)', border: 'rgb(239, 68, 68)' },
+  indigo: { bg: 'rgba(147, 51, 234, 0.8)', border: 'rgb(147, 51, 234)' },
+  gris: { bg: 'rgba(156, 163, 175, 0.5)', border: 'rgb(156, 163, 175)' }
+};
 
-  // Función para refrescar todas las estadísticas
-  const refreshTodasLasEstadisticas = async () => {
-    // Ahora solo necesitamos refrescar una vez ya que se cargan juntas
-    if (onRefresh) {
-      await onRefresh();
-    }
-  };
-  // Función para formatear números grandes de manera elegante
-  const formatearNumeroGrande = (numero) => {
-    if (numero >= 1000000000) {
-      return `${(numero / 1000000000).toFixed(1)}B`; // Billones
-    } else if (numero >= 1000000) {
-      return `${(numero / 1000000).toFixed(1)}M`; // Millones
-    } else if (numero >= 1000) {
-      return `${(numero / 1000).toFixed(1)}K`; // Miles
-    }
+const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
+  // Las estadísticas RAG vienen incluidas en las estadísticas principales
+  const estadisticasRAG = estadisticas?.rag;
+  
+  // Función utilitaria para formatear números
+  const formatearNumero = (numero) => {
+    if (!numero) return '0';
+    if (numero >= 1000000000) return `${(numero / 1000000000).toFixed(1)}B`;
+    if (numero >= 1000000) return `${(numero / 1000000).toFixed(1)}M`;
+    if (numero >= 1000) return `${(numero / 1000).toFixed(1)}K`;
     return numero.toLocaleString('es-ES');
+  };
+
+  // Función utilitaria para crear datasets
+  const crearDataset = (label, data, colores, tipo = 'bar') => ({
+    label,
+    data,
+    backgroundColor: Array.isArray(colores) ? colores.map(c => c.bg) : colores.bg,
+    borderColor: Array.isArray(colores) ? colores.map(c => c.border) : colores.border,
+    borderWidth: tipo === 'doughnut' ? 2 : 1,
+    ...(tipo === 'line' && { fill: true, tension: 0.4 })
+  });
+
+  // Función genérica para preparar datos de gráficos
+  const prepararDatosGrafico = (datos, config) => {
+    const { labelKey, valueKey, etiquetas, colores, limite } = config;
+    
+    if (!datos || datos.length === 0) return null;
+    
+    let datosOrdenados = datos;
+    if (limite) {
+      datosOrdenados = datos.sort((a, b) => b[valueKey] - a[valueKey]).slice(0, limite);
+    }
+    
+    const labels = etiquetas || datosOrdenados.map(item => item[labelKey]);
+    const values = datosOrdenados.map(item => item[valueKey]);
+    
+    return {
+      labels,
+      datasets: [crearDataset('Cantidad', values, colores)]
+    };
   };
 
   // Preparar datos para el gráfico de barras por tipo de acción
@@ -114,69 +143,37 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
   const prepararDatosUsuarios = () => {
     if (!estadisticas?.usuariosMasActivos || estadisticas.usuariosMasActivos.length === 0) return null;
 
-    return {
-      labels: estadisticas.usuariosMasActivos.map(u => u.nombre || 'Usuario desconocido'),
-      datasets: [
-        {
-          label: 'Acciones realizadas',
-          data: estadisticas.usuariosMasActivos.map(u => u.cantidad || 0),
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(147, 51, 234, 0.8)',
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(249, 115, 22, 0.8)',
-            'rgba(239, 68, 68, 0.8)',
-          ],
-          borderColor: [
-            'rgb(59, 130, 246)',
-            'rgb(147, 51, 234)',
-            'rgb(34, 197, 94)',
-            'rgb(249, 115, 22)',
-            'rgb(239, 68, 68)',
-          ],
-          borderWidth: 2,
-        },
-      ],
-    };
+    return prepararDatosGrafico(estadisticas.usuariosMasActivos, {
+      labelKey: 'nombre',
+      valueKey: 'cantidad',
+      colores: [COLORES.azul, COLORES.purpura, COLORES.verde, COLORES.naranja, COLORES.rojo],
+      limite: 5
+    });
   };
 
   // Preparar datos para expedientes más consultados (Top 5)
   const prepararDatosExpedientes = () => {
     if (!estadisticas?.expedientesMasConsultados || estadisticas.expedientesMasConsultados.length === 0) return null;
 
-    return {
-      labels: estadisticas.expedientesMasConsultados.map(e => e.numero || 'Sin número'),
-      datasets: [
-        {
-          label: 'Consultas',
-          data: estadisticas.expedientesMasConsultados.map(e => e.cantidad || 0),
-          backgroundColor: 'rgba(34, 197, 94, 0.8)',
-          borderColor: 'rgb(34, 197, 94)',
-          borderWidth: 1,
-        },
-      ],
-    };
+    return prepararDatosGrafico(estadisticas.expedientesMasConsultados, {
+      labelKey: 'numero',
+      valueKey: 'cantidad',
+      colores: COLORES.verde
+    });
   };
 
   // Preparar datos para actividad por día (últimos 7 días)
   const prepararDatosActividadDiaria = () => {
     if (!estadisticas?.actividadPorDia || estadisticas.actividadPorDia.length === 0) return null;
 
+    const etiquetas = estadisticas.actividadPorDia.map(d => {
+      const fecha = new Date(d.fecha);
+      return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    });
+
     return {
-      labels: estadisticas.actividadPorDia.map(d => {
-        const fecha = new Date(d.fecha);
-        return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-      }),
-      datasets: [
-        {
-          label: 'Registros por día',
-          data: estadisticas.actividadPorDia.map(d => d.cantidad || 0),
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          fill: true,
-          tension: 0.4,
-        },
-      ],
+      labels: etiquetas,
+      datasets: [crearDataset('Registros por día', estadisticas.actividadPorDia.map(d => d.cantidad || 0), COLORES.azul, 'line')]
     };
   };
 
@@ -188,42 +185,20 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
   const prepararDatosRAG = () => {
     if (!estadisticasRAG) return null;
     
-    // Obtener valores, usar 0 si son undefined
     const generales = estadisticasRAG.consultasGenerales || 0;
     const expedientes = estadisticasRAG.consultasExpediente || 0;
     const total = generales + expedientes;
     
-    // Si no hay consultas RAG, mostrar gráfico con mensaje
     if (total === 0) {
       return {
         labels: ['Sin consultas RAG'],
-        datasets: [
-          {
-            data: [1],
-            backgroundColor: ['rgba(156, 163, 175, 0.5)'], // Gris claro
-            borderColor: ['rgb(156, 163, 175)'],
-            borderWidth: 1,
-          },
-        ],
+        datasets: [crearDataset('Sin datos', [1], COLORES.gris, 'doughnut')]
       };
     }
 
     return {
       labels: ['Consultas Generales', 'Consultas por Expediente'],
-      datasets: [
-        {
-          data: [generales, expedientes],
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',    // Azul para generales
-            'rgba(34, 197, 94, 0.8)',     // Verde para expedientes
-          ],
-          borderColor: [
-            'rgb(59, 130, 246)',
-            'rgb(34, 197, 94)',
-          ],
-          borderWidth: 2,
-        },
-      ],
+      datasets: [crearDataset('Distribución RAG', [generales, expedientes], [COLORES.azul, COLORES.verde], 'doughnut')]
     };
   };
 
@@ -246,11 +221,10 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
             color="primary"
             variant="flat"
             startContent={<IoRefresh className="w-4 h-4" />}
-            onPress={refreshTodasLasEstadisticas}
+            onPress={onRefresh}
             size="sm"
-            isDisabled={cargandoRAG}
           >
-            {cargandoRAG ? 'Actualizando...' : 'Actualizar'}
+            Actualizar
           </Button>
         </div>
       )}
@@ -343,11 +317,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold text-indigo-900 mb-1">
-                    {cargandoRAG ? (
-                      <div className="animate-pulse bg-indigo-200 h-8 w-16 rounded"></div>
-                    ) : (
-                      estadisticasRAG?.totalConsultasRAG?.toLocaleString() || 0
-                    )}
+                    {estadisticasRAG?.totalConsultasRAG?.toLocaleString() || 0}
                   </h3>
                   <p className="text-sm font-medium text-indigo-700">Consultas RAG</p>
                   <p className="text-xs text-indigo-600 mt-1">Inteligencia artificial</p>
@@ -377,24 +347,22 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
         </Card>
       )}
 
-      {/* Grid con gráficos secundarios */}
+      {/* Grid con 3 columnas para los gráficos restantes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfico de actividad por día */}
-        {datosActividad && datosActividad.labels.length > 0 && (
+        {/* Actividad por día */}
+        {datosActividad && (
           <Card className="border-none shadow-lg">
-            <CardHeader className="bg-white px-6 pt-5 pb-3 border-b">
+            <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <IoCalendarOutline className="w-5 h-5 text-blue-600" />
-                </div>
+                <IoCalendarOutline className="w-6 h-6 text-blue-600" />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Actividad Diaria</h3>
-                  <p className="text-xs text-gray-600 mt-0.5">Últimos 7 días</p>
+                  <h3 className="text-xl font-bold text-gray-900">Actividad Diaria</h3>
+                  <p className="text-sm text-gray-600">Últimos 7 días</p>
                 </div>
               </div>
             </CardHeader>
-            <CardBody className="p-6">
-              <div style={{ height: '300px' }}>
+            <CardBody className="p-8">
+              <div style={{ height: '350px' }}>
                 <Line 
                   data={datosActividad} 
                   options={{
@@ -404,6 +372,22 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                         display: false,
                       },
                     },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: {
+                          stepSize: 1,
+                        },
+                        grid: {
+                          color: 'rgba(59, 130, 246, 0.08)',
+                        }
+                      },
+                      x: {
+                        grid: {
+                          display: false,
+                        }
+                      }
+                    }
                   }} 
                 />
               </div>
@@ -411,30 +395,35 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
           </Card>
         )}
 
-        {/* Gráfico de usuarios más activos */}
-        {datosUsuarios && datosUsuarios.labels.length > 0 && (
+        {/* Usuarios más activos */}
+        {datosUsuarios && (
           <Card className="border-none shadow-lg">
-            <CardHeader className="bg-white px-6 pt-5 pb-3 border-b">
+            <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <IoPeople className="w-5 h-5 text-purple-600" />
-                </div>
+                <IoPeople className="w-6 h-6 text-purple-600" />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Usuarios Más Activos</h3>
-                  <p className="text-xs text-gray-600 mt-0.5">Top 5 del período</p>
+                  <h3 className="text-xl font-bold text-gray-900">Usuarios Activos</h3>
+                  <p className="text-sm text-gray-600">Top 5 más activos</p>
                 </div>
               </div>
             </CardHeader>
-            <CardBody className="p-6">
-              <div style={{ height: '300px' }}>
+            <CardBody className="p-8">
+              <div style={{ height: '350px' }}>
                 <Doughnut 
                   data={datosUsuarios} 
                   options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    ...opcionesGraficos,
+                    cutout: '60%',
                     plugins: {
                       legend: {
                         position: 'right',
+                        labels: {
+                          padding: 12,
+                          boxWidth: 12,
+                          font: {
+                            size: 11
+                          }
+                        }
                       },
                     },
                   }} 
@@ -444,103 +433,47 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
           </Card>
         )}
 
-        {/* Gráfico de distribución RAG */}
+        {/* Distribución RAG */}
         <Card className="border-none shadow-lg">
-          <CardHeader className="bg-white px-6 pt-5 pb-3 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <IoPieChart className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Consultas RAG</h3>
-                  <p className="text-xs text-gray-600 mt-0.5">General vs. Expedientes</p>
-                </div>
+          <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <IoPieChart className="w-6 h-6 text-indigo-600" />
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Consultas RAG</h3>
+                <p className="text-sm text-gray-600">Distribución por tipo</p>
               </div>
             </div>
           </CardHeader>
-          <CardBody className="p-6">
-            {cargandoRAG ? (
-              <div className="flex items-center justify-center" style={{ height: '300px' }}>
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">Cargando estadísticas RAG...</p>
-                </div>
-              </div>
-            ) : datosRAG ? (
-              <div style={{ height: '300px' }}>
+          <CardBody className="p-8">
+            {datosRAG ? (
+              <div className="relative" style={{ height: '350px' }}>
                 <Doughnut 
                   data={datosRAG} 
                   options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    ...opcionesGraficos,
+                    cutout: '65%',
                     plugins: {
                       legend: {
                         position: 'bottom',
                       },
-                      tooltip: {
-                        callbacks: {
-                          label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed || 0;
-                            const total = estadisticasRAG?.totalConsultasRAG || 0;
-                            
-                            // Si es el mensaje de "Sin consultas RAG", no mostrar porcentaje
-                            if (label === 'Sin consultas RAG') {
-                              return 'No hay consultas RAG en este período';
-                            }
-                            
-                            const percentage = total > 0 
-                              ? ((value / total) * 100).toFixed(1)
-                              : 0;
-                            return `${label}: ${value} (${percentage}%)`;
-                          }
-                        }
-                      }
                     },
                   }} 
                 />
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ top: '15%' }}>
+                  <p className="text-3xl font-bold text-gray-800">
+                    {estadisticasRAG?.totalConsultasRAG?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-sm text-gray-500">Total</p>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center" style={{ height: '300px' }}>
-                <div className="text-center">
-                  <IoPieChart className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No hay datos RAG disponibles</p>
-                </div>
+              <div className="flex flex-col items-center justify-center h-80 text-gray-500">
+                <IoPieChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm text-gray-500">No hay datos RAG disponibles</p>
               </div>
             )}
-            
-            {/* Estadísticas adicionales RAG */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-xs text-gray-500">Usuarios RAG</p>
-                  <p className="text-lg font-semibold text-indigo-600">
-                    {estadisticasRAG?.usuariosActivosRAG || 0}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Expedientes</p>
-                  <p className="text-lg font-semibold text-indigo-600">
-                    {estadisticasRAG?.expedientesConsultadosRAG || 0}
-                  </p>
-                </div>
-              </div>
-            </div>
           </CardBody>
         </Card>
-
-        {/* Mensaje si no hay datos RAG */}
-        {(!estadisticasRAG || estadisticasRAG.totalConsultasRAG === 0) && (
-          <Card className="border-dashed border-2 border-gray-300">
-            <CardBody className="p-6 text-center">
-              <IoChatbubbleEllipses className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">
-                No hay consultas RAG en este período
-              </p>
-            </CardBody>
-          </Card>
-        )}
       </div>
 
       {/* Gráfico de expedientes más consultados */}
@@ -555,7 +488,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
             </div>
           </CardHeader>
           <CardBody className="p-8">
-            <div style={{ height: '300px' }}>
+            <div style={{ height: '400px' }}>
               <Bar 
                 data={datosExpedientes} 
                 options={{
