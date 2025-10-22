@@ -388,7 +388,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
           
           {/* Botón de copiar - para mensajes del bot (siempre visible) */}
           {!isUser && message.text && !isStreaming && (
-            <div className="relative group">
+            <div className="relative group/button">
               <button
                 onClick={handleCopy}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 focus:outline-none text-gray-400 hover:text-gray-700 hover:scale-110"
@@ -402,7 +402,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
               </button>
               
               {/* Tooltip personalizado */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 group-hover/button:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
                 {copied ? "¡Copiado!" : "Copiar"}
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-100"></div>
               </div>
@@ -411,7 +411,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
           
           {/* Botón de copiar - para mensajes del usuario (solo visible en hover) */}
           {isUser && message.text && (
-            <div className="relative">
+            <div className="relative group/button">
               <button
                 onClick={handleCopy}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-200 focus:outline-none text-gray-400 hover:text-gray-700 hover:scale-110 opacity-0 group-hover:opacity-100"
@@ -425,7 +425,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
               </button>
               
               {/* Tooltip personalizado */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md opacity-0 group-hover/button:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-gray-200">
                 {copied ? "¡Copiado!" : "Copiar"}
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-100"></div>
               </div>
