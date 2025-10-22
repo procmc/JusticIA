@@ -163,6 +163,124 @@ class BitacoraStatsService:
     
     
     # =====================================================================
+    # ESTADÍSTICAS ESPECÍFICAS DE RAG
+    # =====================================================================
+    
+    def obtener_estadisticas_rag(self, db: Session, dias: int = 30) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas específicas para consultas RAG distinguiendo entre
+        consultas generales y consultas por expediente específico.
+        
+        Args:
+            db: Sesión de base de datos
+            dias: Número de días hacia atrás para las estadísticas
+            
+        Returns:
+            Dict con estadísticas de RAG segregadas por tipo
+        """
+        try:
+            ahora = datetime.utcnow()
+            inicio_periodo = ahora - timedelta(days=dias)
+            
+            # Obtener todas las consultas RAG del período
+            registros_rag = self.repo.obtener_con_filtros(
+                db=db,
+                tipo_accion_id=TiposAccion.CONSULTA_RAG,
+                fecha_inicio=inicio_periodo,
+                fecha_fin=ahora,
+                limite=10000  # Obtener todos para análisis
+            )[0]  # Solo nos interesa la lista de registros
+            
+            # Analizar información adicional para clasificar consultas
+            consultas_generales = 0
+            consultas_expediente = 0
+            expedientes_consultados = set()
+            usuarios_activos_rag = set()
+            
+            for registro in registros_rag:
+                usuarios_activos_rag.add(registro.CN_Id_usuario)
+                
+                # Determinar tipo de consulta basado en información adicional
+                info_adicional = self.parsear_info_adicional(registro)
+                if info_adicional:
+                    tipo_consulta = info_adicional.get("tipo_consulta", "general")
+                    expediente_numero = info_adicional.get("expediente_numero")
+                    
+                    if tipo_consulta == "expediente" and expediente_numero:
+                        consultas_expediente += 1
+                        expedientes_consultados.add(expediente_numero)
+                    else:
+                        consultas_generales += 1
+                else:
+                    # Si no hay información adicional, asumir general
+                    consultas_generales += 1
+            
+            # Obtener expedientes más consultados via RAG
+            expedientes_rag_top = []
+            if expedientes_consultados:
+                # Contar consultas por expediente
+                conteo_expedientes = {}
+                for registro in registros_rag:
+                    info_adicional = self.parsear_info_adicional(registro)
+                    if info_adicional:
+                        expediente_numero = info_adicional.get("expediente_numero")
+                        if expediente_numero:
+                            conteo_expedientes[expediente_numero] = conteo_expedientes.get(expediente_numero, 0) + 1
+                
+                # Top 5 expedientes más consultados
+                expedientes_rag_top = sorted(
+                    [{"numero": exp, "cantidad": count} for exp, count in conteo_expedientes.items()],
+                    key=lambda x: x["cantidad"],
+                    reverse=True
+                )[:5]
+            
+            # Estadísticas por día (últimos 7 días)
+            inicio_7dias = ahora - timedelta(days=7)
+            actividad_rag_diaria = self.repo.obtener_actividad_por_dia(
+                db, inicio_7dias, ahora, tipo_accion_id=TiposAccion.CONSULTA_RAG
+            )
+            
+            actividad_rag_por_dia = [
+                {
+                    "fecha": item["fecha"].isoformat() if item["fecha"] else None,
+                    "cantidad": item["cantidad"]
+                }
+                for item in actividad_rag_diaria
+            ]
+            
+            return {
+                "totalConsultasRAG": len(registros_rag),
+                "consultasGenerales": consultas_generales,
+                "consultasExpediente": consultas_expediente,
+                "porcentajeGenerales": round((consultas_generales / len(registros_rag)) * 100, 1) if registros_rag else 0,
+                "porcentajeExpedientes": round((consultas_expediente / len(registros_rag)) * 100, 1) if registros_rag else 0,
+                "usuariosActivosRAG": len(usuarios_activos_rag),
+                "expedientesConsultadosRAG": len(expedientes_consultados),
+                "expedientesMasConsultadosRAG": expedientes_rag_top,
+                "actividadRAGPorDia": actividad_rag_por_dia,
+                "periodo": {
+                    "inicio": inicio_periodo.isoformat(),
+                    "fin": ahora.isoformat(),
+                    "dias": dias
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo estadísticas RAG: {e}")
+            return {
+                "totalConsultasRAG": 0,
+                "consultasGenerales": 0,
+                "consultasExpediente": 0,
+                "porcentajeGenerales": 0,
+                "porcentajeExpedientes": 0,
+                "usuariosActivosRAG": 0,
+                "expedientesConsultadosRAG": 0,
+                "expedientesMasConsultadosRAG": [],
+                "actividadRAGPorDia": [],
+                "error": str(e)
+            }
+
+    # =====================================================================
     # ESTADÍSTICAS AGREGADAS
     # =====================================================================
     

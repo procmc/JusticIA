@@ -87,14 +87,28 @@ const Bitacora = () => {
   };
 
   /**
-   * Cargar estadísticas
+   * Cargar estadísticas (generales y RAG en paralelo)
    */
   const cargarEstadisticas = async () => {
     setCargandoEstadisticas(true);
     try {
-      const stats = await bitacoraService.obtenerEstadisticas(30);
-      setEstadisticas(stats);
-      console.log(stats);
+      // Cargar ambas estadísticas en paralelo para mejor rendimiento
+      const [statsGenerales, statsRAG] = await Promise.all([
+        bitacoraService.obtenerEstadisticas(30),
+        bitacoraService.obtenerEstadisticasRAG(30).catch(err => {
+          console.warn('Error cargando estadísticas RAG (no crítico):', err);
+          return null; // Si falla RAG, continuar con las estadísticas principales
+        })
+      ]);
+      
+      // Combinar ambas estadísticas en un solo objeto
+      const estadisticasCombinadas = {
+        ...statsGenerales,
+        rag: statsRAG // Agregar estadísticas RAG como subpropiedad
+      };
+      
+      setEstadisticas(estadisticasCombinadas);
+      console.log('Estadísticas combinadas:', estadisticasCombinadas);
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
       Toast.error('Error al cargar estadísticas');
