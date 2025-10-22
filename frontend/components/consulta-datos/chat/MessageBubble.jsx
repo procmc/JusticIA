@@ -153,13 +153,13 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       // Patrón 2: Cualquier ruta uploads/ suelta en el texto (como en las tablas)
       const rutaSueltaPattern = /(uploads\/[\w\-\.\/]+)/g;
       resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
-        // Solo convertir si no está ya dentro de un enlace markdown
-        if (resultado.indexOf(`[${fileName}](`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`[${fileName}](`)) {
-          return match; // Ya está procesada
-        }
-        
         const rutaLimpia = ruta.trim();
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
+        
+        // Solo convertir si no está ya dentro de un enlace markdown
+        if (resultado.indexOf(`](download:`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`](download:`)) {
+          return match; // Ya está procesada
+        }
         
         return `[${fileName}](download:${rutaLimpia})`;
       });
