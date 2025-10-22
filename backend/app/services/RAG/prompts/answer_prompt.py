@@ -72,12 +72,13 @@ Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este fo
 
 **FUENTES:**
 
-- Expediente 2022-063557-6597-LA: archivo.txt (uploads/2022-063557-6597-LA/archivo.txt)
+- Expediente 2022-063557-6597-LA: (uploads/2022-063557-6597-LA/archivo.txt)
 
 **FORMATO OBLIGATORIO:**
 - Usa guión + espacio al inicio: "- "  
-- Formato: "Expediente NUMERO: ARCHIVO (uploads/EXPEDIENTE/ARCHIVO)"
-- Paréntesis con ruta: (uploads/...)
+- Formato: "Expediente NUMERO: (uploads/EXPEDIENTE/ARCHIVO)"
+- Paréntesis con ruta completa: (uploads/...)
+- NO incluyas el nombre del archivo fuera del paréntesis
 - NO uses tablas, NO uses otros formatos
 - CADA expediente mencionado DEBE incluir su ruta
 
@@ -85,13 +86,14 @@ Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este fo
 ```
 **FUENTES:**
 
-- Expediente 2022-063557-6597-LA: documento1.txt (uploads/2022-063557-6597-LA/documento1.txt)  
-- Expediente 2022-259948-3682-PN: documento2.txt (uploads/2022-259948-3682-PN/documento2.txt)
+- Expediente 2022-063557-6597-LA: (uploads/2022-063557-6597-LA/documento1.txt)  
+- Expediente 2022-259948-3682-PN: (uploads/2022-259948-3682-PN/documento2.txt)
 ```
 
 **PROHIBIDO:**
 - Tablas con | separadores  
 - Formatos HTML
+- Incluir el nombre del archivo antes del paréntesis
 - Cualquier otro formato que no sea el mostrado arriba
 
 **SI NO USAS EXACTAMENTE ESTE FORMATO, LOS ENLACES NO FUNCIONARÁN**
