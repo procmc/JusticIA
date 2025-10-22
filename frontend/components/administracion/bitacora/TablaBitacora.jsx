@@ -71,6 +71,19 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion =
     { key: "acciones", label: "ACCIONES" },
   ];
 
+  // Función para truncar texto largo en la tabla
+  const truncarTexto = (texto, maxLength = 150) => {
+    if (!texto || typeof texto !== 'string') {
+      return 'Sin descripción';
+    }
+    
+    if (texto.length <= maxLength) {
+      return texto;
+    }
+    
+    return texto.substring(0, maxLength) + '...';
+  };
+
   const renderCell = (registro, columnKey) => {
     switch (columnKey) {
       case "fechaHora":

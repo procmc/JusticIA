@@ -142,7 +142,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
             {String(valorFormateado)}
           </Chip>
         ) : codigo ? (
-          <code className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border border-gray-200">
+          <code className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border border-gray-200 break-all whitespace-pre-wrap word-break">
             {String(valorFormateado)}
           </code>
         ) : (
@@ -373,7 +373,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         return (
           <>
             {pregunta && renderizarCampo('Pregunta', pregunta, { fullWidth: true })}
-            {session_id && renderizarCampo('Session ID', session_id, { codigo: true })}
+            {session_id && renderizarCampo('Session ID', session_id, { codigo: true, fullWidth: true })}
             {expediente && renderizarCampo('Expediente', expediente, { codigo: true })}
             {top_k && renderizarCampo('Top K Documentos', top_k)}
             {documentos_recuperados !== undefined && renderizarCampo('Documentos Recuperados', documentos_recuperados, { highlight: true })}

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @router.get("/registros", response_model=dict)
 async def obtener_registros(
     usuario: Optional[str] = Query(None, description="Filtrar por nombre o correo de usuario"),
-    tipoAccion: Optional[int] = Query(None, ge=1, le=8, description="Filtrar por tipo de acción (ID)"),
+    tipoAccion: Optional[int] = Query(None, ge=1, le=15, description="Filtrar por tipo de acción (ID)"),
     expediente: Optional[str] = Query(None, description="Filtrar por número de expediente"),
     fechaInicio: Optional[datetime] = Query(None, description="Fecha de inicio del rango"),
     fechaFin: Optional[datetime] = Query(None, description="Fecha de fin del rango"),
@@ -39,7 +39,7 @@ async def obtener_registros(
     
     Query params compatibles con FiltrosBitacora.jsx:
     - usuario: Nombre o correo del usuario
-    - tipoAccion: ID del tipo de acción (1-8)
+    - tipoAccion: ID del tipo de acción (1-15)
     - expediente: Número de expediente
     - fechaInicio, fechaFin: Rango de fechas
     - limite: Registros por página (default: 10, max: 100)
@@ -114,7 +114,7 @@ async def obtener_estadisticas(
 @router.get("/mi-historial", response_model=List[dict])
 async def obtener_mi_historial(
     limite: int = Query(100, ge=1, le=500, description="Número máximo de registros"),
-    tipoAccion: Optional[int] = Query(None, ge=1, le=8, description="Filtrar por tipo de acción"),
+    tipoAccion: Optional[int] = Query(None, ge=1, le=15, description="Filtrar por tipo de acción"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_usuario_judicial)
 ):
