@@ -32,6 +32,7 @@ from .ingesta_audit_service import ingesta_audit_service, IngestaAuditService
 from .similarity_audit_service import similarity_audit_service, SimilarityAuditService
 from .usuarios_audit_service import usuarios_audit_service, UsuariosAuditService
 from .rag_audit_service import rag_audit_service, RAGAuditService
+from .archivos_audit_service import archivos_audit_service, ArchivosAuditService
 
 __all__ = [
     # General (Write)
@@ -51,4 +52,6 @@ __all__ = [
     "UsuariosAuditService",
     "rag_audit_service",
     "RAGAuditService",
+    "archivos_audit_service",
+    "ArchivosAuditService",
 ]

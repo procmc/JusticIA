@@ -124,7 +124,7 @@ def upgrade() -> None:
         sa.Column('CF_Fecha_hora', sa.DateTime(), nullable=False),
         sa.Column('CT_Texto', sa.Text(), nullable=False),
         sa.Column('CT_Informacion_adicional', sa.Text(), nullable=True),
-        sa.Column('CN_Id_usuario', sa.String(length=20), nullable=False),
+        sa.Column('CN_Id_usuario', sa.String(length=20), nullable=True),  # CORREGIDO: nullable=True para permitir logins fallidos
         sa.Column('CN_Id_tipo_accion', sa.Integer(), nullable=True),
         # Campo modificado en migración e5c8cac575b3 - ahora nullable desde el inicio
         sa.Column('CN_Id_expediente', sa.BigInteger(), nullable=True),

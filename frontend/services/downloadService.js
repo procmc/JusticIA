@@ -4,9 +4,25 @@
  * Maneja errores de forma amigable sin causar crashes en el frontend
  */
 
+import { getSession } from 'next-auth/react';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 class DownloadService {
+  /**
+   * Obtener headers con autenticación
+   */
+  async getAuthHeaders() {
+    const session = await getSession();
+    const headers = {};
+    
+    if (session?.accessToken) {
+      headers.Authorization = `Bearer ${session.accessToken}`;
+    }
+    
+    return headers;
+  }
+
   /**
    * Descarga un archivo usando su ruta completa
    * @param {string} rutaArchivo - Ruta completa del archivo
@@ -24,6 +40,9 @@ class DownloadService {
       const timestamp = Date.now();
       const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}&_t=${timestamp}`;
       
+      // Obtener headers con autenticación
+      const authHeaders = await this.getAuthHeaders();
+      
       // Hacer petición fetch para obtener el archivo
       const response = await fetch(url, {
         method: 'GET',
@@ -31,12 +50,17 @@ class DownloadService {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          ...authHeaders
         }
       });
 
       // Manejo específico por código de error
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
+        }
+        
         if (response.status === 404) {
           throw new Error('El archivo no existe o fue eliminado');
         }
@@ -92,6 +116,8 @@ class DownloadService {
 
   /**
    * Abre un archivo en una nueva pestaña para vista previa
+   * NOTA: Este método tiene limitaciones de autenticación ya que window.open
+   * no permite enviar headers personalizados con el token JWT.
    * @param {string} rutaArchivo - Ruta completa del archivo
    * @returns {Promise<void>}
    */
@@ -102,6 +128,8 @@ class DownloadService {
         throw new Error('La ruta del archivo es requerida');
       }
 
+      // LIMITACIÓN: window.open no puede enviar headers de autenticación
+      // Para vista previa autenticada, se necesitaría otra implementación
       const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}`;
       window.open(url, '_blank');
       

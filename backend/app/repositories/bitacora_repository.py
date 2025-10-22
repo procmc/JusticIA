@@ -193,14 +193,37 @@ class BitacoraRepository:
                 conditions.append(T_Bitacora.CN_Id_tipo_accion == tipo_accion_id)
             if usuario_id:
                 # Buscar por ID exacto (cédula), correo o nombre del usuario
-                usuario_subquery = select(T_Usuario.CN_Id_usuario).where(
-                    or_(
-                        T_Usuario.CN_Id_usuario == usuario_id,
-                        T_Usuario.CT_Correo.ilike(f"%{usuario_id}%"),
+                # Para nombres compuestos, buscar cada palabra en cualquier campo de nombre
+                terminos_busqueda = usuario_id.strip().split()
+                
+                condiciones_usuario = [
+                    T_Usuario.CN_Id_usuario == usuario_id,  # Búsqueda exacta por cédula
+                    T_Usuario.CT_Correo.ilike(f"%{usuario_id}%")  # Búsqueda por correo
+                ]
+                
+                # Si hay múltiples términos (nombre compuesto), buscar que todos estén presentes
+                if len(terminos_busqueda) > 1:
+                    # Concatenar nombre completo y buscar todos los términos
+                    nombre_completo = func.concat(
+                        func.coalesce(T_Usuario.CT_Nombre, ''), ' ',
+                        func.coalesce(T_Usuario.CT_Apellido_uno, ''), ' ',
+                        func.coalesce(T_Usuario.CT_Apellido_dos, '')
+                    )
+                    
+                    # Verificar que TODOS los términos estén presentes en el nombre completo
+                    for termino in terminos_busqueda:
+                        condiciones_usuario.append(nombre_completo.ilike(f"%{termino}%"))
+                        
+                else:
+                    # Búsqueda simple: en cualquier campo de nombre
+                    condiciones_usuario.extend([
                         T_Usuario.CT_Nombre.ilike(f"%{usuario_id}%"),
                         T_Usuario.CT_Apellido_uno.ilike(f"%{usuario_id}%"),
                         T_Usuario.CT_Apellido_dos.ilike(f"%{usuario_id}%")
-                    )
+                    ])
+                
+                usuario_subquery = select(T_Usuario.CN_Id_usuario).where(
+                    or_(*condiciones_usuario)
                 )
                 conditions.append(T_Bitacora.CN_Id_usuario.in_(usuario_subquery))
             if expediente_id:
