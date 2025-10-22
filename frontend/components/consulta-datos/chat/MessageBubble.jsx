@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TypingIndicator from './TypingIndicator';
 import { CopyIcon, CheckIcon } from '../../icons';
+import downloadService from '../../../services/downloadService';
+import Toast from '@/components/ui/CustomAlert';
 
 const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   const isError = message.isError || false;
@@ -14,6 +16,19 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   
   // Estado para el botón de copiar
   const [copied, setCopied] = useState(false);
+
+  // Función para manejar descarga de archivos con autenticación
+  const handleFileDownload = async (e, rutaArchivo) => {
+    e.preventDefault();
+    
+    try {
+      const fileName = rutaArchivo.split('/').pop() || 'archivo';
+      await downloadService.downloadFile(rutaArchivo, fileName);
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      Toast.error('Error', error.message || 'Error al descargar el archivo');
+    }
+  };
 
   // Efecto para manejar renderizado inconsistente - forzar actualización cuando el texto cambia
   useEffect(() => {
@@ -123,32 +138,30 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
 
     // Función para convertir rutas de archivo en enlaces descargables
     const processFileLinks = (text) => {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       let resultado = text;
       
       // Patrón 1: Formato correcto con paréntesis (uploads/...)
       const rutaParentesisPattern = /\(([^)]*uploads\/[^)]+)\)/g;
       resultado = resultado.replace(rutaParentesisPattern, (match, ruta) => {
         const rutaLimpia = ruta.trim();
-        const downloadUrl = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaLimpia)}`;
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
         
-        return `([📄 ${fileName}](${downloadUrl}))`;
+        // Usar protocolo especial para identificar descargas
+        return `([${fileName}](download:${rutaLimpia}))`;
       });
       
       // Patrón 2: Cualquier ruta uploads/ suelta en el texto (como en las tablas)
       const rutaSueltaPattern = /(uploads\/[\w\-\.\/]+)/g;
       resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
         // Solo convertir si no está ya dentro de un enlace markdown
-        if (resultado.indexOf(`[📄`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`[📄`)) {
+        if (resultado.indexOf(`[${fileName}](`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`[${fileName}](`)) {
           return match; // Ya está procesada
         }
         
         const rutaLimpia = ruta.trim();
-        const downloadUrl = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaLimpia)}`;
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
         
-        return `[${fileName}](${downloadUrl})`;
+        return `[${fileName}](download:${rutaLimpia})`;
       });
       
       return resultado;
@@ -240,15 +253,14 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       
       // Enlaces
       a: ({ href, children }) => {
-        // Si es un enlace de descarga de archivo
-        if (href && href.includes('/archivos/download')) {
+        // Si es un enlace de descarga de archivo (usando protocolo especial)
+        if (href && href.startsWith('download:')) {
+          const rutaArchivo = href.replace('download:', '');
           return (
             <a 
-              href={href} 
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-              download
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#" 
+              onClick={(e) => handleFileDownload(e, rutaArchivo)}
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline hover:bg-blue-50 px-2 py-1 rounded transition-colors cursor-pointer"
               title="Hacer clic para descargar el archivo"
             >
               {children}
