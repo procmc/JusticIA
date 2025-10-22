@@ -77,71 +77,85 @@ const RecuperarContraseñaForm = () => {
 
     // PASO 1: Solicitar recuperación
     const handleSolicitarRecuperacion = async (e) => {
-        e.preventDefault();
-
-        if (!formData.email.trim()) {
-            setErrors({ email: "El correo electrónico es requerido" });
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            setErrors({ email: "Ingrese un correo electrónico válido" });
-            return;
-        }
-
-        setLoading(true);
-        setErrors({});
-
         try {
-            const result = await solicitarRecuperacionService(formData.email);
+            e.preventDefault();
 
-            if (result.error) {
-                Toast.error("Error", result.message);
-            } else {
-                setToken(result.token);
-                setCurrentStep(2);
-                setTimeLeft(15 * 60); // 15 minutos
-                Toast.success("Éxito", "Código de verificación enviado a tu correo");
+            if (!formData.email.trim()) {
+                setErrors({ email: "El correo electrónico es requerido" });
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                setErrors({ email: "Ingrese un correo electrónico válido" });
+                return;
+            }
+
+            setLoading(true);
+            setErrors({});
+
+            try {
+                const result = await solicitarRecuperacionService(formData.email);
+
+                if (result.error) {
+                    Toast.error("Error", result.message);
+                } else {
+                    setToken(result.token);
+                    setCurrentStep(2);
+                    setTimeLeft(15 * 60); // 15 minutos
+                    Toast.success("Éxito", "Código de verificación enviado a tu correo");
+                }
+            } catch (error) {
+                console.error("Error al solicitar recuperación:", error);
+                Toast.error("Error", error.message || "Error inesperado al solicitar recuperación");
+            } finally {
+                setLoading(false);
             }
         } catch (error) {
-            Toast.error("Error", "Error inesperado al solicitar recuperación");
-        } finally {
+            console.error("Error no manejado en handleSolicitarRecuperacion:", error);
+            Toast.error("Error", error.message || "Error inesperado");
             setLoading(false);
         }
     };
 
     // PASO 2: Verificar código
     const handleVerificarCodigo = async (e) => {
-        e.preventDefault();
-
-        if (!formData.codigo.trim()) {
-            setErrors({ codigo: "El código es requerido" });
-            return;
-        }
-
-        if (formData.codigo.length !== 6) {
-            setErrors({ codigo: "El código debe tener 6 dígitos" });
-            return;
-        }
-
-        setLoading(true);
-        setErrors({});
-
         try {
-            const result = await verificarCodigoRecuperacionService(token, formData.codigo);
+            e.preventDefault();
 
-            if (result.error) {
-                Toast.error("Error", result.message);
-            } else {
-                setVerificationToken(result.verificationToken);
-                setCurrentStep(3);
-                setTimeLeft(10 * 60); // 10 minutos para cambiar contraseña
-                Toast.success("Éxito", "Código verificado correctamente");
+            if (!formData.codigo.trim()) {
+                setErrors({ codigo: "El código es requerido" });
+                return;
+            }
+
+            if (formData.codigo.length !== 6) {
+                setErrors({ codigo: "El código debe tener 6 dígitos" });
+                return;
+            }
+
+            setLoading(true);
+            setErrors({});
+
+            try {
+                const result = await verificarCodigoRecuperacionService(token, formData.codigo);
+
+                if (result.error) {
+                    Toast.error("Error", result.message);
+                } else {
+                    setVerificationToken(result.verificationToken);
+                    setCurrentStep(3);
+                    setTimeLeft(10 * 60); // 10 minutos para cambiar contraseña
+                    Toast.success("Éxito", "Código verificado correctamente");
+                }
+            } catch (error) {
+                console.error("Error al verificar código:", error);
+                Toast.error("Error", error.message || "Error inesperado al verificar código");
+            } finally {
+                setLoading(false);
             }
         } catch (error) {
-            Toast.error("Error", "Error inesperado al verificar código");
-        } finally {
+            console.error("Error no manejado en handleVerificarCodigo:", error);
+            Toast.error("Error", error.message || "Error inesperado");
             setLoading(false);
         }
     };
