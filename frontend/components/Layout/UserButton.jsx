@@ -204,8 +204,13 @@ export function UserButton() {
                     onPress: async () => {
                         if (isLoading) return;
                         setIsLoading(true);
-                        const valid = await cambiarContraseñaRef.current?.validateAndSubmit?.();
-                        if (!valid) {
+                        try {
+                            const valid = await cambiarContraseñaRef.current?.validateAndSubmit?.();
+                            if (!valid) {
+                                setIsLoading(false);
+                            }
+                        } catch (error) {
+                            console.error("Error inesperado al cambiar contraseña:", error);
                             setIsLoading(false);
                         }
                     }

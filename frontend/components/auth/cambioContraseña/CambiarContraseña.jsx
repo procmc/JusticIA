@@ -85,6 +85,8 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 return false;
             }
 
+            setLoading(true);
+            
             try {
                 const result = await cambiarContraseñaService(
                     formData.contraseñaActual,
@@ -93,7 +95,28 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 );
 
                 if (result.error) {
-                    Toast.error("Error", result.message || "Error al cambiar contraseña");
+                    // Detectar error específico: contraseña nueva igual a la actual
+                    const mensajeError = result.message || "Error al cambiar contraseña";
+                    
+                    if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
+                        mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
+                        // Mostrar error en el campo de nueva contraseña
+                        setErrors(prev => ({
+                            ...prev,
+                            nuevaContraseña: "La nueva contraseña debe ser diferente a la actual"
+                        }));
+                    } else if (mensajeError.toLowerCase().includes("contraseña actual incorrecta") ||
+                               mensajeError.toLowerCase().includes("contraseña incorrecta")) {
+                        // Error en contraseña actual
+                        setErrors(prev => ({
+                            ...prev,
+                            contraseñaActual: "Contraseña actual incorrecta"
+                        }));
+                    } else {
+                        // Otros errores se muestran como toast
+                        Toast.error("Error", mensajeError);
+                    }
+                    setLoading(false);
                     return false;
                 } else {
                     Toast.success("Éxito", result.message || "Contraseña cambiada exitosamente");
@@ -118,7 +141,28 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 }
             } catch (error) {
                 console.error("Error al cambiar contraseña:", error);
-                Toast.error("Error", "Error inesperado al cambiar contraseña");
+                
+                // Intentar extraer mensaje del error
+                const mensajeError = error.message || "Error inesperado al cambiar contraseña";
+                
+                // Verificar si es el error de contraseña repetida
+                if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
+                    mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
+                    setErrors(prev => ({
+                        ...prev,
+                        nuevaContraseña: "La nueva contraseña debe ser diferente a la actual"
+                    }));
+                } else if (mensajeError.toLowerCase().includes("contraseña actual incorrecta") ||
+                           mensajeError.toLowerCase().includes("contraseña incorrecta")) {
+                    setErrors(prev => ({
+                        ...prev,
+                        contraseñaActual: "Contraseña actual incorrecta"
+                    }));
+                } else {
+                    Toast.error("Error", mensajeError);
+                }
+                
+                setLoading(false);
                 return false;
             }
         }
