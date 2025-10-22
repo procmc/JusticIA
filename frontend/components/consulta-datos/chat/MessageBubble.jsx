@@ -20,6 +20,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
   // Función para manejar descarga de archivos con autenticación
   const handleFileDownload = async (e, rutaArchivo) => {
     e.preventDefault();
+    e.stopPropagation();
     
     try {
       const fileName = rutaArchivo.split('/').pop() || 'archivo';
@@ -27,6 +28,31 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
     } catch (error) {
       console.error('Error descargando archivo:', error);
       Toast.error('Error', error.message || 'Error al descargar el archivo');
+    }
+  };
+
+  // Interceptar clics en enlaces de descarga
+  const handleMessageClick = (e) => {
+    const target = e.target;
+    
+    // Verificar si es un enlace o está dentro de un enlace
+    const link = target.closest('a');
+    if (!link) return;
+    
+    const href = link.getAttribute('href');
+    if (href && href.startsWith('#download-')) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Decodificar la ruta del base64
+      try {
+        const base64Path = href.replace('#download-', '');
+        const rutaArchivo = Buffer.from(base64Path, 'base64').toString('utf-8');
+        handleFileDownload(e, rutaArchivo);
+      } catch (error) {
+        console.error('Error decodificando ruta:', error);
+        Toast.error('Error', 'No se pudo procesar el enlace de descarga');
+      }
     }
   };
 
@@ -146,22 +172,22 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         const rutaLimpia = ruta.trim();
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
         
-        // Usar protocolo especial para identificar descargas
-        return `([${fileName}](download:${rutaLimpia}))`;
+        // Usar un hash con la ruta codificada
+        return `([${fileName}](#download-${Buffer.from(rutaLimpia).toString('base64')}))`;
       });
       
-      // Patrón 2: Cualquier ruta uploads/ suelta en el texto (como en las tablas)
+      // Patrón 2: Cualquier ruta uploads/ suelta en el texto
       const rutaSueltaPattern = /(uploads\/[\w\-\.\/]+)/g;
       resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
         const rutaLimpia = ruta.trim();
         const fileName = rutaLimpia.split('/').pop() || 'archivo';
         
         // Solo convertir si no está ya dentro de un enlace markdown
-        if (resultado.indexOf(`](download:`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`](download:`)) {
-          return match; // Ya está procesada
+        if (resultado.indexOf(`#download-`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`#download-`)) {
+          return match;
         }
         
-        return `[${fileName}](download:${rutaLimpia})`;
+        return `[${fileName}](#download-${Buffer.from(rutaLimpia).toString('base64')})`;
       });
       
       return resultado;
@@ -253,13 +279,11 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       
       // Enlaces
       a: ({ href, children }) => {
-        // Si es un enlace de descarga de archivo (usando protocolo especial)
-        if (href && href.startsWith('download:')) {
-          const rutaArchivo = href.replace('download:', '');
+        // Si es un enlace de descarga de archivo (hash especial #download-)
+        if (href && href.startsWith('#download-')) {
           return (
             <a 
-              href="#" 
-              onClick={(e) => handleFileDownload(e, rutaArchivo)}
+              href={href}
               className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline hover:bg-blue-50 px-2 py-1 rounded transition-colors cursor-pointer"
               title="Hacer clic para descargar el archivo"
             >
@@ -319,7 +343,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
     };
 
     return (
-      <div className="markdown-content">
+      <div className="markdown-content" onClick={handleMessageClick}>
         <ReactMarkdown 
           key={`markdown-${forceKey}-${content.length}`} // Key única para forzar re-renderizado
           remarkPlugins={[remarkGfm]}
