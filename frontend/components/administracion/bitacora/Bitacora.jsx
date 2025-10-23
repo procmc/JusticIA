@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Card, CardBody, Tabs, Tab } from '@heroui/react';
 import { IoDocumentText, IoStatsChart, IoCalendar, IoShield } from 'react-icons/io5';
 import { Toast } from '../../ui/CustomAlert';
@@ -31,34 +31,10 @@ const Bitacora = () => {
   });
 
   // Cargar registros y estadísticas al inicializar
-  useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
-
-  // Cargar datos al cambiar de vista
-  useEffect(() => {
-    if (vistaActual === 'estadisticas' && !estadisticas) {
-      cargarEstadisticas();
-    }
-  }, [vistaActual]);
-
-  /**
-   * Cargar datos iniciales (registros sin filtros)
-   */
-  const cargarDatosIniciales = async () => {
-    await Promise.all([
-      cargarRegistros(),
-      cargarEstadisticas()
-    ]);
-  };
-
-  /**
-   * Cargar registros con filtros aplicados
-   */
-  const cargarRegistros = async (filtrosPersonalizados = null) => {
+  const cargarRegistros = useCallback(async (filtrosPersonalizados = null) => {
     setCargandoRegistros(true);
     try {
-      const filtrosAplicar = filtrosPersonalizados || filtros;
+      const filtrosAplicar = filtrosPersonalizados;
       
       // Limpiar filtros vacíos
       const filtrosLimpios = Object.entries(filtrosAplicar).reduce((acc, [key, value]) => {
@@ -84,12 +60,9 @@ const Bitacora = () => {
     } finally {
       setCargandoRegistros(false);
     }
-  };
+  }, []);
 
-  /**
-   * Cargar estadísticas (generales y RAG en paralelo)
-   */
-  const cargarEstadisticas = async () => {
+  const cargarEstadisticas = useCallback(async () => {
     setCargandoEstadisticas(true);
     try {
       // Cargar ambas estadísticas en paralelo para mejor rendimiento
@@ -115,14 +88,42 @@ const Bitacora = () => {
     } finally {
       setCargandoEstadisticas(false);
     }
-  };
+  }, []);
+
+  const cargarDatosIniciales = useCallback(async () => {
+    const filtrosIniciales = {
+      usuario: '',
+      tipoAccion: '',
+      expediente: '',
+      fechaInicio: '',
+      fechaFin: '',
+      page: 1,
+      limit: 10
+    };
+    await Promise.all([
+      cargarRegistros(filtrosIniciales),
+      cargarEstadisticas()
+    ]);
+  }, [cargarRegistros, cargarEstadisticas]);
+
+  useEffect(() => {
+    cargarDatosIniciales();
+  }, [cargarDatosIniciales]);
+
+  // Cargar datos al cambiar de vista
+  useEffect(() => {
+    if (vistaActual === 'estadisticas' && !estadisticas) {
+      cargarEstadisticas();
+    }
+  }, [vistaActual, estadisticas, cargarEstadisticas]);
 
   /**
    * Aplicar filtros (callback del componente FiltrosBitacora)
+   * Recibe los filtros directamente desde el hijo
    */
-  const aplicarFiltros = () => {
+  const aplicarFiltros = (filtrosDesdeHijo) => {
     // Resetear a página 1 cuando se aplican filtros
-    const nuevosFiltros = { ...filtros, page: 1 };
+    const nuevosFiltros = { ...filtrosDesdeHijo, page: 1 };
     setFiltros(nuevosFiltros);
     cargarRegistros(nuevosFiltros);
   };
@@ -278,9 +279,8 @@ const Bitacora = () => {
           {/* Filtros */}
           <FiltrosBitacora
             filtros={filtros}
-            onFiltroChange={setFiltros}
-            onLimpiarFiltros={limpiarFiltros}
             onBuscar={aplicarFiltros}
+            onLimpiarFiltros={limpiarFiltros}
             disabled={cargandoRegistros}
           />
 

@@ -1,32 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, Select, SelectItem, Button, Card, CardBody, DatePicker, CardHeader } from '@heroui/react';
 import { parseDate } from '@internationalized/date';
 import { IoFunnel, IoSearch } from 'react-icons/io5';
 import { PiBroomLight } from 'react-icons/pi';
 import { SearchIcon } from '../../icons';
+import { TIPOS_ACCION } from '@/common/tiposAccion';
 
-const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, disabled = false }) => {
-    // Tipos de acción - Sincronizados con backend/app/constants/tipos_accion.py
-    const tiposAccion = [
-        { key: '1', label: 'Búsqueda de Casos Similares' },
-        { key: '2', label: 'Carga de Documentos' },
-        { key: '3', label: 'Login' },
-        { key: '4', label: 'Logout' },
-        { key: '5', label: 'Cambio de Contraseña' },
-        { key: '6', label: 'Recuperación de Contraseña' },
-        { key: '7', label: 'Crear Usuario' },
-        { key: '8', label: 'Editar Usuario' },
-        { key: '9', label: 'Consultar Usuarios' },
-        { key: '10', label: 'Descargar Archivo' },
-        { key: '11', label: 'Listar Archivos' },
-        { key: '12', label: 'Consulta RAG' },
-        { key: '13', label: 'Generar Resumen' },
-        { key: '14', label: 'Consultar Bitácora' },
-        { key: '15', label: 'Exportar Bitácora' }
-    ];
+const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false }) => {
+    
+    const [filtrosLocales, setFiltrosLocales] = useState(filtros);
+
+    // Sincronizar filtros locales cuando el padre los limpie
+    useEffect(() => {
+        setFiltrosLocales(filtros);
+    }, [filtros]);
 
     const handleInputChange = (campo, valor) => {
-        onFiltroChange({ ...filtros, [campo]: valor });
+        setFiltrosLocales({ ...filtrosLocales, [campo]: valor });
+    };
+
+    const handleBuscarClick = () => {
+        // Enviar filtros locales directamente al callback de búsqueda
+        onBuscar(filtrosLocales);
+    };
+
+    const handleLimpiarClick = () => {
+        // Limpiar filtros locales y notificar al padre
+        const filtrosVacios = {
+            usuario: '',
+            tipoAccion: '',
+            expediente: '',
+            fechaInicio: '',
+            fechaFin: '',
+            page: 1,
+            limit: 10
+        };
+        setFiltrosLocales(filtrosVacios);
+        onLimpiarFiltros();
     };
 
     const handleDateChange = (campo, date) => {
@@ -40,31 +50,31 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
             const isoString = `${year}-${month}-${day}`;
             
             // Validar que fechaFin no sea menor que fechaInicio
-            if (campo === 'fechaFin' && filtros.fechaInicio) {
-                if (isoString < filtros.fechaInicio) {
+            if (campo === 'fechaFin' && filtrosLocales.fechaInicio) {
+                if (isoString < filtrosLocales.fechaInicio) {
                     // No permitir fecha fin menor que fecha inicio
                     return;
                 }
             }
             
             // Validar que fechaInicio no sea mayor que fechaFin
-            if (campo === 'fechaInicio' && filtros.fechaFin) {
-                if (isoString > filtros.fechaFin) {
+            if (campo === 'fechaInicio' && filtrosLocales.fechaFin) {
+                if (isoString > filtrosLocales.fechaFin) {
                     // Si fecha inicio es mayor, limpiar fecha fin
-                    onFiltroChange({ ...filtros, [campo]: isoString, fechaFin: '' });
+                    setFiltrosLocales({ ...filtrosLocales, [campo]: isoString, fechaFin: '' });
                     return;
                 }
             }
             
-            onFiltroChange({ ...filtros, [campo]: isoString });
+            setFiltrosLocales({ ...filtrosLocales, [campo]: isoString });
         } else {
-            onFiltroChange({ ...filtros, [campo]: '' });
+            setFiltrosLocales({ ...filtrosLocales, [campo]: '' });
         }
     };
 
-    // Verificar si hay contenido en los filtros
+    // Verificar si hay contenido en los filtros locales
     const hasContent = () => {
-        return Object.values(filtros).some(valor => valor !== '');
+        return Object.values(filtrosLocales).some(valor => valor !== '');
     };
 
     // Verificar si se puede buscar (al menos un filtro activo)
@@ -93,7 +103,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                     {/* Botones de acción en el header */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
                         <Button
-                            onPress={onBuscar}
+                            onPress={handleBuscarClick}
                             color="primary"
                             size="md"
                             startContent={<IoSearch className="w-4 h-4" />}
@@ -108,7 +118,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                         </Button>
 
                         <Button
-                            onPress={onLimpiarFiltros}
+                            onPress={handleLimpiarClick}
                             color="default"
                             variant="flat"
                             size="md"
@@ -131,7 +141,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 labelPlacement='outside'
                                 placeholder="Nombre, apellido o correo"
                                 color="primary"
-                                value={filtros.usuario}
+                                value={filtrosLocales.usuario}
                                 onChange={(e) => handleInputChange('usuario', e.target.value)}
                                 variant="bordered"
                                 size="lg"
@@ -146,7 +156,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 labelPlacement='outside'
                                 placeholder="Número de expediente"
                                 color='primary'
-                                value={filtros.expediente}
+                                value={filtrosLocales.expediente}
                                 onChange={(e) => handleInputChange('expediente', e.target.value)}
                                 variant="bordered"
                                 size="lg"
@@ -161,7 +171,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 labelPlacement='outside'
                                 placeholder="Selecciona un tipo"
                                 color='primary'
-                                selectedKeys={filtros.tipoAccion ? [filtros.tipoAccion.toString()] : []}
+                                selectedKeys={filtrosLocales.tipoAccion ? [filtrosLocales.tipoAccion.toString()] : []}
                                 onSelectionChange={(keys) => {
                                     const selectedKey = Array.from(keys)[0];
                                     // Enviar el ID numérico (1-8) en lugar del label
@@ -171,7 +181,7 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                                 size="lg"
                                 className="w-full"
                             >
-                                {tiposAccion.map((tipo) => (
+                                {TIPOS_ACCION.map((tipo) => (
                                     <SelectItem key={tipo.key} value={tipo.key}>
                                         {tipo.label}
                                     </SelectItem>
@@ -184,13 +194,13 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                             <DatePicker
                                 label="Fecha Inicio"
                                 labelPlacement='outside'
-                                value={filtros.fechaInicio ? parseDate(filtros.fechaInicio) : null}
+                                value={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : null}
                                 onChange={(date) => handleDateChange('fechaInicio', date)}
                                 variant="bordered"
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
-                                maxValue={filtros.fechaFin ? parseDate(filtros.fechaFin) : undefined}
+                                maxValue={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : undefined}
                                 className="w-full"
                             />
                         </div>
@@ -200,13 +210,13 @@ const FiltrosBitacora = ({ filtros, onFiltroChange, onLimpiarFiltros, onBuscar, 
                             <DatePicker
                                 label="Fecha Fin"
                                 labelPlacement='outside'
-                                value={filtros.fechaFin ? parseDate(filtros.fechaFin) : null}
+                                value={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : null}
                                 onChange={(date) => handleDateChange('fechaFin', date)}
                                 variant="bordered"
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
-                                minValue={filtros.fechaInicio ? parseDate(filtros.fechaInicio) : undefined}
+                                minValue={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : undefined}
                                 className="w-full"
                             />
                         </div>

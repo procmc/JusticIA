@@ -5,7 +5,6 @@
 import { useRef } from 'react';
 import ingestaService from '@/services/ingestaService';
 import Toast from '@/components/ui/CustomAlert';
-import { sanitizeErrorMessage, ErrorTypes } from '@/utils/fetchErrorHandler';
 
 // Configuración
 const PERSIST_KEY = 'ingesta_files';
@@ -147,7 +146,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           localStatus = status; // Mantener 'fallido' o 'cancelado' tal cual
           localProgress = 0;
           
-          const sanitized = sanitizeErrorMessage(localMessage, ErrorTypes.SERVER);
+          const sanitized = localMessage || 'Error en el procesamiento';
           
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
@@ -237,10 +236,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         
         // Para errores de red, reintentar hasta MAX_NETWORK_RETRIES
         if (networkRetries >= MAX_NETWORK_RETRIES) {
-          const sanitized = sanitizeErrorMessage(
-            error.message || 'Error de conexión',
-            ErrorTypes.NETWORK
-          );
+          const sanitized = error.message || 'Error de conexión';
           
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
@@ -252,7 +248,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           
           Toast.error(
             'Error de conexión',
-            `No se pudo consultar el estado de ${truncateFileName(fileName)}`
+            `${truncateFileName(fileName)}: ${sanitized}`
           );
           
           updateFiles(prev => prev.map(f => 
@@ -365,14 +361,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         } catch (error) {
           console.error('Error subiendo archivos:', error);
           
-          const sanitized = sanitizeErrorMessage(
-            error.message || 'Error en subida',
-            ErrorTypes.NETWORK
-          );
+          const sanitized = error.message || 'Error en subida';
           
           Toast.error(
             'Error en la subida',
-            `No se pudieron subir los archivos del expediente ${expediente}`
+            `${truncateFileName(expediente)}: ${sanitized}`
           );
           
           updateFiles(prev => prev.map(f =>

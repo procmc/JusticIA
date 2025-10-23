@@ -13,11 +13,12 @@ import Toast from '@/components/ui/CustomAlert';
 
 export default function Home() {
   const router = useRouter();
+  const { query, replace } = router;
 
   useEffect(() => {
     // Verificar si hay error de autorización en la URL
-    if (router.query.error === 'unauthorized') {
-      const requiredRoles = router.query.required ? router.query.required.split(',') : [];
+    if (query.error === 'unauthorized') {
+      const requiredRoles = query.required ? query.required.split(',') : [];
       
       Toast.error(
         'Acceso Denegado',
@@ -27,9 +28,9 @@ export default function Home() {
       );
 
       // Limpiar la URL
-      router.replace('/', undefined, { shallow: true });
+      replace('/', undefined, { shallow: true });
     }
-  }, [router.query]);
+  }, [query.error, query.required, replace]);
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">{/* Hero Section */}
