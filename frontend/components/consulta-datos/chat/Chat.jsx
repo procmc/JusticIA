@@ -6,6 +6,7 @@ import consultaService from '../../../services/consultaService';
 import RAG_CONFIG from '../../../config/ragConfig';
 import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
+import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
 const ConsultaChat = () => {
   const [messages, setMessages] = useState([]);
@@ -46,10 +47,7 @@ const ConsultaChat = () => {
 
 **¿Tienes el número de expediente que quieres consultar?**`,
           isUser: false,
-          timestamp: new Date().toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
+          timestamp: formatearSoloHoraCostaRica(new Date())
         };
         setMessages([welcomeMessage]);
       }
@@ -107,10 +105,7 @@ const ConsultaChat = () => {
               ? `Cambiar consulta a expediente: ${newExpediente}`
               : `Establecer consulta para expediente: ${newExpediente}`,
             isUser: true,
-            timestamp: new Date().toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
+            timestamp: formatearSoloHoraCostaRica(new Date()),
             scope: searchScope,
             expedienteNumber: newExpediente
           };
@@ -121,10 +116,7 @@ const ConsultaChat = () => {
               ? ` **Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
               : ` **Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
             isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
+            timestamp: formatearSoloHoraCostaRica(new Date())
           };
 
           setMessages(prev => [...prev, userMessage, assistantMessage]);
@@ -142,22 +134,16 @@ const ConsultaChat = () => {
       else if (!consultedExpediente) {
         // No es un número de expediente válido - responder como asistente
         const userMessage = {
-          text: text,
+          text,
           isUser: true,
-          timestamp: new Date().toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }),
+          timestamp: formatearSoloHoraCostaRica(new Date()),
           scope: searchScope
         };
 
         const assistantMessage = {
           text: `Para realizar consultas sobre un expediente específico, **necesito que ingreses un número de expediente válido**.\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de abajo.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
           isUser: false,
-          timestamp: new Date().toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
+          timestamp: formatearSoloHoraCostaRica(new Date())
         };
 
         setMessages(prev => [...prev, userMessage, assistantMessage]);
@@ -177,10 +163,7 @@ const ConsultaChat = () => {
     const userMessage = {
       text,
       isUser: true,
-      timestamp: new Date().toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      timestamp: formatearSoloHoraCostaRica(new Date()),
       scope: searchScope,
       expedienteNumber: searchScope === 'expediente' ? consultedExpediente : null
     };
@@ -299,10 +282,7 @@ const ConsultaChat = () => {
               // Respuesta exitosa o ya reintentamos
               updatedMessages[messageIndex] = {
                 ...updatedMessages[messageIndex],
-                timestamp: new Date().toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }),
+                timestamp: formatearSoloHoraCostaRica(new Date()),
                 isRetrying: false
               };
             }
@@ -327,10 +307,7 @@ const ConsultaChat = () => {
                 ...updatedMessages[messageIndex],
                 text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
                 isError: true,
-                timestamp: new Date().toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
+                timestamp: formatearSoloHoraCostaRica(new Date())
               };
             }
             return updatedMessages;
@@ -376,10 +353,7 @@ const ConsultaChat = () => {
             ...updatedMessages[messageIndex],
             text: errorMessage,
             isError: true,
-            timestamp: new Date().toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
+            timestamp: formatearSoloHoraCostaRica(new Date())
           };
         }
         return updatedMessages;
@@ -444,10 +418,7 @@ const ConsultaChat = () => {
 
 **¿Tienes el número de expediente que quieres consultar?**`,
                   isUser: false,
-                  timestamp: new Date().toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
+                  timestamp: formatearSoloHoraCostaRica(new Date())
                 };
                 // Usar setTimeout para asegurar que se ejecute después del setMessages([])
                 setTimeout(() => setMessages([welcomeMessage]), 0);
@@ -503,13 +474,13 @@ const ConsultaChat = () => {
           // Restaurar conversación seleccionada
           if (conversation && conversation.messages) {
             // Convertir mensajes del backend al formato del frontend
-            const restoredMessages = conversation.messages.map(msg => ({
+            const restoredMessages = conversation.messages.map((msg, index) => ({
               text: msg.content,
               isUser: msg.role === 'user',
-              timestamp: new Date().toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
+              // Usar timestamp original si existe, sino usar timestamp con pequeño offset para diferenciación
+              timestamp: msg.timestamp 
+                ? formatearSoloHoraCostaRica(new Date(msg.timestamp))
+                : formatearSoloHoraCostaRica(new Date(Date.now() - (conversation.messages.length - index) * 1000))
             }));
             
             setMessages(restoredMessages);
@@ -549,10 +520,7 @@ const ConsultaChat = () => {
 
 **¿Tienes el número de expediente que quieres consultar?**`,
               isUser: false,
-              timestamp: new Date().toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
+              timestamp: formatearSoloHoraCostaRica(new Date())
             };
             setMessages([welcomeMessage]);
           }

@@ -7,8 +7,9 @@ import {
   Divider,
   Badge
 } from '@heroui/react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatearFechaHoraCompleta } from '../../../utils/dateUtils';
 import { 
   IoPerson, 
   IoMail, 
@@ -33,7 +34,7 @@ const DetalleUsuario = ({
   const formatearFecha = (fechaString, esUltimoAcceso = false) => {
     if (!fechaString) return esUltimoAcceso ? 'El usuario nunca ha iniciado sesión' : 'No disponible';
     try {
-      return format(new Date(fechaString), 'dd \'de\' MMMM \'de\' yyyy \'a las\' HH:mm', { locale: es });
+      return formatearFechaHoraCompleta(fechaString);
     } catch (error) {
       return 'Fecha inválida';
     }

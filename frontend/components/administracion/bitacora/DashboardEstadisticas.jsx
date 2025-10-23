@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardBody, CardHeader, Button } from '@heroui/react';
+import { formatearSoloFechaCostaRica } from '../../../utils/dateUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -167,8 +168,13 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
     if (!estadisticas?.actividadPorDia || estadisticas.actividadPorDia.length === 0) return null;
 
     const etiquetas = estadisticas.actividadPorDia.map(d => {
+      // Usar formato personalizado para etiquetas de gráfico (día y mes abreviado)
       const fecha = new Date(d.fecha);
-      return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+      const fechaCostaRica = formatearSoloFechaCostaRica(fecha);
+      // Extraer día y mes del formato dd/MM/yyyy
+      const partes = fechaCostaRica.split('/');
+      const mes = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][parseInt(partes[1]) - 1];
+      return `${partes[0]} ${mes}`;
     });
 
     return {
