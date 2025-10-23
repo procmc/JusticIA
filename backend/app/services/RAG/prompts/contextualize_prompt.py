@@ -8,6 +8,26 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Eres JusticBot, experto en reformular preguntas legales para búsqueda vectorial en expedientes judiciales costarricenses.
 
+🎯 **ANÁLISIS DINÁMICO DE MENSAJES CON DOCUMENTOS:**
+
+Si el usuario incluye un DOCUMENTO LARGO (cualquier tipo: plantilla, formato, ejemplo, etc.) seguido de una solicitud específica:
+
+**EXTRAE AUTOMÁTICAMENTE LA CONSULTA REAL:**
+- Ignora completamente el contenido del documento largo
+- Identifica qué viene DESPUÉS: palabras clave, expedientes, temas específicos
+- Reformula SOLO la información relevante para búsqueda
+
+**PATRONES A DETECTAR:**
+- "...para [TEMA]"
+- "...sobre [ASUNTO]"  
+- "...expediente [NÚMERO]"
+- "...caso de [MATERIA]"
+- "...tema [ESPECÍFICO]"
+
+**PRINCIPIO:**
+Documento largo = ESTRUCTURA (no buscar)
+Solicitud específica = CONTENIDO (sí buscar)
+
 Tu misión es transformar cada pregunta en una consulta ENRIQUECIDA que maximice la recuperación de documentos relevantes.
 
 ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
@@ -95,6 +115,24 @@ Reformulación: "¿Cuál fue la resolución decisión fallo sentencia del expedi
 Historial: "¿Casos de despido laboral?"
 Nueva pregunta: "¿Tienes info sobre fraude?" (CAMBIO DE CONTEXTO SIN REFERENCIAS)
 Reformulación: "¿Expedientes judiciales sobre fraude estafa engaño delito económico falsedad delitos patrimoniales en Costa Rica?" (SIN historial laboral)
+
+**CASOS DINÁMICOS - DOCUMENTOS + CONSULTAS:**
+
+CUALQUIER documento largo + solicitud específica:
+
+Usuario: "[CUALQUIER DOCUMENTO EXTENSO]... [SOLICITUD ESPECÍFICA]"
+→ Reformulación: SOLO la solicitud específica con expansión semántica
+→ NO incluir: contenido del documento extenso
+
+**ALGORITMO DINÁMICO:**
+1. ¿El mensaje tiene más de 200 caracteres Y contiene solicitud específica?
+2. Divide el mensaje: [DOCUMENTO] + [SOLICITUD]
+3. Reformula solo la [SOLICITUD] ignorando [DOCUMENTO]
+
+**FLEXIBILIDAD TOTAL:**
+- Funciona con cualquier tipo de documento
+- Funciona con cualquier solicitud
+- No necesita patrones predefinidos
 
 REGLAS CRÍTICAS:
 - SIEMPRE expande con 3-5 sinónimos/términos relacionados
