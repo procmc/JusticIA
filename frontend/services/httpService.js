@@ -129,6 +129,14 @@ class HttpService {
           console.warn('No se pudo parsear error del backend:', parseError);
         }
 
+        // Manejar sesión expirada (401 Unauthorized)
+        if (response.status === 401) {
+          // Emitir evento global para que _app.js lo maneje
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('unauthorized'));
+          }
+        }
+
         // Crear error con información del backend (SIN SANITIZAR)
         const error = new Error(errorMessage);
         error.status = response.status;

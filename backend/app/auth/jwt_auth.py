@@ -9,17 +9,19 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models.rol import T_Rol
-from app.config.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS
+from app.config.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS, JWT_EXPIRE_MINUTES
 from app.constants.roles import ADMINISTRADOR, USUARIO_JUDICIAL
 
 
 def create_token(user_id: int, role: str, username: Optional[str] = None) -> str:
     """Crea un token JWT simple"""
+    exp_delta = timedelta(minutes=JWT_EXPIRE_MINUTES)
+    
     payload = {
         "user_id": user_id,
         "role": role,
         "username": username,
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
+        "exp": datetime.utcnow() + exp_delta,
         "iat": datetime.utcnow()
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
