@@ -112,15 +112,15 @@ export function UserButton() {
                 <div style={{ width: "2.5rem" }}>
                     <Dropdown placement="bottom-end">
                         <DropdownTrigger>
-                            <div className={`rounded-full p-0.5 cursor-pointer border-2`}>
+                            <button className="rounded-full p-0.5 cursor-pointer focus:outline-none focus-visible:ring-0">
                                 <Image
                                     src="/usuario.png"
                                     alt="User Avatar"
                                     className="rounded-full"
-                                    width={50}
-                                    height={50}
+                                    width={40}
+                                    height={40}
                                 />
-                            </div>
+                            </button>
                         </DropdownTrigger>
 
                         <DropdownMenu
@@ -128,26 +128,28 @@ export function UserButton() {
                             variant="flat"
                             className="w-64"
                         >
-                            <DropdownItem key="profile" className="h-16 gap-3 opacity-100" textValue="profile">
-                                <div className="flex items-center gap-3 py-2">
-                                    <div className={`rounded-full p-0.5border-2`}>
+                            <DropdownItem key="profile" className="px-4 py-1 cursor-default pointer-events-none" textValue="profile">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0`}> 
                                         <Image
                                             src="/usuario.png"
                                             alt="User Avatar"
-                                            className="rounded-full"
-                                            width={50}
-                                            height={50}
+                                            className="object-cover"
+                                            width={40}
+                                            height={40}
                                         />
                                     </div>
-                                    <div className="flex flex-col">
-                                        <p className="font-semibold text-gray-800">
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-gray-800 leading-tight">
                                             {formatearNombre(session?.user?.name || "Usuario")}
                                         </p>
-                                        <p className="text-xs text-gray-500">
+                                        <p className="text-xs text-gray-500 truncate">
                                             {session?.user?.email || "usuario@example.com"}
                                         </p>
-                                        <div className={`text-xs font-medium mt-1 px-2 py-1 rounded-md ${getRoleStyles(session?.user?.role).bgColor} ${getRoleStyles(session?.user?.role).textColor}`}>
-                                            {getRoleStyles(session?.user?.role).label}
+                                        <div className="mt-2">
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${getRoleStyles(session?.user?.role).borderColor} ${getRoleStyles(session?.user?.role).textColor}`}>
+                                                {getRoleStyles(session?.user?.role).label}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -161,18 +163,17 @@ export function UserButton() {
                             </DropdownItem>
                             <DropdownItem
                                 key="settings"
-                                className="py-2 hover:bg-gray-50"
+                                className="px-4 py-3 hover:bg-gray-50 transition-colors"
                                 onPress={handleOpenChangePassword}
                             >
                                 <span className="text-gray-700">Cambiar contraseña</span>
                             </DropdownItem>
                             <DropdownItem
                                 key="logout"
-                                color="danger"
-                                className="py-2 text-danger hover:bg-danger-50"
+                                className="px-4 py-3 hover:bg-red-50 transition-colors"
                                 onPress={handleLogout}
                             >
-                                <span className="font-medium">Cerrar sesión</span>
+                                <span className="font-medium text-red-600">Cerrar sesión</span>
                             </DropdownItem>
                         </DropdownMenu>
                     </Dropdown>

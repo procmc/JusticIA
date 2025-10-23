@@ -38,10 +38,10 @@ export default NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 2, 
+    maxAge: 30 * 60, // 30 minutos
   },
   jwt: {
-    maxAge: 60 * 60 * 2, 
+    maxAge: 30 * 60, // 30 minutos
   },
   callbacks: {
     async jwt({ token, user }) {

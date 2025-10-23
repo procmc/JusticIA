@@ -39,7 +39,10 @@ DATABASE_URL = f"mssql+pyodbc://{SQL_SERVER_USER}:{quote_plus(SQL_SERVER_PASSWOR
 # Configuración JWT
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 JWT_ALGORITHM = "HS256"
+# Legacy: JWT_EXPIRE_HOURS (hours) kept for backward compatibility
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
+# Preferencia moderna: controlar expiración en minutos mediante ACCESS_TOKEN_EXPIRE_MINUTES
+JWT_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(JWT_EXPIRE_HOURS * 60)))
 
 # Configuración LLM
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
