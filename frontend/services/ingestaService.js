@@ -80,26 +80,8 @@ class IngestaService {
           await this.sleep(delay);
           continue;
         }
-
-        // Para otros errores o último intento, propagar con mensaje amigable
-        if (error.isNetworkError) {
-          throw new Error('No se pudo conectar con el servidor. Verifique su conexión a internet.');
-        }
-
-        if (error.status === 413) {
-          throw new Error('Los archivos son demasiado grandes para ser procesados.');
-        }
-
-        if (error.status === 400) {
-          throw new Error(error.message || 'Los archivos no son válidos.');
-        }
-
-        if (error.status === 500) {
-          throw new Error('Error en el servidor al procesar los archivos. Intente nuevamente.');
-        }
-
-        // Propagar mensaje original del backend
-        throw new Error(error.message || 'Error al subir los archivos');
+        // Para cualquier error restante, propagar un único mensaje genérico
+        throw new Error('Error al procesar la ingesta. Intente nuevamente más tarde.');
       }
     }
   }
@@ -126,13 +108,8 @@ class IngestaService {
           ready: false
         };
       }
-
-      // Para errores del servidor, propagar
-      if (error.status === 404) {
-        throw new Error('Tarea no encontrada. Puede que haya expirado.');
-      }
-
-      throw new Error(error.message || 'Error al consultar el progreso');
+      // Para otros errores, lanzar un mensaje genérico
+      throw new Error('Error consultando el progreso de la ingesta.');
     }
   }
 
@@ -153,7 +130,7 @@ class IngestaService {
         return {
           taskId,
           success: false,
-          error: error.message || 'Error consultando estado'
+          error: 'Error al consultar el estado'
         };
       }
     });

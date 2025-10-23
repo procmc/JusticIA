@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiFolder, FiXCircle } from 'react-icons/fi';
 import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 import { getFileIcon, getStatusColor } from '@/utils/ingesta-datos/iconos';
-import { sanitizeErrorMessage, ErrorTypes } from '@/utils/fetchErrorHandler';
 
 const FilesList = ({
   files,
@@ -119,7 +118,7 @@ const FilesList = ({
                       {/* Mensaje de error */}
                       {(file.status === 'fallido' || file.status === 'cancelado') && file.message && (
                         <div className="text-xs text-red-600 mt-2">
-                          {sanitizeErrorMessage(file.message, ErrorTypes.UNKNOWN)}
+                          {file.message}
                         </div>
                       )}
                     </div>

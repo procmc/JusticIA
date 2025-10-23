@@ -141,7 +141,7 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion =
         return (
           <div className="max-w-xl">
             <p className="text-small" title={registro.texto}>
-              {registro.texto}
+              {truncarTexto(registro.texto, 300)}
             </p>
           </div>
         );
