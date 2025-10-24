@@ -52,6 +52,9 @@ pandas>=2.0.0
 
 python-dotenv==1.0.1
 
+# Zona horaria
+pytz>=2023.3
+
 # Monitoreo del sistema
 psutil>=5.9.0        # Para detectar recursos del sistema (CPU, RAM, etc.)
 

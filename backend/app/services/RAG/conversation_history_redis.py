@@ -5,10 +5,18 @@ import json
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime
+import pytz
 import redis
 from app.config.config import REDIS_URL
 
 logger = logging.getLogger(__name__)
+
+# Zona horaria de Costa Rica
+COSTA_RICA_TZ = pytz.timezone('America/Costa_Rica')
+
+def get_costa_rica_now():
+    """Obtiene la fecha y hora actual en zona horaria de Costa Rica"""
+    return datetime.now(COSTA_RICA_TZ)
 
 
 class RedisConversationHistory:
@@ -73,8 +81,8 @@ class RedisConversationHistory:
                 "metadata": {
                     "session_id": session_id,
                     "user_id": user_id,
-                    "created_at": metadata.get("created_at", datetime.utcnow().isoformat()),
-                    "updated_at": datetime.utcnow().isoformat(),
+                    "created_at": metadata.get("created_at", get_costa_rica_now().isoformat()),
+                    "updated_at": get_costa_rica_now().isoformat(),
                     "title": metadata.get("title", "Nueva conversación"),
                     "message_count": len(messages),
                     "expediente_number": metadata.get("expediente_number")

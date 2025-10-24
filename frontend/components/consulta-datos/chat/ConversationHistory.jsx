@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBackendConversations } from '../../../hooks/useBackendConversations';
-import { formatearSoloHoraCostaRica, formatearSoloFechaCostaRica } from '../../../utils/dateUtils';
+import { formatearSoloHoraCostaRica, formatearSoloFechaCostaRica, formatearFechaHoraHistorial } from '../../../utils/dateUtils';
 
 const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConversation }) => {
   const { 
@@ -83,30 +83,8 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
   };
 
   const formatDate = (isoString) => {
-    const fechaOriginal = new Date(isoString);
-    
-    // Obtener fecha actual en Costa Rica (formato YYYY-MM-DD)
-    const hoyCostaRica = new Date().toLocaleDateString("sv-SE", {timeZone: "America/Costa_Rica"});
-    // Obtener fecha del mensaje en Costa Rica (formato YYYY-MM-DD)  
-    const fechaMensajeCostaRica = fechaOriginal.toLocaleDateString("sv-SE", {timeZone: "America/Costa_Rica"});
-    
-    if (hoyCostaRica === fechaMensajeCostaRica) { // Mismo día en Costa Rica
-      return formatearSoloHoraCostaRica(fechaOriginal);
-    } else {
-      // Calcular diferencia en días usando fechas de Costa Rica
-      const diffTime = new Date(hoyCostaRica) - new Date(fechaMensajeCostaRica);
-      const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDias > 0 && diffDias <= 7) { // Entre 1-7 días - mostrar día de semana
-        const opcionesdia = {
-          timeZone: 'America/Costa_Rica',
-          weekday: 'short'
-        };
-        return new Intl.DateTimeFormat('es-CR', opcionesdia).format(fechaOriginal);
-      } else { // Más de 7 días - mostrar fecha completa
-        return formatearSoloFechaCostaRica(fechaOriginal);
-      }
-    }
+    // Siempre mostrar fecha y hora completa en el historial
+    return formatearFechaHoraHistorial(isoString);
   };
 
   const getPreviewText = (conversation) => {

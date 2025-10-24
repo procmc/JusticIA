@@ -1,11 +1,19 @@
 from typing import Dict, List, Optional, Callable
 from datetime import datetime
+import pytz
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 import logging
 from app.services.RAG.conversation_history_redis import get_redis_history
 
 logger = logging.getLogger(__name__)
+
+# Zona horaria de Costa Rica
+COSTA_RICA_TZ = pytz.timezone('America/Costa_Rica')
+
+def get_costa_rica_now():
+    """Obtiene la fecha y hora actual en zona horaria de Costa Rica"""
+    return datetime.now(COSTA_RICA_TZ)
 
 
 class InMemoryChatMessageHistory(BaseChatMessageHistory):
@@ -107,7 +115,7 @@ class ConversationStore:
                 msg_dict = {
                     "type": "human" if isinstance(msg, HumanMessage) else "ai",
                     "content": msg.content,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": get_costa_rica_now().isoformat()
                 }
                 formatted_messages.append(msg_dict)
             
@@ -213,7 +221,7 @@ class ConversationStore:
     
     def _create_metadata(self, session_id: str, user_id: str) -> ConversationMetadata:
         """Crea metadatos para una nueva sesión"""
-        now = datetime.utcnow()
+        now = get_costa_rica_now()
         
         metadata = ConversationMetadata(
             session_id=session_id,
@@ -243,7 +251,7 @@ class ConversationStore:
         """Actualiza metadatos de una sesión"""
         if session_id in self._metadata:
             metadata = self._metadata[session_id]
-            metadata.updated_at = datetime.utcnow()
+            metadata.updated_at = get_costa_rica_now()
             
             if title:
                 metadata.title = title
