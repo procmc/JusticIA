@@ -35,6 +35,8 @@ const ConsultaChat = () => {
         const welcomeMessage = {
           text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
 
+Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
+
 ---
 
 ### 🎯 **¿Cómo funciona?**
@@ -406,6 +408,8 @@ const ConsultaChat = () => {
                 const welcomeMessage = {
                   text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
 
+Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que selecciones.
+
 ---
 
 ### 🎯 **¿Cómo funciona?**
@@ -507,6 +511,8 @@ const ConsultaChat = () => {
           if (searchScope === 'expediente') {
             const welcomeMessage = {
               text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que selecciones.
 
 ---
 
