@@ -348,23 +348,24 @@ async def process_single_file_with_content(
                 )
                 logger.debug(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
                 
-                # 2. Usar la ruta de archivo que ya fue guardada
-                ruta_archivo = filepath
-                logger.debug(f"Usando archivo ya guardado: {ruta_archivo}")
-                
-                # 3. Actualizar la ruta en el documento
+                # 2. Actualizar la ruta en el documento
                 await expediente_service.actualizar_ruta_documento(
                     db=db,
                     documento=documento_creado,
-                    ruta_archivo=ruta_archivo,
+                    ruta_archivo=filepath,
                     auto_commit=False
                 )
                 logger.debug(f"Ruta actualizada en documento")
                 
+                # 3. COMMIT TEMPRANO - El documento ahora es visible con estado "Pendiente"
+                db.commit()
+                db.refresh(documento_creado)
+                logger.info(f"Documento guardado con estado 'Pendiente' (ID: {documento_creado.CN_Id_documento}) - Iniciando procesamiento...")
+                
                 # 4. Actualizar metadatos con info de BD
                 metadatos.update({
                     "documento_id": documento_creado.CN_Id_documento,  # Usar el nombre correcto del campo
-                    "ruta_archivo": ruta_archivo
+                    "ruta_archivo": filepath
                 })
                 
                 # Progreso: Generando embeddings (60%)
@@ -409,31 +410,62 @@ async def process_single_file_with_content(
                 )
                 logger.debug(f"Estado actualizado a 'Procesado'")
                 
-                # 7. Si todo salió bien, hacer commit final
+                # 7. Commit final
                 db.commit()
                 db.refresh(documento_creado)
-                logger.info(f"Transacción completada exitosamente")
+                logger.info(f"Procesamiento completado exitosamente - Estado: Procesado")
                 
             except Exception as e:
-                # Rollback en caso de error y actualizar estado a "Error"
-                logger.error(f"Error en transacción: {str(e)}")
+                # Manejo de error: actualizar estado según el tipo de excepción
+                error_type = type(e).__name__
+                
+                # Detectar cancelación
+                is_cancelled = (
+                    error_type in ['Terminated', 'TaskCancelled', 'CancelledError'] or
+                    'cancelad' in str(e).lower() or
+                    'revoked' in str(e).lower()
+                )
+                
+                if is_cancelled:
+                    logger.warning(f"Procesamiento cancelado por el usuario: {str(e)}")
+                    nuevo_estado = "Error"  # Usar "Error" para cancelaciones
+                    mensaje_log = "cancelado por el usuario"
+                    
+                    # Actualizar progreso con mensaje de cancelación
+                    if progress_tracker:
+                        progress_tracker.update_progress(0, "Procesamiento cancelado por el usuario", status="error")
+                else:
+                    logger.error(f"Error en procesamiento: {str(e)}")
+                    nuevo_estado = "Error"
+                    mensaje_log = "error en procesamiento"
+                    
+                    # Actualizar progreso con mensaje de error
+                    if progress_tracker:
+                        progress_tracker.update_progress(0, f"Error: {str(e)[:100]}", status="error")
+                
                 try:
-                    # Si tenemos el documento creado, actualizar su estado a "Error"
+                    # El documento ya existe en BD por el commit temprano
                     if documento_creado:
+                        # Actualizar estado a "Error"
                         await expediente_service.actualizar_estado_documento(
                             db=db,
                             documento=documento_creado,
-                            nuevo_estado="Error",
-                            auto_commit=False
+                            nuevo_estado=nuevo_estado,
+                            auto_commit=True  # Hacer commit del estado
                         )
-                        logger.debug(f"Estado actualizado a 'Error'")
-                        db.commit()  # Commit solo el cambio de estado
+                        logger.info(f"Estado actualizado a '{nuevo_estado}' para documento {documento_creado.CN_Id_documento} ({mensaje_log})")
+                        logger.info(f"Archivo mantenido en disco para auditoría: {filepath}")
                     else:
-                        db.rollback()  # Rollback completo si no hay documento
-                    logger.debug("Rollback de BD realizado")
-                except Exception as rollback_error:
-                    logger.error(f"Error en rollback: {str(rollback_error)}")
-                    db.rollback()  # Rollback de emergencia
+                        # Caso muy raro: si no hay documento creado, hacer rollback
+                        db.rollback()
+                        logger.debug("Rollback de BD realizado (sin documento creado)")
+                        
+                except Exception as cleanup_error:
+                    logger.error(f"Error en manejo de estado después de fallo: {str(cleanup_error)}")
+                    try:
+                        db.rollback()  # Rollback de emergencia
+                    except:
+                        pass
                 
                 # Re-lanzar la excepción original
                 raise e

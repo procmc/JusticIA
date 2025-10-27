@@ -153,15 +153,132 @@ class DocumentoRepository:
                 db.rollback()
             raise Exception(f"Error actualizando ruta del archivo: {str(e)}")
     
-    def listar_por_expediente(self, db: Session, expediente: T_Expediente) -> List[T_Documento]:
+    def listar_por_expediente(self, db: Session, expediente: T_Expediente, solo_procesados: bool = False) -> List[T_Documento]:
         """
         Lista todos los documentos de un expediente.
         
         Args:
             db: Sesión de base de datos
             expediente: Expediente del cual listar documentos
+            solo_procesados: Si True, retorna solo documentos con estado "Procesado"
             
         Returns:
             List[T_Documento]: Lista de documentos del expediente
         """
-        return expediente.documentos
+        documentos = expediente.documentos
+        
+        if solo_procesados:
+            # Filtrar solo documentos procesados
+            documentos = [
+                doc for doc in documentos 
+                if doc.estado and doc.estado.CT_Nombre_estado == "Procesado"
+            ]
+        
+        return documentos
+    
+    def obtener_ids_procesados(self, db: Session) -> set:
+        """
+        Obtiene los IDs de todos los documentos con estado 'Procesado'.
+        Método centralizado para filtrado en búsquedas.
+        
+        Args:
+            db: Sesión de base de datos
+            
+        Returns:
+            set: Set de IDs de documentos procesados
+        """
+        try:
+            stmt = select(T_Documento.CN_Id_documento).join(
+                T_Estado_procesamiento,
+                T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
+            ).where(
+                T_Estado_procesamiento.CT_Nombre_estado == "Procesado"
+            )
+            
+            result = db.execute(stmt)
+            return {doc_id for (doc_id,) in result.fetchall()}
+            
+        except Exception as e:
+            print(f"Error obteniendo IDs de documentos procesados: {e}")
+            return set()
+    
+    def listar_por_expediente_y_nombres(
+        self, 
+        db: Session, 
+        expediente_numero: str, 
+        solo_procesados: bool = True
+    ) -> List[str]:
+        """
+        Lista nombres de archivos de un expediente.
+        Útil para filtrado en file_management_service.
+        
+        Args:
+            db: Sesión de base de datos
+            expediente_numero: Número del expediente
+            solo_procesados: Si True, retorna solo archivos procesados
+            
+        Returns:
+            List[str]: Lista de nombres de archivos
+        """
+        try:
+            query = db.query(T_Documento.CT_Nombre_archivo).join(
+                T_Expediente,
+                T_Documento.CN_Id_expediente == T_Expediente.CN_Id_expediente
+            ).filter(
+                T_Expediente.CT_Num_expediente == expediente_numero
+            )
+            
+            if solo_procesados:
+                query = query.join(
+                    T_Estado_procesamiento,
+                    T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
+                ).filter(
+                    T_Estado_procesamiento.CT_Nombre_estado == "Procesado"
+                )
+            
+            return [nombre for (nombre,) in query.all()]
+            
+        except Exception as e:
+            print(f"Error listando archivos por expediente: {e}")
+            return []
+    
+    def verificar_esta_procesado(
+        self, 
+        db: Session, 
+        expediente_numero: str, 
+        nombre_archivo: str
+    ) -> bool:
+        """
+        Verifica si un archivo específico está procesado.
+        Útil para validación en descarga de archivos.
+        
+        Args:
+            db: Sesión de base de datos
+            expediente_numero: Número del expediente
+            nombre_archivo: Nombre del archivo
+            
+        Returns:
+            bool: True si el archivo está procesado, False en caso contrario
+        """
+        try:
+            stmt = select(T_Estado_procesamiento.CT_Nombre_estado).select_from(
+                T_Documento
+            ).join(
+                T_Expediente,
+                T_Documento.CN_Id_expediente == T_Expediente.CN_Id_expediente
+            ).join(
+                T_Estado_procesamiento,
+                T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
+            ).where(
+                T_Expediente.CT_Num_expediente == expediente_numero,
+                T_Documento.CT_Nombre_archivo == nombre_archivo
+            )
+            
+            result = db.execute(stmt)
+            estado = result.scalar_one_or_none()
+            
+            return estado == "Procesado" if estado else False
+            
+        except Exception as e:
+            print(f"Error verificando estado de archivo: {e}")
+            return False

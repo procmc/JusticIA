@@ -42,6 +42,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   // Referencias para tracking de estado
   const processedFiles = useRef(new Set());  // IDs ya notificados con toast
   const activePollings = useRef(new Map()); // taskId -> { intervalId, retries }
+  const cancelledFiles = useRef(new Set()); // fileIds cancelados manualmente
 
   
   /**
@@ -120,12 +121,21 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     
     const pollFunction = async () => {
       try {
+        // Verificar si el archivo fue cancelado manualmente
+        if (cancelledFiles.current.has(fileId)) {
+          console.log(`Archivo ${fileId} está en lista de cancelados, deteniendo polling`);
+          stopPolling(taskId);
+          return;
+        }
+        
         const response = await ingestaService.consultarProgresoTarea(taskId);
         
         // Resetear contador de reintentos en éxito
         networkRetries = 0;
         
         const { status, progress, message, ready } = response;
+        
+        console.log(`[Polling ${taskId}] Estado: ${status}, Progreso: ${progress}%`);
         
         // Mapear estados del backend de forma inteligente
         let localProgress = progress || 0;
@@ -143,6 +153,13 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         
         // Verificar estados terminales en orden: primero errores, luego éxito
         if (status === 'fallido' || status === 'cancelado') {
+          // Verificar que no haya sido cancelado manualmente antes
+          if (cancelledFiles.current.has(fileId)) {
+            console.log(`Archivo ${fileId} ya fue cancelado manualmente, ignorando estado del servidor`);
+            stopPolling(taskId);
+            return;
+          }
+          
           localStatus = status; // Mantener 'fallido' o 'cancelado' tal cual
           localProgress = 0;
           
@@ -190,6 +207,12 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         // No retroceder de "procesando" a "pendiente" si ya tenemos progreso
         updateFiles(prev => prev.map(f => {
           if (f.id === fileId) {
+            // No actualizar si fue cancelado manualmente
+            if (cancelledFiles.current.has(fileId)) {
+              console.log(`No actualizando archivo ${fileId} porque fue cancelado manualmente`);
+              return f;
+            }
+            
             // Si ya tenemos progreso > 5%, no volver a "pendiente"
             const shouldKeepProcessing = f.progress > 5 && status === 'pendiente';
             const finalStatus = shouldKeepProcessing ? 'procesando' : localStatus;
@@ -423,19 +446,24 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
    */
   const cancelFileProcessing = async (fileId, fileProcessId, fileName) => {
     try {
-      // 1. Detener polling inmediatamente (UI responsiva)
+      console.log(`Cancelando archivo ${fileId} con taskId ${fileProcessId}`);
+      
+      // 1. Marcar como cancelado en la lista de control
+      cancelledFiles.current.add(fileId);
+      
+      // 2. Detener polling inmediatamente (UI responsiva)
       if (fileProcessId) {
         stopPolling(fileProcessId);
       }
       
-      // 2. Actualizar UI como cancelado (optimista)
+      // 3. Actualizar UI como cancelado (optimista)
       updateFiles(prev => prev.map(f =>
         f.id === fileId
-          ? { ...f, status: 'cancelado', progress: 0, message: 'Cancelado' }
+          ? { ...f, status: 'cancelado', progress: 0, message: 'Cancelado por el usuario' }
           : f
       ));
       
-      // 3. Intentar cancelar en backend con timeout de 2s
+      // 4. Intentar cancelar en backend con timeout de 2s
       if (fileProcessId) {
         const cancelPromise = ingestaService.cancelarProcesamiento(fileProcessId);
         const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ timeout: true }), 2000));
@@ -450,10 +478,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           }
         } catch (error) {
           console.warn('Error cancelando en backend:', error);
+          // Mantener estado cancelado incluso si hay error
         }
       }
       
-      // 4. Mensaje simple al usuario (siempre se muestra)
+      // 5. Mensaje simple al usuario (siempre se muestra)
       Toast.info('Cancelado', `${truncateFileName(fileName || 'Archivo')} cancelado`);
       
     } catch (error) {

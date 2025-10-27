@@ -24,7 +24,7 @@ async def search_similar_cases(
     """Buscar casos similares."""
     try:
         similarity_service = SimilarityService()
-        result = await similarity_service.search_similar_cases(data)
+        result = await similarity_service.search_similar_cases(data, db)  # Pasar db
         
         # Registrar búsqueda exitosa en bitácora
         await similarity_audit_service.registrar_busqueda_similares(

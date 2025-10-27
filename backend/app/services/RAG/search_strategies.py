@@ -19,7 +19,8 @@ class SearchStrategyManager:
         top_k: int,
         threshold: float,
         expediente_filter: Optional[str] = None,
-        min_results: Optional[int] = None
+        min_results: Optional[int] = None,
+        db = None  # Sesión de BD para filtrar por estado
     ) -> List[Dict[str, Any]]:
 
         self.total_searches += 1
@@ -29,7 +30,7 @@ class SearchStrategyManager:
         
         # Estrategia 1: Búsqueda normal
         logger.info(f"Búsqueda con threshold={threshold:.2f}, top_k={top_k}")
-        results = await search_by_text(query_text, top_k, threshold, expediente_filter)
+        results = await search_by_text(query_text, top_k, threshold, expediente_filter, db)
         
         if len(results) >= min_results:
             logger.info(f"Búsqueda exitosa: {len(results)} resultados")
@@ -44,7 +45,7 @@ class SearchStrategyManager:
         relaxed_threshold = threshold * self.config.FALLBACK_THRESHOLD_MULTIPLIER
         logger.info(f"Fallback: relajando umbral a {relaxed_threshold:.2f}")
         
-        results = await search_by_text(query_text, top_k, relaxed_threshold, expediente_filter)
+        results = await search_by_text(query_text, top_k, relaxed_threshold, expediente_filter, db)
         
         if len(results) >= min_results:
             logger.info(f"Fallback exitoso: {len(results)} resultados")
@@ -56,7 +57,8 @@ class SearchStrategyManager:
             query_text,
             self.config.TOP_K_FALLBACK,
             self.config.SIMILARITY_THRESHOLD_FALLBACK,
-            expediente_filter
+            expediente_filter,
+            db
         )
         
         if len(results) > 0:
