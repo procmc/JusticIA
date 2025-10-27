@@ -39,7 +39,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
 
 ---
 
-### 🎯 **¿Cómo funciona?**
+### **¿Cómo funciona?**
 
 **1.** Proporciona el número del expediente que deseas analizar  
 **2.** Realiza cualquier consulta específica sobre el caso  
@@ -412,7 +412,7 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
 
 ---
 
-### 🎯 **¿Cómo funciona?**
+### **¿Cómo funciona?**
 
 **1.** Proporciona el número del expediente que deseas analizar  
 **2.** Realiza cualquier consulta específica sobre el caso  
@@ -498,7 +498,7 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
               setConsultedExpediente(null);
             }
             
-            console.log(`✅ Conversación ${sessionId} restaurada con ${restoredMessages.length} mensajes`);
+            console.log(` Conversación ${sessionId} restaurada con ${restoredMessages.length} mensajes`);
           }
         }}
         onNewConversation={() => {
@@ -516,7 +516,7 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
 
 ---
 
-### 🎯 **¿Cómo funciona?**
+### **¿Cómo funciona?**
 
 **1.** Proporciona el número del expediente que deseas analizar  
 **2.** Realiza cualquier consulta específica sobre el caso  
