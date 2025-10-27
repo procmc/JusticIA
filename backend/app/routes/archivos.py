@@ -34,7 +34,7 @@ async def listar_archivos_expediente(
         )
     
     try:
-        archivos = file_management_service.listar_archivos_expediente(expediente_numero)
+        archivos = file_management_service.listar_archivos_expediente(expediente_numero, db)
         total_archivos = len(archivos)
         
         # Auditar listado de archivos
@@ -85,6 +85,26 @@ async def descargar_archivo_expediente(
         )
     
     try:
+        # Verificar que el archivo esté procesado (validación centralizada)
+        from app.repositories.documento_repository import DocumentoRepository
+        
+        repo = DocumentoRepository()
+        if not repo.verificar_esta_procesado(db, expediente_numero, nombre_archivo):
+            # Auditar intento de descarga de archivo no procesado
+            await archivos_audit_service.registrar_descarga_archivo(
+                db=db,
+                usuario_id=current_user["user_id"],
+                nombre_archivo=nombre_archivo,
+                expediente_numero=expediente_numero,
+                exito=False,
+                error="Archivo no disponible para descarga (no procesado)"
+            )
+            
+            raise HTTPException(
+                status_code=400,
+                detail="El archivo aún no está disponible para descarga"
+            )
+        
         ruta_archivo = file_management_service.obtener_ruta_archivo(expediente_numero, nombre_archivo)
         
         if not ruta_archivo:
@@ -95,7 +115,7 @@ async def descargar_archivo_expediente(
                 nombre_archivo=nombre_archivo,
                 expediente_numero=expediente_numero,
                 exito=False,
-                error="Archivo no encontrado"
+                error="Archivo no encontrado en disco"
             )
             
             raise HTTPException(

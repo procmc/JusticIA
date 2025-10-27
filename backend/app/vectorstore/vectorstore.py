@@ -107,6 +107,83 @@ async def get_langchain_vectorstore():
 # INTERFAZ PRINCIPAL - BÚSQUEDAS
 # ================================
 
+# ================================
+# HELPERS DE FILTRADO CENTRALIZADO
+# ================================
+
+def _get_processed_document_ids(db=None) -> set:
+    """
+    Obtiene IDs de documentos procesados usando repository centralizado.
+    Crea sesión temporal si no se proporciona db.
+    
+    Args:
+        db: Sesión de BD (opcional)
+        
+    Returns:
+        Set de IDs de documentos procesados
+    """
+    from app.repositories.documento_repository import DocumentoRepository
+    
+    db_creada = False
+    if db is None:
+        try:
+            from app.db.database import get_db
+            db = next(get_db())
+            db_creada = True
+        except Exception as e:
+            logger.error(f"No se pudo crear sesión de BD para filtrar: {e}")
+            return set()
+    
+    try:
+        repo = DocumentoRepository()
+        return repo.obtener_ids_procesados(db)
+    except Exception as e:
+        logger.error(f"Error obteniendo IDs procesados: {e}")
+        return set()
+    finally:
+        if db_creada and db:
+            db.close()
+
+
+def _filter_by_processed_status(results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
+    """
+    Filtra resultados para incluir solo documentos procesados.
+    Usa repository centralizado.
+    
+    Args:
+        results: Lista de resultados de búsqueda
+        db: Sesión de BD (opcional)
+        
+    Returns:
+        Lista filtrada de resultados
+    """
+    if not results:
+        return results
+    
+    processed_ids = _get_processed_document_ids(db)
+    
+    if not processed_ids:
+        logger.warning("No se pudieron obtener IDs procesados, devolviendo todos los resultados")
+        return results
+    
+    filtered_results = []
+    for doc in results:
+        # Buscar ID del documento en metadata
+        doc_id = None
+        if isinstance(doc, dict):
+            doc_id = doc.get("metadata", {}).get("id_documento") or doc.get("documento_id")
+        elif isinstance(doc, Document):
+            doc_id = doc.metadata.get("id_documento") if hasattr(doc, "metadata") else None
+        
+        # Incluir solo si está procesado
+        if doc_id and doc_id in processed_ids:
+            filtered_results.append(doc)
+        elif doc_id:
+            logger.debug(f"Documento {doc_id} excluido (estado != Procesado)")
+    
+    logger.info(f"Filtrado: {len(results)} → {len(filtered_results)} (solo procesados)")
+    return filtered_results
+
 
 async def search_by_vector(
     query_vector: List[float], top_k: int = 20, score_threshold: float = 0.0
@@ -147,20 +224,22 @@ async def search_by_vector(
 
 
 async def search_by_text(
-    query_text: str, top_k: int = 20, score_threshold: float = 0.0, expediente_filter: Optional[str] = None
+    query_text: str, top_k: int = 20, score_threshold: float = 0.0, expediente_filter: Optional[str] = None, db=None
 ) -> List[Dict[str, Any]]:
     """
     Búsqueda semántica directa con texto.
     LangChain maneja automáticamente: texto → embedding → búsqueda
+    Filtra automáticamente solo documentos procesados.
 
     Args:
         query_text: Texto de consulta
         top_k: Máximo de resultados
         score_threshold: Umbral de similitud mínimo
         expediente_filter: Si se proporciona, filtra solo documentos de este expediente
+        db: Sesión de BD (opcional) - para filtrar solo documentos procesados
 
     Returns:
-        Lista de documentos similares
+        Lista de documentos similares (solo procesados)
     """
     try:
         vectorstore = await get_langchain_vectorstore()
@@ -176,7 +255,7 @@ async def search_by_text(
             expediente_docs = client.query(
                 collection_name=COLLECTION_NAME,
                 filter=f'numero_expediente == "{expediente_filter}"',
-                output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto"],
+                output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "id_documento"],
                 limit=100  # Límite alto para obtener todos los documentos del expediente
             )
             logger.info(f"Documentos encontrados para expediente {expediente_filter}: {len(expediente_docs) if expediente_docs else 0}")
@@ -195,9 +274,13 @@ async def search_by_text(
                     "document_name": doc.get("nombre_archivo", ""),
                     "content_preview": doc.get("texto", ""),
                     "similarity_score": similarity_score,
+                    "documento_id": doc.get("id_documento"),  # Para filtrado
                 }
                 if similarity_score >= score_threshold:
                     formatted_results.append(formatted_result)
+            
+            # Filtrar por estado "Procesado"
+            formatted_results = _filter_by_processed_status(formatted_results, db)
             
             logger.info(f"Búsqueda por expediente específico: {len(formatted_results)} resultados")
             return formatted_results
@@ -213,6 +296,9 @@ async def search_by_text(
 
                 if similarity_score >= score_threshold:
                     formatted_results.append(_format_document_result(doc, similarity_score))
+
+            # Filtrar por estado "Procesado"
+            formatted_results = _filter_by_processed_status(formatted_results, db)
 
             logger.info(f"Búsqueda semántica: {len(formatted_results)} resultados")
             return formatted_results
@@ -320,19 +406,21 @@ async def get_expedient_summary(expedient_id: str) -> str:
 
 
 async def search_similar_expedients(
-    expedient_id: str, top_k: int = 20, score_threshold: float = 0.3
+    expedient_id: str, top_k: int = 20, score_threshold: float = 0.3, db=None
 ) -> List[Dict[str, Any]]:
     """
     Busca expedientes similares usando todos los vectores del expediente de referencia.
     Combina múltiples búsquedas y rankea los resultados.
+    Filtra automáticamente solo documentos procesados.
 
     Args:
         expedient_id: ID del expediente de referencia
         top_k: Máximo de resultados finales
         score_threshold: Umbral mínimo de similitud
+        db: Sesión de BD (opcional) - para filtrar solo documentos procesados
 
     Returns:
-        Lista de documentos similares de otros expedientes, rankeados por similitud
+        Lista de documentos similares de otros expedientes, rankeados por similitud (solo procesados)
     """
     try:
         client = await get_client()
@@ -415,6 +503,7 @@ async def search_similar_expedients(
                             ),
                             "similarity_score": similarity_score,
                             "metadata": metadata,
+                            "documento_id": metadata.get("id_documento"),  # Para filtrado
                         }
                     )
 
@@ -426,6 +515,9 @@ async def search_similar_expedients(
 
         # Ordenar por similarity_score descendente
         final_results.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
+
+        # Filtrar por estado "Procesado"
+        final_results = _filter_by_processed_status(final_results, db)
 
         # Limitar resultados finales
         final_results = final_results[:top_k]
@@ -579,4 +671,5 @@ def _format_document_result(doc: Document, similarity_score: float) -> Dict[str,
         ),
         "similarity_score": similarity_score,
         "metadata": metadata,
+        "documento_id": metadata.get("id_documento"),  # Para filtrado por estado
     }

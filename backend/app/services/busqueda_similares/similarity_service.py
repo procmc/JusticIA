@@ -57,7 +57,7 @@ class SimilarityService:
         return self.embeddings_service
 
     async def search_similar_cases(
-        self, request: SimilaritySearchRequest
+        self, request: SimilaritySearchRequest, db=None
     ) -> RespuestaBusquedaSimilitud:
         """Busca casos legales similares según el modo especificado."""
         start_time = time.time()
@@ -67,7 +67,7 @@ class SimilarityService:
                 casos_similares = await self._buscar_por_descripcion(request)
                 criterio_busqueda = request.texto_consulta
             else:
-                casos_similares = await self._buscar_por_expediente(request)
+                casos_similares = await self._buscar_por_expediente(request, db)
                 criterio_busqueda = request.numero_expediente
 
             end_time = time.time()
@@ -136,7 +136,7 @@ class SimilarityService:
         )
 
     async def _buscar_por_expediente(
-        self, request: SimilaritySearchRequest
+        self, request: SimilaritySearchRequest, db=None
     ) -> List[Dict[str, Any]]:
         """Busca casos similares por expediente específico usando búsqueda híbrida."""
         expedient_id = request.numero_expediente
@@ -149,6 +149,7 @@ class SimilarityService:
             expedient_id=expedient_id,
             top_k=request.limite or 30,
             score_threshold=request.umbral_similitud,
+            db=db  # Pasar db para filtrar por estado
         )
 
         return await self.documento_retrieval_service.procesar_casos_similares(

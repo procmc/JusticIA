@@ -147,6 +147,20 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
             "message": "Tarea cancelada por el usuario"
         }
     
+    except Terminated:
+        # Tarea cancelada por el usuario
+        logger.warning(f"Tarea cancelada: {archivo_data['filename']}")
+        tracker.mark_failed("Procesamiento cancelado por el usuario", "cancelado")
+        progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
+        
+        # Liberar memoria
+        if 'file_buffer' in locals():
+            del file_buffer
+        if 'content' in archivo_data:
+            del archivo_data["content"]
+        
+        raise  # Re-raise para que el exception handler en document_processor lo capture
+    
     except SoftTimeLimitExceeded:
         # Timeout de tarea (si se configura)
         error_msg = f"Timeout procesando {archivo_data['filename']}"

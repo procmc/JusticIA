@@ -227,11 +227,15 @@ async def cancelar_tarea(
         celery_app.control.revoke(task_id, terminate=True, signal='SIGTERM')
         logger.info(f"Tarea {task_id} revocada en Celery")
         
-        # 4. Marcar como cancelado en ProgressTracker
+        # 4. Actualizar estado del documento si existe (dejar en Pendiente si se cancela)
+        # No actualizamos el documento - queda en "Pendiente" para que usuario decida
+        documento_actualizado = False
+        
+        # 5. Marcar como cancelado en ProgressTracker
         progress_manager.mark_task_cancelled(task_id, "Cancelado por el usuario")
         logger.info(f"Tarea {task_id} marcada como cancelada en ProgressTracker")
         
-        # 5. Registrar cancelación en bitácora
+        # 6. Registrar cancelación en bitácora
         await ingesta_audit_service.registrar_ingesta(
             db=db,
             usuario_id=current_user["user_id"],
@@ -248,7 +252,8 @@ async def cancelar_tarea(
             "status": "cancelado",
             "details": {
                 "revoked_in_celery": True,
-                "marked_in_tracker": True
+                "marked_in_tracker": True,
+                "documento_actualizado": documento_actualizado
             }
         }
         

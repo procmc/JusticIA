@@ -198,24 +198,38 @@ class FileManagementService:
         filepath = self.BASE_UPLOAD_DIR / expediente_numero / filename
         return filepath if filepath.exists() else None
     
-    def listar_archivos_expediente(self, expediente_numero: str) -> List[Dict[str, Any]]:
+    def listar_archivos_expediente(self, expediente_numero: str, db=None) -> List[Dict[str, Any]]:
         """
-        Lista todos los archivos de un expediente.
+        Lista archivos de un expediente (solo procesados por defecto).
+        Usa repository centralizado para filtrar por estado.
         
         Args:
             expediente_numero: Número del expediente
+            db: Sesión de BD (opcional) - para filtrar solo procesados
             
         Returns:
-            Lista de archivos con información básica
+            Lista de archivos con información básica (solo procesados si db disponible)
         """
+        from app.repositories.documento_repository import DocumentoRepository
+        
         expediente_dir = self.BASE_UPLOAD_DIR / expediente_numero
         
         if not expediente_dir.exists():
             return []
         
+        # Obtener nombres de archivos procesados del repository
+        archivos_procesados = None
+        if db:
+            repo = DocumentoRepository()
+            archivos_procesados = set(repo.listar_por_expediente_y_nombres(db, expediente_numero, solo_procesados=True))
+        
         archivos = []
         for filepath in expediente_dir.iterdir():
             if filepath.is_file():
+                # Filtrar por estado si está disponible
+                if archivos_procesados is not None and filepath.name not in archivos_procesados:
+                    continue
+                
                 stat = filepath.stat()
                 archivos.append({
                     "nombre": filepath.name,
