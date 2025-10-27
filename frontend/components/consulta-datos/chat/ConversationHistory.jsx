@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBackendConversations } from '../../../hooks/useBackendConversations';
 import { formatearSoloHoraCostaRica, formatearSoloFechaCostaRica, formatearFechaHoraHistorial } from '../../../utils/dateUtils';
+import DrawerGeneral from '../../ui/DrawerGeneral';
 
 const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConversation }) => {
   const { 
@@ -95,60 +96,41 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
     return conversation.title;
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Historial de Conversaciones
-            </h3>
-            {hasConversations && (
-              <p className="text-xs text-gray-500 mt-1">
-                {conversations.length} conversación{conversations.length !== 1 ? 'es' : ''} guardada{conversations.length !== 1 ? 's' : ''}
-              </p>
-            )}
+    <DrawerGeneral
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      titulo="Historial de Conversaciones"
+      size="lg"
+      botonCerrar={{
+        mostrar: true,
+        texto: "Cerrar"
+      }}
+      botonAccion={{
+        texto: "Nueva Conversación",
+        onPress: handleNewConversation,
+        color: "primary"
+      }}
+    >
+      <div className="space-y-4">
+        {/* Información del historial */}
+        {hasConversations && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-700">
+              {conversations.length} conversación{conversations.length !== 1 ? 'es' : ''} guardada{conversations.length !== 1 ? 's' : ''}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Nueva conversación */}
-        <div className="px-6 py-3 border-b border-gray-50">
-          <button
-            onClick={handleNewConversation}
-            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 transition-colors border-2 border-dashed border-blue-200 hover:border-blue-300 group"
-          >
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <div className="font-medium text-blue-900">Nueva Conversación</div>
-              <div className="text-sm text-blue-600">Empezar desde cero</div>
-            </div>
-          </button>
-        </div>
+        )}
 
         {/* Lista de conversaciones */}
-        <div className="overflow-y-auto max-h-96">
+        <div className="space-y-2">
           {isLoading ? (
-            <div className="px-6 py-8 text-center">
+            <div className="py-8 text-center">
               <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
               <p className="text-gray-500">Cargando conversaciones...</p>
             </div>
           ) : error ? (
-            <div className="px-6 py-8 text-center text-red-500">
+            <div className="py-8 text-center text-red-500">
               <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -161,7 +143,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
               </button>
             </div>
           ) : !hasConversations ? (
-            <div className="px-6 py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-gray-500">
               <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
@@ -171,68 +153,66 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
               </p>
             </div>
           ) : (
-            <div className="px-2 py-2 space-y-1">
-              {conversations.map((conv) => (
-                <div
-                  key={conv.session_id}
-                  className={`relative group cursor-pointer p-4 rounded-xl transition-all hover:bg-gray-50 border-2 border-transparent hover:border-blue-100 ${
-                    loadingAction === conv.session_id ? 'opacity-50 pointer-events-none' : ''
-                  }`}
-                  onClick={() => handleSelectConversation(conv.session_id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-gray-900 truncate">
-                          {getPreviewText(conv)}
+            conversations.map((conv) => (
+              <div
+                key={conv.session_id}
+                className={`relative group cursor-pointer p-4 rounded-xl transition-all hover:bg-gray-50 border-2 border-transparent hover:border-blue-100 ${
+                  loadingAction === conv.session_id ? 'opacity-50 pointer-events-none' : ''
+                }`}
+                onClick={() => handleSelectConversation(conv.session_id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col gap-1 mb-1">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {getPreviewText(conv)}
+                      </span>
+                      {conv.expediente_number && (
+                        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded font-mono w-fit">
+                          Expediente: {conv.expediente_number}
                         </span>
-                        {conv.expediente_number && (
-                          <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
-                            {conv.expediente_number}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>{formatDate(conv.updated_at)}</span>
-                        <span>•</span>
-                        <span>{conv.message_count} mensajes</span>
-                      </div>
-                    </div>
-                    
-                    {/* Botón de eliminar */}
-                    <button
-                      onClick={(e) => handleDeleteConversation(conv.session_id, e)}
-                      disabled={loadingAction === conv.session_id}
-                      className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
-                        showDeleteConfirm === conv.session_id
-                          ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                          : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
-                      }`}
-                      title={showDeleteConfirm === conv.session_id ? 'Hacer clic para confirmar' : 'Eliminar conversación'}
-                    >
-                      {loadingAction === conv.session_id ? (
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
                       )}
-                    </button>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{formatDate(conv.updated_at)}</span>
+                      <span>•</span>
+                      <span>{conv.message_count} mensajes</span>
+                    </div>
                   </div>
+                  
+                  {/* Botón de eliminar */}
+                  <button
+                    onClick={(e) => handleDeleteConversation(conv.session_id, e)}
+                    disabled={loadingAction === conv.session_id}
+                    className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
+                      showDeleteConfirm === conv.session_id
+                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                        : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
+                    }`}
+                    title={showDeleteConfirm === conv.session_id ? 'Hacer clic para confirmar' : 'Eliminar conversación'}
+                  >
+                    {loadingAction === conv.session_id ? (
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    )}
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </div>
 
-        {/* Footer con información */}
-        <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+        {/* Información adicional */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
             Las conversaciones se guardan automáticamente en el servidor
           </p>
         </div>
       </div>
-    </div>
+    </DrawerGeneral>
   );
 };
 
