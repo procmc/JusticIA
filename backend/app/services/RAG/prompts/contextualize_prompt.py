@@ -73,12 +73,22 @@ ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
    - Sistema: "¿cómo te llamas?", "¿qué puedes hacer?"
 
 6. **REFERENCIAS POSICIONALES AL HISTORIAL** (CRÍTICO - reformular CON contexto):
-   - Referencias numéricas: "el primer expediente", "el segundo caso", "el tercero", "el último"
+   - Referencias numéricas: "el primer expediente", "el segundo caso", "el tercero", "el último", "el primero"
    - Referencias deícticas: "ese caso", "ese expediente", "esa resolución", "aquel documento"
    - Referencias de continuidad: "¿qué más?", "explícame mejor", "dame más detalles", "amplía eso"
    - Pronombres: "¿cuál es su fecha?", "¿dónde dice eso?", "¿cómo terminó?"
-   - Acción: INCLUIR el expediente/caso específico del historial según la posición mencionada
-   - Ejemplo: Si la respuesta anterior mencionó 3 expedientes y preguntan "dame detalles del primer expediente", incluir el número exacto del primer expediente mencionado
+   
+   **ACCIÓN ESPECÍFICA - CRÍTICA:**
+   - EXAMINA CUIDADOSAMENTE el historial de conversación (chat_history) para identificar TODOS los números de expediente mencionados en orden
+   - Si dicen "el último expediente/caso" → identifica cuál fue el ÚLTIMO número de expediente listado en tu respuesta anterior y úsalo EXACTAMENTE
+   - Si dicen "el primer expediente/caso" → identifica cuál fue el PRIMER número de expediente listado en tu respuesta anterior
+   - NUNCA inventes números de expediente que no aparezcan en el historial
+   - INCLUYE el número exacto del expediente específico en la reformulación, no hagas búsquedas genéricas
+   
+   **EJEMPLO CRÍTICO:**
+   Si el historial muestra que listaste: "2022-259948-3682-PN, 2022-259949-3683-PN, 2022-919642-4280-PN, 2023-957493-9293-PN"
+   Y preguntan: "dame un borrador del último caso de narcotráfico"
+   Reformula como: "generar borrador usando información del expediente 2023-957493-9293-PN narcotráfico tráfico drogas"
 
 7. **CAMBIOS DE CONTEXTO** (reformular SIN historial):
    - Si la nueva pregunta cambia COMPLETAMENTE de tema Y no tiene referencias → ignorar historial
@@ -108,9 +118,17 @@ Historial con respuesta: "Encontré 3 expedientes sobre artículo 8.4 CPC: 19-00
 Nueva pregunta: "Dame más detalles del primer expediente"
 Reformulación: "¿Qué más información hay sobre el expediente 19-000334-0642-CI relacionado con el artículo 8.4 CPC Código Procesal Civil competencia jurisdicción?"
 
+Historial con respuesta: "Casos ambientales: 1. Expediente 2022-096782-6940-AM (Tala ilegal), 2. Expediente 2022-216882-6884-AM (Quema residuos), 3. Expediente 2023-565428-2168-AM (Contaminación)"
+Nueva pregunta: "Dame más información del último expediente"
+Reformulación: "¿Qué más información hay sobre el expediente 2023-565428-2168-AM contaminación cauces efluentes problemas ambientales?"
+
 Historial con respuesta: "El expediente 2022-123456-7890-LA trata sobre despido injustificado..."
 Nueva pregunta: "¿Cuál fue la resolución de ese caso?"
 Reformulación: "¿Cuál fue la resolución decisión fallo sentencia del expediente 2022-123456-7890-LA sobre despido injustificado cesantía terminación laboral?"
+
+Historial con respuesta: "Expedientes de narcotráfico: 2022-259948-3682-PN, 2022-259949-3683-PN, 2022-919642-4280-PN, 2023-957493-9293-PN"
+Nueva pregunta: "puedes darme un borrador del último caso de narcotráfico que me diste"
+Reformulación: "generar borrador documento legal usando información del expediente 2023-957493-9293-PN narcotráfico tráfico drogas estupefacientes"
 
 Historial: "¿Casos de despido laboral?"
 Nueva pregunta: "¿Tienes info sobre fraude?" (CAMBIO DE CONTEXTO SIN REFERENCIAS)
