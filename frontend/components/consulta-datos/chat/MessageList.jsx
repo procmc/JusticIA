@@ -67,8 +67,13 @@ const MessageList = ({ messages, streamingMessageIndex }) => {
                 </h1>
 
                 {/* Descripción simple */}
-                <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6">
+                <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-4">
                   Tu asistente inteligente especializado en el marco jurídico costarricense.
+                </p>
+
+                {/* Capacidades */}
+                <p className="text-gray-500 text-sm sm:text-base leading-relaxed mb-6">
+                  Puedo ayudarte a generar resúmenes de documentos legales y crear borradores para tus casos.
                 </p>
 
                 {/* Mensaje de advertencia discreto */}
