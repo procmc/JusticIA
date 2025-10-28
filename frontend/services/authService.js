@@ -270,6 +270,70 @@ class AuthService {
       return { error: true, message: error.message || 'Error al cambiar contraseña' };
     }
   }
+
+  /**
+   * Renovar token (para sliding sessions)
+   */
+  async refreshToken() {
+    try {
+      const data = await httpService.post('/auth/refresh-token', {});
+      
+      if (data?.access_token && data?.user) {
+        return {
+          success: true,
+          access_token: data.access_token,
+          user: data.user
+        };
+      }
+      
+      return { error: true, message: 'Error al renovar token' };
+      
+    } catch (error) {
+      console.error('Error renovando token:', error);
+      
+      if (error.status === 401) {
+        return { error: true, message: 'Sesión expirada', expired: true };
+      }
+      
+      return { error: true, message: 'Error al renovar token' };
+    }
+  }
+
+  /**
+   * Renovar token con token específico (para uso en NextAuth callbacks)
+   * No usa httpService porque causaría loop infinito con getSession()
+   */
+  async refreshTokenWithToken(currentToken) {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        return { error: true, message: `Error ${response.status}` };
+      }
+      
+      const data = await response.json();
+      
+      if (data?.access_token && data?.user) {
+        return {
+          success: true,
+          access_token: data.access_token,
+          user: data.user
+        };
+      }
+      
+      return { error: true, message: 'Error al renovar token' };
+      
+    } catch (error) {
+      console.error('Error renovando token:', error);
+      return { error: true, message: 'Error al renovar token' };
+    }
+  }
 }
 
 // Exportar instancia singleton
@@ -287,3 +351,5 @@ export const cambiarContraseñaService = (actual, nueva, cedula) => authService.
 export const solicitarRecuperacionService = (email) => authService.solicitarRecuperacion(email);
 export const verificarCodigoRecuperacionService = (token, codigo) => authService.verificarCodigoRecuperacion(token, codigo);
 export const cambiarContraseñaRecuperacionService = (token, nueva) => authService.cambiarContrasenaRecuperacion(token, nueva);
+export const refreshTokenService = () => authService.refreshToken();
+export const refreshTokenWithTokenService = (token) => authService.refreshTokenWithToken(token);
