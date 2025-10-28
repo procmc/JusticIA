@@ -49,37 +49,11 @@ export const useFileUpload = () => {
 
     // Usar setFilesArray con función para acceder al estado actual
     setFilesArray(currentFiles => {
-      // Contar solo archivos activos (pendiente, procesando)
-      // No contar: completado, fallido, cancelado
-      const activeFiles = currentFiles.filter(f => 
-        f.status === 'pendiente' || f.status === 'procesando'
-      );
-      const activeFileCount = activeFiles.length;
-      const maxActiveFiles = 10;
-      const availableSlots = maxActiveFiles - activeFileCount;
-      
-      if (availableSlots <= 0) {
-        Toast.warning(
-          'Límite de archivos alcanzado',
-          `Ya tienes ${maxActiveFiles} archivos en proceso. Espera a que terminen o cancélalos para agregar más.`
-        );
-        return currentFiles;
-      }
-      
-      const filesToAdd = validFiles.slice(0, availableSlots);
-      
-      if (validFiles.length > availableSlots) {
-        Toast.info(
-          'Archivos limitados',
-          `Solo se agregaron ${filesToAdd.length} de ${validFiles.length} archivos. Tienes ${availableSlots} espacios disponibles.`
-        );
-      }
-
-      if (filesToAdd.length > 0) {
+      if (validFiles.length > 0) {
         // Usar la referencia que siempre tiene el valor actual
         const currentExpediente = expedienteRef.current.trim();
         
-        const filesWithMetadata = filesToAdd.map(file => ({
+        const filesWithMetadata = validFiles.map(file => ({
           id: Date.now() + Math.random(),
           file: file,
           name: file.name,

@@ -85,19 +85,13 @@ const DropZone = ({
                   {pendingFiles > 0 && ` ${pendingFiles} listo${pendingFiles !== 1 ? 's' : ''} para guardar`}
                 </span>
               </div>
-              {files.length >= 8 && (
-                <div className="mt-2 text-xs text-amber-700">
-                  Cerca del límite: {files.length}/10 archivos
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Formatos soportados y límites */}
+        {/* Formatos soportados */}
         <div className="mt-6 space-y-1 text-xs text-gray-500 text-center">
           <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, HTML, MP3, WAV, M4A, OGG</div>
-          <div>Máximo 10 archivos por expediente</div>
         </div>
       </motion.div>
 

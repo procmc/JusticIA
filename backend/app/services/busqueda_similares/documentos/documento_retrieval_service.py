@@ -38,15 +38,28 @@ class DocumentoRetrievalService:
             if expedient_id:
                 if expedient_id not in expedientes_map:
                     expedientes_map[expedient_id] = {
-                        "documents": [],
+                        "documents": {},  # Cambiar a dict para agrupar por nombre
                         "max_similarity": 0.0,
                     }
 
-                expedientes_map[expedient_id]["documents"].append(doc)
-                expedientes_map[expedient_id]["max_similarity"] = max(
-                    expedientes_map[expedient_id]["max_similarity"],
-                    doc.get("similarity_score", 0),
-                )
+                # Agrupar chunks del mismo documento, manteniendo solo el de mayor similitud
+                document_name = doc.get("document_name")
+                current_score = doc.get("similarity_score", 0)
+                
+                if document_name:
+                    # Si el documento ya existe, mantener solo el chunk con mayor score
+                    if document_name not in expedientes_map[expedient_id]["documents"]:
+                        expedientes_map[expedient_id]["documents"][document_name] = doc
+                    else:
+                        existing_score = expedientes_map[expedient_id]["documents"][document_name].get("similarity_score", 0)
+                        if current_score > existing_score:
+                            expedientes_map[expedient_id]["documents"][document_name] = doc
+                    
+                    # Actualizar score máximo del expediente
+                    expedientes_map[expedient_id]["max_similarity"] = max(
+                        expedientes_map[expedient_id]["max_similarity"],
+                        current_score,
+                    )
 
         # Obtener datos básicos de expedientes
         expedient_ids = list(expedientes_map.keys())
@@ -62,7 +75,10 @@ class DocumentoRetrievalService:
 
             # Preparar documentos coincidentes con IDs reales de BD
             documentos_coincidentes = []
-            for doc in similar_info.get("documents", []):
+            # Convertir dict de documentos a lista
+            documents_list = list(similar_info.get("documents", {}).values())
+            
+            for doc in documents_list:
                 # Obtener IDs reales del documento desde metadatos o BD
                 doc_metadata = doc.get("metadata", {})
                 document_name = doc.get('document_name')
