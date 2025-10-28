@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 import logging
 from app.db.database import get_db
 from app.services.auth_service import AuthService
 from app.services.bitacora.auth_audit_service import auth_audit_service
+from app.auth.jwt_auth import verify_token, create_token
 
 logger = logging.getLogger(__name__)
 from app.schemas.auth_schemas import (
@@ -97,6 +98,89 @@ async def logout_usuario(
         return MensajeExito(
             success=True,
             message="Sesión cerrada correctamente"
+        )
+
+@router.post("/refresh-token", response_model=LoginResponse)
+async def refresh_token(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Renueva el token si aún es válido.
+    Permite sliding sessions: mantener sesión activa mientras el usuario interactúa.
+    """
+    try:
+        # Extraer token del header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=401,
+                detail="Token requerido"
+            )
+        
+        token = auth_header.split(" ")[1]
+        
+        # Verificar token actual
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(
+                status_code=401,
+                detail="Token inválido o expirado"
+            )
+        
+        # Extraer información del usuario
+        user_id = payload.get("user_id")
+        role = payload.get("role")
+        username = payload.get("username")
+        
+        if not user_id or not role:
+            raise HTTPException(
+                status_code=401,
+                detail="Token incompleto"
+            )
+        
+        # Generar nuevo token con tiempo extendido
+        new_token = create_token(user_id, role, username)
+        
+        # Obtener información completa del usuario desde la BD
+        from app.db.models.usuario import T_Usuario
+        usuario = db.query(T_Usuario).filter(T_Usuario.CN_Id_usuario == str(user_id)).first()
+        
+        if not usuario:
+            raise HTTPException(
+                status_code=404,
+                detail="Usuario no encontrado"
+            )
+        
+        # Construir respuesta similar al login
+        from app.schemas.auth_schemas import UserInfo
+        
+        # Construir nombre completo desde los campos individuales
+        nombre_completo = f"{usuario.CT_Nombre} {usuario.CT_Apellido_uno}"
+        if usuario.CT_Apellido_dos:
+            nombre_completo += f" {usuario.CT_Apellido_dos}"
+        
+        user_info = UserInfo(
+            id=str(usuario.CN_Id_usuario),
+            name=nombre_completo.strip(),
+            email=usuario.CT_Correo,
+            role=role
+        )
+        
+        return LoginResponse(
+            success=True,
+            message="Token renovado exitosamente",
+            access_token=new_token,
+            user=user_info
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error renovando token: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno del servidor"
         )
 
 @router.put("/cambiar-contrasenna")

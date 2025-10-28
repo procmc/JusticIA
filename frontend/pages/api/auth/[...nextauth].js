@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { loginService } from "../../../services/authService";
+import { loginService, refreshTokenWithTokenService } from "../../../services/authService";
 
 export default NextAuth({
   providers: [
@@ -38,21 +38,40 @@ export default NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 1 hora
+    maxAge: 60 * 60, // 1 hora - tiempo máximo de inactividad
+    updateAge: 5 * 60, // Actualizar token cada 5 minutos si hay actividad
   },
   jwt: {
     maxAge: 60 * 60, // 1 hora
   },
   callbacks: {
-    async jwt({ token, user }) {
-      // Copia los datos del usuario al token
+    async jwt({ token, user, trigger }) {
+      const now = Date.now();
+      
+      // Copia los datos del usuario al token en el primer login
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.role = user.role;
-        token.accessToken = user.accessToken; // guardar access token
+        token.accessToken = user.accessToken;
+        token.accessTokenExpires = now + 60 * 60 * 1000; // 1 hora
       }
+      
+      // Si el token del backend está cerca de expirar (menos de 10 minutos)
+      // y el token de NextAuth aún es válido, renovar el backend token
+      const timeUntilExpiration = token.accessTokenExpires - now;
+      const shouldRefresh = timeUntilExpiration < 10 * 60 * 1000; // menos de 10 minutos
+      
+      if (shouldRefresh && !user) {
+        const result = await refreshTokenWithTokenService(token.accessToken);
+        
+        if (result?.success && result?.access_token) {
+          token.accessToken = result.access_token;
+          token.accessTokenExpires = now + 60 * 60 * 1000; // 1 hora
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
@@ -66,6 +85,7 @@ export default NextAuth({
       session.user.role = token.role;
       // Exponer accessToken en la sesión para el httpService
       session.accessToken = token.accessToken;
+      
       return session;
     }
   },
