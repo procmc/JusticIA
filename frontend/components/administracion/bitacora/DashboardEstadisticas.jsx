@@ -182,6 +182,60 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
   const datosExpedientes = prepararDatosExpedientes();
   const datosActividad = prepararDatosActividadDiaria();
 
+  // Preparar datos para gráfico de tipos de archivos
+  const prepararDatosTiposArchivos = () => {
+    if (!estadisticas?.tiposArchivosDistribucion || estadisticas.tiposArchivosDistribucion.length === 0) {
+      return null;
+    }
+
+    const numTipos = estadisticas.tiposArchivosDistribucion.length;
+    
+    // Colores base predefinidos
+    const coloresBase = [
+      COLORES.rojo,
+      COLORES.azul,
+      COLORES.verde,
+      COLORES.naranja,
+      COLORES.purpura,
+      COLORES.indigo
+    ];
+
+    // Si hay más tipos que colores, generar colores adicionales dinámicamente
+    const generarColores = (cantidad) => {
+      if (cantidad <= coloresBase.length) {
+        return coloresBase.slice(0, cantidad);
+      }
+      
+      // Generar colores adicionales con HSL
+      const coloresGenerados = [...coloresBase];
+      const hueStep = 360 / cantidad;
+      
+      for (let i = coloresBase.length; i < cantidad; i++) {
+        const hue = (i * hueStep) % 360;
+        coloresGenerados.push({
+          bg: `hsla(${hue}, 70%, 60%, 0.8)`,
+          border: `hsl(${hue}, 70%, 50%)`
+        });
+      }
+      
+      return coloresGenerados;
+    };
+
+    const coloresTipos = generarColores(numTipos);
+
+    return {
+      labels: estadisticas.tiposArchivosDistribucion.map(t => t.tipo),
+      datasets: [crearDataset(
+        'Documentos por tipo',
+        estadisticas.tiposArchivosDistribucion.map(t => t.cantidad),
+        coloresTipos,
+        'doughnut'
+      )]
+    };
+  };
+
+  const datosTiposArchivos = prepararDatosTiposArchivos();
+
   // Preparar datos para gráfico de distribución RAG
   const prepararDatosRAG = () => {
     if (!estadisticasRAG) return null;
@@ -477,35 +531,75 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
         </Card>
       </div>
 
-      {/* Gráfico de expedientes más consultados */}
-      {datosExpedientes && datosExpedientes.labels.length > 0 && (
-        <Card className="border-none shadow-lg">
-          <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Top 5 de expedientes con más actividad
-              </p>
-            </div>
-          </CardHeader>
-          <CardBody className="p-8">
-            <div style={{ height: '400px' }}>
-              <Bar 
-                data={datosExpedientes} 
-                options={{
-                  ...opcionesGraficos,
-                  indexAxis: 'y',
-                  plugins: {
-                    legend: {
-                      display: false,
+      {/* Grid de 2 columnas para gráficos de barras */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de expedientes más consultados */}
+        {datosExpedientes && datosExpedientes.labels.length > 0 && (
+          <Card className="border-none shadow-lg">
+            <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Top 5 de expedientes con más actividad
+                </p>
+              </div>
+            </CardHeader>
+            <CardBody className="p-8">
+              <div style={{ height: '400px' }}>
+                <Bar 
+                  data={datosExpedientes} 
+                  options={{
+                    ...opcionesGraficos,
+                    indexAxis: 'y',
+                    plugins: {
+                      legend: {
+                        display: false,
+                      },
                     },
-                  },
-                }} 
-              />
-            </div>
-          </CardBody>
-        </Card>
-      )}
+                  }} 
+                />
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Gráfico de tipos de archivos */}
+        {datosTiposArchivos && (
+          <Card className="border-none shadow-lg">
+            <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Tipos de Archivo</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Distribución de documentos subidos
+                </p>
+              </div>
+            </CardHeader>
+            <CardBody className="p-8">
+              <div style={{ height: '400px' }}>
+                <Doughnut 
+                  data={datosTiposArchivos} 
+                  options={{
+                    ...opcionesGraficos,
+                    cutout: '60%',
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                        labels: {
+                          padding: 15,
+                          boxWidth: 15,
+                          font: {
+                            size: 12
+                          }
+                        }
+                      },
+                    },
+                  }} 
+                />
+              </div>
+            </CardBody>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

@@ -354,7 +354,21 @@ class BitacoraStatsService:
                 for item in actividad_diaria_raw
             ]
             
-            return {
+            # Distribución de tipos de archivo (últimos 30 días)
+            tipos_archivos_distribucion = []
+            try:
+                tipos_archivo_raw = self.repo.obtener_distribucion_tipos_archivo(db, inicio_30dias, ahora)
+                tipos_archivos_distribucion = [
+                    {
+                        "tipo": item["tipo"],
+                        "cantidad": item["cantidad"]
+                    }
+                    for item in tipos_archivo_raw
+                ]
+            except Exception as e:
+                logger.error(f"Error obteniendo tipos de archivo: {e}", exc_info=True)
+            
+            resultado = {
                 "registrosHoy": registros_hoy,
                 "registros7Dias": registros_7dias,
                 "registros30Dias": registros_30dias,
@@ -364,8 +378,11 @@ class BitacoraStatsService:
                 "accionesPorTipo": acciones_por_tipo,
                 "usuariosMasActivos": usuarios_mas_activos,
                 "expedientesMasConsultados": expedientes_mas_consultados,
-                "actividadPorDia": actividad_por_dia
+                "actividadPorDia": actividad_por_dia,
+                "tiposArchivosDistribucion": tipos_archivos_distribucion
             }
+            
+            return resultado
             
         except Exception as e:
             logger.error(f"Error obteniendo estadísticas: {e}")
@@ -379,7 +396,8 @@ class BitacoraStatsService:
                 "accionesPorTipo": [],
                 "usuariosMasActivos": [],
                 "expedientesMasConsultados": [],
-                "actividadPorDia": []
+                "actividadPorDia": [],
+                "tiposArchivosDistribucion": []
             }
     
     
