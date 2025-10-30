@@ -402,7 +402,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
               <span className="text-yellow-600 mr-2">ℹ️</span>
             )}
             {isUser ? (
-              <span>{message.text}</span>
+              <span className="whitespace-pre-wrap">{message.text}</span>
             ) : (
               <MarkdownRenderer 
                 content={message.text} 
