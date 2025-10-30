@@ -7,7 +7,7 @@ import {
   Divider,
   Badge
 } from '@heroui/react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatearFechaHoraCompleta } from '../../../utils/dateUtils';
 import { 
