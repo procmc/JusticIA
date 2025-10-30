@@ -11,6 +11,7 @@ import logging
 from app.db.models.bitacora import T_Bitacora
 from app.db.models.usuario import T_Usuario
 from app.db.models.expediente import T_Expediente
+from app.db.models.documento import T_Documento
 
 logger = logging.getLogger(__name__)
 
@@ -751,6 +752,56 @@ class BitacoraRepository:
             
         except Exception as e:
             logger.error(f"Error obteniendo actividad por día: {e}")
+            return []
+    
+    
+    def obtener_distribucion_tipos_archivo(
+        self,
+        db: Session,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None
+    ) -> List[dict]:
+        """
+        Obtiene la distribución de documentos agrupados por tipo de archivo.
+        
+        Args:
+            db: Sesión de base de datos
+            fecha_inicio: Fecha de inicio del rango (opcional)
+            fecha_fin: Fecha de fin del rango (opcional)
+            
+        Returns:
+            List[dict]: Lista de {'tipo': str, 'cantidad': int}
+        """
+        try:
+            query = select(
+                T_Documento.CT_Tipo_archivo.label('tipo'),
+                func.count(T_Documento.CN_Id_documento).label('cantidad')
+            ).select_from(T_Documento)
+            
+            conditions = []
+            if fecha_inicio:
+                conditions.append(T_Documento.CF_Fecha_carga >= fecha_inicio)
+            if fecha_fin:
+                conditions.append(T_Documento.CF_Fecha_carga <= fecha_fin)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            query = (
+                query.group_by(T_Documento.CT_Tipo_archivo)
+                .order_by(desc('cantidad'))
+            )
+            
+            result = db.execute(query)
+            rows = result.all()
+            
+            return [
+                {"tipo": row.tipo, "cantidad": row.cantidad}
+                for row in rows
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo distribución de tipos de archivo: {e}", exc_info=True)
             return []
 
 

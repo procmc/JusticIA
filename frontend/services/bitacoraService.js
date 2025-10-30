@@ -111,7 +111,8 @@ class BitacoraService {
         accionesPorTipo: data.accionesPorTipo || [],
         usuariosMasActivos: data.usuariosMasActivos || [],
         expedientesMasConsultados: data.expedientesMasConsultados || [],
-        actividadPorDia: data.actividadPorDia || []
+        actividadPorDia: data.actividadPorDia || [],
+        tiposArchivosDistribucion: data.tiposArchivosDistribucion || []
       };
       
     } catch (error) {
