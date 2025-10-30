@@ -170,17 +170,17 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       const rutaParentesisPattern = /\(([^)]*uploads\/[^)]+)\)/g;
       resultado = resultado.replace(rutaParentesisPattern, (match, ruta) => {
         const rutaLimpia = ruta.trim();
-        const fileName = rutaLimpia.split('/').pop() || 'archivo';
+        const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
         
         // Usar un hash con la ruta codificada
         return `([${fileName}](#download-${Buffer.from(rutaLimpia).toString('base64')}))`;
       });
       
-      // Patrón 2: Cualquier ruta uploads/ suelta en el texto
-      const rutaSueltaPattern = /(uploads\/[\w\-\.\/]+)/g;
+      // Patrón 2: Cualquier ruta uploads/ suelta en el texto (mejorado para espacios y caracteres especiales)
+      const rutaSueltaPattern = /(uploads\/[^\s\[\]()]+)/g;
       resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
         const rutaLimpia = ruta.trim();
-        const fileName = rutaLimpia.split('/').pop() || 'archivo';
+        const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
         
         // Solo convertir si no está ya dentro de un enlace markdown
         if (resultado.indexOf(`#download-`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`#download-`)) {

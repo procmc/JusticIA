@@ -6,7 +6,8 @@ import logging
 
 from app.llm.llm_service import get_llm
 from .session_store import get_session_history_func
-from .prompts import get_expediente_prompt
+from .prompts import get_expediente_prompt, DOCUMENT_PROMPT
+from .formatted_retriever import FormattedRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +20,19 @@ async def create_expediente_specific_chain(
     """Crea una chain especializada para análisis de expediente específico."""
     llm = await get_llm()
     
+    # Envolver el retriever con FormattedRetriever para agregar metadata visible (igual que consulta general)
+    formatted_retriever = FormattedRetriever(retriever)
+    
     EXPEDIENTE_PROMPT = get_expediente_prompt(expediente_numero)
     
     question_answer_chain = create_stuff_documents_chain(
         llm=llm,
-        prompt=EXPEDIENTE_PROMPT
+        prompt=EXPEDIENTE_PROMPT,
+        document_prompt=DOCUMENT_PROMPT
     )
     
     rag_chain = create_retrieval_chain(
-        retriever,
+        formatted_retriever,
         question_answer_chain,
     )
     
