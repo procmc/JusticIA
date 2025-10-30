@@ -25,7 +25,7 @@ class RAGConfig:
     # TOP-K (CANTIDAD DE RESULTADOS)
     # ========================================
     
-    TOP_K_GENERAL = 10
+    TOP_K_GENERAL = 15
     """Cantidad de chunks para búsquedas generales.
     
     Optimizado para gpt-oss:20b con LLM_NUM_CTX=32768:
