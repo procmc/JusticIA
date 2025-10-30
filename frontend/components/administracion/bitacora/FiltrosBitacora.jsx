@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Select, SelectItem, Button, Card, CardBody, DatePicker, CardHeader } from '@heroui/react';
-import { parseDate } from '@internationalized/date';
+import { parseDate, today, getLocalTimeZone } from '@internationalized/date';
 import { IoFunnel, IoSearch } from 'react-icons/io5';
 import { PiBroomLight } from 'react-icons/pi';
 import { SearchIcon } from '../../icons';
@@ -9,6 +9,8 @@ import { TIPOS_ACCION } from '@/common/tiposAccion';
 const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false }) => {
     
     const [filtrosLocales, setFiltrosLocales] = useState(filtros);
+    // Estado para mostrar el día actual en el calendario (solo fecha, sin hora)
+    const [currentDate] = useState(today(getLocalTimeZone()));
 
     // Sincronizar filtros locales cuando el padre los limpie
     useEffect(() => {
@@ -194,7 +196,8 @@ const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false
                             <DatePicker
                                 label="Fecha Inicio"
                                 labelPlacement='outside'
-                                value={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : null}
+                                granularity="day"
+                                value={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : currentDate}
                                 onChange={(date) => handleDateChange('fechaInicio', date)}
                                 variant="bordered"
                                 color='primary'
@@ -210,7 +213,8 @@ const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false
                             <DatePicker
                                 label="Fecha Fin"
                                 labelPlacement='outside'
-                                value={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : null}
+                                granularity="day"
+                                value={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : currentDate}
                                 onChange={(date) => handleDateChange('fechaFin', date)}
                                 variant="bordered"
                                 color='primary'
