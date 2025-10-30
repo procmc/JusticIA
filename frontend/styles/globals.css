@@ -111,6 +111,42 @@ body::-webkit-scrollbar {
   display: none; /* WebKit */
 }
 
+/* Scroll transparente solo para móviles */
+.mobile-transparent-scroll {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.mobile-transparent-scroll::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+.mobile-transparent-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mobile-transparent-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 0px;
+}
+
+.mobile-transparent-scroll::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+}
+
+/* Asegurar que en pantallas grandes no se vea el scroll */
+@media (min-width: 768px) {
+  .mobile-transparent-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .mobile-transparent-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Scroll discreto para toda la página - esquina derecha */
 .custom-page-scroll {
   scrollbar-width: thin;
