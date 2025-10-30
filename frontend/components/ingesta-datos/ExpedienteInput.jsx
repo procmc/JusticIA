@@ -89,12 +89,15 @@ const ExpedienteInput = ({
 
             {files.length > 0 && (
               <Tooltip 
-                content="Limpiar lista de archivos" 
+                content="Limpiar lista de archivos y expediente" 
                 placement="top"
                 delay={300}
               >
                 <Button
-                  onPress={() => setFiles([])}
+                  onPress={() => {
+                    setFiles([]);
+                    setExpedienteNumero('');
+                  }}
                   color="default"
                   variant="bordered"
                   size="md"

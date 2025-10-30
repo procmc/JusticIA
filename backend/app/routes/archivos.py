@@ -77,6 +77,10 @@ async def descargar_archivo_expediente(
     """
     Descarga un archivo específico de un expediente.
     """
+    # Decodificar el nombre del archivo en caso de que contenga caracteres especiales
+    from urllib.parse import unquote
+    nombre_archivo = unquote(nombre_archivo)
+    
     # Validar formato del expediente
     if not validar_expediente(expediente_numero):
         raise HTTPException(
@@ -180,6 +184,18 @@ async def descargar_archivo_por_ruta(
         ruta_archivo: Ruta completa del archivo a descargar
     """
     try:
+        # Decodificar la ruta en caso de que contenga caracteres especiales (FastAPI debería hacerlo automáticamente, pero por seguridad)
+        from urllib.parse import unquote
+        ruta_archivo = unquote(ruta_archivo)
+        
+        # Normalizar la ruta: convertir rutas relativas "uploads/..." a rutas absolutas
+        if ruta_archivo.startswith("uploads/"):
+            # Ruta relativa desde la raíz del proyecto backend
+            import os
+            from pathlib import Path
+            backend_root = Path(__file__).resolve().parent.parent.parent  # Subir 3 niveles desde routes/archivos.py
+            ruta_archivo = str(backend_root / ruta_archivo)
+        
         # Extraer nombre del archivo de la ruta
         nombre_archivo = os.path.basename(ruta_archivo)
         
@@ -190,6 +206,9 @@ async def descargar_archivo_por_ruta(
                 tamaño_bytes = os.path.getsize(ruta_archivo)
         except:
             pass
+        
+        # Log para debugging
+        logger.info(f"Intentando descargar archivo: {ruta_archivo}")
         
         # Realizar descarga
         file_response = file_management_service.descargar_archivo(ruta_archivo)
@@ -206,6 +225,9 @@ async def descargar_archivo_por_ruta(
         
         return file_response
         
+    except HTTPException:
+        # Re-lanzar excepciones HTTP (ej: 404 del FileManagementService)
+        raise
     except Exception as e:
         # Auditar error en descarga
         await archivos_audit_service.registrar_descarga_archivo(
@@ -217,7 +239,7 @@ async def descargar_archivo_por_ruta(
             error=str(e)
         )
         
-        logger.error(f"Error descargando archivo {ruta_archivo}: {str(e)}")
+        logger.error(f"Error descargando archivo {ruta_archivo}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error descargando archivo: {str(e)}"
