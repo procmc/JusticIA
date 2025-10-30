@@ -160,11 +160,11 @@ export default function Home() {
   }
 
   return (
-    <div className="h-full bg-white relative overflow-hidden flex flex-col">
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-2 text-center py-8">
+    <div className="h-full bg-white relative overflow-auto scrollbar-hide flex flex-col">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-2 text-center py-8 pt-16 md:pt-8">
         <div className="max-w-6xl mx-auto">
           {/* Main Title */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-3 leading-tight">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-3 leading-tight mt-4 md:mt-0">
             <span className="text-secondary-900">JusticIA</span>
           </h1>
 
