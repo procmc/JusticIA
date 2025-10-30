@@ -301,7 +301,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                     {estadisticas.expedientesUnicos || 0}
                   </h3>
                   <p className="text-sm font-medium text-orange-700">Expedientes</p>
-                  <p className="text-xs text-orange-600 mt-1">Casos consultados</p>
+                  <p className="text-xs text-orange-600 mt-1">Casos registrados</p>
                 </div>
               </div>
             </div>
@@ -320,7 +320,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                   <h3 className="text-3xl font-bold text-indigo-900 mb-1">
                     {estadisticasRAG?.totalConsultasRAG?.toLocaleString() || 0}
                   </h3>
-                  <p className="text-sm font-medium text-indigo-700">Consultas RAG</p>
+                  <p className="text-sm font-medium text-indigo-700">Consultas Chat</p>
                   <p className="text-xs text-indigo-600 mt-1">Inteligencia artificial</p>
                 </div>
               </div>
@@ -440,7 +440,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
             <div className="flex items-center gap-3">
               <IoPieChart className="w-6 h-6 text-indigo-600" />
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Consultas RAG</h3>
+                <h3 className="text-xl font-bold text-gray-900">Consultas Chat</h3>
                 <p className="text-sm text-gray-600">Distribución por tipo</p>
               </div>
             </div>
@@ -470,7 +470,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
             ) : (
               <div className="flex flex-col items-center justify-center h-80 text-gray-500">
                 <IoPieChart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm text-gray-500">No hay datos RAG disponibles</p>
+                <p className="text-sm text-gray-500">No hay datos del chat disponibles</p>
               </div>
             )}
           </CardBody>
@@ -482,7 +482,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
         <Card className="border-none shadow-lg">
           <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Expedientes Más Consultados</h3>
+              <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
               <p className="text-sm text-gray-600 mt-1">
                 Top 5 de expedientes con más actividad
               </p>
