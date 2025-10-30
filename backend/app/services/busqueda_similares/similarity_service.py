@@ -102,32 +102,27 @@ class SimilarityService:
         if not request.texto_consulta:
             raise ValueError("texto_consulta es requerido")
 
-        # Usar el mismo retriever que RAG para consistencia
         retriever = DynamicJusticIARetriever(
             top_k=request.limite or 30,
             similarity_threshold=request.umbral_similitud if request.umbral_similitud > 0 else 0.3
         )
         
-        # Obtener documentos como LangChain Documents
-        # El retriever ya aplica el similarity_threshold internamente
         docs = await retriever._aget_relevant_documents(request.texto_consulta)
-        
         logger.info(f"Búsqueda por descripción: {len(docs)} documentos recuperados")
 
-        # Convertir LangChain Documents al formato esperado por documento_retrieval_service
         similar_docs = []
         for doc in docs:
-            # Usar más caracteres para documentos legales (500)
+            similarity_score_from_metadata = doc.metadata.get(MF.SIMILARITY_SCORE, 0.0)
+            
             preview_chars = 500
             content_preview = doc.page_content[:preview_chars] + "..." if len(doc.page_content) > preview_chars else doc.page_content
             
-            # Usar constantes de metadata (MF) para evitar typos
             similar_docs.append({
                 "id": doc.metadata.get(MF.DOCUMENTO_ID, ""),
                 "expedient_id": doc.metadata.get(MF.EXPEDIENTE_NUMERO, ""),
                 "document_name": doc.metadata.get(MF.DOCUMENTO_NOMBRE, ""),
                 "content_preview": content_preview,
-                "similarity_score": doc.metadata.get(MF.SIMILARITY_SCORE, 0.0),
+                "similarity_score": similarity_score_from_metadata,
                 "metadata": doc.metadata
             })
 

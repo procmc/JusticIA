@@ -189,7 +189,7 @@ async def search_by_vector(
     query_vector: List[float], top_k: int = 20, score_threshold: float = 0.0
 ) -> List[Dict[str, Any]]:
     """
-    Búsqueda vectorial usando LangChain.
+    Búsqueda vectorial usando LangChain CON SCORES REALES.
 
     Args:
         query_vector: Vector de consulta
@@ -202,18 +202,49 @@ async def search_by_vector(
     try:
         vectorstore = await get_langchain_vectorstore()
 
-        # Búsqueda vectorial con LangChain
-        results = vectorstore.similarity_search_by_vector(
-            embedding=query_vector, k=top_k
+        # NOTA: LangChain Milvus no tiene similarity_search_by_vector_with_score
+        # Necesitamos usar la búsqueda directa con Milvus client
+        client = await get_client()
+        
+        # Realizar búsqueda vectorial directa
+        search_results = client.search(
+            collection_name=COLLECTION_NAME,
+            data=[query_vector],  # Lista de vectores de consulta
+            anns_field="embedding",
+            limit=top_k,
+            output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "id_documento", 
+                          "indice_chunk", "pagina_inicio", "pagina_fin", "tipo_documento", "meta"]
         )
 
         # Formatear resultados
         formatted_results = []
-        for i, doc in enumerate(results):
-            similarity_score = _calculate_similarity_score(doc, i, len(results))
-
-            if similarity_score >= score_threshold:
-                formatted_results.append(_format_document_result(doc, similarity_score))
+        if search_results and len(search_results) > 0:
+            for hit in search_results[0]:  # search_results es una lista de listas
+                # Milvus devuelve similarity score (valores altos = más similar)
+                similarity_score = hit.score if hasattr(hit, 'score') else hit.distance
+                
+                if similarity_score >= score_threshold:
+                    # Construir documento formateado
+                    entity = hit.entity
+                    meta_data = entity.get("meta", {})
+                    ruta_archivo = meta_data.get("ruta_archivo", "") if isinstance(meta_data, dict) else ""
+                    
+                    formatted_result = {
+                        "id": entity.get("id_chunk", ""),
+                        "expedient_id": entity.get("numero_expediente", ""),
+                        "document_name": entity.get("nombre_archivo", ""),
+                        "content_preview": entity.get("texto", "")[:500],
+                        "similarity_score": similarity_score,
+                        "documento_id": entity.get("id_documento"),
+                        "metadata": {
+                            "indice_chunk": entity.get("indice_chunk", 0),
+                            "pagina_inicio": entity.get("pagina_inicio", 1),
+                            "pagina_fin": entity.get("pagina_fin", 1),
+                            "tipo_documento": entity.get("tipo_documento", ""),
+                            "ruta_archivo": ruta_archivo
+                        }
+                    }
+                    formatted_results.append(formatted_result)
 
         logger.info(f"Búsqueda vectorial: {len(formatted_results)} resultados")
         return formatted_results
@@ -244,62 +275,63 @@ async def search_by_text(
     try:
         vectorstore = await get_langchain_vectorstore()
 
-        # Si hay filtro de expediente, usar búsqueda híbrida
         if expediente_filter:
-            logger.info(f"Búsqueda específica en expediente: {expediente_filter}")
-            # Buscar todos los documentos del expediente específico
+            logger.info(f"Búsqueda en expediente: {expediente_filter}")
             client = await get_client()
             
-            # Primero obtener todos los documentos del expediente
-            logger.info(f"Buscando documentos para expediente: {expediente_filter}")
-            expediente_docs = client.query(
-                collection_name=COLLECTION_NAME,
-                filter=f'numero_expediente == "{expediente_filter}"',
-                output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "id_documento"],
-                limit=100  # Límite alto para obtener todos los documentos del expediente
-            )
-            logger.info(f"Documentos encontrados para expediente {expediente_filter}: {len(expediente_docs) if expediente_docs else 0}")
+            try:
+                expediente_docs = client.query(
+                    collection_name=COLLECTION_NAME,
+                    filter=f'numero_expediente == "{expediente_filter}"',
+                    output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", "id_documento"],
+                    limit=100
+                )
+            except Exception as e:
+                logger.warning(f"Error buscando con 'numero_expediente': {e}")
+                try:
+                    expediente_docs = client.query(
+                        collection_name=COLLECTION_NAME,
+                        filter=f'expediente_numero == "{expediente_filter}"',
+                        output_fields=["id_chunk", "expediente_numero", "nombre_archivo", "texto", "id_documento"],
+                        limit=100
+                    )
+                except Exception:
+                    expediente_docs = []
             
             if not expediente_docs:
                 logger.warning(f"No se encontraron documentos para expediente: {expediente_filter}")
                 return []
             
-            # Crear resultados con alta relevancia para documentos del expediente específico
             formatted_results = []
             for i, doc in enumerate(expediente_docs):
-                similarity_score = 0.9 - (i * 0.01)  # Score alto decreciente
+                similarity_score = 0.9 - (i * 0.01)
+                expediente_num = doc.get("numero_expediente") or doc.get("expediente_numero", "")
                 formatted_result = {
                     "id": doc.get("id_chunk", ""),
-                    "expedient_id": doc.get("numero_expediente", ""),
+                    "expedient_id": expediente_num,
                     "document_name": doc.get("nombre_archivo", ""),
                     "content_preview": doc.get("texto", ""),
                     "similarity_score": similarity_score,
-                    "documento_id": doc.get("id_documento"),  # Para filtrado
+                    "documento_id": doc.get("id_documento"),
                 }
                 if similarity_score >= score_threshold:
                     formatted_results.append(formatted_result)
             
-            # Filtrar por estado "Procesado"
             formatted_results = _filter_by_processed_status(formatted_results, db)
-            
-            logger.info(f"Búsqueda por expediente específico: {len(formatted_results)} resultados")
+            logger.info(f"Búsqueda por expediente: {len(formatted_results)} resultados")
             return formatted_results
         
         else:
-            # Búsqueda semántica normal
-            results = vectorstore.similarity_search(query=query_text, k=top_k)
+            results_with_scores = vectorstore.similarity_search_with_score(query=query_text, k=top_k)
 
-            # Formatear resultados
             formatted_results = []
-            for i, doc in enumerate(results):
-                similarity_score = _calculate_similarity_score(doc, i, len(results))
-
+            for doc, raw_score in results_with_scores:
+                similarity_score = raw_score
+                
                 if similarity_score >= score_threshold:
                     formatted_results.append(_format_document_result(doc, similarity_score))
 
-            # Filtrar por estado "Procesado"
             formatted_results = _filter_by_processed_status(formatted_results, db)
-
             logger.info(f"Búsqueda semántica: {len(formatted_results)} resultados")
             return formatted_results
 
@@ -446,66 +478,80 @@ async def search_similar_expedients(
             if not embedding:
                 continue
 
-            # Buscar similares usando este vector específico
-            vector_results = vectorstore.similarity_search_by_vector(
-                embedding=embedding, k=top_k * 2  # Buscar más para tener opciones
-            )
-
-            # Procesar resultados de esta búsqueda
-            for j, result_doc in enumerate(vector_results):
-                metadata = (
-                    result_doc.metadata if hasattr(result_doc, "metadata") else {}
+            # CORRECCIÓN: Usar Milvus client directamente para búsqueda vectorial
+            try:
+                search_results = client.search(
+                    collection_name=COLLECTION_NAME,
+                    data=[embedding],  # Lista de vectores de consulta
+                    anns_field="embedding",
+                    limit=top_k * 2,  # Buscar más para tener opciones
+                    output_fields=["id_chunk", "numero_expediente", "nombre_archivo", "texto", 
+                                  "id_documento", "indice_chunk", "pagina_inicio", "pagina_fin", 
+                                  "tipo_documento", "meta"]
                 )
-                result_expedient_id = metadata.get("numero_expediente") or metadata.get(
-                    "id_expediente"
-                )
-
-                # Excluir el expediente actual
-                if result_expedient_id == expedient_id or not result_expedient_id:
+                
+                # Procesar resultados de esta búsqueda
+                if not search_results or len(search_results) == 0:
                     continue
+                    
+                for hit in search_results[0]:  # search_results es una lista de listas
+                    entity = hit.entity
+                    result_expedient_id = entity.get("numero_expediente", "")
+                    
+                    # Excluir el expediente actual
+                    if result_expedient_id == expedient_id or not result_expedient_id:
+                        continue
 
-                # Calcular score para este resultado
-                similarity_score = _calculate_similarity_score(
-                    result_doc, j, len(vector_results)
-                )
+                    # CORRECCIÓN FINAL: Milvus devuelve similarity directamente
+                    similarity_score = hit.score if hasattr(hit, 'score') else hit.distance
 
-                if similarity_score < score_threshold:
-                    continue
+                    if similarity_score < score_threshold:
+                        continue
 
-                # Combinar resultados por expediente
-                if result_expedient_id not in all_results:
-                    all_results[result_expedient_id] = {
-                        "max_score": similarity_score,
-                        "docs": [],
-                    }
-                else:
-                    # Actualizar score máximo
-                    all_results[result_expedient_id]["max_score"] = max(
-                        all_results[result_expedient_id]["max_score"], similarity_score
-                    )
-
-                # Agregar documento si no existe
-                doc_exists = any(
-                    doc.get("document_name") == metadata.get("nombre_archivo")
-                    for doc in all_results[result_expedient_id]["docs"]
-                )
-
-                if not doc_exists:
-                    all_results[result_expedient_id]["docs"].append(
-                        {
-                            "id": metadata.get("id_chunk"),
-                            "expedient_id": result_expedient_id,
-                            "document_name": metadata.get("nombre_archivo"),
-                            "content_preview": (
-                                result_doc.page_content[:500]
-                                if hasattr(result_doc, "page_content")
-                                else ""
-                            ),
-                            "similarity_score": similarity_score,
-                            "metadata": metadata,
-                            "documento_id": metadata.get("id_documento"),  # Para filtrado
+                    # Combinar resultados por expediente
+                    if result_expedient_id not in all_results:
+                        all_results[result_expedient_id] = {
+                            "max_score": similarity_score,
+                            "docs": [],
                         }
+                    else:
+                        # Actualizar score máximo
+                        all_results[result_expedient_id]["max_score"] = max(
+                            all_results[result_expedient_id]["max_score"], similarity_score
+                        )
+
+                    # Agregar documento si no existe
+                    doc_exists = any(
+                        d.get("document_name") == entity.get("nombre_archivo")
+                        for d in all_results[result_expedient_id]["docs"]
                     )
+
+                    if not doc_exists:
+                        # Extraer ruta_archivo del campo meta
+                        meta_data = entity.get("meta", {})
+                        ruta_archivo = meta_data.get("ruta_archivo", "") if isinstance(meta_data, dict) else ""
+                        
+                        all_results[result_expedient_id]["docs"].append(
+                            {
+                                "id": entity.get("id_chunk", ""),
+                                "expedient_id": result_expedient_id,
+                                "document_name": entity.get("nombre_archivo", ""),
+                                "content_preview": entity.get("texto", "")[:500],
+                                "similarity_score": similarity_score,
+                                "metadata": {
+                                    "indice_chunk": entity.get("indice_chunk", 0),
+                                    "pagina_inicio": entity.get("pagina_inicio", 1),
+                                    "pagina_fin": entity.get("pagina_fin", 1),
+                                    "tipo_documento": entity.get("tipo_documento", ""),
+                                    "ruta_archivo": ruta_archivo
+                                },
+                                "documento_id": entity.get("id_documento"),  # Para filtrado
+                            }
+                        )
+                        
+            except Exception as e:
+                logger.warning(f"Error en búsqueda vectorial para chunk {i}: {e}")
+                continue
 
         # 3. Rankear expedientes por score máximo y convertir a formato final
         final_results = []
@@ -649,12 +695,17 @@ async def get_expedient_documents(expedient_id: str) -> List[Document]:
 
 
 def _calculate_similarity_score(doc: Document, index: int, total: int) -> float:
-    """Calcula score de similitud desde metadatos o estima por posición."""
+    """
+    Calcula score de similitud desde metadatos o estima por posición.
+    NOTA: Esta función solo se usa como fallback. Preferir similarity_search_with_score().
+    """
     if hasattr(doc, "metadata") and "score" in doc.metadata:
         return doc.metadata["score"]
 
-    # Estimación por posición (más arriba = más similar)
-    return max(0.0, 1.0 - (index * 0.05))
+    # Estimación por posición (fallback, menos preciso)
+    estimated_score = max(0.0, 1.0 - (index * 0.05))
+    logger.warning(f"Usando estimación de score por posición: {estimated_score} (index={index})")
+    return estimated_score
 
 
 def _format_document_result(doc: Document, similarity_score: float) -> Dict[str, Any]:
