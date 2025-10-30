@@ -110,7 +110,7 @@ El tribunal señaló: **"las medidas cautelares deben ser proporcionales al ries
 
 METADATA DE DOCUMENTOS:
 
-Los documentos incluyen metadata al inicio (Expediente, Archivo, Chunk, Págs.):
+Los documentos incluyen metadata al inicio (Expediente, Archivo, Págs.):
 - NO repitas esta metadata literalmente en tu respuesta
 - Extrae el número de expediente y nombre del archivo para citarlos
 - Menciona las páginas cuando sea relevante: "según páginas 3-5 del documento X"
