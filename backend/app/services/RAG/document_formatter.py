@@ -33,8 +33,7 @@ def format_document_with_metadata(doc: Document) -> str:
     # Construir header con metadata
     header = (
         f"\n**Expediente:** {metadata.get('expediente_numero', 'N/A')} | "
-        f"**Archivo:** {archivo_mostrar} | "
-        f"**Chunk:** {metadata.get('indice_chunk', 0)}{paginas_str}\n"
+        f"**Archivo:** {archivo_mostrar}{paginas_str}\n"
         f"{tipo_doc_str}"
         f"{ruta_str}"
         f"---\n"
