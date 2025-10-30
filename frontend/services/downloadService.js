@@ -38,7 +38,9 @@ class DownloadService {
 
       // Agregar timestamp para evitar cache
       const timestamp = Date.now();
-      const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}&_t=${timestamp}`;
+      // Doble codificación para manejar caracteres especiales y espacios correctamente
+      const encodedRuta = encodeURIComponent(rutaArchivo);
+      const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodedRuta}&_t=${timestamp}`;
       
       // Obtener headers con autenticación
       const authHeaders = await this.getAuthHeaders();
@@ -93,7 +95,9 @@ class DownloadService {
       // Crear enlace de descarga
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = nombreArchivo || 'archivo';
+      // Limpiar el nombre del archivo de caracteres problemáticos para navegadores
+      const safeName = (nombreArchivo || 'archivo').replace(/[<>:"/\\|?*]/g, '_');
+      a.download = safeName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -130,7 +134,8 @@ class DownloadService {
 
       // LIMITACIÓN: window.open no puede enviar headers de autenticación
       // Para vista previa autenticada, se necesitaría otra implementación
-      const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodeURIComponent(rutaArchivo)}`;
+      const encodedRuta = encodeURIComponent(rutaArchivo);
+      const url = `${API_BASE_URL}/archivos/download?ruta_archivo=${encodedRuta}`;
       window.open(url, '_blank');
       
     } catch (error) {
