@@ -204,13 +204,6 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
             ))
           )}
         </div>
-
-        {/* Información adicional */}
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
-            Las conversaciones se guardan automáticamente en el servidor
-          </p>
-        </div>
       </div>
     </DrawerGeneral>
   );
