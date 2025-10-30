@@ -31,23 +31,22 @@ class DocumentoRetrievalService:
         Returns:
             Lista de casos similares
         """
-        # Agrupar documentos por expediente
         expedientes_map = {}
         for doc in similar_docs:
             expedient_id = doc.get("expedient_id")
+            similarity_score = doc.get("similarity_score", 0)
+            document_name = doc.get("document_name", "")
+            
             if expedient_id:
                 if expedient_id not in expedientes_map:
                     expedientes_map[expedient_id] = {
-                        "documents": {},  # Cambiar a dict para agrupar por nombre
+                        "documents": {},
                         "max_similarity": 0.0,
                     }
 
-                # Agrupar chunks del mismo documento, manteniendo solo el de mayor similitud
-                document_name = doc.get("document_name")
                 current_score = doc.get("similarity_score", 0)
                 
                 if document_name:
-                    # Si el documento ya existe, mantener solo el chunk con mayor score
                     if document_name not in expedientes_map[expedient_id]["documents"]:
                         expedientes_map[expedient_id]["documents"][document_name] = doc
                     else:
@@ -55,7 +54,6 @@ class DocumentoRetrievalService:
                         if current_score > existing_score:
                             expedientes_map[expedient_id]["documents"][document_name] = doc
                     
-                    # Actualizar score máximo del expediente
                     expedientes_map[expedient_id]["max_similarity"] = max(
                         expedientes_map[expedient_id]["max_similarity"],
                         current_score,
@@ -134,6 +132,7 @@ class DocumentoRetrievalService:
             key=lambda x: x.get("puntuacion_similitud", 0), reverse=True
         )
 
+        logger.info(f"Procesados {len(casos_similares)} casos similares")
         return casos_similares
 
     async def _obtener_documento_por_nombre(self, expedient_id: str, document_name: str) -> Optional[Dict[str, Any]]:
