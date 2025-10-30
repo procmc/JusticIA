@@ -160,8 +160,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-120px)] px-2 text-center">
+    <div className="h-full bg-white relative overflow-hidden flex flex-col">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-2 text-center py-8">
         <div className="max-w-6xl mx-auto">
           {/* Main Title */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-3 leading-tight">
@@ -179,7 +179,7 @@ export default function Home() {
 
           {/* Grid de funcionalidades según rol */}
           {isAuthenticated ? (
-            <div className="mb-16">
+            <div className="mb-8">
               {user.role === ROLES.USER && (
                 <>
                   {/* Primera fila: 3 columnas */}
@@ -202,7 +202,7 @@ export default function Home() {
             </div>
           ) : (
             /* Vista por defecto para usuarios no autenticados */
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto mb-8">
               <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 mx-auto">
                   <IoChatbubble className="w-7 h-7 text-white" />
@@ -306,7 +306,7 @@ export default function Home() {
             </div>
 
             {/* Información inferior */}
-            <div className="flex justify-center items-center gap-2 pt-2 border-t border-gray-100">
+            <div className="flex justify-center items-center gap-2 border-t border-gray-100">
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 <span>&copy; 2025 Poder Judicial de Costa Rica</span>
               </div>

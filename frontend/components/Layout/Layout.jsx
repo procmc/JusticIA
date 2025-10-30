@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
   useChatContextCleanup();
 
   return (
-    <div className="h-screen flex w-full overflow-hidden">
+    <div className="h-screen flex w-full overflow-hidden scrollbar-hide">
       {/* Sidebar */}
       <Sidebar
         toggleCollapse={toggleCollapse}
@@ -35,7 +35,7 @@ const Layout = ({ children }) => {
         {/* Breadcrumbs */}
         <DynamicBreadcrumbs />
         
-        <div className="flex-1 p-4 overflow-auto">
+        <div className="flex-1 p-4 overflow-auto scrollbar-hide">
           {children}
         </div>
       </div>
