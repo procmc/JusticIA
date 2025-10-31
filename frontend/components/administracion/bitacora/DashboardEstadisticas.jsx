@@ -182,6 +182,13 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
   const datosExpedientes = prepararDatosExpedientes();
   const datosActividad = prepararDatosActividadDiaria();
 
+  // Log para debugging
+  console.log('DashboardEstadisticas renderizado con:', {
+    datosUsuarios: !!datosUsuarios,
+    datosExpedientes: !!datosExpedientes,
+    usuariosMasActivos: estadisticas?.usuariosMasActivos?.length || 0
+  });
+
   // Preparar datos para gráfico de tipos de archivos
   const prepararDatosTiposArchivos = () => {
     if (!estadisticas?.tiposArchivosDistribucion || estadisticas.tiposArchivosDistribucion.length === 0) {
@@ -451,18 +458,18 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
         )}
 
         {/* Usuarios más activos */}
-        {datosUsuarios && (
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
-              <div className="flex items-center gap-3">
-                <IoPeople className="w-6 h-6 text-purple-600" />
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Usuarios Activos</h3>
-                  <p className="text-sm text-gray-600">Top 5 más activos</p>
-                </div>
+        <Card id="chart-usuarios" className="border-none shadow-lg">
+          <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <IoPeople className="w-6 h-6 text-purple-600" />
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Usuarios Activos</h3>
+                <p className="text-sm text-gray-600">Top 5 más activos</p>
               </div>
-            </CardHeader>
-            <CardBody className="p-8">
+            </div>
+          </CardHeader>
+          <CardBody className="p-8">
+            {datosUsuarios ? (
               <div style={{ height: '350px' }}>
                 <Doughnut 
                   data={datosUsuarios} 
@@ -484,12 +491,17 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                   }} 
                 />
               </div>
-            </CardBody>
-          </Card>
-        )}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-80 text-gray-500">
+                <IoPeople className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm text-gray-500">No hay datos de usuarios disponibles</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
 
         {/* Distribución RAG */}
-        <Card className="border-none shadow-lg">
+        <Card id="chart-consultas" className="border-none shadow-lg">
           <CardHeader className="bg-white px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-3">
               <IoPieChart className="w-6 h-6 text-indigo-600" />
@@ -534,17 +546,17 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
       {/* Grid de 2 columnas para gráficos de barras */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de expedientes más consultados */}
-        {datosExpedientes && datosExpedientes.labels.length > 0 && (
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Top 5 de expedientes con más actividad
-                </p>
-              </div>
-            </CardHeader>
-            <CardBody className="p-8">
+        <Card id="chart-expedientes" className="border-none shadow-lg">
+          <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Top 5 de expedientes con más actividad
+              </p>
+            </div>
+          </CardHeader>
+          <CardBody className="p-8">
+            {datosExpedientes && datosExpedientes.labels.length > 0 ? (
               <div style={{ height: '400px' }}>
                 <Bar 
                   data={datosExpedientes} 
@@ -559,9 +571,14 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                   }} 
                 />
               </div>
-            </CardBody>
-          </Card>
-        )}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+                <IoFolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm text-gray-500">No hay datos de expedientes disponibles</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
 
         {/* Gráfico de tipos de archivos */}
         {datosTiposArchivos && (
