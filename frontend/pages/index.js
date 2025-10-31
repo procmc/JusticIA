@@ -113,21 +113,21 @@ export default function Home() {
       description: 'Top usuarios más activos y distribución de actividad',
       icon: IoStatsChart,
       gradient: 'from-green-500 to-green-600',
-      onClick: () => navigateTo('/administracion/bitacora?tab=usuarios')
+      onClick: () => navigateTo('/administracion/bitacora?tab=estadisticas&scroll=usuarios')
     },
     {
       title: 'Métricas de Consultas',
       description: 'Distribución de consultas chat y análisis de uso',
       icon: IoChatbubble,
       gradient: 'from-orange-500 to-orange-600',
-      onClick: () => navigateTo('/administracion/bitacora?tab=consultas')
+      onClick: () => navigateTo('/administracion/bitacora?tab=estadisticas&scroll=consultas')
     },
     {
       title: 'Reportes de Expedientes',
       description: 'Top expedientes consultados y métricas documentales',
       icon: IoFolderOpen,
       gradient: 'from-teal-500 to-teal-600',
-      onClick: () => navigateTo('/administracion/bitacora?tab=expedientes')
+      onClick: () => navigateTo('/administracion/bitacora?tab=estadisticas&scroll=expedientes')
     }
   ];
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDisclosure } from '@heroui/react';
 import HeaderBusquedaSimilares from './HeaderBusquedaSimilares';
 import SearchFilters from './search-filters/SearchFilters';
@@ -11,7 +11,7 @@ import useSimilarityUtils from '@/hooks/busqueda-similares/useSimilarityUtils';
 import similarityService from '@/services/similarityService';
 import Toast from '@/components/ui/CustomAlert';  
 
-const BusquedaSimilares = () => {
+const BusquedaSimilares = ({ initialMode }) => {
   // Estados
   const [searchMode, setSearchMode] = useState('description');
   const [searchText, setSearchText] = useState('');
@@ -23,6 +23,15 @@ const BusquedaSimilares = () => {
   const [searchStats, setSearchStats] = useState(null); // Estadísticas de búsqueda
   const [selectedCase, setSelectedCase] = useState(null);
   const [searchError, setSearchError] = useState(null);
+
+  // Efecto para manejar el modo inicial desde la URL
+  useEffect(() => {
+    if (initialMode === 'expediente') {
+      setSearchMode('expedient');
+    } else if (initialMode === 'descripcion') {
+      setSearchMode('description');
+    }
+  }, [initialMode]);
   
   // Ref para hacer scroll a los resultados
   const resultsRef = useRef(null);

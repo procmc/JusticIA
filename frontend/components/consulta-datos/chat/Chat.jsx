@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
@@ -8,7 +8,7 @@ import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
-const ConsultaChat = () => {
+const ConsultaChat = ({ initialMode }) => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
@@ -19,6 +19,34 @@ const ConsultaChat = () => {
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
   const [consultedExpediente, setConsultedExpediente] = useState(null); // Para rastrear el expediente consultado
+
+  // Efecto para manejar el modo inicial desde la URL
+  useEffect(() => {
+    if (initialMode === 'expediente') {
+      setSearchScope('expediente');
+      // Mostrar mensaje de bienvenida específico para el modo expediente
+      const welcomeMessage = {
+        text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
+
+---
+
+### **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`,
+        isUser: false,
+        timestamp: formatearSoloHoraCostaRica(new Date())
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [initialMode]);
 
   // Función personalizada para cambiar el scope y limpiar cuando sea necesario
   const handleSearchScopeChange = (newScope) => {
