@@ -197,13 +197,19 @@ const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false
                                 label="Fecha Inicio"
                                 labelPlacement='outside'
                                 granularity="day"
-                                value={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : currentDate}
+                                value={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : null}
+                                placeholderValue={currentDate}
                                 onChange={(date) => handleDateChange('fechaInicio', date)}
                                 variant="bordered"
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 maxValue={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : undefined}
+                                calendarProps={{
+                                    classNames: {
+                                        base: "datepicker-calendar"
+                                    }
+                                }}
                                 className="w-full"
                             />
                         </div>
@@ -214,13 +220,19 @@ const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false
                                 label="Fecha Fin"
                                 labelPlacement='outside'
                                 granularity="day"
-                                value={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : currentDate}
+                                value={filtrosLocales.fechaFin ? parseDate(filtrosLocales.fechaFin) : null}
+                                placeholderValue={currentDate}
                                 onChange={(date) => handleDateChange('fechaFin', date)}
                                 variant="bordered"
                                 color='primary'
                                 size="lg"
                                 showMonthAndYearPickers
                                 minValue={filtrosLocales.fechaInicio ? parseDate(filtrosLocales.fechaInicio) : undefined}
+                                calendarProps={{
+                                    classNames: {
+                                        base: "datepicker-calendar"
+                                    }
+                                }}
                                 className="w-full"
                             />
                         </div>
