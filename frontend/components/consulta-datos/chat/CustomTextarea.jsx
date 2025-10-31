@@ -17,19 +17,24 @@ const CustomTextarea = ({
   consultedExpediente = null
 }) => {
   const textareaRef = useRef(null);
+  const rafRef = useRef(null);
 
   // Auto-resize function like multimodal-input
   const adjustHeight = useCallback(() => {
-    if (textareaRef.current) {
-      // Resetear altura primero para obtener el scrollHeight correcto
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = "20px"; // Altura mínima
-      
-      // Calcular nueva altura basada en contenido
-      const scrollHeight = textareaRef.current.scrollHeight;
-      const newHeight = Math.max(20, scrollHeight); // Mínimo 20px
-      textareaRef.current.style.height = `${newHeight}px`;
-    }
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const container = textarea.parentElement;
+
+    // Resetear altura para medir correctamente
+    textarea.style.height = 'auto';
+    textarea.style.height = '20px';
+
+    const scrollHeight = textarea.scrollHeight;
+    const newHeight = Math.max(20, scrollHeight);
+    textarea.style.height = `${newHeight}px`;
+
+    // No forzar scroll aquí. Dejar que handleInput/agendador lo haga de forma optimizada.
   }, []);
 
   useEffect(() => {
@@ -50,9 +55,49 @@ const CustomTextarea = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [adjustHeight, value]);
 
+  // Limpiar RAF al desmontar
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
   const handleInput = (event) => {
     onChange(event);
+    // Ajustar altura y programar un único ajuste de scroll por frame para evitar vibración
     adjustHeight();
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const container = textarea.parentElement;
+      if (!container) return;
+
+      // Solo calcular una vez
+      const lineHeight = 20;
+      const cursorPosition = textarea.selectionStart;
+      const textBeforeCursor = textarea.value.substring(0, cursorPosition);
+      const currentLine = textBeforeCursor.split('\n').length;
+      const cursorTop = (currentLine - 1) * lineHeight;
+
+      // Si el textarea no tiene scroll, no tocar nada
+      const needsScroll = textarea.scrollHeight > container.clientHeight;
+      if (!needsScroll) return;
+
+      const isCursorNearEnd = cursorPosition >= textarea.value.length - 10;
+
+      // Si el cursor está cerca del final o fuera de la vista, ajustar sin smooth
+      if (isCursorNearEnd) {
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+      } else if (cursorTop < container.scrollTop) {
+        container.scrollTop = Math.max(0, cursorTop - lineHeight);
+      } else if (cursorTop > container.scrollTop + container.clientHeight - lineHeight * 2) {
+        container.scrollTop = Math.max(0, cursorTop - container.clientHeight + lineHeight * 2);
+      }
+    });
   };
 
   const handleKeyDown = (event) => {
@@ -72,6 +117,21 @@ const CustomTextarea = ({
     } else if (value.trim() && !disabled) {
       onSubmit();
     }
+  };
+
+  // Manejar clic en el textarea para ajustar scroll si es necesario
+  const handleTextareaClick = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const container = textarea.parentElement;
+      if (!container) return;
+      const cursorPosition = textarea.selectionStart;
+      if (cursorPosition >= textarea.value.length - 10) {
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+      }
+    });
   };
 
   // Calcular altura dinámica basada en contenido
@@ -153,6 +213,7 @@ const CustomTextarea = ({
               }
               value={value}
               onChange={handleInput}
+              onClick={handleTextareaClick}
               rows={1}
               disabled={disabled} // Solo disabled por la prop, no por isLoading
               onKeyDown={handleKeyDown}

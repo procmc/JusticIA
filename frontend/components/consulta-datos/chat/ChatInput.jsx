@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CustomTextarea from './CustomTextarea';
 
 const ChatInput = ({ 
@@ -11,6 +11,15 @@ const ChatInput = ({
   consultedExpediente = null
 }) => {
   const [inputValue, setInputValue] = useState('');
+  const prevSearchScopeRef = useRef(searchScope);
+
+  // Limpiar input cuando cambia el scope
+  useEffect(() => {
+    if (prevSearchScopeRef.current !== searchScope) {
+      setInputValue('');
+      prevSearchScopeRef.current = searchScope;
+    }
+  }, [searchScope]);
 
   const handleSubmit = () => {
     if (inputValue.trim() && !isDisabled) {
