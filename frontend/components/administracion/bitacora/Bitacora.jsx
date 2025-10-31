@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Card, CardBody, Tabs, Tab } from '@heroui/react';
 import { IoDocumentText, IoStatsChart, IoCalendar, IoShield } from 'react-icons/io5';
 import { Toast } from '../../ui/CustomAlert';
@@ -10,7 +10,7 @@ import DashboardEstadisticas from './DashboardEstadisticas';
 import bitacoraService from '../../../services/bitacoraService';
 import { exportarBitacoraPDF } from '../../../services/exportService';
 
-const Bitacora = () => {
+const Bitacora = ({ initialTab, scrollTarget }) => {
   const [vistaActual, setVistaActual] = useState('registros'); // 'registros' o 'estadisticas'
   const [registrosFiltrados, setRegistrosFiltrados] = useState([]);
   const [paginacion, setPaginacion] = useState({ total: 0, page: 1, pages: 1 });
@@ -28,6 +28,13 @@ const Bitacora = () => {
     fechaFin: '',
     page: 1,
     limit: 10
+  });
+
+  // Referencias para el scroll automático
+  const scrollTargetRefs = useRef({
+    usuarios: null,
+    consultas: null,
+    expedientes: null
   });
 
   // Cargar registros y estadísticas al inicializar
@@ -109,6 +116,42 @@ const Bitacora = () => {
   useEffect(() => {
     cargarDatosIniciales();
   }, [cargarDatosIniciales]);
+
+  // Efecto para manejar el tab inicial y scroll automático
+  useEffect(() => {
+    if (initialTab === 'estadisticas') {
+      setVistaActual('estadisticas');
+    }
+  }, [initialTab]);
+
+  // Efecto separado para el scroll automático cuando las estadísticas están listas
+  useEffect(() => {
+    if (vistaActual === 'estadisticas' && estadisticas && scrollTarget && ['usuarios', 'consultas', 'expedientes'].includes(scrollTarget)) {
+      // Múltiples intentos de scroll para asegurar que funcione
+      const attemptScroll = (attempts = 0) => {
+        const targetElement = document.getElementById(`chart-${scrollTarget}`);
+        console.log(`Intento ${attempts + 1} de scroll para: chart-${scrollTarget}`, targetElement);
+        
+        if (targetElement) {
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+          console.log(`✅ Scroll exitoso a: chart-${scrollTarget}`);
+        } else if (attempts < 5) {
+          // Reintentar después de un momento si no encuentra el elemento
+          setTimeout(() => attemptScroll(attempts + 1), 500);
+        } else {
+          console.warn(`❌ No se pudo hacer scroll a: chart-${scrollTarget} después de 5 intentos`);
+        }
+      };
+
+      // Iniciar el primer intento después de un delay inicial
+      const scrollTimeout = setTimeout(() => attemptScroll(), 1000);
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [vistaActual, estadisticas, scrollTarget]);
 
   // Cargar datos al cambiar de vista
   useEffect(() => {
