@@ -1,0 +1,39 @@
+/* Estilos personalizados para DatePicker Calendar */
+
+/* Título del mes y año */
+.datepicker-calendar [data-slot="title"],
+.datepicker-calendar button + h2,
+.datepicker-calendar header h2 {
+    color: #111827 !important;
+    font-weight: 500 !important;
+}
+
+/* Botones de navegación (flechas) - usando el data-slot correcto */
+.datepicker-calendar [data-slot="next-button"],
+.datepicker-calendar [data-slot="prev-button"],
+.datepicker-calendar button[data-slot="next-button"],
+.datepicker-calendar button[data-slot="prev-button"] {
+    color: #111827 !important;
+}
+
+.datepicker-calendar [data-slot="next-button"] svg,
+.datepicker-calendar [data-slot="prev-button"] svg {
+    color: #111827 !important;
+}
+
+/* Días de la semana */
+.datepicker-calendar [data-slot="gridHeaderCell"],
+.datepicker-calendar thead th,
+.datepicker-calendar [role="columnheader"] {
+    color: #374151 !important;
+    font-weight: 500 !important;
+}
+
+/* Selector universal para el header y días */
+.datepicker-calendar header * {
+    color: #111827 !important;
+}
+
+.datepicker-calendar [data-slot="grid"] thead * {
+    color: #374151 !important;
+}
