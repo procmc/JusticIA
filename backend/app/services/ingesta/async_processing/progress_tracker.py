@@ -167,12 +167,12 @@ class ProgressManager:
     Consulta Redis directamente para obtener estado compartido entre procesos.
     """
     
-    def __init__(self, ttl_seconds: int = 3600):
+    def __init__(self, ttl_seconds: int = 10800):  # 3 horas por defecto
         """
         Inicializa el gestor de progreso.
         
         Args:
-            ttl_seconds: Tiempo de vida (TTL) para los datos en Redis (por defecto 1 hora)
+            ttl_seconds: Tiempo de vida (TTL) para los datos en Redis (por defecto 3 horas)
         """
         self.ttl_seconds = ttl_seconds
     
