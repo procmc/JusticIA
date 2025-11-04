@@ -19,6 +19,8 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     IMPORTANTE: Celery no soporta async/await directamente, pero process_uploaded_files
     es una función async. Usamos asyncio.run() para ejecutarla de forma síncrona.
     
+    IDEMPOTENCIA: Esta tarea verifica si el archivo ya fue procesado antes de reintentarlo.
+    
     Args:
         CT_Num_expediente: Número de expediente
         archivo_data: Diccionario con datos del archivo
@@ -26,6 +28,55 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     """
     # Usar el task_id de Celery como file_process_id para tracking
     task_id = self.request.id
+    
+    # VERIFICAR SI YA SE PROCESÓ (idempotencia con doble verificación)
+    existing_tracker = progress_manager.get_status(task_id)
+    if existing_tracker and existing_tracker.get("status") == "completado":
+        logger.warning(f"REINTENTO DETECTADO: Tarea {task_id} ya completada. Retornando resultado previo.")
+        metadata = existing_tracker.get("metadata", {})
+        return {
+            "status": "completado",
+            "progress": 100,
+            "resultado": {
+                "filename": archivo_data.get("filename", "unknown"),
+                "documento_id": metadata.get("documento_id"),
+                "mensaje": metadata.get("mensaje", "Archivo procesado previamente"),
+                "status": "exitoso",
+            },
+            "note": "Resultado de ejecución previa (reintento evitado)"
+        }
+    
+    # Si no hay tracker pero la tarea ya se ejecutó, verificar en BD
+    db_temp = SessionLocal()
+    try:
+        # Verificar si el documento ya existe en BD
+        from app.repositories.documento_repository import DocumentoRepository
+        doc_repo = DocumentoRepository()
+        
+        # Buscar documento con este filename y expediente
+        documento_existente = doc_repo.buscar_por_nombre_y_expediente(
+            db_temp, archivo_data["filename"], CT_Num_expediente
+        )
+        
+        if documento_existente and documento_existente.CN_Estado == "Procesado":
+            logger.warning(f"REINTENTO DETECTADO EN BD: Documento {archivo_data['filename']} ya existe como 'Procesado'")
+            db_temp.close()
+            return {
+                "status": "completado",
+                "progress": 100,
+                "resultado": {
+                    "filename": archivo_data["filename"],
+                    "documento_id": str(documento_existente.CN_Id_documento),
+                    "mensaje": "Documento ya procesado previamente",
+                    "status": "exitoso",
+                },
+                "note": "Documento ya existe en BD (reintento evitado)"
+            }
+    except Exception as e:
+        logger.debug(f"No se pudo verificar documento en BD: {e}")
+    finally:
+        db_temp.close()
+    
     tracker = progress_manager.create_tracker(task_id, total_steps=100)
     
     # Función para verificar si la tarea fue cancelada
@@ -93,7 +144,17 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
                     task_id, "completado", archivo_resultado.file_id
                 ))
                 
-                progress_manager.schedule_task_cleanup(task_id, delay_minutes=5)
+                # IMPORTANTE: Guardar resultado en tracker antes de programar limpieza
+                # Esto previene reintentos innecesarios si el worker es reciclado
+                tracker.metadata.update({
+                    "documento_id": archivo_resultado.file_id,
+                    "filename": archivo_data["filename"],
+                    "mensaje": archivo_resultado.message,
+                    "status": "exitoso"
+                })
+                
+                # Programar limpieza con delay largo (30 min) para prevenir reintentos
+                progress_manager.schedule_task_cleanup(task_id, delay_minutes=30)
                 
                 # Liberar memoria
                 del file_buffer

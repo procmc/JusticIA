@@ -13,10 +13,29 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
-    # Configuración para soportar terminación de tareas
-    task_acks_late=True,  # Reconocer tareas después de completarse (permite retry)
-    worker_prefetch_multiplier=1,  # Número de tareas a prefetch por worker
-    task_track_started=True,  # Trackear cuando una tarea comienza
+    
+    # Configuración para tareas largas de procesamiento
+    task_acks_late=True,  # Reconocer después de completar (permite retry en fallos)
+    task_reject_on_worker_lost=False,  # SÍ reintentar si worker muere inesperadamente
+    worker_prefetch_multiplier=1,  # Una tarea a la vez
+    task_track_started=True,  # Trackear inicio
+    
+    # CLAVE: Aumentar timeout de ACK para tareas largas (2 horas)
+    broker_transport_options={
+        'visibility_timeout': 7200,  # 2 horas - tiempo máximo esperando ACK
+        'socket_timeout': 300,  # 5 minutos - timeout de conexión socket
+        'socket_keepalive': True,  # Mantener conexión viva
+    },
+    
+    # Configuración de resultados
+    result_backend_transport_options={
+        'socket_timeout': 300,
+        'socket_keepalive': True,
+    },
+    
+    # Timeouts de tarea
+    task_time_limit=7200,  # 2 horas hard limit
+    task_soft_time_limit=6600,  # 1h50m soft limit
 )
 
 # Importar las tareas para registrarlas en el worker
