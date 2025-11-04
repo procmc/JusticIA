@@ -54,19 +54,31 @@ export const EXPEDIENTE_EXAMPLES = [
 
 /**
  * Códigos de materia válidos del Poder Judicial
- * (Lista parcial - agregar más según necesidad)
+ * Lista completa actualizada según normativa del Poder Judicial de Costa Rica
  */
 export const CODIGOS_MATERIA = {
-  CI: 'Civil',
-  LA: 'Laboral',
-  FA: 'Familia',
-  PN: 'Penal',
-  CO: 'Contencioso',
-  CV: 'Cobranza',
-  AM: 'Amparo',
-  TR: 'Tránsito',
   AG: 'Agrario',
-  CM: 'Comercial'
+  AT: 'Atención a la Víctima',
+  CA: 'Contencioso Administrativo',
+  CC: 'Centro de Conciliación',
+  CI: 'Civil',
+  CJ: 'Cobro Judicial',
+  CO: 'Constitucional',
+  DI: 'Inspección Judicial',
+  FA: 'Familia',
+  FC: 'Faltas y Contravenciones',
+  LA: 'Laboral',
+  NA: 'Niñez y Adolescencia',
+  NO: 'Notariado',
+  PA: 'Pensiones Alimentarias',
+  PE: 'Penal',
+  PJ: 'Penal Juvenil',
+  PT: 'Protección a la Víctima',
+  S1: 'Sala Primera',
+  S2: 'Sala Segunda',
+  TR: 'Tránsito',
+  TS: 'Trabajo Social y Psicología',
+  VD: 'Violencia Doméstica'
 };
 
 /**

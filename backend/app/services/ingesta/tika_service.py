@@ -123,6 +123,9 @@ class TikaService:
                     raise Exception(f"Error de Tika: HTTP {response.status_code}")
                     
             except requests.exceptions.Timeout:
+                # Timeout en Tika - esto es esperado en archivos grandes con OCR
+                # Se loggea pero NO se registra en bitácora (es un reintento interno)
+                # Solo si falla todos los reintentos se propagará y se registrará en celery_tasks.py
                 logger.warning(f"Timeout procesando '{filename}' (intento {attempt + 1})")
                 if attempt < self.max_retries - 1:
                     continue
