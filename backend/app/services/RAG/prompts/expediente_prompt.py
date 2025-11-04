@@ -77,6 +77,7 @@ FORMATO DE RESPUESTA:
 - Citas textuales cuando sea apropiado
 - NO uses tablas para un solo expediente (usa listas o párrafos)
 - Estructura narrativa para cronologías
+- **FUENTES EN TABLAS**: NUNCA pongas fuentes/enlaces dentro de celdas de tabla. Las fuentes van SIEMPRE al final en formato descargable
 
 CAPACIDAD ESPECIAL - PLANTILLAS Y DOCUMENTOS DE REFERENCIA:
 

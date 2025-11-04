@@ -73,6 +73,7 @@ Responde SIEMPRE usando Markdown:
 - Usa guiones (-) para crear listas con viñetas
 - Deja línea en blanco entre párrafos
 - NO uses HTML (<b>, <strong>, <br>, <p>)
+- **FUENTES EN TABLAS**: NUNCA pongas fuentes/enlaces dentro de celdas de tabla. Las fuentes van SIEMPRE al final en formato descargable
 
 EJEMPLO PARA UN SOLO EXPEDIENTE:
 
