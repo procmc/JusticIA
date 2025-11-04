@@ -126,28 +126,6 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
             db.close()
     
     except Terminated:
-        # Excepción específica de Celery cuando se revoca con terminate=True
-        logger.warning(f"Tarea {task_id} terminada forzosamente (cancelación)")
-        tracker.mark_cancelled("Procesamiento interrumpido por cancelación")
-        if 'db' in locals():
-            from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
-            asyncio.run(bitacora_service.registrar_ingesta(
-                db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "cancelado"
-            ))
-        progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
-        
-        # Liberar memoria
-        if 'file_buffer' in locals():
-            del file_buffer
-        if 'content' in archivo_data:
-            del archivo_data["content"]
-        
-        return {
-            "status": "cancelado",
-            "message": "Tarea cancelada por el usuario"
-        }
-    
-    except Terminated:
         # Tarea cancelada por el usuario
         logger.warning(f"Tarea cancelada: {archivo_data['filename']}")
         tracker.mark_failed("Procesamiento cancelado por el usuario", "cancelado")
@@ -174,6 +152,18 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
         logger.error(error_msg, exc_info=True)
         tracker.mark_failed(error_msg, str(e))
         progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
+        
+        # Registrar error en bitácora para auditoría
+        try:
+            if 'db' in locals():
+                from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
+                asyncio.run(bitacora_service.registrar_ingesta(
+                    db, usuario_id, CT_Num_expediente, archivo_data['filename'], 
+                    task_id, "error", error_details=str(e)
+                ))
+        except Exception as bitacora_error:
+            # No fallar por error en bitácora, solo loggear
+            logger.warning(f"No se pudo registrar error en bitácora: {bitacora_error}")
         
         # Liberar memoria en caso de error
         if 'file_buffer' in locals():

@@ -107,6 +107,20 @@ async def process_uploaded_files(
             # Validar archivo
             validation_error = validate_file(file)
             if validation_error:
+                # Registrar error de validación en bitácora
+                if db and usuario_id:
+                    try:
+                        from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
+                        import asyncio
+                        # Generar un task_id ficticio para tracking (no hay tarea Celery en validación)
+                        task_id_validation = f"validation-{file.filename}-{id(file)}"
+                        await bitacora_service.registrar_ingesta(
+                            db, usuario_id, CT_Num_expediente, file.filename,
+                            task_id_validation, "error", error_details=validation_error.razon
+                        )
+                    except Exception as bitacora_error:
+                        logger.warning(f"No se pudo registrar error de validación en bitácora: {bitacora_error}")
+                
                 archivos_con_error.append(validation_error)
                 continue
             

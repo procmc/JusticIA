@@ -27,7 +27,8 @@ class IngestaAuditService:
         filename: str,
         task_id: str,
         fase: str,
-        documento_id: Optional[str] = None
+        documento_id: Optional[str] = None,
+        error_details: Optional[str] = None
     ) -> Optional[T_Bitacora]:
         """
         Registra eventos de ingesta de documentos en la bitácora.
@@ -38,8 +39,9 @@ class IngestaAuditService:
             expediente_num: Número del expediente
             filename: Nombre del archivo
             task_id: ID de la tarea Celery
-            fase: Fase del proceso ("inicio", "completado", "cancelado", etc.)
-            documento_id: ID del documento generado (opcional, solo en fase completada)
+            fase: Fase del proceso ("inicio", "completado", "cancelado", "error", etc.)
+            documento_id: ID del documento procesado (opcional)
+            error_details: Detalles del error si fase="error" (opcional)
             
         Returns:
             T_Bitacora: Registro creado o None si hubo error
@@ -62,6 +64,8 @@ class IngestaAuditService:
             }
             if documento_id:
                 info["documento_id"] = documento_id
+            if error_details:
+                info["error_details"] = error_details
             
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(

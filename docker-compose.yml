@@ -30,7 +30,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=3000000 --pool=prefork
+    command: /venv/bin/celery -A celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=5 --max-memory-per-child=4000000 --pool=prefork
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads
