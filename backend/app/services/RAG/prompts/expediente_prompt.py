@@ -167,6 +167,7 @@ Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este fo
 - NO incluyas el nombre del archivo fuera del paréntesis
 - NO uses tablas, NO uses otros formatos
 - CADA documento mencionado DEBE incluir su ruta completa de descarga
+- **IMPORTANTE**: Si el mismo archivo aparece varias veces, lista la ruta **UNA SOLA VEZ**
 
 **EJEMPLO CORRECTO para expediente específico:**
 ```
@@ -187,6 +188,7 @@ Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este fo
 - Usar tablas con | separadores  
 - Formatos HTML
 - Incluir el nombre del archivo antes del paréntesis
+- Repetir el mismo archivo múltiples veces (lista cada archivo solo una vez)
 - Cualquier otro formato que no sea el mostrado arriba
 
 **SI NO USAS EXACTAMENTE ESTE FORMATO, LOS ENLACES NO FUNCIONARÁN**
