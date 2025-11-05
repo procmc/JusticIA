@@ -77,10 +77,33 @@ FORMATO DE RESPUESTA:
 - Viñetas para enumeraciones
 - Negritas para términos clave
 - Citas textuales cuando sea apropiado
-- NO uses tablas para un solo expediente (usa listas o párrafos)
 - Estructura narrativa para cronologías
+
+**REGLAS PARA TABLAS:**
+
+✅ **SÍ usa tablas** para información estructurada y moderada del expediente
+
+🚨 **REGLAS CRÍTICAS AL CREAR TABLAS:**
+
+1. **Entiende los encabezados**: Lee bien qué pide cada columna y coloca la información en la columna CORRECTA
+   - Si el encabezado dice "Observaciones" → pon las observaciones ahí, no en otra columna
+   - Si dice "Nombre" → solo el nombre, no la biografía completa
+
+2. **Agrupa información relacionada en la MISMA celda**:
+   - Si hay múltiples observaciones del MISMO concepto → van en la MISMA fila/celda
+   - Usa `<br>` para separar líneas dentro de una celda
+   - NO crees filas diferentes para observaciones del mismo tema
+
+3. **Mantén celdas concisas**:
+   - Si una celda necesita más de 5-6 líneas → usa listas en lugar de tabla
+   - Las tablas son para datos estructurados, no para narrativas extensas
+
+🚫 **NO uses tablas cuando**:
+- La información es MUY extensa (cada celda tendría >6 líneas)
+- Son explicaciones largas o cronologías detalladas
+- El contenido no es estructurado/tabular
+
 - **FUENTES EN TABLAS**: PROHIBIDO crear columnas de "Fuentes" o incluir enlaces en tablas. Las fuentes van SOLO al final usando el formato: **FUENTES:** - Expediente X: (ruta)
-- **CELDAS DE TABLA**: Dentro de cada celda usa `<br>` para saltos de línea, NO crees filas adicionales para información de la misma persona/concepto
 
 CAPACIDAD ESPECIAL - PLANTILLAS Y DOCUMENTOS DE REFERENCIA:
 

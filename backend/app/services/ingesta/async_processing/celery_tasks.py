@@ -144,15 +144,6 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
                     task_id, "completado", archivo_resultado.file_id
                 ))
                 
-                # IMPORTANTE: Guardar resultado en tracker antes de programar limpieza
-                # Esto previene reintentos innecesarios si el worker es reciclado
-                tracker.metadata.update({
-                    "documento_id": archivo_resultado.file_id,
-                    "filename": archivo_data["filename"],
-                    "mensaje": archivo_resultado.message,
-                    "status": "exitoso"
-                })
-                
                 # Programar limpieza con delay largo (30 min) para prevenir reintentos
                 progress_manager.schedule_task_cleanup(task_id, delay_minutes=30)
                 
