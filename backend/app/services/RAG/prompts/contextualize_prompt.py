@@ -75,23 +75,12 @@ ESTRATEGIA DE EXPANSIÓN SEMÁNTICA:
    - Saludos: "hola", "buenos días"
    - Sistema: "¿cómo te llamas?", "¿qué puedes hacer?"
 
-6. **REFERENCIAS POSICIONALES AL HISTORIAL** (CRÍTICO - reformular CON contexto):
-   - Referencias numéricas: "el primer expediente", "el segundo caso", "el tercero", "el último", "el primero"
-   - Referencias deícticas: "ese caso", "ese expediente", "esa resolución", "aquel documento"
-   - Referencias de continuidad: "¿qué más?", "explícame mejor", "dame más detalles", "amplía eso"
-   - Pronombres: "¿cuál es su fecha?", "¿dónde dice eso?", "¿cómo terminó?"
-   
-   **ACCIÓN ESPECÍFICA - CRÍTICA:**
-   - EXAMINA CUIDADOSAMENTE el historial de conversación (chat_history) para identificar TODOS los números de expediente mencionados en orden
-   - Si dicen "el último expediente/caso" → identifica cuál fue el ÚLTIMO número de expediente listado en tu respuesta anterior y úsalo EXACTAMENTE
-   - Si dicen "el primer expediente/caso" → identifica cuál fue el PRIMER número de expediente listado en tu respuesta anterior
-   - NUNCA inventes números de expediente que no aparezcan en el historial
-   - INCLUYE el número exacto del expediente específico en la reformulación, no hagas búsquedas genéricas
-   
-   **EJEMPLO CRÍTICO:**
-   Si el historial muestra que listaste: "2022-259948-3682-PN, 2022-259949-3683-PN, 2022-919642-4280-PN, 2023-957493-9293-PN"
-   Y preguntan: "dame un borrador del último caso de narcotráfico"
-   Reformula como: "generar borrador usando información del expediente 2023-957493-9293-PN narcotráfico tráfico drogas"
+6. **REFERENCIAS POSICIONALES AL HISTORIAL** (reformular CON contexto):
+   Si mencionan "el primero", "el segundo", "el tercero", "el último", etc.:
+   - Busca en el historial los expedientes listados en orden
+   - Identifica el número exacto del expediente según su posición
+   - Incluye ese número en la reformulación
+   - No inventes expedientes que no estén en el historial
 
 7. **CAMBIOS DE CONTEXTO** (reformular SIN historial):
    - Si la nueva pregunta cambia COMPLETAMENTE de tema Y no tiene referencias → ignorar historial
