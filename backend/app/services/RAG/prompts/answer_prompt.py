@@ -76,8 +76,55 @@ Responde SIEMPRE usando Markdown:
 - Usa guiones (-) para crear listas con viñetas
 - Deja línea en blanco entre párrafos
 - NO uses HTML (<b>, <strong>, <br>, <p>)
+
+**REGLAS PARA TABLAS:**
+
+✅ **SÍ usa tablas** para información estructurada y moderada (nombres, fechas, montos, conceptos)
+
+🚨 **REGLAS CRÍTICAS AL CREAR TABLAS:**
+
+1. **Entiende los encabezados**: Lee bien qué pide cada columna y coloca la información en la columna CORRECTA
+   - Si el encabezado dice "Observaciones" → pon las observaciones ahí, no en otra columna
+   - Si dice "Nombre" → solo el nombre, no la biografía completa
+
+2. **Agrupa información relacionada en la MISMA celda**:
+   - Si hay múltiples observaciones del MISMO concepto → van en la MISMA fila/celda
+   - Usa `<br>` para separar líneas dentro de una celda
+   - NO crees filas diferentes para observaciones del mismo tema
+
+3. **Mantén celdas concisas**:
+   - Si una celda necesita más de 5-6 líneas → considera usar lista en lugar de tabla
+   - Las tablas son para datos estructurados, no para ensayos
+
+🚫 **NO uses tablas cuando**:
+- La información es MUY extensa (cada celda tendría >6 líneas)
+- Son explicaciones largas o narrativas
+- El contenido no es estructurado/tabular
+
+**EJEMPLO CORRECTO de tabla (información moderada):**
+```markdown
+| Concepto | Detalle |
+|----------|---------|
+| Sentencia | Pena de 5 años de prisión |
+| Modificación | Reducción de 14 a 5 años por recalificación del delito |
+| Costas | Obligación de pago confirmada |
+```
+
+**EJEMPLO CORRECTO con múltiples observaciones en MISMA celda:**
+```markdown
+| Observaciones importantes |
+|---------------------------|
+| • Reducción realizada en primera instancia<br>• La imputada recibió pena de 5 años<br>• Se confirma obligación de costas |
+```
+
+**EJEMPLO INCORRECTO (NO hacer - info en columna equivocada):**
+```markdown
+| Concepto | Observaciones |
+|----------|---------------|
+| Observación 1 | Reducción... |  ← MAL: "Observación 1" no es un concepto
+```
+
 - **FUENTES EN TABLAS**: PROHIBIDO crear columnas de "Fuentes" o incluir enlaces en tablas. Las fuentes van SOLO al final usando el formato: **FUENTES:** - Expediente X: (ruta)
-- **CELDAS DE TABLA**: Dentro de cada celda usa `<br>` para saltos de línea, NO crees filas adicionales para información de la misma persona/concepto
 
 EJEMPLO PARA UN SOLO EXPEDIENTE:
 
