@@ -112,6 +112,28 @@ class RAGConfig:
     
     FALLBACK_THRESHOLD_MULTIPLIER = 0.7
     """Factor para relajar el umbral en fallback (70% del original)."""
+    
+    # ========================================
+    # HISTORIAL DE CONVERSACIÓN
+    # ========================================
+    
+    CHAT_HISTORY_LIMIT = 20
+    """Límite de mensajes del historial enviados al LLM.
+    
+    Controla cuántos mensajes del historial se envían al modelo de lenguaje:
+    - Redis guarda TODO el historial sin límites (persistencia completa)
+    - El frontend puede ver todo el historial
+    - Solo el LLM recibe los últimos N mensajes para optimizar contexto
+    
+    Valor recomendado: 20 mensajes (10 intercambios usuario-asistente)
+    - Suficiente para mantener contexto conversacional relevante
+    - Previene exceder límites de tokens del modelo
+    - Permite conversaciones largas sin perder rendimiento
+    
+    Ajustar según necesidades:
+    - Más alto (30-40): Conversaciones muy largas con contexto extenso
+    - Más bajo (10-15): Optimizar velocidad y reducir uso de tokens
+    """
 
 
 # ========================================

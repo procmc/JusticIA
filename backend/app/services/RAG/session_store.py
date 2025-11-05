@@ -5,6 +5,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 import logging
 from app.services.RAG.conversation_history_redis import get_redis_history
+from app.config.rag_config import rag_config
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,51 @@ class InMemoryChatMessageHistory(BaseChatMessageHistory):
     def clear(self) -> None:
         """Limpia todos los mensajes de la sesión"""
         self._messages.clear()
+
+
+class LimitedChatMessageHistory(BaseChatMessageHistory):
+    """
+    Wrapper que limita los mensajes enviados al LLM pero mantiene el historial completo en Redis.
+    
+    - Redis guarda TODO sin límites (persistencia completa)
+    - El LLM recibe solo los últimos N mensajes (optimización de contexto)
+    - El frontend puede ver todo el historial sin restricciones
+    """
+    
+    def __init__(self, full_history: InMemoryChatMessageHistory, limit: Optional[int] = None):
+        """
+        Args:
+            full_history: Historial completo sin límites
+            limit: Número máximo de mensajes a enviar al LLM (usa rag_config.CHAT_HISTORY_LIMIT si es None)
+        """
+        self.full_history = full_history
+        self.limit = limit if limit is not None else rag_config.CHAT_HISTORY_LIMIT
+    
+    @property
+    def messages(self) -> List[BaseMessage]:
+        """
+        Devuelve solo los últimos N mensajes para el LLM.
+        Esta propiedad es lo que LangChain lee al construir el prompt.
+        """
+        all_messages = self.full_history.messages
+        
+        if len(all_messages) <= self.limit:
+            return all_messages
+        
+        limited = all_messages[-self.limit:]
+        logger.debug(
+            f"Historial limitado: {len(all_messages)} mensajes totales, "
+            f"enviando últimos {len(limited)} al LLM"
+        )
+        return limited
+    
+    def add_message(self, message: BaseMessage) -> None:
+        """Guarda en el historial completo (sin límites)"""
+        self.full_history.add_message(message)
+    
+    def clear(self) -> None:
+        """Limpia el historial completo"""
+        self.full_history.clear()
 
 
 class ConversationMetadata:
@@ -205,6 +251,13 @@ class ConversationStore:
             logger.error(f"Error guardando todas las conversaciones: {e}", exc_info=True)
     
     def get_session_history(self, session_id: str) -> BaseChatMessageHistory:
+        """
+        Obtiene el historial de una sesión, limitado para el LLM.
+        
+        - Guarda TODO en memoria y Redis (sin límites)
+        - Retorna versión limitada que el LLM consume
+        - Límite configurable en rag_config.CHAT_HISTORY_LIMIT
+        """
         if session_id not in self._store:
             logger.info(f"Creando nueva sesión: {session_id}")
             self._store[session_id] = InMemoryChatMessageHistory(session_id)
@@ -217,7 +270,9 @@ class ConversationStore:
                 
                 self._create_metadata(session_id, user_id)
         
-        return self._store[session_id]
+        # Retornar versión limitada para el LLM (usa límite de rag_config)
+        full_history = self._store[session_id]
+        return LimitedChatMessageHistory(full_history)
     
     def _create_metadata(self, session_id: str, user_id: str) -> ConversationMetadata:
         """Crea metadatos para una nueva sesión"""
