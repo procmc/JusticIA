@@ -20,6 +20,9 @@ def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> s
     # Prompt mejorado con instrucciones MÁS ESTRICTAS para JSON y ESPAÑOL
     prompt_resumen = f"""Eres un asistente jurídico especializado en derecho costarricense. Tu única tarea es generar un JSON válido en español.
 
+🌐 **INSTRUCCIÓN OBLIGATORIA DE IDIOMA:**
+SIEMPRE comunícate ÚNICAMENTE en ESPAÑOL en todas tus respuestas, sugerencias, recomendaciones y ejemplos. NUNCA uses palabras, términos o ejemplos en inglés u otros idiomas. Si necesitas sugerir términos alternativos, usa SOLO sinónimos o variantes EN ESPAÑOL.
+
 CONTEXTO DEL EXPEDIENTE {numero_expediente}:
 {contexto}
 
