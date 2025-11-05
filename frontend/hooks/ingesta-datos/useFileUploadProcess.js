@@ -123,7 +123,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
       try {
         // Verificar si el archivo fue cancelado manualmente
         if (cancelledFiles.current.has(fileId)) {
-          console.log(`Archivo ${fileId} está en lista de cancelados, deteniendo polling`);
           stopPolling(taskId);
           return;
         }
@@ -134,8 +133,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         networkRetries = 0;
         
         const { status, progress, message, ready } = response;
-        
-        console.log(`[Polling ${taskId}] Estado: ${status}, Progreso: ${progress}%`);
         
         // Mapear estados del backend de forma inteligente
         let localProgress = progress || 0;
@@ -155,7 +152,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         if (status === 'fallido' || status === 'cancelado') {
           // Verificar que no haya sido cancelado manualmente antes
           if (cancelledFiles.current.has(fileId)) {
-            console.log(`Archivo ${fileId} ya fue cancelado manualmente, ignorando estado del servidor`);
             stopPolling(taskId);
             return;
           }
@@ -163,7 +159,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           localStatus = status; // Mantener 'fallido' o 'cancelado' tal cual
           localProgress = 0;
           
-          const sanitized = localMessage || 'Error en el procesamiento';
+          // Mensaje genérico amigable para el usuario (ocultar detalles técnicos)
+          const sanitized = 'No se pudo procesar el archivo. Por favor, intente nuevamente.';
+          
+          // Log del error técnico completo para debugging (solo en consola)
+          console.error(`[Error técnico - ${taskId}]:`, localMessage);
           
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
@@ -209,7 +209,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           if (f.id === fileId) {
             // No actualizar si fue cancelado manualmente
             if (cancelledFiles.current.has(fileId)) {
-              console.log(`No actualizando archivo ${fileId} porque fue cancelado manualmente`);
               return f;
             }
             
@@ -232,7 +231,10 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         
         // Si es 404, la tarea no existe (error inmediato)
         if (error.message?.includes('404') || error.status === 404) {
-          const errorMsg = 'La tarea no existe o fue cancelada';
+          const errorMsg = 'No se pudo procesar el archivo. Por favor, intente nuevamente.';
+          
+          // Log del error técnico completo
+          console.error(`[Error 404 - ${taskId}]:`, error.message || error);
           
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
@@ -259,7 +261,10 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         
         // Para errores de red, reintentar hasta MAX_NETWORK_RETRIES
         if (networkRetries >= MAX_NETWORK_RETRIES) {
-          const sanitized = error.message || 'Error de conexión';
+          const sanitized = 'Error de conexión con el servidor. Verifique su red e intente nuevamente.';
+          
+          // Log del error técnico completo
+          console.error(`[Error de red - ${taskId}]:`, error.message || error);
           
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
@@ -285,7 +290,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         }
         
         // Continuar reintentando (el intervalo ya está configurado)
-        console.warn(`Error polling ${taskId}, reintento ${networkRetries}/${MAX_NETWORK_RETRIES}:`, error.message);
       }
     };
     
@@ -384,7 +388,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         } catch (error) {
           console.error('Error subiendo archivos:', error);
           
-          const sanitized = error.message || 'Error en subida';
+          // Mensaje genérico amigable (ocultar detalles técnicos)
+          const sanitized = 'Error al subir los archivos. Por favor, intente nuevamente.';
+          
+          // Log del error técnico completo
+          console.error(`[Error de subida - ${expediente}]:`, error.message || error);
           
           Toast.error(
             'Error en la subida',
@@ -431,8 +439,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         activeFiles.forEach(file => {
           startPolling(file.id, file.fileProcessId);
         });
-        
-        console.log(`Restaurados ${activeFiles.length} archivos en progreso`);
       }
       
     } catch (error) {
@@ -446,8 +452,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
    */
   const cancelFileProcessing = async (fileId, fileProcessId, fileName) => {
     try {
-      console.log(`Cancelando archivo ${fileId} con taskId ${fileProcessId}`);
-      
       // 1. Marcar como cancelado en la lista de control
       cancelledFiles.current.add(fileId);
       
@@ -469,15 +473,8 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ timeout: true }), 2000));
         
         try {
-          const result = await Promise.race([cancelPromise, timeoutPromise]);
-          
-          if (result?.timeout) {
-            console.warn(`Backend tardó >2s en responder cancelación de ${fileProcessId}, pero UI ya actualizada`);
-          } else {
-            console.log(`Cancelación confirmada por backend para ${fileProcessId}`);
-          }
+          await Promise.race([cancelPromise, timeoutPromise]);
         } catch (error) {
-          console.warn('Error cancelando en backend:', error);
           // Mantener estado cancelado incluso si hay error
         }
       }
