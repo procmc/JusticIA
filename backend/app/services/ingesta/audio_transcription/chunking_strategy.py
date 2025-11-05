@@ -91,13 +91,6 @@ class ChunkingTranscriptionStrategy:
                 error_msg = "No se pudo transcribir ningún chunk del audio"
                 raise ValueError(error_msg)
             
-            if progress_tracker:
-                progress_tracker.metadata.update({
-                    "total_characters": len(full_text), 
-                    "chunks_processed": len(chunk_paths),
-                    "strategy": "chunking"
-                })
-            
             return full_text
             
         except Exception as e:
