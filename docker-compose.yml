@@ -45,6 +45,8 @@ services:
       - tika
       - backend
     restart: unless-stopped
+    mem_limit: 8G  # Modelo embeddings (~3GB) + Audio chunks (~2GB) + overhead
+    mem_reservation: 2G
 
   tika:
     build:

@@ -5,6 +5,7 @@ Camino de fallback para cuando la transcripción directa no es viable.
 import asyncio
 from typing import List, Optional
 import logging
+import gc
 
 from app.config.audio_config import AudioProcessingConfig
 from ..async_processing.progress_tracker import ProgressTracker
@@ -79,6 +80,12 @@ class ChunkingTranscriptionStrategy:
             # Unir todas las transcripciones
             full_text = " ".join(transcriptions).strip()
             logger.info(f"Transcripción por chunks completada: {len(full_text)} caracteres totales")
+            
+            # Liberar memoria antes de continuar con embeddings
+            # El modelo Whisper (~3GB) debe liberarse antes de cargar embeddings (~3GB)
+            logger.info("Liberando modelo Whisper de memoria")
+            del self.whisper_model
+            gc.collect()
             
             if not full_text:
                 error_msg = "No se pudo transcribir ningún chunk del audio"

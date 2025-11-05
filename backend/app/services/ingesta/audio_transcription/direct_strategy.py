@@ -5,6 +5,7 @@ Camino principal optimizado para archivos que pueden procesarse completos.
 import asyncio
 from typing import Optional
 import logging
+import gc
 
 from app.config.audio_config import AudioProcessingConfig
 from ..async_processing.progress_tracker import ProgressTracker
@@ -56,6 +57,11 @@ class DirectTranscriptionStrategy:
             
             if not result.strip():
                 raise ValueError("Transcripción directa resultó en texto vacío")
+            
+            # Liberar memoria antes de continuar con embeddings
+            logger.info("Liberando modelo Whisper de memoria")
+            del self.whisper_model
+            gc.collect()
             
             if progress_tracker:
                 progress_tracker.update_progress(95, "Transcripción directa completada", 
