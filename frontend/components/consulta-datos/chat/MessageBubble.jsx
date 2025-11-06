@@ -105,11 +105,39 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
     return html;
   };
 
+  // Función para limpiar las rutas de archivo del texto para copiar
+  const cleanFilePathsForCopy = (text) => {
+    if (!text) return '';
+    
+    let cleanedText = text;
+    
+    // Patrón 1: Limpiar rutas dentro de paréntesis (uploads/...)
+    // Reemplaza (uploads/folder/file.ext) con solo (file.ext)
+    cleanedText = cleanedText.replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
+      const rutaLimpia = ruta.trim();
+      const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
+      return `(${fileName})`;
+    });
+    
+    // Patrón 2: Limpiar rutas sueltas uploads/ en el texto
+    // Reemplaza uploads/folder/file.ext con solo file.ext
+    cleanedText = cleanedText.replace(/uploads\/[^\s\[\]()]+/g, (match) => {
+      const rutaLimpia = match.trim();
+      const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
+      return fileName;
+    });
+    
+    return cleanedText;
+  };
+
   // Función para copiar al portapapeles con formato
   const handleCopy = async () => {
     try {
-      const html = markdownToHtml(message.text);
-      const plainText = message.text
+      // Limpiar las rutas del texto antes de copiar
+      const cleanedText = cleanFilePathsForCopy(message.text);
+      
+      const html = markdownToHtml(cleanedText);
+      const plainText = cleanedText
         .replace(/\*\*(.+?)\*\*/g, '$1')
         .replace(/\*(.+?)\*/g, '$1')
         .replace(/^#{1,6}\s+/gm, '')
@@ -133,7 +161,8 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
       console.error('Error al copiar:', err);
       // Fallback a texto plano si falla
       try {
-        await navigator.clipboard.writeText(message.text);
+        const cleanedText = cleanFilePathsForCopy(message.text);
+        await navigator.clipboard.writeText(cleanedText);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (fallbackErr) {
