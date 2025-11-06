@@ -125,8 +125,8 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
         {/* Lista de conversaciones */}
         <div className="space-y-2">
           {isLoading ? (
-            <div className="py-8 text-center">
-              <div className="w-12 h-12 mx-auto mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="flex flex-col items-center justify-center min-h-[500px]">
+              <div className="w-12 h-12 mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
               <p className="text-gray-500">Cargando conversaciones...</p>
             </div>
           ) : error ? (
