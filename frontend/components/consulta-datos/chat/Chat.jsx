@@ -147,6 +147,9 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
     setIsTyping(false);
+    
+    // Guardar el índice del mensaje que se está cancelando
+    const canceledMessageIndex = streamingMessageIndex;
     setStreamingMessageIndex(null);
 
     // Cancelar la request actual si existe
@@ -157,6 +160,25 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
 
     // Cancelar en el servicio también
     consultaService.cancelConsulta();
+
+    // Actualizar el mensaje del asistente con texto de cancelación
+    if (canceledMessageIndex !== null) {
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages];
+        if (updatedMessages[canceledMessageIndex]) {
+          const currentText = updatedMessages[canceledMessageIndex].text || '';
+          updatedMessages[canceledMessageIndex] = {
+            ...updatedMessages[canceledMessageIndex],
+            text: currentText.trim() 
+              ? currentText + '\n\n---\n\n*Consulta cancelada por el usuario*'
+              : '*Consulta cancelada por el usuario*',
+            timestamp: formatearSoloHoraCostaRica(new Date()),
+            isCanceled: true
+          };
+        }
+        return updatedMessages;
+      });
+    }
   };
 
   const handleSendMessage = async (text) => {
@@ -546,7 +568,8 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
               messages={messages}
               isTyping={isTyping}
               streamingMessageIndex={streamingMessageIndex}
-            />
+              onRetry={handleSendMessage}
+        />
 
             <ChatInput
               onSendMessage={handleSendMessage}
