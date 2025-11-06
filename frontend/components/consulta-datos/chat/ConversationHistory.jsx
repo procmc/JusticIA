@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBackendConversations } from '../../../hooks/useBackendConversations';
 import { formatearSoloHoraCostaRica, formatearSoloFechaCostaRica, formatearFechaHoraHistorial } from '../../../utils/dateUtils';
 import DrawerGeneral from '../../ui/DrawerGeneral';
@@ -17,6 +17,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [loadingAction, setLoadingAction] = useState(null);
+  const deleteTimerRef = useRef(null);
 
   // Recargar conversaciones cuando se abre el modal
   useEffect(() => {
@@ -24,6 +25,15 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
       fetchConversations();
     }
   }, [isOpen, fetchConversations]);
+
+  // Limpiar timer al desmontar
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSelectConversation = async (sessionId) => {
     setLoadingAction(sessionId);
@@ -37,8 +47,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
         onConversationSelect?.(sessionId, conversation);
         onClose();
       } else {
-        console.error('No se pudieron obtener los detalles de la conversación');
-        // Intentar restaurar la conversación
+        // No se pudieron obtener los detalles, intentar restaurar
         const restored = await restoreConversation(sessionId);
         if (restored) {
           onConversationSelect?.(sessionId, restored);
@@ -46,7 +55,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
         }
       }
     } catch (err) {
-      console.error('Error seleccionando conversación:', err);
+      // Error al seleccionar conversación
     } finally {
       setLoadingAction(null);
     }
@@ -63,18 +72,23 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
         
         if (success) {
           setShowDeleteConfirm(null);
-          console.log('✅ Conversación eliminada');
-        } else {
-          console.error('No se pudo eliminar la conversación');
         }
       } catch (err) {
-        console.error('Error eliminando conversación:', err);
+        // Error al eliminar conversación
       } finally {
         setLoadingAction(null);
       }
     } else {
+      // Limpiar timer anterior si existe
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+      }
+      
       setShowDeleteConfirm(sessionId);
-      setTimeout(() => setShowDeleteConfirm(null), 3000);
+      deleteTimerRef.current = setTimeout(() => {
+        setShowDeleteConfirm(null);
+        deleteTimerRef.current = null;
+      }, 3000);
     }
   };
 
