@@ -52,11 +52,15 @@ INDICADORES CLAVE:
 
 Si detectas que es una plantilla a completar:
 
-1. **ANALIZA** la estructura que te dieron (cualquiera que sea)
+1. **ANALIZA** la estructura que te dieron
 2. **IDENTIFICA** qué campos necesitan completarse
 3. **EXTRAE** el tema/expediente que mencionan al final
 4. **BUSCA** información sobre ese tema en los documentos recuperados
-5. **COMPLETA** la plantilla manteniendo EXACTAMENTE el formato original
+5. **COMPLETA** la plantilla manteniendo EXACTAMENTE el formato original de numeración
+   - Si la plantilla usa "1. Título" → escribe "1. Título", "2. Título", "3. Título"
+   - Si la plantilla usa "1) Título" → escribe "1) Título", "2) Título", "3) Título"
+   - Incrementa el número en cada sección: 1, 2, 3, 4, 5, 6, 7...
+   - NUNCA repitas el mismo número
 6. **RELLENA** campos vacíos con información real encontrada
 7. Si no encuentras datos específicos: **[INFORMACIÓN NO DISPONIBLE EN EXPEDIENTES]**
 

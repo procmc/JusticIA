@@ -188,7 +188,11 @@ const MessageBubble = ({ message, isUser, isStreaming = false }) => {
         .replace(/<\/?em>/gi, '*')
         .replace(/<\/?i>/gi, '*')
         // Limpiar cualquier otro tag HTML residual
-        .replace(/<[^>]+>/g, '');
+        .replace(/<[^>]+>/g, '')
+        // CRÍTICO: Prevenir auto-numeración de listas en streaming
+        // Agregar zero-width space antes de números que empiezan línea
+        .replace(/^(\d+)\.\s/gm, '\u200B$1. ')
+        .replace(/^(\d+)\)\s/gm, '\u200B$1) ');
     };
 
     // Función para convertir rutas de archivo en enlaces descargables
