@@ -507,6 +507,7 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
           messages={messages}
           isTyping={isTyping}
           streamingMessageIndex={streamingMessageIndex}
+          onRetry={handleSendMessage}
         />
 
         <ChatInput

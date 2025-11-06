@@ -3,7 +3,7 @@ import Image from 'next/image';
 import MessageBubble from './MessageBubble';
 import { ScrollShadow } from '@heroui/react';
 
-const MessageList = ({ messages, streamingMessageIndex }) => {
+const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
   const messagesEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
   const lastMessageContentRef = useRef('');
@@ -84,14 +84,22 @@ const MessageList = ({ messages, streamingMessageIndex }) => {
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((message, index) => (
-                <MessageBubble
-                  key={`message-${index}-${message.renderKey || message.timestamp || index}`}
-                  message={message}
-                  isUser={message.isUser}
-                  isStreaming={index === streamingMessageIndex}
-                />
-              ))}
+              {messages.map((message, index) => {
+                // Encontrar el último mensaje del usuario
+                const isLastUserMessage = message.isUser && 
+                  index === messages.map((m, i) => m.isUser ? i : -1).filter(i => i !== -1).pop();
+                
+                return (
+                  <MessageBubble
+                    key={`message-${index}-${message.renderKey || message.timestamp || index}`}
+                    message={message}
+                    isUser={message.isUser}
+                    isStreaming={index === streamingMessageIndex}
+                    showRetry={isLastUserMessage && onRetry}
+                    onRetry={() => onRetry && onRetry(message.text)}
+                  />
+                );
+              })}
             </div>
           )}
           <div ref={messagesEndRef} />
