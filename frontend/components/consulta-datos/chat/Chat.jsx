@@ -3,7 +3,6 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
-import RAG_CONFIG from '../../../config/ragConfig';
 import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
@@ -12,6 +11,7 @@ const ConsultaChat = ({ initialMode }) => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageIndex, setStreamingMessageIndex] = useState(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true); // Estado para controlar la restauración
   const stopStreamingRef = useRef(false);
   const currentRequestRef = useRef(null);
   const retryCountRef = useRef(0);
@@ -55,8 +55,9 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
       // Limpiar conversación e iniciar nueva sesión al cambiar de modo
       setMessages([]);
       setConsultedExpediente(null);
-      newSession();  // Generar nuevo session_id
+      newSession();  // Generar nuevo session_id y limpiar sessionStorage
       setSearchScope(newScope);
+      setIsRestoringSession(false); // No mostrar loader al cambiar de modo
 
       // Mostrar mensaje de bienvenida específico para el modo expediente
       if (newScope === 'expediente') {
@@ -92,6 +93,56 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
 
   // Hook para gestión de session_id (backend gestiona el historial automáticamente)
   const { sessionId, newSession, isReady } = useSessionId();
+
+  // Efecto para restaurar conversación SOLO si venimos de un reload (no de navegación)
+  useEffect(() => {
+    if (!sessionId || !isReady) return;
+    
+    const restoreIfReloaded = () => {
+      const savedSessionId = sessionStorage.getItem('current_chat_session');
+      const savedMessages = sessionStorage.getItem('current_chat_messages');
+      const savedScope = sessionStorage.getItem('current_chat_scope');
+      const savedExpediente = sessionStorage.getItem('current_chat_expediente');
+
+      // Si hay datos guardados Y el sessionId coincide, restaurar desde sessionStorage
+      if (savedSessionId === sessionId && savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages);
+          if (parsedMessages.length > 0) {
+            setMessages(parsedMessages);
+            
+            if (savedScope) {
+              setSearchScope(savedScope);
+            }
+            
+            if (savedExpediente) {
+              setConsultedExpediente(savedExpediente);
+            }
+          }
+        } catch (error) {
+          console.error('Error restaurando desde sessionStorage:', error);
+          sessionStorage.removeItem('current_chat_messages');
+        }
+      }
+      
+      // Marcar que la restauración terminó (aunque no haya nada que restaurar)
+      setIsRestoringSession(false);
+    };
+
+    restoreIfReloaded();
+  }, [sessionId, isReady]);
+
+  // Guardar el estado actual en sessionStorage cada vez que cambian los mensajes
+  useEffect(() => {
+    if (messages.length > 0 && sessionId) {
+      sessionStorage.setItem('current_chat_session', sessionId);
+      sessionStorage.setItem('current_chat_messages', JSON.stringify(messages));
+      sessionStorage.setItem('current_chat_scope', searchScope);
+      if (consultedExpediente) {
+        sessionStorage.setItem('current_chat_expediente', consultedExpediente);
+      }
+    }
+  }, [messages, sessionId, searchScope, consultedExpediente]);
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
@@ -423,10 +474,10 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
         {messages.length > 0 && (
           <button
             onClick={() => {
-
               // Mantener el modo actual (general o expediente) y solo limpiar la conversación
-              newSession();  // Generar nuevo session_id
+              newSession();  // Generar nuevo session_id y limpiar sessionStorage
               setMessages([]);
+              setIsRestoringSession(false); // No mostrar loader en nueva conversación
               
               // Solo limpiar expediente si estamos en modo expediente
               if (searchScope === 'expediente') {
@@ -481,21 +532,33 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
 
       {/* Chat Area - Sin header para más espacio */}
       <div className="flex-1 flex flex-col min-h-0">
-        <MessageList
-          messages={messages}
-          isTyping={isTyping}
-          streamingMessageIndex={streamingMessageIndex}
-        />
+        {isRestoringSession ? (
+          // Mostrar un loader mientras se restaura la sesión
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003d82] mx-auto mb-4"></div>
+              <p className="text-gray-500">Cargando conversación...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <MessageList
+              messages={messages}
+              isTyping={isTyping}
+              streamingMessageIndex={streamingMessageIndex}
+            />
 
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          onStopGeneration={handleStopGeneration}
-          isDisabled={false} // El chat siempre está disponible
-          isLoading={isTyping || streamingMessageIndex !== null}
-          searchScope={searchScope}
-          setSearchScope={handleSearchScopeChange}
-          consultedExpediente={consultedExpediente}
-        />
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onStopGeneration={handleStopGeneration}
+              isDisabled={false} // El chat siempre está disponible
+              isLoading={isTyping || streamingMessageIndex !== null}
+              searchScope={searchScope}
+              setSearchScope={handleSearchScopeChange}
+              consultedExpediente={consultedExpediente}
+            />
+          </>
+        )}
       </div>
 
       {/* Modal de historial de conversaciones */}
@@ -525,15 +588,14 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
               setSearchScope('general');
               setConsultedExpediente(null);
             }
-            
-            console.log(` Conversación ${sessionId} restaurada con ${restoredMessages.length} mensajes`);
           }
         }}
         onNewConversation={() => {
           // Crear nueva conversación
-          newSession();
+          newSession();  // Generar nuevo session_id y limpiar sessionStorage
           setMessages([]);
           setConsultedExpediente(null);
+          setIsRestoringSession(false); // No mostrar loader en nueva conversación
           
           // Si estamos en modo expediente, mostrar mensaje de bienvenida
           if (searchScope === 'expediente') {

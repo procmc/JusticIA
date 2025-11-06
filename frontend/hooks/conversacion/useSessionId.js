@@ -20,6 +20,17 @@ export const useSessionId = () => {
 
   // Generar session_id cuando el usuario esté disponible
   useEffect(() => {
+    // Primero verificar si hay un sessionId guardado (reload)
+    const savedSessionId = sessionStorage.getItem('current_chat_session');
+    
+    if (savedSessionId) {
+      // Es un reload, reutilizar el sessionId existente
+      setSessionId(savedSessionId);
+      setIsReady(true);
+      return;
+    }
+    
+    // No hay sessionId guardado, generar uno nuevo
     if (session?.user?.email) {
       const userId = session.user.email;
       const timestamp = Date.now();
@@ -27,8 +38,6 @@ export const useSessionId = () => {
       
       setSessionId(newId);
       setIsReady(true);
-      
-      console.log('✅ Session ID generado:', newId);
     } else if (!session) {
       // Usuario no autenticado, usar ID anónimo
       const timestamp = Date.now();
@@ -36,8 +45,6 @@ export const useSessionId = () => {
       
       setSessionId(newId);
       setIsReady(true);
-      
-      console.log('✅ Session ID anónimo generado:', newId);
     }
   }, [session?.user?.email]);
 
@@ -45,7 +52,6 @@ export const useSessionId = () => {
   useEffect(() => {
     const handleRouteChange = (url) => {
       if (!url.includes('/consulta-datos/chat')) {
-        console.log('🔄 Navegando fuera del chat - nueva sesión al volver');
         setIsReady(false);
       }
     };
@@ -58,12 +64,17 @@ export const useSessionId = () => {
 
   // Función para iniciar nueva conversación
   const newSession = useCallback(() => {
+    // Limpiar el sessionId guardado para forzar uno nuevo
+    sessionStorage.removeItem('current_chat_session');
+    sessionStorage.removeItem('current_chat_messages');
+    sessionStorage.removeItem('current_chat_scope');
+    sessionStorage.removeItem('current_chat_expediente');
+    
     const userId = session?.user?.email || 'anonymous';
     const timestamp = Date.now();
     const newId = `session_${userId}_${timestamp}`;
     
     setSessionId(newId);
-    console.log('🆕 Nueva sesión iniciada:', newId);
     
     return newId;
   }, [session?.user?.email]);
