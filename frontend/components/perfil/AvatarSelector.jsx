@@ -3,6 +3,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Tabs,
 import Image from 'next/image';
 import { IoCamera, IoGrid, IoCloudUpload, IoRefresh, IoCheckmarkCircle } from 'react-icons/io5';
 import Toast from '@/components/ui/CustomAlert';
+import { generateInitialsAvatar as generateInitials } from '@/services/avatarService';
 
 /**
  * Componente para seleccionar o cargar un avatar personalizado
@@ -16,10 +17,19 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
   const [activeTab, setActiveTab] = useState('predefined');
   const fileInputRef = useRef(null);
 
+  // Actualizar selectedAvatar cuando cambie currentAvatar o se abra el modal
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedAvatar(currentAvatar);
+      setUploadedImage(null);
+      setUploadedFile(null);
+    }
+  }, [isOpen, currentAvatar]);
+
   // Lista de avatares predefinidos disponibles
   const predefinedAvatars = [
-    { id: 'male', label: 'Avatar Masculino', path: '/usser hombre.png' },
-    { id: 'female', label: 'Avatar Femenino', path: '/usser mujer.png' },
+    { id: 'male', label: 'Avatar Masculino', path: '/avatar-male-default.png' },
+    { id: 'female', label: 'Avatar Femenino', path: '/avatar-female-default.png' },
     { id: 'initials', label: 'Mis Iniciales', path: 'initials' }, // Se genera dinámicamente
   ];
 
@@ -123,7 +133,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
    * Resetear al avatar por defecto
    */
   const handleReset = () => {
-    setSelectedAvatar('/usser hombre.png');
+    setSelectedAvatar('/avatar-male-default.png');
     setUploadedImage(null);
     setUploadedFile(null);
   };
@@ -174,10 +184,13 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                 <div className="relative">
                   <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg bg-white">
                     {getAvatarPreview().startsWith('data:') ? (
-                      <img
+                      <Image
                         src={getAvatarPreview()}
                         alt="Avatar Preview"
                         className="w-full h-full object-cover"
+                        width={128}
+                        height={128}
+                        unoptimized
                       />
                     ) : (
                       <Image
@@ -187,7 +200,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                         height={128}
                         className="object-cover w-full h-full"
                         onError={(e) => {
-                          e.target.src = '/usser hombre.png';
+                          e.target.src = generateInitials(`${userName} ${userLastName}`);
                         }}
                       />
                     )}
@@ -199,7 +212,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                   )}
                 </div>
                 <p className="text-sm text-gray-600 mt-3">
-                  {selectedAvatar === '/usser hombre.png' ? 'Avatar por defecto' : 'Avatar personalizado'}
+                  {selectedAvatar === '/avatar-male-default.png' ? 'Avatar por defecto' : 'Avatar personalizado'}
                 </p>
               </div>
 
@@ -261,7 +274,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                                   height={80}
                                   className="object-cover w-full h-full"
                                   onError={(e) => {
-                                    e.target.src = '/usser hombre.png';
+                                    e.target.src = generateInitials(`${userName} ${userLastName}`);
                                   }}
                                 />
                               </div>

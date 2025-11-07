@@ -1,44 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import httpService from '@/services/httpService';
+import {
+  generateInitialsAvatar,
+  mapAvatarTypeToPath,
+  buildAvatarUrl,
+  validateAvatarFile,
+  emitAvatarUpdateEvent,
+  isCustomAvatar
+} from '@/services/avatarService';
+import { AVATAR_PATHS, AVATAR_TYPES } from '@/constants/avatarConstants';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Caché global para verificaciones de avatares (evita múltiples HEAD requests)
+const avatarExistsCache = new Map();
 
 /**
  * Hook para gestionar avatares de usuario desde el backend
  * Maneja tanto imágenes personalizadas como avatares predefinidos
  */
 export const useUserAvatar = (userId) => {
-  const { data: session } = useSession();
-  const [avatar, setAvatar] = useState('/usser hombre.png'); // Avatar por defecto
-  const [avatarTipo, setAvatarTipo] = useState(null); // Tipo de avatar
+  const { data: session, update } = useSession();
+  const [avatar, setAvatar] = useState(AVATAR_PATHS.DEFAULT_HOMBRE);
+  const [avatarTipo, setAvatarTipo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   /**
-   * Generar avatar con iniciales
-   */
-  const generateInitialsAvatar = useCallback(() => {
-    if (!session?.user?.name) return '/usser hombre.png';
-    
-    const fullName = session.user.name.trim();
-    const partes = fullName.split(' ');
-    const firstName = partes[0] || '';
-    const lastName = partes.length >= 3 ? partes[2] : (partes[1] || '');
-    const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
-    
-    const svg = `data:image/svg+xml,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-        <circle cx="100" cy="100" r="100" fill="#1B5E9F"/>
-        <text x="100" y="100" font-family="Arial, sans-serif" font-size="80" font-weight="bold" 
-              fill="white" text-anchor="middle" dominant-baseline="central">${initials}</text>
-      </svg>
-    `)}`;
-    
-    return svg;
-  }, [session]);
-
-  /**
-   * Cargar avatar desde la sesión o el backend
+   * Cargar avatar desde la sesión
    */
   useEffect(() => {
     if (!userId) {
@@ -48,29 +37,69 @@ export const useUserAvatar = (userId) => {
 
     const cargarAvatar = async () => {
       try {
-        // Obtener desde la sesión (siempre disponible después del login)
         if (session?.user) {
+          // Avatar personalizado
           if (session.user.avatarRuta) {
-            setAvatar(`${API_URL}/${session.user.avatarRuta}`);
-            setAvatarTipo('custom');
-          } else if (session.user.avatarTipo) {
-            setAvatarTipo(session.user.avatarTipo);
+            const avatarUrl = buildAvatarUrl(session.user.avatarRuta, API_URL);
             
-            // Mapear tipo a ruta de avatar
-            if (session.user.avatarTipo === 'initials') {
-              setAvatar(generateInitialsAvatar());
+            // Verificar caché primero
+            const cachedResult = avatarExistsCache.get(avatarUrl);
+            
+            if (cachedResult !== undefined) {
+              // Usar resultado del caché
+              if (cachedResult) {
+                setAvatar(avatarUrl);
+                setAvatarTipo(AVATAR_TYPES.CUSTOM);
+              } else {
+                setAvatar(generateInitialsAvatar(session.user.name));
+                setAvatarTipo(AVATAR_TYPES.INITIALS);
+              }
             } else {
-              const tipoMap = {
-                'hombre': '/usser hombre.png',
-                'mujer': '/usser mujer.png'
-              };
-              setAvatar(tipoMap[session.user.avatarTipo] || '/usser hombre.png');
+              // Verificar si la imagen existe antes de asignarla (solo si no está en caché)
+              try {
+                const response = await fetch(avatarUrl, { method: 'HEAD' });
+                const exists = response.ok;
+                
+                // Guardar en caché (con expiración de 5 minutos)
+                avatarExistsCache.set(avatarUrl, exists);
+                setTimeout(() => avatarExistsCache.delete(avatarUrl), 5 * 60 * 1000);
+                
+                if (exists) {
+                  setAvatar(avatarUrl);
+                  setAvatarTipo(AVATAR_TYPES.CUSTOM);
+                } else {
+                  // Si no existe, usar iniciales como fallback
+                  console.warn('Avatar no encontrado, usando iniciales');
+                  setAvatar(generateInitialsAvatar(session.user.name));
+                  setAvatarTipo(AVATAR_TYPES.INITIALS);
+                }
+              } catch (fetchError) {
+                // Si hay error de red, usar iniciales
+                console.warn('Error verificando avatar, usando iniciales', fetchError);
+                avatarExistsCache.set(avatarUrl, false);
+                setAvatar(generateInitialsAvatar(session.user.name));
+                setAvatarTipo(AVATAR_TYPES.INITIALS);
+              }
             }
+          } 
+          // Avatar predefinido o iniciales
+          else if (session.user.avatarTipo) {
+            setAvatarTipo(session.user.avatarTipo);
+            setAvatar(mapAvatarTypeToPath(session.user.avatarTipo, session.user.name));
           }
-          // Si no hay avatar en sesión, usar default
+          // Sin avatar configurado, usar iniciales por defecto
+          else {
+            setAvatar(generateInitialsAvatar(session.user.name));
+            setAvatarTipo(AVATAR_TYPES.INITIALS);
+          }
         }
       } catch (error) {
         console.error('Error cargando avatar:', error);
+        // Fallback final: usar iniciales
+        if (session?.user?.name) {
+          setAvatar(generateInitialsAvatar(session.user.name));
+          setAvatarTipo(AVATAR_TYPES.INITIALS);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -89,14 +118,23 @@ export const useUserAvatar = (userId) => {
     return () => {
       window.removeEventListener('avatarUpdated', handleAvatarUpdate);
     };
-  }, [userId, session, generateInitialsAvatar]);
+  }, [userId, session]);
 
   /**
    * Subir nueva imagen de avatar
    * @param {File} file - Archivo de imagen
+   * @returns {Promise<{success: boolean, error?: string}>}
    */
   const subirAvatar = useCallback(async (file) => {
-    if (!userId) return false;
+    if (!userId) {
+      return { success: false, error: 'No hay usuario' };
+    }
+
+    // Validar archivo
+    const validation = validateAvatarFile(file);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
 
     try {
       const formData = new FormData();
@@ -104,78 +142,128 @@ export const useUserAvatar = (userId) => {
 
       await httpService.post(`/usuarios/${userId}/avatar/upload`, formData);
 
-      // Actualizar estado local inmediatamente
+      // Actualizar estado local
       const fileExtension = file.name.split('.').pop();
-      const newAvatarUrl = `${API_URL}/uploads/profiles/${userId}.${fileExtension}?t=${Date.now()}`;
+      const avatarRuta = `uploads/profiles/${userId}.${fileExtension}`;
+      const timestamp = Date.now();
+      
+      // Limpiar caché completa para forzar recarga
+      avatarExistsCache.clear();
+      
+      // Construir URL con timestamp para evitar caché del navegador al subir nueva imagen
+      const newAvatarUrl = `${API_URL}/${avatarRuta}?v=${timestamp}`;
+      
       setAvatar(newAvatarUrl);
-      setAvatarTipo('custom');
+      setAvatarTipo(AVATAR_TYPES.CUSTOM);
       
-      // Emitir evento para actualizar otros componentes
-      window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: { avatar: newAvatarUrl, tipo: 'custom' } }));
+      // Actualizar sesión de NextAuth con ruta que incluye versión
+      await update({
+        ...session,
+        user: {
+          ...session.user,
+          avatarRuta: `${avatarRuta}?v=${timestamp}`,
+          avatarTipo: AVATAR_TYPES.CUSTOM
+        }
+      });
       
-      return true;
+      // Emitir evento
+      emitAvatarUpdateEvent(newAvatarUrl, AVATAR_TYPES.CUSTOM);
+      
+      return { success: true };
     } catch (error) {
       console.error('Error subiendo avatar:', error);
-      return false;
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Error al subir avatar' 
+      };
     }
-  }, [userId]);
+  }, [userId, session, update]);
 
   /**
    * Actualizar tipo de avatar (sin subir imagen)
-   * @param {string} avatarTipo - Tipo de avatar: 'hombre', 'mujer', 'initials'
+   * @param {string} tipo - Tipo de avatar: 'hombre', 'mujer', 'initials'
+   * @returns {Promise<{success: boolean, error?: string}>}
    */
   const actualizarTipoAvatar = useCallback(async (tipo) => {
-    if (!userId) return false;
+    if (!userId) {
+      return { success: false, error: 'No hay usuario' };
+    }
 
     try {
       await httpService.put(`/usuarios/${userId}/avatar/tipo`, { avatar_tipo: tipo });
 
       setAvatarTipo(tipo);
       
-      // Mapear tipo a ruta o generar SVG
-      let nuevoAvatar;
-      if (tipo === 'initials') {
-        nuevoAvatar = generateInitialsAvatar();
-      } else {
-        const tipoMap = {
-          'hombre': '/usser hombre.png',
-          'mujer': '/usser mujer.png'
-        };
-        nuevoAvatar = tipoMap[tipo] || '/usser hombre.png';
-      }
-      
+      const nuevoAvatar = mapAvatarTypeToPath(tipo, session?.user?.name);
       setAvatar(nuevoAvatar);
       
-      // Emitir evento para actualizar otros componentes
-      window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: { avatar: nuevoAvatar, tipo } }));
+      // Actualizar sesión de NextAuth
+      await update({
+        ...session,
+        user: {
+          ...session.user,
+          avatarRuta: null,
+          avatarTipo: tipo
+        }
+      });
       
-      return true;
+      // Emitir evento
+      emitAvatarUpdateEvent(nuevoAvatar, tipo);
+      
+      return { success: true };
     } catch (error) {
       console.error('Error actualizando tipo de avatar:', error);
-      return false;
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Error al actualizar avatar' 
+      };
     }
-  }, [userId, generateInitialsAvatar]);
+  }, [userId, session, update]);
 
   /**
    * Eliminar avatar personalizado
+   * @returns {Promise<{success: boolean, error?: string}>}
    */
   const eliminarAvatar = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      return { success: false, error: 'No hay usuario' };
+    }
 
     try {
       await httpService.delete(`/usuarios/${userId}/avatar`);
 
-      setAvatar('/usser hombre.png');
+      const defaultAvatar = AVATAR_PATHS.DEFAULT_HOMBRE;
+      setAvatar(defaultAvatar);
+      setAvatarTipo(null);
+      
+      // Actualizar sesión de NextAuth
+      await update({
+        ...session,
+        user: {
+          ...session.user,
+          avatarRuta: null,
+          avatarTipo: null
+        }
+      });
+      
+      // Emitir evento
+      emitAvatarUpdateEvent(defaultAvatar, null);
+      
+      return { success: true };
     } catch (error) {
       console.error('Error eliminando avatar:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Error al eliminar avatar' 
+      };
     }
-  }, [userId]);
+  }, [userId, session, update]);
 
   /**
    * Verificar si el usuario tiene un avatar personalizado
    */
   const hasCustomAvatar = useCallback(() => {
-    return avatar !== '/usser hombre.png' && !avatar.startsWith('/usser');
+    return isCustomAvatar(avatar);
   }, [avatar]);
 
   return {
@@ -187,6 +275,14 @@ export const useUserAvatar = (userId) => {
     eliminarAvatar,
     hasCustomAvatar
   };
+};
+
+/**
+ * Función auxiliar para limpiar la caché de avatares
+ * Útil después de cambios masivos o para debugging
+ */
+export const clearAvatarCache = () => {
+  avatarExistsCache.clear();
 };
 
 export default useUserAvatar;

@@ -1,0 +1,3 @@
+"""
+Constantes de la aplicación
+"""

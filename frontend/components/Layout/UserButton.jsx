@@ -9,6 +9,7 @@ import AvatarSelector from "@/components/perfil/AvatarSelector";
 import { clearAllChatContext } from "../../utils/chatContextUtils";
 import authService from "@/services/authService";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { generateInitialsAvatar } from "@/services/avatarService";
 
 export function UserButton() {
     const { data: session, status } = useSession();
@@ -121,8 +122,8 @@ export function UserButton() {
                 
                 // Mapear rutas a tipos
                 const avatarMap = {
-                    '/usser hombre.png': 'hombre',
-                    '/usser mujer.png': 'mujer'
+                    '/avatar-male-default.png': 'hombre',
+                    '/avatar-female-default.png': 'mujer'
                 };
                 
                 const tipo = avatarMap[newAvatar];
@@ -186,7 +187,7 @@ export function UserButton() {
                                         height={40}
                                         unoptimized={avatar.startsWith('data:')}
                                         onError={(e) => {
-                                            e.target.src = '/usser hombre.png';
+                                            e.target.src = generateInitialsAvatar(session?.user?.name);
                                         }}
                                     />
                                 </div>
@@ -210,7 +211,7 @@ export function UserButton() {
                                             height={40}
                                             unoptimized={avatar.startsWith('data:')}
                                             onError={(e) => {
-                                                e.target.src = '/usser hombre.png';
+                                                e.target.src = generateInitialsAvatar(session?.user?.name);
                                             }}
                                         />
                                     </div>
