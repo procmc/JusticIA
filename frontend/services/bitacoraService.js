@@ -39,13 +39,16 @@ class BitacoraService {
       if (filtros.expediente) params.append('expediente', filtros.expediente);
       
       // Convertir fechas a formato ISO completo (con hora) para FastAPI
+      // IMPORTANTE: Convertir a UTC para evitar problemas de zona horaria
       if (filtros.fechaInicio) {
-        // Agregar 00:00:00 al inicio del día
-        params.append('fechaInicio', `${filtros.fechaInicio}T00:00:00`);
+        // Crear fecha en hora local (00:00:00) y convertir a UTC
+        const fechaLocal = new Date(`${filtros.fechaInicio}T00:00:00`);
+        params.append('fechaInicio', fechaLocal.toISOString());
       }
       if (filtros.fechaFin) {
-        // Agregar 23:59:59 al final del día
-        params.append('fechaFin', `${filtros.fechaFin}T23:59:59`);
+        // Crear fecha en hora local (23:59:59) y convertir a UTC
+        const fechaLocal = new Date(`${filtros.fechaFin}T23:59:59`);
+        params.append('fechaFin', fechaLocal.toISOString());
       }
       
       // Paginación

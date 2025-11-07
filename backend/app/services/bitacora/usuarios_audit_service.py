@@ -23,7 +23,7 @@ class UsuariosAuditService:
     async def registrar_consulta_usuarios(
         self,
         db: Session,
-        usuario_admin_id: int
+        usuario_admin_id: str
     ) -> Optional[T_Bitacora]:
         """
         Registra la consulta de la lista de todos los usuarios.
@@ -55,7 +55,7 @@ class UsuariosAuditService:
     async def registrar_consulta_usuario_especifico(
         self,
         db: Session,
-        usuario_admin_id: int,
+        usuario_admin_id: str,
         usuario_consultado_id: str
     ) -> Optional[T_Bitacora]:
         """
@@ -90,7 +90,7 @@ class UsuariosAuditService:
     async def registrar_creacion_usuario(
         self,
         db: Session,
-        usuario_admin_id: int,
+        usuario_admin_id: str,
         usuario_creado_cedula: str,
         datos_usuario: Dict[str, Any]
     ) -> Optional[T_Bitacora]:
@@ -132,7 +132,7 @@ class UsuariosAuditService:
     async def registrar_edicion_usuario(
         self,
         db: Session,
-        usuario_admin_id: int,
+        usuario_admin_id: str,
         usuario_editado_id: str,
         cambios: Dict[str, Any]
     ) -> Optional[T_Bitacora]:
@@ -174,7 +174,7 @@ class UsuariosAuditService:
     async def registrar_reseteo_contrasena(
         self,
         db: Session,
-        usuario_admin_id: int,
+        usuario_admin_id: str,
         usuario_reseteado_id: str
     ) -> Optional[T_Bitacora]:
         """
@@ -189,7 +189,9 @@ class UsuariosAuditService:
             T_Bitacora: Registro creado o None si hubo error
         """
         try:
-            return await self.bitacora_service.registrar(
+            logger.info(f"Iniciando registro de reseteo de contraseña. Admin: {usuario_admin_id}, Usuario: {usuario_reseteado_id}")
+            
+            resultado = await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=str(usuario_admin_id),
                 tipo_accion_id=TiposAccion.EDITAR_USUARIO,
@@ -202,15 +204,19 @@ class UsuariosAuditService:
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
+            
+            logger.info(f"Registro de reseteo de contraseña completado exitosamente. ID bitácora: {resultado.CN_Id_bitacora if resultado else 'None'}")
+            return resultado
+            
         except Exception as e:
-            logger.warning(f"Error registrando reseteo de contraseña: {e}")
+            logger.error(f"Error registrando reseteo de contraseña: {e}", exc_info=True)
             return None
     
     
     async def registrar_actualizacion_ultimo_acceso(
         self,
         db: Session,
-        usuario_admin_id: int,
+        usuario_admin_id: str,
         usuario_actualizado_id: str
     ) -> Optional[T_Bitacora]:
         """
