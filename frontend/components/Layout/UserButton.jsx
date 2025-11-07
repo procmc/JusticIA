@@ -1,6 +1,6 @@
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/react";
 import { useRouter } from "next/router";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import DrawerGeneral from "../ui/DrawerGeneral";
@@ -8,7 +8,7 @@ import CambiarContraseña from "@/components/auth/cambioContraseña/CambiarContr
 import AvatarSelector from "@/components/perfil/AvatarSelector";
 import { clearAllChatContext } from "../../utils/chatContextUtils";
 import authService from "@/services/authService";
-import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { useAvatar } from "@/contexts/AvatarContext";
 import { generateInitialsAvatar } from "@/services/avatarService";
 
 export function UserButton() {
@@ -17,10 +17,19 @@ export function UserButton() {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [avatarError, setAvatarError] = useState(false);
     const cambiarContraseñaRef = useRef();
     
-    // Hook para gestionar avatar personalizado
-    const { avatar, subirAvatar, actualizarTipoAvatar } = useUserAvatar(session?.user?.id);
+    // Usar contexto de avatar en lugar del hook
+    const { avatar, subirAvatar, actualizarTipoAvatar } = useAvatar();
+    
+    // Resetear error cuando cambie el avatar
+    useEffect(() => {
+        setAvatarError(false);
+    }, [avatar]);
+    
+    // Avatar a mostrar (con fallback a iniciales si hay error)
+    const displayAvatar = avatarError ? generateInitialsAvatar(session?.user?.name) : avatar;
 
     const formatearNombre = (nombreCompleto) => {
         if (!nombreCompleto) return "Usuario";
@@ -108,16 +117,16 @@ export function UserButton() {
         try {
             // Si newAvatar es un archivo (File), subirlo
             if (newAvatar instanceof File) {
-                const success = await subirAvatar(newAvatar);
-                return success;
+                const result = await subirAvatar(newAvatar);
+                return result.success || false;
             }
             
             // Si es una ruta de avatar predefinido, actualizar tipo
             if (typeof newAvatar === 'string') {
                 // Si es data URL (iniciales), guardar como tipo 'initials'
                 if (newAvatar.startsWith('data:image/svg+xml')) {
-                    const success = await actualizarTipoAvatar('initials');
-                    return success;
+                    const result = await actualizarTipoAvatar('initials');
+                    return result.success || false;
                 }
                 
                 // Mapear rutas a tipos
@@ -128,8 +137,8 @@ export function UserButton() {
                 
                 const tipo = avatarMap[newAvatar];
                 if (tipo) {
-                    const success = await actualizarTipoAvatar(tipo);
-                    return success;
+                    const result = await actualizarTipoAvatar(tipo);
+                    return result.success || false;
                 }
             }
             
@@ -177,18 +186,16 @@ export function UserButton() {
                     <Dropdown placement="bottom-end">
                         <DropdownTrigger>
                             <button className="rounded-full p-0.5 cursor-pointer focus:outline-none focus-visible:ring-0 hover:ring-2 hover:ring-primary/50 transition-all">
-                                <div className="w-10 h-10 rounded-full overflow-hidden">
+                                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-100">
                                     <Image
-                                        key={avatar}
-                                        src={avatar}
+                                        key={displayAvatar}
+                                        src={displayAvatar}
                                         alt="User Avatar"
                                         className="w-full h-full object-cover"
-                                        width={40}
-                                        height={40}
-                                        unoptimized={avatar.startsWith('data:')}
-                                        onError={(e) => {
-                                            e.target.src = generateInitialsAvatar(session?.user?.name);
-                                        }}
+                                        width={56}
+                                        height={56}
+                                        unoptimized={displayAvatar.startsWith('data:')}
+                                        onError={() => setAvatarError(true)}
                                     />
                                 </div>
                             </button>
@@ -201,18 +208,16 @@ export function UserButton() {
                         >
                             <DropdownItem key="profile" className="px-4 py-1 cursor-default pointer-events-none" textValue="profile">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"> 
+                                    <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-100"> 
                                         <Image
-                                            key={avatar}
-                                            src={avatar}
+                                            key={displayAvatar}
+                                            src={displayAvatar}
                                             alt="User Avatar"
                                             className="w-full h-full object-cover"
-                                            width={40}
-                                            height={40}
-                                            unoptimized={avatar.startsWith('data:')}
-                                            onError={(e) => {
-                                                e.target.src = generateInitialsAvatar(session?.user?.name);
-                                            }}
+                                            width={56}
+                                            height={56}
+                                            unoptimized={displayAvatar.startsWith('data:')}
+                                            onError={() => setAvatarError(true)}
                                         />
                                     </div>
                                     <div className="flex-1">

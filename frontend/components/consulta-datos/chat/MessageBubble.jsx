@@ -6,18 +6,28 @@ import MarkdownRenderer from './MarkdownRenderer';
 import { CopyIcon, CheckIcon } from '../../icons';
 import downloadService from '../../../services/downloadService';
 import Toast from '@/components/ui/CustomAlert';
+import { useAvatar } from '@/contexts/AvatarContext';
+import { generateInitialsAvatar } from '@/services/avatarService';
 import { useSession } from 'next-auth/react';
-import { useUserAvatar } from '@/hooks/useUserAvatar';
 import { copyToClipboard, processFilePath } from '../../../utils/chat/markdownUtils';
 
 const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false, onRetry }) => {
   const { data: session } = useSession();
-  const { avatar } = useUserAvatar(session?.user?.id);
+  const { avatar } = useAvatar();
   const isError = message.isError || false;
   const isWarning = message.isWarning || false;
   
   // Estado para forzar re-renderizado cuando sea necesario
   const [forceRender, setForceRender] = useState(0);
+  const [avatarError, setAvatarError] = useState(false);
+  
+  // Avatar a mostrar (con fallback a iniciales si hay error)
+  const displayAvatar = avatarError ? generateInitialsAvatar(session?.user?.name) : avatar;
+  
+  // Resetear error cuando cambie el avatar
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatar]);
   
   // Estado para el botón de copiar
   const [copied, setCopied] = useState(false);
@@ -77,37 +87,40 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
   
   return (
     <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
-      {avatar?.startsWith('data:') && isUser ? (
-        <div key={avatar} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white">
+      {displayAvatar?.startsWith('data:') && isUser ? (
+        <div key={displayAvatar} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border-2 border-gray-100">
           <Image
-            src={avatar}
+            src={displayAvatar}
             alt="User Avatar"
             className="w-full h-full object-cover"
             width={40}
             height={40}
             unoptimized
+            onError={() => setAvatarError(true)}
           />
         </div>
       ) : (
-        <Avatar
-          key={avatar}
-          size="sm"
-          className="sm:w-10 sm:h-10"
-          src={isUser ? avatar : "/bot.png"}
-          name={isUser ? "U" : "J"}
-          classNames={{
-            base: `flex-shrink-0 border-0 ring-0 outline-0 ${
-              isUser 
-                ? 'bg-white text-white' 
-                : isError 
-                  ? 'bg-red-100 text-red-600' 
-                  : isWarning
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-blue-900 text-white'
-            }`
-          }}
-          showFallback
-        />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-100">
+          <Avatar
+            key={displayAvatar}
+            size="sm"
+            className="w-full h-full"
+            src={isUser ? displayAvatar : "/bot.png"}
+            name={isUser ? "U" : "J"}
+            classNames={{
+              base: `flex-shrink-0 border-0 ring-0 outline-0 w-full h-full ${
+                isUser 
+                  ? 'bg-white text-white' 
+                  : isError 
+                    ? 'bg-red-100 text-red-600' 
+                    : isWarning
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-blue-900 text-white'
+              }`
+            }}
+            showFallback
+          />
+        </div>
       )}
       
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'} group`}>
