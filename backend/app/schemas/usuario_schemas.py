@@ -41,6 +41,8 @@ class UsuarioRespuesta(BaseModel):
     CT_Apellido_uno: str
     CT_Apellido_dos: str  # Requerido
     CT_Correo: str
+    CT_Avatar_ruta: Optional[str] = None  # Ruta de la imagen de perfil
+    CT_Avatar_tipo: Optional[str] = None  # Tipo de avatar preferido
     CN_Id_rol: int
     CN_Id_estado: int
     CF_Ultimo_acceso: Optional[datetime] = None
@@ -50,6 +52,11 @@ class UsuarioRespuesta(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class ActualizarAvatarRequest(BaseModel):
+    """Schema para actualizar la preferencia de avatar (sin imagen)"""
+    avatar_tipo: str  # Ej: 'hombre', 'mujer', 'neutral'
 
 
 class MensajeRespuesta(BaseModel):

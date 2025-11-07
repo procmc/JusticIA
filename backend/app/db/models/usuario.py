@@ -19,6 +19,8 @@ class T_Usuario(Base):
     CT_Apellido_dos: Mapped[str] = mapped_column(String(100), nullable=True)
     CT_Correo: Mapped[str] = mapped_column(String(100), nullable=False)
     CT_Contrasenna: Mapped[str] = mapped_column(String(255), nullable=False)
+    CT_Avatar_ruta: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Ruta de la imagen de perfil
+    CT_Avatar_tipo: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)   # Tipo de avatar preferido
     CF_Ultimo_acceso: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     CF_Fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 

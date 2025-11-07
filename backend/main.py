@@ -1,6 +1,8 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from app.vectorstore.vectorstore import get_client
 from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora
 from app.db import database
@@ -72,6 +74,11 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 app.include_router(rag.router, tags=["rag"])
 app.include_router(bitacora.router, prefix="/bitacora", tags=["bitacora"])
+
+# Servir archivos estáticos para avatares
+uploads_path = Path("uploads")
+uploads_path.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")

@@ -6,8 +6,12 @@ import TypingIndicator from './TypingIndicator';
 import { CopyIcon, CheckIcon } from '../../icons';
 import downloadService from '../../../services/downloadService';
 import Toast from '@/components/ui/CustomAlert';
+import { useSession } from 'next-auth/react';
+import { useUserAvatar } from '@/hooks/useUserAvatar';
 
 const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false, onRetry }) => {
+  const { data: session } = useSession();
+  const { avatar } = useUserAvatar(session?.user?.id);
   const isError = message.isError || false;
   const isWarning = message.isWarning || false;
   
@@ -390,24 +394,35 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
   
   return (
     <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
-      <Avatar
-        size="sm"
-        className="sm:w-10 sm:h-10"
-        src={isUser ? "/usuario.png" : "/bot.png"}
-        name={isUser ? "U" : "J"}
-        classNames={{
-          base: `flex-shrink-0 border-0 ring-0 outline-0 ${
-            isUser 
-              ? 'bg-white text-white' 
-              : isError 
-                ? 'bg-red-100 text-red-600' 
-                : isWarning
-                  ? 'bg-yellow-100 text-yellow-600'
-                  : 'bg-blue-900 text-white'
-          }`
-        }}
-        showFallback
-      />
+      {avatar?.startsWith('data:') && isUser ? (
+        <div key={avatar} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white">
+          <img
+            src={avatar}
+            alt="User Avatar"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <Avatar
+          key={avatar}
+          size="sm"
+          className="sm:w-10 sm:h-10"
+          src={isUser ? avatar : "/bot.png"}
+          name={isUser ? "U" : "J"}
+          classNames={{
+            base: `flex-shrink-0 border-0 ring-0 outline-0 ${
+              isUser 
+                ? 'bg-white text-white' 
+                : isError 
+                  ? 'bg-red-100 text-red-600' 
+                  : isWarning
+                    ? 'bg-yellow-100 text-yellow-600'
+                    : 'bg-blue-900 text-white'
+            }`
+          }}
+          showFallback
+        />
+      )}
       
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'} group`}>
         <div className={`inline-block max-w-[calc(100%-5rem)] sm:max-w-[calc(100%-10rem)] break-words ${

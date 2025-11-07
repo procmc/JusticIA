@@ -10,6 +10,8 @@ class UserInfo(BaseModel):
     name: str  # Nombre completo
     email: str  # Correo/username
     role: str  # Rol del usuario
+    avatar_ruta: Optional[str] = None  # Ruta de la imagen de perfil
+    avatar_tipo: Optional[str] = None  # Tipo de avatar preferido
 
 class LoginResponse(BaseModel):
     success: bool
