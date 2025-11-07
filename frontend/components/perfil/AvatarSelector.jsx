@@ -14,6 +14,8 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null); // Nuevo: guardar archivo real
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Estado de guardado
+  const [isResetting, setIsResetting] = useState(false); // Estado de restaurar
   const [activeTab, setActiveTab] = useState('predefined');
   const fileInputRef = useRef(null);
 
@@ -98,7 +100,6 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
       setUploadedImage(dataUrl);
       setSelectedAvatar(dataUrl);
       setIsUploading(false);
-      Toast.success('Imagen cargada correctamente');
     };
     reader.onerror = () => {
       Toast.error('Error al cargar la imagen');
@@ -118,24 +119,50 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
    * Guardar avatar seleccionado
    */
   const handleSave = async () => {
-    // Si hay un archivo subido, enviarlo
-    const avatarToSave = uploadedFile || selectedAvatar;
-    const success = await onSave(avatarToSave);
-    if (success) {
-      Toast.success('Avatar actualizado correctamente');
-      onClose();
-    } else {
+    setIsSaving(true);
+    try {
+      // Si hay un archivo subido, enviarlo
+      const avatarToSave = uploadedFile || selectedAvatar;
+      const success = await onSave(avatarToSave);
+      if (success) {
+        Toast.success('Avatar actualizado correctamente');
+        onClose();
+      } else {
+        Toast.error('Error al guardar el avatar');
+      }
+    } catch (error) {
+      console.error('Error en handleSave:', error);
       Toast.error('Error al guardar el avatar');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   /**
    * Resetear al avatar por defecto
    */
-  const handleReset = () => {
-    setSelectedAvatar('/avatar-male-default.png');
-    setUploadedImage(null);
-    setUploadedFile(null);
+  const handleReset = async () => {
+    setIsResetting(true);
+    try {
+      const defaultAvatar = '/avatar-male-default.png';
+      setSelectedAvatar(defaultAvatar);
+      setUploadedImage(null);
+      setUploadedFile(null);
+      
+      // Guardar el cambio inmediatamente
+      const success = await onSave(defaultAvatar);
+      if (success) {
+        Toast.success('Avatar restablecido correctamente');
+        onClose(); // Cerrar modal después de restablecer
+      } else {
+        Toast.error('Error al restablecer el avatar');
+      }
+    } catch (error) {
+      console.error('Error en handleReset:', error);
+      Toast.error('Error al restablecer el avatar');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   /**
@@ -158,6 +185,8 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
       onClose={onClose}
       size="2xl"
       scrollBehavior="inside"
+      isDismissable={!isSaving && !isResetting && !isUploading}
+      isKeyboardDismissDisabled={isSaving || isResetting || isUploading}
       classNames={{
         base: "bg-white",
         header: "border-b border-gray-200",
@@ -206,14 +235,22 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                     )}
                   </div>
                   {selectedAvatar !== currentAvatar && (
-                    <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-2 shadow-lg">
+                    <div className="absolute -bottom-2 -right-2 bg-blue-500 rounded-full p-2 shadow-lg">
                       <IoCheckmarkCircle className="text-white text-xl" />
                     </div>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 mt-3">
-                  {selectedAvatar === '/avatar-male-default.png' ? 'Avatar por defecto' : 'Avatar personalizado'}
-                </p>
+                {uploadedFile ? (
+                  <div className="text-center mt-3">
+                    <p className="text-sm font-medium text-blue-600">Vista previa temporal</p>
+                    <p className="text-xs text-gray-500">Presiona "Guardar" para aplicar</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 mt-3">
+                    {selectedAvatar === '/avatar-male-default.png' ? 'Avatar por defecto' : 
+                     selectedAvatar !== currentAvatar ? 'Vista previa del cambio' : 'Avatar actual'}
+                  </p>
+                )}
               </div>
 
               {/* Tabs para avatares predefinidos y subir imagen */}
@@ -306,7 +343,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                   <div className="mt-4">
                     <div
                       onClick={handleUploadClick}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                      className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
                     >
                       <input
                         ref={fileInputRef}
@@ -316,27 +353,16 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                         className="hidden"
                       />
                       
-                      <IoCloudUpload className="text-5xl text-gray-400 mx-auto mb-3" />
+                      <IoCloudUpload className="text-5xl text-primary/60 mx-auto mb-3" />
                       
-                      <p className="text-base font-medium text-gray-700 mb-1">
+                      <p className="text-base font-medium text-primary mb-1">
                         {isUploading ? 'Cargando...' : 'Haz clic para cargar una imagen'}
                       </p>
                       
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-primary/70">
                         JPG, PNG, GIF o WebP (máx. 5MB)
                       </p>
                     </div>
-
-                    {uploadedImage && (
-                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center gap-2 text-green-700">
-                          <IoCheckmarkCircle className="text-xl" />
-                          <span className="text-sm font-medium">
-                            Imagen cargada correctamente
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </Tab>
               </Tabs>
@@ -350,6 +376,8 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                   onPress={handleReset}
                   startContent={<IoRefresh />}
                   size="sm"
+                  isLoading={isResetting}
+                  isDisabled={isResetting || isSaving || isUploading}
                 >
                   Restablecer
                 </Button>
@@ -359,13 +387,15 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                     color="default"
                     variant="light"
                     onPress={onCloseModal}
+                    isDisabled={isSaving || isResetting || isUploading}
                   >
                     Cancelar
                   </Button>
                   <Button
                     color="primary"
                     onPress={handleSave}
-                    isDisabled={selectedAvatar === currentAvatar}
+                    isDisabled={selectedAvatar === currentAvatar || isResetting || isUploading}
+                    isLoading={isSaving}
                   >
                     Guardar Avatar
                   </Button>

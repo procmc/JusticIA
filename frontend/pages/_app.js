@@ -5,6 +5,7 @@ import Layout from "@/components/Layout/Layout";
 import { useRouter } from "next/router";
 import { SessionProvider, signOut } from "next-auth/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AvatarProvider } from "@/contexts/AvatarContext";
 import { useEffect } from "react";
 import Toast from "@/components/ui/CustomAlert";
 
@@ -42,14 +43,16 @@ function AppContent({ Component, pageProps }) {
   return (
     <ThemeProvider>
       <HeroUIProvider locale="es-ES">
-        <ToastProvider placement={"top-right"} toastOffset={60} />
-        {noLayoutPages.includes(router.pathname) ? (
-          <Component {...pageProps} />
-        ) : (
-          <Layout>
+        <AvatarProvider>
+          <ToastProvider placement={"top-right"} toastOffset={60} />
+          {noLayoutPages.includes(router.pathname) ? (
             <Component {...pageProps} />
-          </Layout>
-        )}
+          ) : (
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          )}
+        </AvatarProvider>
       </HeroUIProvider>
     </ThemeProvider>
   );
