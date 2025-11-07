@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.database import get_db
 from app.services.usuario_service import UsuarioService
-from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta
-from app.auth.jwt_auth import require_administrador
+from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta, ActualizarAvatarRequest
+from app.auth.jwt_auth import require_administrador, require_usuario_judicial
 from app.services.bitacora.usuarios_audit_service import usuarios_audit_service
+import os
+import shutil
+from pathlib import Path
 
 router = APIRouter()
 usuario_service = UsuarioService()
@@ -171,3 +174,129 @@ async def resetear_contrasenna(
     except Exception as e:
         print(f"Error al resetear contraseña: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@router.post("/{usuario_id}/avatar/upload", response_model=MensajeRespuesta)
+async def subir_avatar(
+    usuario_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial)
+):
+    """Sube una imagen de avatar para un usuario"""
+    try:
+        # Validar que el usuario solo pueda cambiar su propio avatar
+        if current_user["user_id"] != usuario_id:
+            raise HTTPException(status_code=403, detail="No puedes cambiar el avatar de otro usuario")
+        
+        # Validar tipo de archivo
+        allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Tipo de archivo no permitido")
+        
+        # Crear directorio si no existe
+        upload_dir = Path("uploads/profiles")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generar nombre único
+        file_extension = file.filename.split(".")[-1] if file.filename else "jpg"
+        file_path = upload_dir / f"{usuario_id}.{file_extension}"
+        
+        # Guardar archivo
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Actualizar base de datos
+        from app.db.models.usuario import T_Usuario
+        usuario = db.query(T_Usuario).filter(T_Usuario.CN_Id_usuario == usuario_id).first()
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        usuario.CT_Avatar_ruta = str(file_path)
+        usuario.CT_Avatar_tipo = None  # Limpia preferencia de avatar
+        db.commit()
+        
+        return MensajeRespuesta(mensaje="Avatar subido exitosamente")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al subir avatar: {e}")
+        raise HTTPException(status_code=500, detail="Error al subir avatar")
+        usuario.CT_Avatar_tipo = None  # Limpia preferencia de avatar
+        db.commit()
+        
+        return MensajeRespuesta(mensaje="Avatar subido exitosamente")
+        
+    except Exception as e:
+        print(f"Error al subir avatar: {e}")
+        raise HTTPException(status_code=500, detail="Error al subir avatar")
+
+
+@router.put("/{usuario_id}/avatar/tipo", response_model=MensajeRespuesta)
+async def actualizar_tipo_avatar(
+    usuario_id: str,
+    avatar_data: ActualizarAvatarRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial)
+):
+    """Actualiza la preferencia de avatar (sin subir imagen)"""
+    try:
+        # Validar que el usuario solo pueda cambiar su propio avatar
+        if current_user["user_id"] != usuario_id:
+            raise HTTPException(status_code=403, detail="No puedes cambiar el avatar de otro usuario")
+        
+        from app.db.models.usuario import T_Usuario
+        usuario = db.query(T_Usuario).filter(T_Usuario.CN_Id_usuario == usuario_id).first()
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        usuario.CT_Avatar_tipo = avatar_data.avatar_tipo
+        usuario.CT_Avatar_ruta = None  # Limpia imagen si cambia a avatar predefinido
+        db.commit()
+        
+        return MensajeRespuesta(mensaje="Preferencia de avatar actualizada")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al actualizar avatar: {e}")
+        raise HTTPException(status_code=500, detail="Error al actualizar avatar")
+
+
+@router.delete("/{usuario_id}/avatar", response_model=MensajeRespuesta)
+async def eliminar_avatar(
+    usuario_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial)
+):
+    """Elimina el avatar de un usuario"""
+    try:
+        # Validar que el usuario solo pueda eliminar su propio avatar
+        if current_user["user_id"] != usuario_id:
+            raise HTTPException(status_code=403, detail="No puedes eliminar el avatar de otro usuario")
+        
+        from app.db.models.usuario import T_Usuario
+        usuario = db.query(T_Usuario).filter(T_Usuario.CN_Id_usuario == usuario_id).first()
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Eliminar archivo si existe
+        if usuario.CT_Avatar_ruta:
+            file_path = Path(usuario.CT_Avatar_ruta)
+            if file_path.exists():
+                file_path.unlink()
+        
+        # Limpiar base de datos
+        usuario.CT_Avatar_ruta = None
+        usuario.CT_Avatar_tipo = None
+        db.commit()
+        
+        return MensajeRespuesta(mensaje="Avatar eliminado exitosamente")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al eliminar avatar: {e}")
+        raise HTTPException(status_code=500, detail="Error al eliminar avatar")
+

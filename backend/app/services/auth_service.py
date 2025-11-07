@@ -72,7 +72,9 @@ class AuthService:
                     id=str(usuario.CN_Id_usuario),  # Cédula como string
                     name=datos_usuario['nombre_completo'],
                     email=usuario.CT_Correo,  # Usar el correo real, no el nombre de usuario
-                    role=datos_usuario['nombre_rol']
+                    role=datos_usuario['nombre_rol'],
+                    avatar_ruta=usuario.CT_Avatar_ruta,
+                    avatar_tipo=usuario.CT_Avatar_tipo
                 ),
                 access_token=access_token  # Incluir el token en la respuesta
             )

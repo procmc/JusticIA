@@ -164,7 +164,9 @@ async def refresh_token(
             id=str(usuario.CN_Id_usuario),
             name=nombre_completo.strip(),
             email=usuario.CT_Correo,
-            role=role
+            role=role,
+            avatar_ruta=usuario.CT_Avatar_ruta,
+            avatar_tipo=usuario.CT_Avatar_tipo
         )
         
         return LoginResponse(
