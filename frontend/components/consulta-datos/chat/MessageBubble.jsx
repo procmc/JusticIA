@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Avatar } from '@heroui/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import TypingIndicator from './TypingIndicator';
+import MarkdownRenderer from './MarkdownRenderer';
 import { CopyIcon, CheckIcon } from '../../icons';
 import downloadService from '../../../services/downloadService';
 import Toast from '@/components/ui/CustomAlert';
 import { useSession } from 'next-auth/react';
 import { useUserAvatar } from '@/hooks/useUserAvatar';
+import { copyToClipboard, processFilePath } from '../../../utils/chat/markdownUtils';
 
 const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false, onRetry }) => {
   const { data: session } = useSession();
@@ -65,316 +65,13 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
     }
   }, [message.text, message.renderKey, isUser]);
 
-  // Función para convertir Markdown a HTML para copiar con formato
-  const markdownToHtml = (text) => {
-    if (!text) return '';
-    
-    let html = text
-      // Convertir negritas
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.+?)__/g, '<strong>$1</strong>')
-      // Convertir itálicas
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/_(.+?)_/g, '<em>$1</em>')
-      // Convertir encabezados
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      // Convertir enlaces [texto](url) -> texto
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-      // Convertir bloques de código inline
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      // Convertir citas en bloque
-      .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
-      // Convertir listas con viñetas (detectar líneas que empiezan con -, *, +)
-      .replace(/^\s*[-*+]\s+(.+)$/gm, '<li>$1</li>')
-      // Convertir listas numeradas
-      .replace(/^\s*\d+\.\s+(.+)$/gm, '<li>$1</li>')
-      // Convertir saltos de línea
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-    
-    // Envolver listas en <ul>
-    html = html.replace(/(<li>.*?<\/li>)/gs, (match) => {
-      return `<ul>${match}</ul>`;
-    });
-    
-    // Envolver en párrafos si no tiene tags de bloque
-    if (!html.includes('<h') && !html.includes('<ul>') && !html.includes('<blockquote>')) {
-      html = `<p>${html}</p>`;
-    }
-    
-    return html;
-  };
-
-  // Función unificada para procesar rutas de archivos (consolidada)
-  const processFilePath = (rutaCompleta) => {
-    const rutaLimpia = rutaCompleta.trim();
-    const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
-    const base64Path = Buffer.from(rutaLimpia).toString('base64');
-    return { fileName, base64Path, rutaLimpia };
-  };
-
-  // Función para limpiar las rutas de archivo del texto para copiar
-  const cleanFilePathsForCopy = (text) => {
-    if (!text) return '';
-    
-    return text
-      // Patrón 1: Limpiar rutas dentro de paréntesis (uploads/...)
-      .replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
-        const { fileName } = processFilePath(ruta);
-        return `(${fileName})`;
-      })
-      // Patrón 2: Limpiar rutas sueltas uploads/ en el texto
-      .replace(/uploads\/[^\s\[\]()]+/g, (match) => {
-        const { fileName } = processFilePath(match);
-        return fileName;
-      });
-  };
-
   // Función para copiar al portapapeles con formato
   const handleCopy = async () => {
-    try {
-      // Limpiar las rutas del texto antes de copiar
-      const cleanedText = cleanFilePathsForCopy(message.text);
-      
-      const html = markdownToHtml(cleanedText);
-      const plainText = cleanedText
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1')
-        .replace(/^#{1,6}\s+/gm, '')
-        .replace(/^\s*[-*+]\s+/gm, '• ')
-        .replace(/\[(.+?)\]\(.+?\)/g, '$1');
-      
-      // Crear un blob con HTML
-      const blob = new Blob([html], { type: 'text/html' });
-      const blobPlain = new Blob([plainText], { type: 'text/plain' });
-      
-      // Usar ClipboardItem para copiar con formato
-      const clipboardItem = new ClipboardItem({
-        'text/html': blob,
-        'text/plain': blobPlain
-      });
-      
-      await navigator.clipboard.write([clipboardItem]);
+    const success = await copyToClipboard(message.text);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      // Fallback a texto plano si falla
-      try {
-        const cleanedText = cleanFilePathsForCopy(message.text);
-        await navigator.clipboard.writeText(cleanedText);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (fallbackErr) {
-        // Error al copiar
-      }
     }
-  };
-
-  // Componente personalizado para renderizar Markdown con estilos
-  const MarkdownRenderer = ({ content, forceKey }) => {
-    if (!content) return null;
-
-    // Preprocesar contenido para limpiar tags HTML del LLM
-    const preprocessContent = (text) => {
-      return text
-        // Reemplazar <br> y <br/> y <br /> con saltos de línea Markdown
-        .replace(/<br\s*\/?>/gi, '  \n')
-        // Reemplazar múltiples <br> consecutivos con doble salto (nuevo párrafo)
-        .replace(/(<br\s*\/?>\s*){2,}/gi, '\n\n')
-        // Eliminar otros tags HTML comunes que el LLM pueda generar
-        .replace(/<\/?strong>/gi, '**')
-        .replace(/<\/?b>/gi, '**')
-        .replace(/<\/?em>/gi, '*')
-        .replace(/<\/?i>/gi, '*')
-        // Limpiar cualquier otro tag HTML residual
-        .replace(/<[^>]+>/g, '')
-        // CRÍTICO: Prevenir auto-numeración de listas en streaming
-        // Agregar zero-width space antes de números que empiezan línea
-        .replace(/^(\d+)\.\s/gm, '\u200B$1. ')
-        .replace(/^(\d+)\)\s/gm, '\u200B$1) ');
-    };
-
-    // Función para convertir rutas de archivo en enlaces descargables
-    const processFileLinks = (text) => {
-      return text
-        // Patrón 1: Formato correcto con paréntesis (uploads/...)
-        .replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
-          const { fileName, base64Path } = processFilePath(ruta);
-          return `([${fileName}](#download-${base64Path}))`;
-        })
-        // Patrón 2: Cualquier ruta uploads/ suelta en el texto
-        .replace(/(uploads\/[^\s\[\]()]+)/g, (match, ruta) => {
-          // Solo convertir si no está ya dentro de un enlace markdown
-          if (text.indexOf(`#download-`) !== -1 && text.indexOf(ruta) > text.lastIndexOf(`#download-`)) {
-            return match;
-          }
-          const { fileName, base64Path } = processFilePath(ruta);
-          return `[${fileName}](#download-${base64Path})`;
-        });
-    };
-
-    const cleanContent = processFileLinks(preprocessContent(content));
-
-    // Componentes personalizados para elementos Markdown
-    const components = {
-      // Párrafos con justificación
-      p: ({ children }) => (
-        <p className="mb-4 leading-relaxed text-gray-800 last:mb-0 text-justify">
-          {children}
-        </p>
-      ),
-      
-      // Encabezados con mejor espaciado
-      h1: ({ children }) => (
-        <h1 className="text-lg font-bold text-gray-900 mb-3 mt-4 first:mt-0 text-left">
-          {children}
-        </h1>
-      ),
-      h2: ({ children }) => (
-        <h2 className="text-base font-semibold text-gray-900 mb-2 mt-3 first:mt-0 text-left">
-          {children}
-        </h2>
-      ),
-      h3: ({ children }) => (
-        <h3 className="text-sm font-semibold text-gray-900 mb-2 mt-3 first:mt-0 text-left">
-          {children}
-        </h3>
-      ),
-      
-      // Listas con bullets justificadas
-      ul: ({ children }) => (
-        <ul className="list-disc list-outside mb-4 space-y-2 ml-6">
-          {children}
-        </ul>
-      ),
-      ol: ({ children }) => (
-        <ol className="list-decimal list-outside mb-4 space-y-2 ml-6">
-          {children}
-        </ol>
-      ),
-      li: ({ children }) => (
-        <li className="text-gray-800 leading-relaxed text-justify">
-          {children}
-        </li>
-      ),
-      
-      // Texto en negrita
-      strong: ({ children }) => (
-        <strong className="font-semibold text-gray-900">
-          {children}
-        </strong>
-      ),
-      
-      // Texto en cursiva
-      em: ({ children }) => (
-        <em className="italic text-gray-800">
-          {children}
-        </em>
-      ),
-      
-      // Código inline
-      code: ({ children, className, ...props }) => {
-        // Si no tiene className, es código inline
-        if (!className) {
-          return (
-            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">
-              {children}
-            </code>
-          );
-        }
-        // Si tiene className, es un bloque de código
-        return (
-          <code className={className} {...props}>
-            {children}
-          </code>
-        );
-      },
-      
-      // Bloques de código
-      pre: ({ children }) => (
-        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 overflow-x-auto">
-          {children}
-        </pre>
-      ),
-      
-      // Enlaces
-      a: ({ href, children }) => {
-        // Si es un enlace de descarga de archivo (hash especial #download-)
-        if (href && href.startsWith('#download-')) {
-          return (
-            <a 
-              href={href}
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline hover:bg-blue-50 px-2 py-1 rounded transition-colors cursor-pointer"
-              title="Hacer clic para descargar el archivo"
-            >
-              {children}
-            </a>
-          );
-        }
-        
-        // Enlace normal
-        return (
-          <a 
-            href={href} 
-            className="text-blue-600 hover:text-blue-800 underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {children}
-          </a>
-        );
-      },
-      
-      // Citas/blockquotes
-      blockquote: ({ children }) => (
-        <blockquote className="border-l-4 border-blue-200 pl-4 italic text-gray-700 mb-4 text-justify">
-          {children}
-        </blockquote>
-      ),
-      
-      // Líneas horizontales con mejor espaciado
-      hr: () => (
-        <hr className="border-t-2 border-gray-300 my-6" />
-      ),
-      
-      // Tablas
-      table: ({ children }) => (
-        <div className="overflow-x-auto mb-4">
-          <table className="min-w-full border border-gray-200 rounded-lg">
-            {children}
-          </table>
-        </div>
-      ),
-      thead: ({ children }) => (
-        <thead className="bg-gray-50">
-          {children}
-        </thead>
-      ),
-      th: ({ children }) => (
-        <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-900">
-          {children}
-        </th>
-      ),
-      td: ({ children }) => (
-        <td className="border border-gray-200 px-3 py-2 text-gray-800">
-          {children}
-        </td>
-      ),
-    };
-
-    return (
-      <div className="markdown-content" onClick={handleMessageClick}>
-        <ReactMarkdown 
-          key={`markdown-${forceKey}-${content.length}`} // Key única para forzar re-renderizado
-          remarkPlugins={[remarkGfm]}
-          components={components}
-        >
-          {cleanContent}
-        </ReactMarkdown>
-      </div>
-    );
   };
   
   return (
@@ -440,6 +137,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
               <MarkdownRenderer 
                 content={message.text} 
                 forceKey={forceRender}
+                onMessageClick={handleMessageClick}
               />
             )}
             {isStreaming && !isUser && !message.text && (
