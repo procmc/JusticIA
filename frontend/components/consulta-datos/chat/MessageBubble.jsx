@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Avatar } from '@heroui/react';
+import Image from 'next/image';
 import TypingIndicator from './TypingIndicator';
 import MarkdownRenderer from './MarkdownRenderer';
 import { CopyIcon, CheckIcon } from '../../icons';
@@ -78,10 +79,13 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
     <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
       {avatar?.startsWith('data:') && isUser ? (
         <div key={avatar} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white">
-          <img
+          <Image
             src={avatar}
             alt="User Avatar"
             className="w-full h-full object-cover"
+            width={40}
+            height={40}
+            unoptimized
           />
         </div>
       ) : (

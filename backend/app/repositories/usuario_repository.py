@@ -120,3 +120,54 @@ class UsuarioRepository:
         db.commit()
         db.refresh(usuario)
         return usuario
+
+    def actualizar_avatar_ruta(self, db: Session, usuario_id: str, ruta_avatar: str) -> Optional[T_Usuario]:
+        """Actualiza la ruta del avatar de un usuario"""
+        try:
+            usuario = self.obtener_usuario_por_id(db, usuario_id)
+            if not usuario:
+                return None
+            
+            usuario.CT_Avatar_ruta = ruta_avatar
+            usuario.CT_Avatar_tipo = None  # Limpia preferencia de avatar predefinido
+            
+            db.commit()
+            db.refresh(usuario)
+            return usuario
+        except Exception as e:
+            db.rollback()
+            raise
+
+    def actualizar_avatar_tipo(self, db: Session, usuario_id: str, tipo_avatar: str) -> Optional[T_Usuario]:
+        """Actualiza el tipo de avatar de un usuario (predefinido o iniciales)"""
+        try:
+            usuario = self.obtener_usuario_por_id(db, usuario_id)
+            if not usuario:
+                return None
+            
+            usuario.CT_Avatar_tipo = tipo_avatar
+            usuario.CT_Avatar_ruta = None  # Limpia imagen personalizada
+            
+            db.commit()
+            db.refresh(usuario)
+            return usuario
+        except Exception as e:
+            db.rollback()
+            raise
+
+    def limpiar_avatar(self, db: Session, usuario_id: str) -> Optional[T_Usuario]:
+        """Limpia tanto la ruta como el tipo de avatar de un usuario"""
+        try:
+            usuario = self.obtener_usuario_por_id(db, usuario_id)
+            if not usuario:
+                return None
+            
+            usuario.CT_Avatar_ruta = None
+            usuario.CT_Avatar_tipo = None
+            
+            db.commit()
+            db.refresh(usuario)
+            return usuario
+        except Exception as e:
+            db.rollback()
+            raise

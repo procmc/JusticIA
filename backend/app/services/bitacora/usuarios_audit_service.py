@@ -240,6 +240,51 @@ class UsuariosAuditService:
         except Exception as e:
             logger.warning(f"Error registrando actualización de último acceso: {e}")
             return None
+    
+    
+    async def registrar_cambio_avatar(
+        self,
+        db: Session,
+        usuario_id: str,
+        tipo_cambio: str,
+        detalles: Optional[Dict[str, Any]] = None
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra cambios en el avatar de un usuario.
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario que cambia su avatar
+            tipo_cambio: Tipo de cambio (upload, tipo, eliminar)
+            detalles: Detalles adicionales del cambio
+            
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error
+        """
+        try:
+            textos = {
+                "upload": f"Usuario {usuario_id} subió imagen de avatar personalizada",
+                "tipo": f"Usuario {usuario_id} cambió tipo de avatar a {detalles.get('avatar_tipo', 'N/A')}",
+                "eliminar": f"Usuario {usuario_id} eliminó su avatar"
+            }
+            
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=str(usuario_id),
+                tipo_accion_id=TiposAccion.EDITAR_USUARIO,
+                texto=textos.get(tipo_cambio, f"Usuario {usuario_id} modificó su avatar"),
+                info_adicional={
+                    "usuario_id": usuario_id,
+                    "accion": f"cambio_avatar_{tipo_cambio}",
+                    "tipo_cambio": tipo_cambio,
+                    "modulo": "perfil_usuario",
+                    **(detalles or {}),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando cambio de avatar: {e}")
+            return None
 
 
 # Instancia singleton del servicio especializado
