@@ -82,6 +82,15 @@ const ConsultaChat = ({ initialMode }) => {
     };
 
     restoreIfReloaded();
+    
+    // Cleanup: Limpiar sessionStorage al desmontar (cuando navegas a otra página)
+    return () => {
+      // Limpiar datos del chat cuando el componente se desmonta
+      sessionStorage.removeItem('current_chat_session');
+      sessionStorage.removeItem('current_chat_messages');
+      sessionStorage.removeItem('current_chat_scope');
+      sessionStorage.removeItem('current_chat_expediente');
+    };
   }, [sessionId, isReady]);
 
   // Guardar el estado actual en sessionStorage cada vez que cambian los mensajes

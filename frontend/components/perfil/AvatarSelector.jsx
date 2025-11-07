@@ -243,7 +243,7 @@ const AvatarSelector = ({ isOpen, onClose, currentAvatar, onSave, userName = '',
                 {uploadedFile ? (
                   <div className="text-center mt-3">
                     <p className="text-sm font-medium text-blue-600">Vista previa temporal</p>
-                    <p className="text-xs text-gray-500">Presiona "Guardar" para aplicar</p>
+                    <p className="text-xs text-gray-500">Presiona &quot;Guardar&quot; para aplicar</p>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-600 mt-3">
