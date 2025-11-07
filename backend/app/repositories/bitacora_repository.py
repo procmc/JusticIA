@@ -240,8 +240,13 @@ class BitacoraRepository:
             
             total_count = db.execute(count_query).scalar() or 0
             
-            # Aplicar ordenamiento, paginación
-            query = query.order_by(desc(T_Bitacora.CF_Fecha_hora)).limit(limite).offset(offset)
+            # Aplicar ordenamiento condicional:
+            # - Si hay filtro de fechas: ascendente (cronológico)
+            # - Sin filtro de fechas: descendente (más recientes primero)
+            if fecha_inicio or fecha_fin:
+                query = query.order_by(T_Bitacora.CF_Fecha_hora).limit(limite).offset(offset)
+            else:
+                query = query.order_by(desc(T_Bitacora.CF_Fecha_hora)).limit(limite).offset(offset)
             
             # IMPORTANTE: usar unique() para manejar los joins correctamente
             result = db.execute(query)
