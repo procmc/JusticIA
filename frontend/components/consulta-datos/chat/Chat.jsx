@@ -4,25 +4,22 @@ import ChatInput from './ChatInput';
 import ConversationHistory from './ConversationHistory';
 import consultaService from '../../../services/consultaService';
 import { useSessionId } from '../../../hooks/conversacion/useSessionId';
-import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
-
-// Mensaje de bienvenida para modo expediente (extraído para evitar duplicación)
-const EXPEDIENTE_WELCOME_MESSAGE = `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
-
-Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
-
----
-
-### **¿Cómo funciona?**
-
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
-
----
-
-**¿Tienes el número de expediente que quieres consultar?**`;
+import {
+  EXPEDIENTE_WELCOME_MESSAGE,
+  isValidExpediente,
+  normalizeExpediente,
+  shouldChangeExpediente,
+  createExpedienteMessages,
+  createNoExpedienteMessage,
+  createUserMessage,
+  createEmptyAssistantMessage,
+  createWelcomeMessage,
+  createStreamingCallbacks,
+  saveToSessionStorage,
+  restoreFromSessionStorage,
+  markMessageAsCanceled
+} from '../../../utils/chat/messageUtils';
 
 const ConsultaChat = ({ initialMode }) => {
   const [messages, setMessages] = useState([]);
@@ -41,34 +38,21 @@ const ConsultaChat = ({ initialMode }) => {
   useEffect(() => {
     if (initialMode === 'expediente') {
       setSearchScope('expediente');
-      const welcomeMessage = {
-        text: EXPEDIENTE_WELCOME_MESSAGE,
-        isUser: false,
-        timestamp: formatearSoloHoraCostaRica(new Date())
-      };
-      setMessages([welcomeMessage]);
+      setMessages([createWelcomeMessage()]);
     }
   }, [initialMode]);
 
   // Función personalizada para cambiar el scope y limpiar cuando sea necesario
   const handleSearchScopeChange = (newScope) => {
-    // Solo cambiar si realmente es diferente al modo actual
     if (newScope !== searchScope) {
-      // Limpiar conversación e iniciar nueva sesión al cambiar de modo
       setMessages([]);
       setConsultedExpediente(null);
-      newSession();  // Generar nuevo session_id y limpiar sessionStorage
+      newSession();
       setSearchScope(newScope);
-      setIsRestoringSession(false); // No mostrar loader al cambiar de modo
+      setIsRestoringSession(false);
 
-      // Mostrar mensaje de bienvenida específico para el modo expediente
       if (newScope === 'expediente') {
-        const welcomeMessage = {
-          text: EXPEDIENTE_WELCOME_MESSAGE,
-          isUser: false,
-          timestamp: formatearSoloHoraCostaRica(new Date())
-        };
-        setMessages([welcomeMessage]);
+        setMessages([createWelcomeMessage()]);
       }
     }
   };
@@ -84,33 +68,16 @@ const ConsultaChat = ({ initialMode }) => {
     if (!sessionId || !isReady) return;
     
     const restoreIfReloaded = () => {
-      const savedSessionId = sessionStorage.getItem('current_chat_session');
-      const savedMessages = sessionStorage.getItem('current_chat_messages');
-      const savedScope = sessionStorage.getItem('current_chat_scope');
-      const savedExpediente = sessionStorage.getItem('current_chat_expediente');
-
-      // Si hay datos guardados Y el sessionId coincide, restaurar desde sessionStorage
-      if (savedSessionId === sessionId && savedMessages) {
-        try {
-          const parsedMessages = JSON.parse(savedMessages);
-          if (parsedMessages.length > 0) {
-            setMessages(parsedMessages);
-            
-            if (savedScope) {
-              setSearchScope(savedScope);
-            }
-            
-            if (savedExpediente) {
-              setConsultedExpediente(savedExpediente);
-            }
-          }
-        } catch (error) {
-          // Error al parsear, limpiar datos corruptos
-          sessionStorage.removeItem('current_chat_messages');
+      const restored = restoreFromSessionStorage(sessionId);
+      
+      if (restored) {
+        setMessages(restored.messages);
+        setSearchScope(restored.scope);
+        if (restored.expediente) {
+          setConsultedExpediente(restored.expediente);
         }
       }
       
-      // Marcar que la restauración terminó (aunque no haya nada que restaurar)
       setIsRestoringSession(false);
     };
 
@@ -119,47 +86,28 @@ const ConsultaChat = ({ initialMode }) => {
 
   // Guardar el estado actual en sessionStorage cada vez que cambian los mensajes
   useEffect(() => {
-    if (messages.length > 0 && sessionId) {
-      sessionStorage.setItem('current_chat_session', sessionId);
-      sessionStorage.setItem('current_chat_messages', JSON.stringify(messages));
-      sessionStorage.setItem('current_chat_scope', searchScope);
-      if (consultedExpediente) {
-        sessionStorage.setItem('current_chat_expediente', consultedExpediente);
-      }
-    }
+    saveToSessionStorage(sessionId, messages, searchScope, consultedExpediente);
   }, [messages, sessionId, searchScope, consultedExpediente]);
 
   const handleStopGeneration = () => {
     stopStreamingRef.current = true;
     setIsTyping(false);
     
-    // Guardar el índice del mensaje que se está cancelando
     const canceledMessageIndex = streamingMessageIndex;
     setStreamingMessageIndex(null);
 
-    // Cancelar la request actual si existe
     if (currentRequestRef.current) {
       currentRequestRef.current.active = false;
       currentRequestRef.current = null;
     }
 
-    // Cancelar en el servicio también
     consultaService.cancelConsulta();
 
-    // Actualizar el mensaje del asistente con texto de cancelación
     if (canceledMessageIndex !== null) {
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         if (updatedMessages[canceledMessageIndex]) {
-          const currentText = updatedMessages[canceledMessageIndex].text || '';
-          updatedMessages[canceledMessageIndex] = {
-            ...updatedMessages[canceledMessageIndex],
-            text: currentText.trim() 
-              ? currentText + '\n\n---\n\n*Consulta cancelada por el usuario*'
-              : '*Consulta cancelada por el usuario*',
-            timestamp: formatearSoloHoraCostaRica(new Date()),
-            isCanceled: true
-          };
+          updatedMessages[canceledMessageIndex] = markMessageAsCanceled(updatedMessages[canceledMessageIndex]);
         }
         return updatedMessages;
       });
@@ -179,61 +127,30 @@ const ConsultaChat = ({ initialMode }) => {
     // Si estamos en modo expediente específico
     if (searchScope === 'expediente') {
       // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
-      if (validarFormatoExpediente(text)) {
-        // Normalizar el expediente (convertir guiones Unicode a ASCII y mayúsculas)
-        const newExpediente = normalizarExpediente(text.trim());
+      if (isValidExpediente(text)) {
+        const newExpediente = normalizeExpediente(text);
 
         // Si es un expediente diferente al actual, cambiarlo
-        if (newExpediente !== consultedExpediente) {
+        if (shouldChangeExpediente(text, consultedExpediente)) {
           setConsultedExpediente(newExpediente);
 
-          // Crear mensaje del usuario indicando que se estableció/cambió el expediente
-          const userMessage = {
-            text: consultedExpediente
-              ? `Cambiar consulta a expediente: ${newExpediente}`
-              : `Establecer consulta para expediente: ${newExpediente}`,
-            isUser: true,
-            timestamp: formatearSoloHoraCostaRica(new Date()),
-            scope: searchScope,
-            expedienteNumber: newExpediente
-          };
-
-          // Crear mensaje del asistente confirmando
-          const assistantMessage = {
-            text: consultedExpediente
-              ? ` **Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
-              : ` **Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
-            isUser: false,
-            timestamp: formatearSoloHoraCostaRica(new Date())
-          };
+          const { userMessage, assistantMessage } = createExpedienteMessages(
+            newExpediente, 
+            consultedExpediente !== null
+          );
 
           setMessages(prev => [...prev, userMessage, assistantMessage]);
 
           // Actualizar el contexto en el backend
           const action = consultedExpediente ? 'change' : 'set';
           consultaService.updateExpedienteContext(sessionId, newExpediente, action)
-            .catch(() => {
-              // Error sincronizando contexto con el backend
-            });
+            .catch(() => {});
           return;
         }
       }
       // Si no tenemos expediente consultado y el texto no es un número válido
       else if (!consultedExpediente) {
-        // No es un número de expediente válido - responder como asistente
-        const userMessage = {
-          text,
-          isUser: true,
-          timestamp: formatearSoloHoraCostaRica(new Date()),
-          scope: searchScope
-        };
-
-        const assistantMessage = {
-          text: `Para realizar consultas sobre un expediente específico, **necesito que ingreses un número de expediente válido**.\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de abajo.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
-          isUser: false,
-          timestamp: formatearSoloHoraCostaRica(new Date())
-        };
-
+        const { userMessage, assistantMessage } = createNoExpedienteMessage(text);
         setMessages(prev => [...prev, userMessage, assistantMessage]);
         return;
       }
@@ -243,39 +160,22 @@ const ConsultaChat = ({ initialMode }) => {
     stopStreamingRef.current = false;
     retryCountRef.current = 0;
 
-    // Crear nueva referencia de request con ID único para rastreo
     const requestId = Date.now();
     currentRequestRef.current = { active: true, id: requestId };
 
-    // Crear mensaje del usuario
-    const userMessage = {
-      text,
-      isUser: true,
-      timestamp: formatearSoloHoraCostaRica(new Date()),
-      scope: searchScope,
-      expedienteNumber: searchScope === 'expediente' ? consultedExpediente : null
-    };
-
-    // Agregar mensaje del usuario
+    // Crear y agregar mensaje del usuario
+    const userMessage = createUserMessage(text, searchScope, consultedExpediente);
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Crear mensaje del asistente vacío SIN timestamp
-    const assistantMessage = {
-      text: '',
-      isUser: false,
-      timestamp: '' // Se asignará cuando termine la respuesta
-    };
-
-    // Agregar mensaje vacío del asistente
+    // Crear y agregar mensaje vacío del asistente
+    const assistantMessage = createEmptyAssistantMessage();
     setMessages(prev => [...prev, assistantMessage]);
 
-    // Obtener el índice del mensaje que vamos a actualizar
-    const messageIndex = messages.length + 1; // +1 porque ya agregamos el mensaje del usuario
+    const messageIndex = messages.length + 1;
     setStreamingMessageIndex(messageIndex);
     setIsTyping(false);
 
-    // Validar que tengamos session_id antes de continuar
     if (!sessionId) {
       setIsTyping(false);
       setStreamingMessageIndex(null);
@@ -284,147 +184,52 @@ const ConsultaChat = ({ initialMode }) => {
 
     // ======= MODO STREAMING MEJORADO =======
     try {
-      // Definir callbacks comunes para ambos tipos de consulta
-      const onChunk = (chunk) => {
-        // Callback para cada chunk recibido
-        // Verificar que esta request siga siendo la activa
-        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                text: (updatedMessages[messageIndex].text || '') + chunk
-              };
-            }
-            return updatedMessages;
-          });
-        }
+      // Crear función de reintento
+      const retryFunction = () => {
+        return consultaService.consultaGeneralStreaming(
+          text,
+          callbacks.onChunk,
+          callbacks.onComplete,
+          callbacks.onError,
+          null,
+          sessionId,
+          searchScope === 'expediente' ? consultedExpediente : null
+        );
       };
 
-      const onComplete = () => {
-        // Callback cuando termina el streaming
-        // Verificar que esta request siga siendo la activa
-        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
-          currentRequestRef.current = null;
-
-          // Asignar timestamp al mensaje completado
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              const responseText = updatedMessages[messageIndex].text || '';
-              
-              // Solo reintentar si la respuesta está completamente vacía Y no hemos reintentado antes
-              if (!responseText.trim() && retryCountRef.current === 0) {
-                retryCountRef.current = 1;
-                
-                // Mantener el mensaje y agregar indicador de reintento
-                updatedMessages[messageIndex] = {
-                  ...updatedMessages[messageIndex],
-                  text: 'Reintentando obtener respuesta...',
-                  timestamp: '',
-                  isRetrying: true
-                };
-                
-                // Reintentar después de una pausa
-                setTimeout(() => {
-                  // Verificar que no se haya iniciado otra consulta mientras tanto
-                  if (currentRequestRef.current === null || currentRequestRef.current.id === requestId) {
-                    setIsTyping(true);
-                    setStreamingMessageIndex(messageIndex);
-                    
-                    const retryRequestId = requestId + 0.1; // ID ligeramente diferente para el reintento
-                    currentRequestRef.current = { active: true, id: retryRequestId };
-                    
-                    // Limpiar el mensaje antes de reintentar
-                    setMessages(prev => {
-                      const updated = [...prev];
-                      if (updated[messageIndex]) {
-                        updated[messageIndex] = {
-                          ...updated[messageIndex],
-                          text: '',
-                          isRetrying: false
-                        };
-                      }
-                      return updated;
-                    });
-                    
-                    consultaService.consultaGeneralStreaming(
-                      text,
-                      onChunk,
-                      onComplete,
-                      onError,
-                      null,
-                      sessionId,
-                      searchScope === 'expediente' ? consultedExpediente : null
-                    ).catch(onError);
-                  }
-                }, 1500);
-                
-                return updatedMessages;
-              }
-              
-              // Respuesta exitosa o ya reintentamos
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                timestamp: formatearSoloHoraCostaRica(new Date()),
-                isRetrying: false
-              };
-            }
-            return updatedMessages;
-          });
-        }
-      };
-
-      const onError = (error) => {
-        // Callback para errores
-        // Verificar que esta request siga siendo la activa
-        if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
-          setStreamingMessageIndex(null);
-          setIsTyping(false);
-          currentRequestRef.current = null;
-
-          setMessages(prevMessages => {
-            const updatedMessages = [...prevMessages];
-            if (updatedMessages[messageIndex]) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                text: 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta nuevamente o consulta con un profesional legal.',
-                isError: true,
-                timestamp: formatearSoloHoraCostaRica(new Date())
-              };
-            }
-            return updatedMessages;
-          });
-        }
-      };
+      // Crear callbacks usando utilidad
+      const callbacks = createStreamingCallbacks(
+        messageIndex,
+        currentRequestRef,
+        requestId,
+        setMessages,
+        setStreamingMessageIndex,
+        setIsTyping,
+        retryCountRef,
+        retryFunction
+      );
 
       // Llamar al servicio con gestión automática de historial
       await consultaService.consultaGeneralStreaming(
         text,
-        onChunk,
-        onComplete,
-        onError,
-        null, // topK null = usar config según tipo de búsqueda
-        sessionId,  // Backend gestiona historial con este ID
-        searchScope === 'expediente' ? consultedExpediente : null // pasar expediente como parámetro
+        callbacks.onChunk,
+        callbacks.onComplete,
+        callbacks.onError,
+        null,
+        sessionId,
+        searchScope === 'expediente' ? consultedExpediente : null
       );
 
     } catch (error) {
-      // Limpiar estado
       setStreamingMessageIndex(null);
       setIsTyping(false);
       currentRequestRef.current = null;
 
-      // Mostrar mensaje de error específico
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         if (updatedMessages[messageIndex]) {
           let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta.';
 
-          // Manejar diferentes tipos de error
           const errorText = typeof error === 'string' ? error : (error.message || error.toString() || 'Error desconocido');
 
           if (errorText.includes('No se puede conectar con el servidor backend')) {
@@ -477,25 +282,14 @@ const ConsultaChat = ({ initialMode }) => {
         {messages.length > 0 && (
           <button
             onClick={() => {
-              // Mantener el modo actual (general o expediente) y solo limpiar la conversación
-              newSession();  // Generar nuevo session_id y limpiar sessionStorage
+              newSession();
               setMessages([]);
-              setIsRestoringSession(false); // No mostrar loader en nueva conversación
+              setIsRestoringSession(false);
               
-              // Solo limpiar expediente si estamos en modo expediente
               if (searchScope === 'expediente') {
                 setConsultedExpediente(null);
-                
-                // Mostrar mensaje de bienvenida para modo expediente
-                const welcomeMessage = {
-                  text: EXPEDIENTE_WELCOME_MESSAGE,
-                  isUser: false,
-                  timestamp: formatearSoloHoraCostaRica(new Date())
-                };
-                // Usar setTimeout para asegurar que se ejecute después del setMessages([])
-                setTimeout(() => setMessages([welcomeMessage]), 0);
+                setTimeout(() => setMessages([createWelcomeMessage()]), 0);
               }
-              // Para modo general, simplemente se queda con mensajes vacíos (estado inicial limpio)
             }}
             className="group flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-700 bg-white/50 hover:bg-white/90 rounded-md transition-colors duration-150"
             title="Nueva conversación"
@@ -581,20 +375,13 @@ const ConsultaChat = ({ initialMode }) => {
           }
         }}
         onNewConversation={() => {
-          // Crear nueva conversación
-          newSession();  // Generar nuevo session_id y limpiar sessionStorage
+          newSession();
           setMessages([]);
           setConsultedExpediente(null);
-          setIsRestoringSession(false); // No mostrar loader en nueva conversación
+          setIsRestoringSession(false);
           
-          // Si estamos en modo expediente, mostrar mensaje de bienvenida
           if (searchScope === 'expediente') {
-            const welcomeMessage = {
-              text: EXPEDIENTE_WELCOME_MESSAGE,
-              isUser: false,
-              timestamp: formatearSoloHoraCostaRica(new Date())
-            };
-            setMessages([welcomeMessage]);
+            setMessages([createWelcomeMessage()]);
           }
         }}
       />
