@@ -30,7 +30,6 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
       const fileName = rutaArchivo.split('/').pop() || 'archivo';
       await downloadService.downloadFile(rutaArchivo, fileName);
     } catch (error) {
-      console.error('Error descargando archivo:', error);
       Toast.error('Error', error.message || 'Error al descargar el archivo');
     }
   };
@@ -54,7 +53,6 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
         const rutaArchivo = Buffer.from(base64Path, 'base64').toString('utf-8');
         handleFileDownload(e, rutaArchivo);
       } catch (error) {
-        console.error('Error decodificando ruta:', error);
         Toast.error('Error', 'No se pudo procesar el enlace de descarga');
       }
     }
@@ -109,29 +107,29 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
     return html;
   };
 
+  // Función unificada para procesar rutas de archivos (consolidada)
+  const processFilePath = (rutaCompleta) => {
+    const rutaLimpia = rutaCompleta.trim();
+    const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
+    const base64Path = Buffer.from(rutaLimpia).toString('base64');
+    return { fileName, base64Path, rutaLimpia };
+  };
+
   // Función para limpiar las rutas de archivo del texto para copiar
   const cleanFilePathsForCopy = (text) => {
     if (!text) return '';
     
-    let cleanedText = text;
-    
-    // Patrón 1: Limpiar rutas dentro de paréntesis (uploads/...)
-    // Reemplaza (uploads/folder/file.ext) con solo (file.ext)
-    cleanedText = cleanedText.replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
-      const rutaLimpia = ruta.trim();
-      const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
-      return `(${fileName})`;
-    });
-    
-    // Patrón 2: Limpiar rutas sueltas uploads/ en el texto
-    // Reemplaza uploads/folder/file.ext con solo file.ext
-    cleanedText = cleanedText.replace(/uploads\/[^\s\[\]()]+/g, (match) => {
-      const rutaLimpia = match.trim();
-      const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
-      return fileName;
-    });
-    
-    return cleanedText;
+    return text
+      // Patrón 1: Limpiar rutas dentro de paréntesis (uploads/...)
+      .replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
+        const { fileName } = processFilePath(ruta);
+        return `(${fileName})`;
+      })
+      // Patrón 2: Limpiar rutas sueltas uploads/ en el texto
+      .replace(/uploads\/[^\s\[\]()]+/g, (match) => {
+        const { fileName } = processFilePath(match);
+        return fileName;
+      });
   };
 
   // Función para copiar al portapapeles con formato
@@ -162,7 +160,6 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Error al copiar:', err);
       // Fallback a texto plano si falla
       try {
         const cleanedText = cleanFilePathsForCopy(message.text);
@@ -170,7 +167,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (fallbackErr) {
-        console.error('Error en fallback:', fallbackErr);
+        // Error al copiar
       }
     }
   };
@@ -201,33 +198,21 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
 
     // Función para convertir rutas de archivo en enlaces descargables
     const processFileLinks = (text) => {
-      let resultado = text;
-      
-      // Patrón 1: Formato correcto con paréntesis (uploads/...)
-      const rutaParentesisPattern = /\(([^)]*uploads\/[^)]+)\)/g;
-      resultado = resultado.replace(rutaParentesisPattern, (match, ruta) => {
-        const rutaLimpia = ruta.trim();
-        const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
-        
-        // Usar un hash con la ruta codificada
-        return `([${fileName}](#download-${Buffer.from(rutaLimpia).toString('base64')}))`;
-      });
-      
-      // Patrón 2: Cualquier ruta uploads/ suelta en el texto (mejorado para espacios y caracteres especiales)
-      const rutaSueltaPattern = /(uploads\/[^\s\[\]()]+)/g;
-      resultado = resultado.replace(rutaSueltaPattern, (match, ruta) => {
-        const rutaLimpia = ruta.trim();
-        const fileName = decodeURIComponent(rutaLimpia.split('/').pop() || 'archivo');
-        
-        // Solo convertir si no está ya dentro de un enlace markdown
-        if (resultado.indexOf(`#download-`) !== -1 && resultado.indexOf(ruta) > resultado.lastIndexOf(`#download-`)) {
-          return match;
-        }
-        
-        return `[${fileName}](#download-${Buffer.from(rutaLimpia).toString('base64')})`;
-      });
-      
-      return resultado;
+      return text
+        // Patrón 1: Formato correcto con paréntesis (uploads/...)
+        .replace(/\(([^)]*uploads\/[^)]+)\)/g, (match, ruta) => {
+          const { fileName, base64Path } = processFilePath(ruta);
+          return `([${fileName}](#download-${base64Path}))`;
+        })
+        // Patrón 2: Cualquier ruta uploads/ suelta en el texto
+        .replace(/(uploads\/[^\s\[\]()]+)/g, (match, ruta) => {
+          // Solo convertir si no está ya dentro de un enlace markdown
+          if (text.indexOf(`#download-`) !== -1 && text.indexOf(ruta) > text.lastIndexOf(`#download-`)) {
+            return match;
+          }
+          const { fileName, base64Path } = processFilePath(ruta);
+          return `[${fileName}](#download-${base64Path})`;
+        });
     };
 
     const cleanContent = processFileLinks(preprocessContent(content));

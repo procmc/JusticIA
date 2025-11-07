@@ -7,6 +7,23 @@ import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { validarFormatoExpediente, normalizarExpediente } from '../../../utils/ingesta-datos/ingestaUtils';
 import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 
+// Mensaje de bienvenida para modo expediente (extraído para evitar duplicación)
+const EXPEDIENTE_WELCOME_MESSAGE = `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+
+Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
+
+---
+
+### **¿Cómo funciona?**
+
+**1.** Proporciona el número del expediente que deseas analizar  
+**2.** Realiza cualquier consulta específica sobre el caso  
+**3.** Cambia a otro expediente escribiendo un nuevo número  
+
+---
+
+**¿Tienes el número de expediente que quieres consultar?**`;
+
 const ConsultaChat = ({ initialMode }) => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -24,23 +41,8 @@ const ConsultaChat = ({ initialMode }) => {
   useEffect(() => {
     if (initialMode === 'expediente') {
       setSearchScope('expediente');
-      // Mostrar mensaje de bienvenida específico para el modo expediente
       const welcomeMessage = {
-        text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
-
-Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
-
----
-
-### **¿Cómo funciona?**
-
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
-
----
-
-**¿Tienes el número de expediente que quieres consultar?**`,
+        text: EXPEDIENTE_WELCOME_MESSAGE,
         isUser: false,
         timestamp: formatearSoloHoraCostaRica(new Date())
       };
@@ -62,21 +64,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
       // Mostrar mensaje de bienvenida específico para el modo expediente
       if (newScope === 'expediente') {
         const welcomeMessage = {
-          text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
-
-Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
-
----
-
-### **¿Cómo funciona?**
-
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
-
----
-
-**¿Tienes el número de expediente que quieres consultar?**`,
+          text: EXPEDIENTE_WELCOME_MESSAGE,
           isUser: false,
           timestamp: formatearSoloHoraCostaRica(new Date())
         };
@@ -84,9 +72,6 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
       }
     }
   };
-
-  // Función para detectar si un texto es un número de expediente
-  const isExpedienteNumber = validarFormatoExpediente;
 
   // Estado para el modal de historial
   const [showHistory, setShowHistory] = useState(false);
@@ -120,7 +105,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
             }
           }
         } catch (error) {
-          console.error('Error restaurando desde sessionStorage:', error);
+          // Error al parsear, limpiar datos corruptos
           sessionStorage.removeItem('current_chat_messages');
         }
       }
@@ -182,7 +167,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
   };
 
   const handleSendMessage = async (text) => {
-    // IMPORTANTE: Cancelar cualquier consulta en progreso PRIMERO
+    // Cancelar cualquier consulta en progreso primero
     if (currentRequestRef.current?.active) {
       stopStreamingRef.current = true;
       currentRequestRef.current.active = false;
@@ -194,7 +179,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
     // Si estamos en modo expediente específico
     if (searchScope === 'expediente') {
       // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
-      if (isExpedienteNumber(text)) {
+      if (validarFormatoExpediente(text)) {
         // Normalizar el expediente (convertir guiones Unicode a ASCII y mayúsculas)
         const newExpediente = normalizarExpediente(text.trim());
 
@@ -224,11 +209,11 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
 
           setMessages(prev => [...prev, userMessage, assistantMessage]);
 
-          // NUEVO: Actualizar inmediatamente el contexto en el backend
+          // Actualizar el contexto en el backend
           const action = consultedExpediente ? 'change' : 'set';
           consultaService.updateExpedienteContext(sessionId, newExpediente, action)
-            .catch(error => {
-              console.error('Error sincronizando contexto:', error);
+            .catch(() => {
+              // Error sincronizando contexto con el backend
             });
           return;
         }
@@ -292,7 +277,6 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
 
     // Validar que tengamos session_id antes de continuar
     if (!sessionId) {
-      console.error('No hay session_id disponible');
       setIsTyping(false);
       setStreamingMessageIndex(null);
       return;
@@ -336,7 +320,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
               if (!responseText.trim() && retryCountRef.current === 0) {
                 retryCountRef.current = 1;
                 
-                // NO vaciar el texto, mantener el mensaje y agregar indicador de reintento
+                // Mantener el mensaje y agregar indicador de reintento
                 updatedMessages[messageIndex] = {
                   ...updatedMessages[messageIndex],
                   text: 'Reintentando obtener respuesta...',
@@ -398,7 +382,6 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
         // Callback para errores
         // Verificar que esta request siga siendo la activa
         if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
-          console.error('Error en consulta:', error);
           setStreamingMessageIndex(null);
           setIsTyping(false);
           currentRequestRef.current = null;
@@ -430,8 +413,6 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
       );
 
     } catch (error) {
-      console.error('Error en handleSendMessage:', error);
-
       // Limpiar estado
       setStreamingMessageIndex(null);
       setIsTyping(false);
@@ -447,9 +428,9 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
           const errorText = typeof error === 'string' ? error : (error.message || error.toString() || 'Error desconocido');
 
           if (errorText.includes('No se puede conectar con el servidor backend')) {
-            errorMessage = '🔌 **Error de Conexión**\n\nNo se puede conectar con el servidor backend. Por favor verifica que:\n\n• El servidor backend esté ejecutándose en el puerto 8000\n• Ollama esté activo en el puerto 11434\n• No haya problemas de red\n\nIntenta nuevamente en unos momentos.';
+            errorMessage = '**Error de Conexión**\n\nNo se puede conectar con el servidor backend. Por favor verifica que:\n\n• El servidor backend esté ejecutándose en el puerto 8000\n• Ollama esté activo en el puerto 11434\n• No haya problemas de red\n\nIntenta nuevamente en unos momentos.';
           } else if (errorText.includes('Failed to fetch')) {
-            errorMessage = '🔌 **Error de Red**\n\nNo se puede conectar con el servidor. Verifica tu conexión y que los servicios estén activos.';
+            errorMessage = '**Error de Red**\n\nNo se puede conectar con el servidor. Verifica tu conexión y que los servicios estén activos.';
           }
 
           updatedMessages[messageIndex] = {
@@ -507,21 +488,7 @@ Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borrad
                 
                 // Mostrar mensaje de bienvenida para modo expediente
                 const welcomeMessage = {
-                  text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
-
-Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que selecciones.
-
----
-
-### **¿Cómo funciona?**
-
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
-
----
-
-**¿Tienes el número de expediente que quieres consultar?**`,
+                  text: EXPEDIENTE_WELCOME_MESSAGE,
                   isUser: false,
                   timestamp: formatearSoloHoraCostaRica(new Date())
                 };
@@ -623,21 +590,7 @@ Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que s
           // Si estamos en modo expediente, mostrar mensaje de bienvenida
           if (searchScope === 'expediente') {
             const welcomeMessage = {
-              text: `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
-
-Puedo ayudarte a generar resúmenes y crear borradores sobre el expediente que selecciones.
-
----
-
-### **¿Cómo funciona?**
-
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
-
----
-
-**¿Tienes el número de expediente que quieres consultar?**`,
+              text: EXPEDIENTE_WELCOME_MESSAGE,
               isUser: false,
               timestamp: formatearSoloHoraCostaRica(new Date())
             };
