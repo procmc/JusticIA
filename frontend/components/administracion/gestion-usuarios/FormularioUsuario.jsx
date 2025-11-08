@@ -290,6 +290,12 @@ const FormularioUsuario = ({
             errorMessage={errores.CT_Correo}
             isRequired
             variant="bordered"
+            isDisabled={modo === 'editar'}
+            classNames={{
+              input: modo === 'editar' ? "text-sm bg-gray-100 text-gray-700" : "text-sm",
+              label: modo === 'editar' ? "text-sm font-medium text-gray-700" : "text-sm font-medium",
+              inputWrapper: modo === 'editar' ? "bg-gray-100 border-gray-300" : ""
+            }}
             color='primary'
           />
 
