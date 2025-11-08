@@ -125,7 +125,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
+        display: false,
       },
     },
     scales: {
