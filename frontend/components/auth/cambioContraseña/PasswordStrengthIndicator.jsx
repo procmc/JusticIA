@@ -43,8 +43,13 @@ const PasswordStrengthIndicator = ({ password, showInstructions = true }) => {
     return configs[score] || configs[0];
   };
 
+  // Si showInstructions es false, no mostrar nada (la validación se maneja en el formulario)
+  if (!showInstructions) {
+    return null;
+  }
+
   // Mostrar instrucciones solo si no hay contraseña
-  if (!password && showInstructions) {
+  if (!password) {
     return (
       <div className="-mt-2 w-full p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-xs font-medium text-blue-900 mb-2">
@@ -72,7 +77,7 @@ const PasswordStrengthIndicator = ({ password, showInstructions = true }) => {
     );
   }
 
-  if (!password || !strength) return null;
+  if (!strength) return null;
 
   const config = getStrengthConfig(strength.score);
 

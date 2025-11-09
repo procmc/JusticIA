@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, Divider } from "@heroui/react";
 import { useRouter } from "next/router";
+import zxcvbn from "zxcvbn";
 import {
     solicitarRecuperacionService,
     verificarCodigoRecuperacionService,
@@ -171,6 +172,12 @@ const RecuperarContraseñaForm = () => {
                 newErrors.nuevaContraseña = "La nueva contraseña es requerida";
             } else if (formData.nuevaContraseña.length < 8) {
                 newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
+            } else {
+                // Validar fortaleza de la contraseña con zxcvbn
+                const strengthResult = zxcvbn(formData.nuevaContraseña);
+                if (strengthResult.score < 2) {
+                    newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elige una contraseña más segura.";
+                }
             }
 
             if (!formData.confirmarContraseña.trim()) {

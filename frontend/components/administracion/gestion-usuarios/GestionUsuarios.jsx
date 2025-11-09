@@ -220,13 +220,17 @@ const GestionUsuarios = () => {
         isOpen={modalConfirmResetAbierto}
         onClose={cerrarModalConfirmReset}
         title="Resetear Contraseña"
-        description={`¿Estás seguro de que deseas resetear la contraseña del usuario ${usuarioParaReset?.CN_Nombre || ''} ${usuarioParaReset?.CN_Apellido1 || ''} ${usuarioParaReset?.CN_Apellido2 || ''}?\n\nSe enviará un correo electrónico a ${usuarioParaReset?.CT_Correo || ''} con las instrucciones para establecer una nueva contraseña.`}
+        description={`¿Estás seguro de que deseas resetear la contraseña del usuario ${usuarioParaReset?.CT_Nombre || ''} ${usuarioParaReset?.CT_Apellido_uno || ''} ${usuarioParaReset?.CT_Apellido_dos || ''}?
+
+Se enviará un correo electrónico a ${usuarioParaReset?.CT_Correo || ''} con las instrucciones para establecer una nueva contraseña.`}
         confirmText={loadingResetPassword ? "Enviando..." : "Sí, Resetear"}
         cancelText="Cancelar"
         confirmColor="danger"
         onConfirm={confirmarResetearContrasena}
         isLoading={loadingResetPassword}
         disableBackdropClose={loadingResetPassword}
+        size="lg"
+        centered={false}
       />
     </div>
   );

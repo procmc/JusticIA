@@ -2,6 +2,7 @@ import React from "react";
 import { Form, Input, Button } from "@heroui/react";
 import { EyeFilledIcon } from "../../../icons/EyeFilledIcon";
 import { EyeSlashFilledIcon } from "../../../icons/EyeSlashFilledIcon";
+import PasswordStrengthIndicator from "../../cambioContraseña/PasswordStrengthIndicator";
 
 const Step3Password = ({ 
     formData, 
@@ -55,6 +56,7 @@ const Step3Password = ({
                         />
                     }
                 />
+                <PasswordStrengthIndicator password={formData.nuevaContraseña} showInstructions={false} />
 
                 <Input
                     label="Confirmar nueva contraseña"

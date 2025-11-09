@@ -61,7 +61,7 @@ const ConfirmModal = ({
   // Configuración de tamaños
   const sizeConfig = {
     sm: "max-w-sm",
-    md: "max-w-lg", 
+    md: "max-w-md", 
     lg: "max-w-2xl",
     xl: "max-w-4xl"
   };
@@ -86,15 +86,17 @@ const ConfirmModal = ({
 
   // Componente para el ícono y título juntos
   const IconTitleSection = () => (
-    <div className="flex items-center space-x-3">
+    <div className="flex items-center space-x-4">
       {showIcon && (
-        <div className={`${currentTheme.iconBg} ${currentTheme.iconColor} p-3 rounded-full shadow-lg ring-2 ring-white/50`}>
+        <div className={`${currentTheme.iconBg} ${currentTheme.iconColor} p-3 rounded-full shadow-lg ring-2 ring-white/50 flex-shrink-0`}>
           {modalIcon}
         </div>
       )}
-      <h3 className={`text-xl font-bold ${currentTheme.titleColor} leading-tight flex-1`}>
-        {title}
-      </h3>
+      <div className="flex-1">
+        <h3 className={`text-xl md:text-2xl font-bold ${currentTheme.titleColor} leading-tight`}>
+          {title}
+        </h3>
+      </div>
     </div>
   );
 
@@ -104,7 +106,7 @@ const ConfirmModal = ({
       {customContent ? (
         customContent
       ) : (
-        <p className="text-gray-600 leading-relaxed text-base whitespace-pre-line">
+        <p className="text-gray-700 leading-relaxed text-base md:text-lg whitespace-pre-line">
           {description}
         </p>
       )}
@@ -175,13 +177,13 @@ const ConfirmModal = ({
       classNames={{
         base: `${sizeConfig[size]} mx-4`,
         backdrop: "bg-gradient-to-t from-zinc-900/50 to-zinc-900/50",
-        body: "py-8 px-6",
-        footer: "px-6 py-4",
+        body: "py-6 px-6",
+        footer: "px-6 py-5",
         closeButton: "hover:bg-white/5 active:bg-white/10 transition-colors",
       }}
     >
       <ModalContent className="bg-white/95 backdrop-blur-md shadow-2xl border border-white/20">
-        <ModalHeader className="flex flex-col gap-1 px-6 pt-6 pb-2 border-b-0">
+        <ModalHeader className="flex flex-col gap-1 px-6 pt-6 pb-4 border-b-0">
           <IconTitleSection />
         </ModalHeader>
         
@@ -189,7 +191,7 @@ const ConfirmModal = ({
           <ContentSection />
         </ModalBody>
         
-        <ModalFooter className="">
+        <ModalFooter className="border-t-0">
           <ButtonSection />
         </ModalFooter>
       </ModalContent>
