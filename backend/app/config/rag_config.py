@@ -12,13 +12,15 @@ class RAGConfig:
     # UMBRALES DE SIMILITUD
     # ========================================
     
-    SIMILARITY_THRESHOLD_GENERAL = 0.22
+    SIMILARITY_THRESHOLD_GENERAL = 0.20
     """Umbral para búsquedas generales en toda la base de datos.
     
-    Optimizado para BGE-M3 legal español:
+    AJUSTADO de 0.22 → 0.20 para reducir falsos negativos:
+    - Optimizado para BGE-M3 legal español
     - Rango efectivo del modelo: [0.15, 0.50] para contenido relevante
-    - 0.22 captura variaciones terminológicas legales sin incluir ruido
+    - 0.20 captura más variaciones terminológicas legales sin incluir ruido excesivo
     - Balance entre recall (encontrar contenido) y precision (calidad)
+    - Reduce casos donde chunks relevantes quedan justo por debajo del umbral
     
     Demasiado alto (>0.30): Pierde documentos relevantes con vocabulario diferente
     Demasiado bajo (<0.18): Incluye demasiado ruido y contexto irrelevante
