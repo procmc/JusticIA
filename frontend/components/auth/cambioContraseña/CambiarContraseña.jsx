@@ -5,6 +5,8 @@ import { Toast } from "../../ui/CustomAlert";
 import { EyeFilledIcon } from "../../icons/EyeFilledIcon";
 import { EyeSlashFilledIcon } from "../../icons/EyeSlashFilledIcon";
 import { signOut } from "next-auth/react";
+import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
+import zxcvbn from "zxcvbn";
 
 const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
     const [formData, setFormData] = useState({
@@ -60,8 +62,14 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
 
         if (!formData.nuevaContraseña.trim()) {
             newErrors.nuevaContraseña = "La nueva contraseña es requerida";
-        } else if (formData.nuevaContraseña.length < 6) {
-            newErrors.nuevaContraseña = "La nueva contraseña debe tener al menos 6 caracteres";
+        } else if (formData.nuevaContraseña.length < 8) {
+            newErrors.nuevaContraseña = "La nueva contraseña debe tener al menos 8 caracteres";
+        } else {
+            // Validar fortaleza con zxcvbn
+            const strength = zxcvbn(formData.nuevaContraseña);
+            if (strength.score < 2) {
+                newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elija una más segura";
+            }
         }
 
         if (!formData.confirmarContraseña.trim()) {
@@ -209,7 +217,7 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 isRequired
                 errorMessage={errors.nuevaContraseña}
                 isInvalid={!!errors.nuevaContraseña}
-                placeholder="Ingrese su nueva contraseña (mínimo 6 caracteres)"
+                placeholder="Ingrese su nueva contraseña (mínimo 8 caracteres)"
                 color="primary"
                 variant="bordered"
                 size="sm"
@@ -221,6 +229,7 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                     />
                 }
             />
+            <PasswordStrengthIndicator password={formData.nuevaContraseña} />
 
             <Input
                 label="Confirmar nueva contraseña"
