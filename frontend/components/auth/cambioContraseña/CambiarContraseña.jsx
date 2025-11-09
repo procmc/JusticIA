@@ -5,7 +5,6 @@ import { Toast } from "../../ui/CustomAlert";
 import { EyeFilledIcon } from "../../icons/EyeFilledIcon";
 import { EyeSlashFilledIcon } from "../../icons/EyeSlashFilledIcon";
 import { signOut } from "next-auth/react";
-import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 import zxcvbn from "zxcvbn";
 
 const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
@@ -229,7 +228,6 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                     />
                 }
             />
-            <PasswordStrengthIndicator password={formData.nuevaContraseña} />
 
             <Input
                 label="Confirmar nueva contraseña"
