@@ -39,6 +39,9 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
     setLoadingAction(sessionId);
     
     try {
+      // 🔥 SIEMPRE restaurar en backend primero para cargar historial en memoria
+      await restoreConversation(sessionId);
+      
       // Obtener detalles completos de la conversación
       const conversation = await getConversationDetail(sessionId);
       
@@ -46,15 +49,9 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
         // Notificar al componente padre para que cargue la conversación
         onConversationSelect?.(sessionId, conversation);
         onClose();
-      } else {
-        // No se pudieron obtener los detalles, intentar restaurar
-        const restored = await restoreConversation(sessionId);
-        if (restored) {
-          onConversationSelect?.(sessionId, restored);
-          onClose();
-        }
       }
     } catch (err) {
+      console.error('Error al seleccionar conversación:', err);
       // Error al seleccionar conversación
     } finally {
       setLoadingAction(null);
