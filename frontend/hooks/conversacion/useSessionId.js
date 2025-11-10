@@ -79,9 +79,26 @@ export const useSessionId = () => {
     return newId;
   }, [session?.user?.email]);
 
+  // Función para restaurar una conversación existente con su session_id original
+  const restoreSession = useCallback((existingSessionId) => {
+    if (!existingSessionId) {
+      console.error('restoreSession: sessionId no válido');
+      return false;
+    }
+    
+    // Actualizar el sessionId a la sesión existente
+    setSessionId(existingSessionId);
+    
+    // Guardar en sessionStorage para persistir en reloads
+    sessionStorage.setItem('current_chat_session', existingSessionId);
+    
+    return true;
+  }, []);
+
   return {
     sessionId,
     newSession,
+    restoreSession,
     isReady
   };
 };

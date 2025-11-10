@@ -61,7 +61,7 @@ const ConsultaChat = ({ initialMode }) => {
   const [showHistory, setShowHistory] = useState(false);
 
   // Hook para gestión de session_id (backend gestiona el historial automáticamente)
-  const { sessionId, newSession, isReady } = useSessionId();
+  const { sessionId, newSession, restoreSession, isReady } = useSessionId();
 
   // Efecto para restaurar conversación SOLO si venimos de un reload (no de navegación)
   useEffect(() => {
@@ -358,9 +358,12 @@ const ConsultaChat = ({ initialMode }) => {
       <ConversationHistory
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
-        onConversationSelect={(sessionId, conversation) => {
+        onConversationSelect={(selectedSessionId, conversation) => {
           // Restaurar conversación seleccionada
           if (conversation && conversation.messages) {
+            // 🎯 CRÍTICO: Restaurar el session_id original ANTES de cargar los mensajes
+            restoreSession(selectedSessionId);
+            
             // Convertir mensajes del backend al formato del frontend
             const restoredMessages = conversation.messages.map((msg, index) => ({
               text: msg.content,
@@ -378,14 +381,6 @@ const ConsultaChat = ({ initialMode }) => {
               setConsultedExpediente(conversation.expediente_number);
               setSearchScope('expediente');
 
-              // Notificar al backend que esta sesión usa este expediente
-              consultaService.updateExpedienteContext(
-                sessionId, 
-                conversation.expediente_number, 
-                'set'
-              ).catch(err => {
-                console.error('Error actualizando contexto de expediente:', err);
-              });
             } else {
               setSearchScope('general');
               setConsultedExpediente(null);
