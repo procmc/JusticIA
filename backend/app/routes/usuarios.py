@@ -156,26 +156,16 @@ async def resetear_contrasenna(
     Solo para administradores.
     """
     try:
-        print(f"[DEBUG] Iniciando reseteo de contraseña para usuario: {usuario_id}")
-        print(f"[DEBUG] Administrador que ejecuta: {current_user['user_id']}")
-        
         usuario = await usuario_service.resetear_contrasenna_usuario(db, usuario_id)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-        print(f"[DEBUG] Contraseña reseteada exitosamente, registrando en bitácora...")
-        
         # Registrar reseteo en bitácora
-        resultado_bitacora = await usuarios_audit_service.registrar_reseteo_contrasena(
+        await usuarios_audit_service.registrar_reseteo_contrasena(
             db=db,
             usuario_admin_id=current_user["user_id"],
             usuario_reseteado_id=usuario_id
         )
-        
-        if resultado_bitacora:
-            print(f"[DEBUG] Bitácora registrada exitosamente con ID: {resultado_bitacora.CN_Id_bitacora}")
-        else:
-            print(f"[DEBUG] WARNING: No se pudo registrar en bitácora")
         
         return MensajeRespuesta(mensaje="Contraseña reseteada exitosamente. Se envió un correo con la nueva contraseña al usuario.")
         

@@ -166,7 +166,8 @@ async def refresh_token(
             email=usuario.CT_Correo,
             role=role,
             avatar_ruta=usuario.CT_Avatar_ruta,
-            avatar_tipo=usuario.CT_Avatar_tipo
+            avatar_tipo=usuario.CT_Avatar_tipo,
+            requiere_cambio_password=(usuario.CF_Ultimo_acceso is None)
         )
         
         return LoginResponse(

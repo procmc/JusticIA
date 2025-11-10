@@ -25,6 +25,7 @@ export default NextAuth({
             role: user.role,
             avatarRuta: user.avatar_ruta,
             avatarTipo: user.avatar_tipo,
+            requiereCambioPassword: user.requiere_cambio_password,
             // Incluir el access_token del backend para que pase a callbacks
             accessToken: result.access_token
           };
@@ -58,6 +59,7 @@ export default NextAuth({
         token.role = user.role;
         token.avatarRuta = user.avatarRuta;
         token.avatarTipo = user.avatarTipo;
+        token.requiereCambioPassword = user.requiereCambioPassword;
         token.accessToken = user.accessToken;
         token.accessTokenExpires = now + 60 * 60 * 1000; // 1 hora
       }
@@ -89,6 +91,7 @@ export default NextAuth({
       session.user.role = token.role;
       session.user.avatarRuta = token.avatarRuta;
       session.user.avatarTipo = token.avatarTipo;
+      session.user.requiere_cambio_password = token.requiereCambioPassword;
       // Exponer accessToken en la sesión para el httpService
       session.accessToken = token.accessToken;
       

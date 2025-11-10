@@ -51,9 +51,14 @@ class AuthService:
             if not self._usuario_activo(db, usuario):
                 raise ValueError('Credenciales inválidas')
             
-            # Actualizar fecha de último acceso
-            usuario.CF_Ultimo_acceso = datetime.utcnow()
-            db.commit()
+            # Verificar si requiere cambio de contraseña
+            requiere_cambio_password = usuario.CF_Ultimo_acceso is None
+            
+            # IMPORTANTE: Solo actualizar CF_Ultimo_acceso si NO requiere cambio de contraseña
+            # Si requiere cambio, se actualizará al momento de cambiar la contraseña
+            if not requiere_cambio_password:
+                usuario.CF_Ultimo_acceso = datetime.utcnow()
+                db.commit()
             
             # Obtener datos del usuario
             datos_usuario = self._obtener_datos_usuario(db, usuario)
@@ -74,7 +79,8 @@ class AuthService:
                     email=usuario.CT_Correo,  # Usar el correo real, no el nombre de usuario
                     role=datos_usuario['nombre_rol'],
                     avatar_ruta=usuario.CT_Avatar_ruta,
-                    avatar_tipo=usuario.CT_Avatar_tipo
+                    avatar_tipo=usuario.CT_Avatar_tipo,
+                    requiere_cambio_password=requiere_cambio_password
                 ),
                 access_token=access_token  # Incluir el token en la respuesta
             )
@@ -113,6 +119,11 @@ class AuthService:
             
             # Actualizar contraseña
             usuario.CT_Contrasenna = nueva_contrasenna_hash
+            
+            # Si CF_Ultimo_acceso es NULL, actualizarlo (significa que es cambio obligatorio completado)
+            if usuario.CF_Ultimo_acceso is None:
+                usuario.CF_Ultimo_acceso = datetime.utcnow()
+            
             db.commit()
             
             return True
@@ -317,9 +328,19 @@ class AuthService:
             # Encriptar la nueva contraseña
             nueva_contrasenna_hash = self.usuario_repo._hash_password(nueva_contrasenna)
             
-            # Actualizar la contraseña en la base de datos
+            # Actualizar la contraseña y forzar cambio obligatorio
             usuario.CT_Contrasenna = nueva_contrasenna_hash
+            
+            # IMPORTANTE: Poner CF_Ultimo_acceso en NULL para forzar cambio de contraseña
+            usuario.CF_Ultimo_acceso = None
+            
+            # Forzar que SQLAlchemy detecte los cambios
+            db.flush()
             db.commit()
+            
+            # Verificar que el cambio se aplicó correctamente
+            db.refresh(usuario)
+            print(f"✅ Usuario {cedula} reseteado - CF_Ultimo_acceso: {usuario.CF_Ultimo_acceso}")
             
             # Obtener datos del usuario para personalizar el email
             datos_usuario = self._obtener_datos_usuario(db, usuario)
