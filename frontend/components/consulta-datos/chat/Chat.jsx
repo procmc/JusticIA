@@ -377,6 +377,15 @@ const ConsultaChat = ({ initialMode }) => {
             if (conversation.expediente_number) {
               setConsultedExpediente(conversation.expediente_number);
               setSearchScope('expediente');
+
+              // Notificar al backend que esta sesión usa este expediente
+              consultaService.updateExpedienteContext(
+                sessionId, 
+                conversation.expediente_number, 
+                'set'
+              ).catch(err => {
+                console.error('Error actualizando contexto de expediente:', err);
+              });
             } else {
               setSearchScope('general');
               setConsultedExpediente(null);
