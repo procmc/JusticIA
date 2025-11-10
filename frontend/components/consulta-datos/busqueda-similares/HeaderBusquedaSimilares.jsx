@@ -21,36 +21,30 @@ const HeaderBusquedaSimilares = ({
 }) => {
   
   // Calcular estadísticas de búsqueda basadas en similarityPercentage
-  const totalResults = searchResults.length;
+  // PRIMERO filtrar por umbral
   const filteredResults = searchResults.filter(result => 
     (result.similarityPercentage || 0) >= similarityThreshold[0]
   );
-  const highSimilarity = searchResults.filter(result => 
+  
+  // Calcular categorías SOLO sobre resultados filtrados
+  const highSimilarity = filteredResults.filter(result => 
     (result.similarityPercentage || 0) >= 90
   ).length;
-  const mediumSimilarity = searchResults.filter(result => 
+  const mediumSimilarity = filteredResults.filter(result => 
     (result.similarityPercentage || 0) >= 70 && (result.similarityPercentage || 0) < 90
   ).length;
-  const lowSimilarity = searchResults.filter(result => 
+  const lowSimilarity = filteredResults.filter(result => 
     (result.similarityPercentage || 0) < 70
   ).length;
 
-  // Estadísticas por defecto cuando no hay búsqueda
-  const defaultStats = {
-    total: 0,
-    filtered: 0,
-    high: 0,
-    medium: 0,
-    low: 0
-  };
-
-  const currentStats = hasSearched ? {
-    total: totalResults,
+  // Mostrar SOLO los casos que pasan el umbral
+  const currentStats = {
+    total: filteredResults.length,  // Solo casos que cumplen umbral
     filtered: filteredResults.length,
     high: highSimilarity,
     medium: mediumSimilarity,
     low: lowSimilarity
-  } : defaultStats;
+  };
 
   return (
     <Card className="bg-primary text-white shadow-lg border-none">
