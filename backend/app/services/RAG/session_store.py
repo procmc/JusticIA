@@ -45,14 +45,16 @@ class LimitedChatMessageHistory(BaseChatMessageHistory):
     - El frontend puede ver todo el historial sin restricciones
     """
     
-    def __init__(self, full_history: InMemoryChatMessageHistory, limit: Optional[int] = None):
+    def __init__(self, full_history: InMemoryChatMessageHistory, limit: Optional[int] = None, save_callback: Optional[Callable] = None):
         """
         Args:
             full_history: Historial completo sin límites
             limit: Número máximo de mensajes a enviar al LLM (usa rag_config.CHAT_HISTORY_LIMIT si es None)
+            save_callback: Función a llamar después de añadir mensajes para persistir en Redis
         """
         self.full_history = full_history
         self.limit = limit if limit is not None else rag_config.CHAT_HISTORY_LIMIT
+        self.save_callback = save_callback
     
     @property
     def messages(self) -> List[BaseMessage]:
@@ -73,8 +75,11 @@ class LimitedChatMessageHistory(BaseChatMessageHistory):
         return limited
     
     def add_message(self, message: BaseMessage) -> None:
-        """Guarda en el historial completo (sin límites)"""
+        """Guarda en el historial completo (sin límites) y persiste en Redis"""
         self.full_history.add_message(message)
+        # Persistir en Redis después de cada mensaje
+        if self.save_callback:
+            self.save_callback(self.full_history.session_id)
     
     def clear(self) -> None:
         """Limpia el historial completo"""
@@ -174,7 +179,7 @@ class ConversationStore:
             )
             
             if success:
-                logger.info(f"Conversación {session_id} guardada en Redis")
+                logger.info(f"Conversación {session_id} guardada en Redis ({len(formatted_messages)} mensajes)")
             else:
                 logger.error(f"Error guardando conversación {session_id} en Redis")
             
@@ -190,7 +195,8 @@ class ConversationStore:
                 logger.debug(f"Conversación {session_id} no existe en Redis")
                 return False
             
-            logger.info(f"Conversación {session_id} cargada desde Redis")
+            messages_count = len(conversation_data.get("messages", []))
+            logger.info(f"Conversación {session_id} cargada desde Redis ({messages_count} mensajes)")
             
             # RESTAURAR EN MEMORIA
             metadata_dict = conversation_data.get("metadata", {})
@@ -259,20 +265,35 @@ class ConversationStore:
         - Límite configurable en rag_config.CHAT_HISTORY_LIMIT
         """
         if session_id not in self._store:
-            logger.info(f"Creando nueva sesión: {session_id}")
-            self._store[session_id] = InMemoryChatMessageHistory(session_id)
-            
-            # Crear metadatos si no existen
-            if session_id not in self._metadata:
-                # Extraer user_id del session_id (formato: session_user@example.com_timestamp)
-                parts = session_id.split('_')
-                user_id = parts[1] if len(parts) >= 3 else 'unknown'
+            logger.info(f"Sesión {session_id} no está en memoria - intentando cargar...")
+            # Intentar cargar desde Redis antes de crear una nueva
+            if not self._load_conversation_from_file(session_id):
+                logger.info(f"Creando nueva sesión: {session_id}")
+                self._store[session_id] = InMemoryChatMessageHistory(session_id)
                 
-                self._create_metadata(session_id, user_id)
+                # Crear metadatos si no existen
+                if session_id not in self._metadata:
+                    # Extraer user_id del session_id (formato: session_user@example.com_timestamp)
+                    parts = session_id.split('_')
+                    user_id = parts[1] if len(parts) >= 3 else 'unknown'
+                    
+                    self._create_metadata(session_id, user_id)
+            else:
+                logger.info(f"Historial cargado desde Redis: {session_id}")
+        
+        # Log del historial disponible
+        full_history = self._store[session_id]
+        total_messages = len(full_history.messages)
+        logger.info(f"Historial para sesión {session_id}: {total_messages} mensajes en total")
         
         # Retornar versión limitada para el LLM (usa límite de rag_config)
-        full_history = self._store[session_id]
-        return LimitedChatMessageHistory(full_history)
+        # IMPORTANTE: Pasar callback para guardar en Redis después de cada mensaje
+        limited = LimitedChatMessageHistory(
+            full_history,
+            save_callback=self._save_conversation_to_file
+        )
+        logger.info(f"Enviando al LLM: {len(limited.messages)} mensajes (límite: {limited.limit})")
+        return limited
     
     def _create_metadata(self, session_id: str, user_id: str) -> ConversationMetadata:
         """Crea metadatos para una nueva sesión"""

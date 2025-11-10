@@ -18,6 +18,7 @@ class FormattedRetriever(BaseRetriever):
     
     async def _aget_relevant_documents(self, query: str) -> List[Document]:
         # Obtener documentos del retriever base
+        logger.info(f"Query enviada a Milvus: {query[:200]}")
         docs = await self.base_retriever.ainvoke(query)
         
         if not docs:
