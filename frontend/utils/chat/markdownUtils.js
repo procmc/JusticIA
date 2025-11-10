@@ -101,7 +101,44 @@ export const processMarkdownContent = (content) => {
 export const markdownToHtml = (text) => {
   if (!text) return '';
   
-  let html = text
+  // Primero procesar tablas (deben procesarse antes que otros elementos)
+  let html = text.replace(/(\|.+\|[\r\n]+(?:\|[-:\s|]+\|[\r\n]+)(?:\|.+\|[\r\n]*)+)/g, (tableMatch) => {
+    const lines = tableMatch.trim().split('\n');
+    if (lines.length < 2) return tableMatch;
+    
+    // Primera línea = encabezados
+    const headers = lines[0].split('|').filter(cell => cell.trim()).map(h => h.trim());
+    
+    // Segunda línea es separador (la ignoramos)
+    // Resto = filas de datos
+    const rows = lines.slice(2).map(line => 
+      line.split('|').filter(cell => cell.trim()).map(c => c.trim())
+    );
+    
+    // Construir tabla HTML
+    let tableHtml = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+    tableHtml += '<thead><tr>';
+    headers.forEach(h => {
+      tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; font-weight: bold;">${h}</th>`;
+    });
+    tableHtml += '</tr></thead><tbody>';
+    
+    rows.forEach(row => {
+      if (row.length > 0) {
+        tableHtml += '<tr>';
+        row.forEach(cell => {
+          tableHtml += `<td style="border: 1px solid #ddd; padding: 8px;">${cell}</td>`;
+        });
+        tableHtml += '</tr>';
+      }
+    });
+    
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+  });
+  
+  // Convertir resto de elementos Markdown
+  html = html
     // Convertir negritas
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/__(.+?)__/g, '<strong>$1</strong>')
@@ -132,7 +169,7 @@ export const markdownToHtml = (text) => {
   });
   
   // Envolver en párrafos si no tiene tags de bloque
-  if (!html.includes('<h') && !html.includes('<ul>') && !html.includes('<blockquote>')) {
+  if (!html.includes('<h') && !html.includes('<ul>') && !html.includes('<blockquote>') && !html.includes('<table>')) {
     html = `<p>${html}</p>`;
   }
   
