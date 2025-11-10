@@ -42,14 +42,16 @@ class RAGConfig:
     Más permisivo que general (0.18 < 0.22) porque el expediente ya está acotado.
     """
     
-    SIMILARITY_THRESHOLD_FALLBACK = 0.12
+    SIMILARITY_THRESHOLD_FALLBACK = 0.25
     """Umbral mínimo para estrategia de fallback.
     
-    Último recurso cuando búsqueda principal no encuentra resultados:
-    - Muy permisivo intencionalmente (0.12 = ~50% de similitud)
-    - Previene respuestas "no se encontró información"
-    - Mejor dar contexto amplio que ninguna respuesta
+    AJUSTADO de 0.12 → 0.25 para evitar falsos positivos:
+    - Umbral anterior (0.12) era demasiado permisivo
+    - Causaba que búsquedas fuera del dominio (ej: "Donald Trump") devolvieran resultados irrelevantes
+    - 0.25 mantiene el fallback funcional pero con calidad mínima aceptable
+    - Previene que el sistema devuelva "cualquier cosa" por no encontrar contenido
     
+    Balance: Permite fallback útil sin comprometer la relevancia de los resultados.
     Solo se activa si la búsqueda normal falla (< MIN_RESULTS_THRESHOLD).
     """
     
@@ -109,8 +111,14 @@ class RAGConfig:
     ENABLE_FALLBACK = True
     """Habilitar sistema de fallback multi-estrategia."""
     
-    MIN_RESULTS_THRESHOLD = 3
-    """Mínimo de resultados para considerar la búsqueda exitosa."""
+    MIN_RESULTS_THRESHOLD = 5
+    """Mínimo de resultados para considerar la búsqueda exitosa.
+    
+    AJUSTADO de 3 → 5 para mejorar calidad:
+    - Con 3 resultados, el sistema activaba fallback demasiado pronto
+    - 5 resultados es un mejor indicador de búsqueda exitosa
+    - Combinado con umbral fallback de 0.25, previene resultados irrelevantes
+    """
     
     FALLBACK_THRESHOLD_MULTIPLIER = 0.7
     """Factor para relajar el umbral en fallback (70% del original)."""
