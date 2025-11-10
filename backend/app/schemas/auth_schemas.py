@@ -12,6 +12,7 @@ class UserInfo(BaseModel):
     role: str  # Rol del usuario
     avatar_ruta: Optional[str] = None  # Ruta de la imagen de perfil
     avatar_tipo: Optional[str] = None  # Tipo de avatar preferido
+    requiere_cambio_password: bool = False  # Si debe cambiar contraseña (NULL en CF_Ultimo_acceso)
 
 class LoginResponse(BaseModel):
     success: bool

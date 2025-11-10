@@ -117,6 +117,9 @@ class UsuarioRepository:
         contrasenna_hash = self._hash_password(nueva_contrasenna)
         usuario.CT_Contrasenna = contrasenna_hash
         
+        # Limpiar fecha de último acceso para forzar cambio de contraseña obligatorio
+        usuario.CF_Ultimo_acceso = None
+        
         db.commit()
         db.refresh(usuario)
         return usuario

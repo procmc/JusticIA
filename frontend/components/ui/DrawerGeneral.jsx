@@ -17,6 +17,7 @@ const DrawerGeneral = ({
     botonCerrar = { mostrar: true, texto: "Cerrar" },
     botonAccion = null, // { texto: "Guardar", onPress: fn, loading: false, color: "primary" }
     disableClose = false,
+    hideCloseButton = false,
 }) => {
     const handleCerrar = () => {
         if (botonCerrar.onPress) {
@@ -31,6 +32,9 @@ const DrawerGeneral = ({
             isOpen={isOpen} 
             onOpenChange={disableClose ? undefined : onOpenChange} 
             size={size}
+            hideCloseButton={hideCloseButton}
+            isDismissable={!disableClose}
+            isKeyboardDismissDisabled={disableClose}
             classNames={{
                 base: "border-none",
                 backdrop: "bg-gradient-to-t from-zinc-900/50 to-zinc-900/10",
