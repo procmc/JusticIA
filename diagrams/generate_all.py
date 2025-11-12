@@ -1,14 +1,13 @@
 """
 Script maestro para generar todos los diagramas de arquitectura.
 
-Este script ejecuta todos los niveles de diagramas en secuencia:
-- Nivel 0: Contexto del Sistema
-- Nivel 1: Arquitectura de Contenedores
-- Nivel 2A: Módulo de Ingesta
-- Nivel 2B: Módulo RAG (Chat)
-- Nivel 2C: Búsqueda de Casos Similares
-- Nivel 3: Flujo de Datos
-- Nivel 4: Deployment
+Este script ejecuta todos los diagramas en secuencia:
+- Contexto del Sistema
+- Procesamiento de Documentos Legales
+- Consultas con IA (RAG)
+- Búsqueda de Similitud de Casos
+- Stack Tecnológico y Dependencias
+- Arquitectura de Despliegue
 
 Uso:
     python generate_all.py
@@ -64,13 +63,12 @@ def main():
     
     # Lista de diagramas a generar
     diagrams = [
-        ("nivel_0_contexto.py", "Nivel 0 - Contexto del Sistema"),
-        ("nivel_1_contenedores.py", "Nivel 1 - Arquitectura de Contenedores"),
-        ("nivel_2a_ingesta.py", "Nivel 2A - Módulo de Ingesta"),
-        ("nivel_2b_rag.py", "Nivel 2B - Módulo RAG (Chat)"),
-        ("nivel_2c_similares.py", "Nivel 2C - Búsqueda de Casos Similares"),
-        ("nivel_3_flujo_datos.py", "Nivel 3 - Flujo de Datos Completo"),
-        ("nivel_4_deployment.py", "Nivel 4 - Deployment & Infraestructura"),
+        ("contexto_sistema.py", "Contexto del Sistema"),
+        ("procesamiento_documentos.py", "Procesamiento de Documentos Legales"),
+        ("consultas_ia_rag.py", "Consultas con IA (RAG)"),
+        ("busqueda_similitud.py", "Búsqueda de Similitud de Casos"),
+        ("stack_tecnologico.py", "Stack Tecnológico y Dependencias"),
+        ("arquitectura_despliegue.py", "Arquitectura de Despliegue"),
     ]
     
     start_total = time.time()
