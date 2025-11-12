@@ -153,3 +153,29 @@ def require_administrador(request: Request) -> Dict[str, Any]:
         db.close()
 
 
+def require_usuario_autenticado(request: Request) -> Dict[str, Any]:
+    """
+    FastAPI Dependency para validar autenticación (permite cualquier rol válido).
+    Útil para endpoints donde tanto administradores como usuarios judiciales pueden acceder.
+    
+    Uso:
+        from fastapi import Depends
+        from app.auth.jwt_auth import require_usuario_autenticado
+        
+        @router.put("/usuarios/{usuario_id}/avatar")
+        async def actualizar_avatar(
+            current_user: dict = Depends(require_usuario_autenticado)
+        ):
+            # current_user contiene: {"user_id": int, "username": str, "role": str}
+    """
+    # Intentar primero como administrador, si falla intentar como usuario judicial
+    try:
+        return require_administrador(request)
+    except HTTPException as e:
+        # Si el error es 403 (rol incorrecto), intentar con usuario judicial
+        if e.status_code == 403:
+            return require_usuario_judicial(request)
+        # Si es otro error (401, 500, etc.), propagar el error
+        raise
+
+
