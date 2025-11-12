@@ -12,3 +12,10 @@
 *.log
 
 /*/.env
+
+# Diagrams - archivos generados
+/diagrams/output/
+/diagrams/__pycache__/
+*.png
+*.svg
+*.pdf
