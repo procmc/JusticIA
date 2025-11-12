@@ -374,20 +374,21 @@ class AvatarService:
     
     def validar_permiso_usuario(
         self,
-        current_user_id: str,
+        current_user_id,
         target_user_id: str
     ) -> None:
         """
         Valida que un usuario solo pueda modificar su propio avatar.
         
         Args:
-            current_user_id: ID del usuario actual
-            target_user_id: ID del usuario objetivo
+            current_user_id: ID del usuario actual (puede ser int o str)
+            target_user_id: ID del usuario objetivo (siempre str desde URL)
             
         Raises:
             HTTPException: Si el usuario no tiene permiso
         """
-        if current_user_id != target_user_id:
+        # Convertir ambos a string para comparación consistente
+        if str(current_user_id) != str(target_user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No puedes modificar el avatar de otro usuario"
