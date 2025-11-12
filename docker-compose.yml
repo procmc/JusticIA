@@ -72,5 +72,17 @@ services:
     # Policy: allkeys-lru elimina claves menos usadas cuando se llena
     command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
 
+  # Servicio para generación de diagramas de arquitectura
+  diagrams:
+    build:
+      context: ./diagrams
+      dockerfile: Dockerfile
+    volumes:
+      - ./diagrams:/diagrams
+      - ./diagrams/output:/diagrams/output
+    restart: "no"  # Ejecuta una vez y termina
+    profiles:
+      - tools  # Solo se ejecuta cuando se especifica: docker-compose --profile tools up diagrams
+
 volumes:
   redis_data:
