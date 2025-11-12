@@ -5,7 +5,7 @@ from app.db.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.services.avatar_service import avatar_service
 from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta, ActualizarAvatarRequest
-from app.auth.jwt_auth import require_administrador, require_usuario_judicial
+from app.auth.jwt_auth import require_administrador, require_usuario_judicial, require_usuario_autenticado
 from app.services.bitacora.usuarios_audit_service import usuarios_audit_service
 
 router = APIRouter()
@@ -183,7 +183,7 @@ async def subir_avatar(
     usuario_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_autenticado)
 ):
     """Sube una imagen de avatar para un usuario"""
     # Validar permisos
@@ -200,7 +200,7 @@ async def actualizar_tipo_avatar(
     usuario_id: str,
     avatar_data: ActualizarAvatarRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_autenticado)
 ):
     """Actualiza la preferencia de avatar (sin subir imagen)"""
     # Validar permisos
@@ -216,7 +216,7 @@ async def actualizar_tipo_avatar(
 async def eliminar_avatar(
     usuario_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_autenticado)
 ):
     """Elimina el avatar de un usuario"""
     # Validar permisos
