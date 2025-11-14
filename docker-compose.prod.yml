@@ -1,0 +1,100 @@
+services:
+  # ==========================================
+  # BACKEND - FastAPI (Producción)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+      - TIKA_SERVER_URL=http://tika:9998
+    volumes:
+      # Solo volúmenes de datos, NO código fuente
+      - uploads_data:/app/uploads
+      - models_data:/app/models
+    depends_on:
+      - redis
+      - tika
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 6G  # Ajustar según servidor (ver manual)
+        reservations:
+          memory: 2G
+
+  # ==========================================
+  # CELERY WORKER (Producción)
+  # ==========================================
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    command: /venv/bin/celery -A celery_app worker --loglevel=warning --concurrency=2 --max-tasks-per-child=10 --max-memory-per-child=6000000 --pool=prefork
+    env_file:
+      - ./backend/.env
+    volumes:
+      - uploads_data:/app/uploads
+      - models_data:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+      - TIKA_SERVER_URL=http://tika:9998
+    depends_on:
+      - redis
+      - tika
+      - backend
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Ajustar según servidor (ver manual)
+        reservations:
+          memory: 2G
+
+  # ==========================================
+  # TIKA SERVER - Extracción documentos
+  # ==========================================
+  tika:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.tika
+    ports:
+      - "9998:9998"
+    volumes:
+      - ./backend/tika-config.xml:/app/tika-config.xml:ro
+    restart: always
+    environment:
+      - TIKA_SERVER_OPTS=-Xms512m -Xmx2048m
+
+  # ==========================================
+  # REDIS - Cache y Queue
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru --appendonly yes --save 60 1000
+
+volumes:
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  models_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

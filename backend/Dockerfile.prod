@@ -1,0 +1,59 @@
+# Dockerfile de Producción para Backend
+# Optimizado para seguridad y rendimiento
+
+FROM ubuntu:22.04
+
+# Evitar prompts interactivos
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias del sistema y Python 3.11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev python3-pip \
+    ffmpeg curl build-essential \
+    ca-certificates gnupg apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar ODBC Driver 18 for SQL Server
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg \
+    && curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar requirements
+COPY requirements.txt /app/
+
+# Crear entorno virtual e instalar dependencias
+RUN python3.11 -m venv /venv \
+    && /venv/bin/pip install --upgrade pip setuptools wheel \
+    && /venv/bin/pip install --no-cache-dir -r /app/requirements.txt \
+    && /venv/bin/pip install gunicorn
+
+ENV PATH="/venv/bin:$PATH"
+
+# Copiar código fuente
+COPY . /app/
+
+# Crear directorios necesarios
+RUN mkdir -p /app/uploads /app/models
+
+# Crear usuario no-root para seguridad
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app /venv
+
+USER appuser
+
+EXPOSE 8000
+
+# Usar Gunicorn con workers de Uvicorn para producción
+# Workers: 2 x CPU cores (ajustar según servidor)
+CMD ["/venv/bin/gunicorn", "main:app", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "600", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "warning"]
