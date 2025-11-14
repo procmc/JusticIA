@@ -1,3 +1,78 @@
+"""Repositorio de Acceso a Datos de Documentos Judiciales.
+
+Este módulo implementa el patrón Repository para abstraer el acceso a datos
+de documentos judiciales (archivos PDF, DOCX, imágenes, audios) asociados a expedientes.
+Proporciona operaciones CRUD y consultas especializadas sobre la tabla T_Documento.
+
+Arquitectura de documentos:
+    Cada documento pertenece a un expediente y tiene un estado de procesamiento:
+        1. PENDIENTE: Recién subido, en cola
+        2. EN_PROCESO: Siendo procesado por Celery (Tika/Whisper)
+        3. COMPLETADO: Procesado exitosamente, embeddings en Milvus
+        4. ERROR: Falló el procesamiento
+
+Operaciones principales:
+    - crear: Crear documento asociado a expediente
+    - actualizar_estado: Cambiar estado de procesamiento
+    - listar_por_expediente: Obtener documentos de un expediente
+    - obtener_ids_procesados: IDs de documentos listos para búsqueda
+    - verificar_esta_procesado: Validar si archivo puede descargarse
+
+Modelo de datos:
+    T_Documento:
+        - CN_Id_documento (int, PK): ID autoincremental
+        - CN_Id_expediente (int, FK): Expediente al que pertenece
+        - CT_Nombre_archivo (str): Nombre del archivo
+        - CT_Tipo_archivo (str): Extensión (.pdf, .docx, .mp3, etc.)
+        - CT_Ruta_archivo (str): Ruta relativa desde backend/uploads/
+        - CF_Fecha_carga (datetime): Fecha de carga del archivo
+        - CN_Id_estado (int, FK): Estado de procesamiento actual
+
+Flujo de procesamiento:
+    1. crear() → Estado PENDIENTE
+    2. Celery task inicia → actualizar_estado(EN_PROCESO)
+    3. Procesamiento exitoso → actualizar_estado(COMPLETADO)
+    4. Solo documentos COMPLETADOS aparecen en búsquedas RAG y descargas
+
+Example:
+    ```python
+    from app.repositories.documento_repository import DocumentoRepository
+    from app.db.database import get_db
+    
+    repo = DocumentoRepository()
+    db = next(get_db())
+    
+    # Crear documento
+    documento = repo.crear(
+        db=db,
+        expediente=expediente_obj,
+        nombre_archivo='demanda.pdf',
+        tipo_archivo='pdf',
+        estado_procesamiento=estado_pendiente,
+        ruta_archivo='uploads/00-000123-0456-PE/demanda.pdf'
+    )
+    
+    # Actualizar estado después de procesamiento
+    repo.actualizar_estado(db, documento, estado_completado)
+    
+    # Obtener solo documentos procesados para búsqueda
+    docs_procesados = repo.listar_por_expediente(db, expediente, solo_procesados=True)
+    
+    # Verificar si archivo puede descargarse
+    puede_descargar = repo.verificar_esta_procesado(db, '00-000123-0456-PE', 'demanda.pdf')
+    ```
+
+Note:
+    Los métodos obtener_ids_procesados y verificar_esta_procesado son críticos
+    para filtrar documentos en búsquedas vectoriales y validar descargas.
+
+See Also:
+    - app.db.models.documento.T_Documento: Modelo SQLAlchemy
+    - app.db.models.estado_procesamiento.T_Estado_procesamiento: Estados disponibles
+    - app.services.expediente_service.ExpedienteService: Lógica de negocio
+    - tasks.procesar_ingesta: Tarea Celery que procesa documentos
+"""
+
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -8,7 +83,14 @@ from datetime import datetime
 
 
 class DocumentoRepository:
-    """Repositorio para operaciones CRUD de documentos"""
+    """Repositorio de acceso a datos para documentos judiciales.
+    
+    Gestiona documentos asociados a expedientes, incluyendo su estado de
+    procesamiento y metadatos. Fundamental para el pipeline de ingesta y RAG.
+    
+    Attributes:
+        Ninguno. Todas las operaciones son stateless y reciben la sesión db como parámetro.
+    """
     
     def obtener_por_id(self, db: Session, documento_id: int) -> Optional[T_Documento]:
         """

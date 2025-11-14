@@ -1,3 +1,52 @@
+"""
+Endpoints de Consultas RAG (Retrieval-Augmented Generation).
+
+Este módulo expone los endpoints de la API para realizar consultas inteligentes
+al asistente de IA usando RAG. Soporta consultas generales y específicas por
+expediente, con historial de conversación persistido por sesión.
+
+Endpoints principales:
+    POST /rag/consulta-con-historial-stream: Consulta streaming con historial
+    POST /rag/update-expediente-context: Actualiza contexto de expediente en sesión
+
+Arquitectura RAG:
+    1. Usuario envía pregunta con session_id
+    2. Backend recupera historial de la sesión
+    3. Búsqueda semántica en Milvus (top_k documentos similares)
+    4. Construcción de prompt con contexto + historial
+    5. LLM genera respuesta (streaming)
+    6. Respuesta se guarda en historial de sesión
+    7. Auditoría en bitácora
+
+Streaming:
+    - Usa Server-Sent Events (SSE) para respuestas incrementales
+    - Mejora UX al mostrar respuesta mientras se genera
+    - Detecta desconexiones de cliente para cancelar procesamiento
+
+Auditoría:
+    - Registra todas las consultas en bitácora (T_Bitacora_acciones_RAG)
+    - Incluye: usuario, pregunta, tipo (general/expediente), tiempo
+
+Example:
+    >>> # Cliente HTTP
+    >>> response = requests.post('/rag/consulta-con-historial-stream', json={
+    ...     'query': '¿Cuál es la sentencia del caso?',
+    ...     'session_id': 'session_user@mail.com_1234567890',
+    ...     'expediente_number': '00-001234-0567-PE',
+    ...     'top_k': 15
+    ... }, stream=True)
+    >>> for line in response.iter_lines():
+    ...     if line.startswith(b'data: '):
+    ...         data = json.loads(line[6:])
+    ...         print(data['content'], end='')
+
+Note:
+    - session_id identifica la conversación única del usuario
+    - expediente_number es opcional (None = búsqueda general)
+    - top_k limita la cantidad de documentos recuperados (max 30)
+    - Requiere autenticación JWT (usuario judicial)
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel

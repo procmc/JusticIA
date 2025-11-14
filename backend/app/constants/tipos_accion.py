@@ -1,11 +1,73 @@
 """
-Constantes para tipos de acción de bitácora.
-Estos IDs corresponden a los valores en la migración consolidada 001_base_completa.py
+Catálogo de Tipos de Acción para Sistema de Auditoría (Bitácora).
+
+Este módulo define constantes para los tipos de acciones auditables del sistema JusticIA.
+Los IDs corresponden exactamente a los valores definidos en la tabla T_Tipo_accion de la BD.
+
+Propósito:
+    - Centralizar IDs de tipos de acción para evitar magic numbers
+    - Documentar cada tipo de evento auditable
+    - Facilitar mantenimiento y refactorización
+    - Proporcionar descripciones legibles para logging
+
+Categorías de acciones:
+    1. Autenticación: Login, logout, cambios de contraseña
+    2. Usuarios: Crear, editar, consultar usuarios
+    3. Documentos: Carga, descarga, listado de archivos
+    4. IA/RAG: Consultas conversacionales, generación de resúmenes, búsqueda similares
+    5. Auditoría: Consultas y exportaciones de bitácora
+
+Criticidad para GDPR y auditoría legal:
+    - CONSULTA_RAG (12): Rastrea acceso a información sensible
+    - DESCARGAR_ARCHIVO (10): Audita visualización de documentos judiciales
+    - LISTAR_ARCHIVOS (11): Registra exploración de expedientes
+    - BUSQUEDA_SIMILARES (1): Audita búsquedas de casos judiciales
+
+Sincronización con BD:
+    Los IDs deben coincidir con:
+        - Migración: alembic/versions/001_base_completa.py
+        - Tabla: T_Tipo_accion (CN_Id_tipo_accion)
+    
+    IMPORTANTE: No cambiar IDs sin actualizar la migración.
+
+Example:
+    ```python
+    from app.constants.tipos_accion import TiposAccion, DESCRIPCIONES_TIPOS_ACCION
+    from app.services.bitacora.bitacora_service import bitacora_service
+    
+    # Registrar login exitoso
+    await bitacora_service.registrar(
+        db=db,
+        usuario_id='123456789',
+        tipo_accion_id=TiposAccion.LOGIN,
+        texto='Login exitoso desde IP: 192.168.1.100'
+    )
+    
+    # Obtener descripción legible
+    descripcion = DESCRIPCIONES_TIPOS_ACCION[TiposAccion.CONSULTA_RAG]
+    print(descripcion)  # 'Consulta RAG'
+    ```
+
+Note:
+    Agregar nuevos tipos requiere:
+        1. Crear migración Alembic para insertar en T_Tipo_accion
+        2. Agregar constante aquí con el mismo ID
+        3. Agregar descripción en DESCRIPCIONES_TIPOS_ACCION
+
+See Also:
+    - app.services.bitacora.bitacora_service: Servicio de registro de eventos
+    - app.routes.bitacora: Endpoints de consulta de auditoría
+    - alembic/versions/001_base_completa.py: Definición de tabla T_Tipo_accion
 """
 
 
 class TiposAccion:
-    """IDs de tipos de acción según catálogo en base de datos"""
+    """
+    IDs de tipos de acción auditables en el sistema.
+    
+    Cada constante corresponde a un registro en la tabla T_Tipo_accion.
+    Los IDs están definidos en la migración 001_base_completa.py.
+    """
     
     # Búsqueda y análisis
     BUSQUEDA_SIMILARES = 1            # Búsqueda de casos similares

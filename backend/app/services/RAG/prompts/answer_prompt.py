@@ -1,5 +1,73 @@
 """
-Prompt de generación de respuestas.
+"""
+Prompt de generación de respuestas para JusticBot.
+
+Define el comportamiento completo del asistente virtual JusticBot, incluyendo:
+restricciones, formato de respuestas, manejo de fuentes y capacidades especiales.
+
+Componentes principales:
+    * Restricciones de idioma y contenido (solo español, solo legal)
+    * Instrucciones de citación y referencias
+    * Formato Markdown para respuestas
+    * Reglas para tablas y estructuras
+    * Manejo de plantillas y documentos de referencia
+    * Sistema de fuentes obligatorio con rutas descargables
+
+Restricciones críticas (orden de evaluación):
+    1. Saludos y presentación: Respuesta conversacional
+    2. Idioma: Solo español (detecta inglés real)
+    3. Contenido: Solo temas legales costarricenses
+    4. Inventar: NUNCA inventar información
+
+Capacidades especiales:
+    * Completar plantillas/machotes automáticamente
+    * Generar documentos legales basados en expedientes
+    * Mantener formato original de plantillas
+    * Expandir campos variables con información real
+
+Formato de respuestas:
+    * Markdown puro (**, -, listas)
+    * Tablas para información estructurada moderada
+    * Citas textuales con comillas y referencia
+    * Fuentes OBLIGATORIAS al final con formato específico
+
+Sistema de fuentes:
+    Formato OBLIGATORIO:
+    **FUENTES:**
+    
+    - Expediente 2022-123456-7890-LA: (uploads/2022-123456-7890-LA/archivo.pdf)
+    
+    PROHIBIDO: Tablas, HTML, otros formatos
+
+Example:
+    >>> from app.services.rag.prompts.answer_prompt import ANSWER_PROMPT
+    >>> 
+    >>> # Usar en chain de LangChain
+    >>> chain = ANSWER_PROMPT | llm
+    >>> response = chain.invoke({
+    ...     "context": docs,
+    ...     "chat_history": history,
+    ...     "input": "pregunta"
+    ... })
+
+Note:
+    * Lógica compleja en system prompt (reglas, capacidades, formatos)
+    * context viene de documentos recuperados
+    * chat_history gestionado por session_store
+    * Respuestas SIEMPRE deben citar fuentes
+
+Ver también:
+    * app.services.rag.prompts.contextualize_prompt: Reformulación
+    * app.services.rag.prompts.expediente_prompt: Prompt de expedientes
+    * app.services.rag.general_chains: Usa ANSWER_PROMPT
+
+Authors:
+    JusticIA Team
+
+Version:
+    3.0.0 - Capacidades de plantillas + sistema de fuentes
+"""
+""""""Prompt de generación de respuestas.
 Define cómo JusticBot debe responder basándose en los documentos recuperados.
 """
 

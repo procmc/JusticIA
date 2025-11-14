@@ -1,3 +1,74 @@
+"""
+Utilidades de Validación y Formateo de Números de Expediente Judicial.
+
+Este módulo proporciona funciones especializadas para validar, extraer componentes,
+y formatear números de expediente del Poder Judicial de Costa Rica.
+
+Formato de expediente costarricense:
+    YY-NNNNNN-NNNN-XX o YYYY-NNNNNN-NNNN-XX
+    
+    Componentes:
+        - YY/YYYY: Año (2 o 4 dígitos)
+        - NNNNNN: Número consecutivo (6 dígitos)
+        - NNNN: Código de oficina (4 dígitos)
+        - XX: Código de materia (2 letras mayúsculas)
+    
+    Ejemplos válidos:
+        - 02-000744-0164-CI (civil)
+        - 2022-063557-6597-LA (laboral)
+        - 01-003287-0166-FA (familia)
+        - 2023-123456-7890-PE (penal)
+
+Códigos de materia comunes:
+    - CI: Civil
+    - LA: Laboral
+    - FA: Familia
+    - PE: Penal
+    - CO: Cobro judicial
+    - CA: Contencioso administrativo
+    - TP: Tránsito y pensiones
+
+Funciones principales:
+    - validar_expediente: Valida formato con regex estricto
+    - extraer_componentes_expediente: Descompone en partes individuales
+    - formatear_expediente: Normaliza formato (trim + uppercase)
+
+Validación multi-nivel:
+    1. Validación específica: Patrón exacto del Poder Judicial
+    2. Validación genérica: Fallback para casos edge (17-20 caracteres)
+
+Example:
+    ```python
+    from app.utils.expediente_validator import (
+        validar_expediente, 
+        extraer_componentes_expediente,
+        formatear_expediente
+    )
+    
+    # Validar formato
+    es_valido = validar_expediente('02-000744-0164-CI')
+    print(es_valido)  # True
+    
+    # Extraer componentes
+    componentes = extraer_componentes_expediente('2022-063557-6597-LA')
+    print(componentes)
+    # {'año': '2022', 'consecutivo': '063557', 'oficina': '6597', 'materia': 'LA'}
+    
+    # Formatear (limpia y normaliza)
+    formateado = formatear_expediente(' 02-000744-0164-ci ')
+    print(formateado)  # '02-000744-0164-CI'
+    ```
+
+Note:
+    Todas las funciones son tolerantes a espacios en blanco y mayúsculas/minúsculas.
+    La validación genérica permite formatos ligeramente diferentes para casos edge.
+
+See Also:
+    - frontend/utils/validation/expedienteValidator.js: Validación en frontend
+    - app.routes.archivos: Usa validación antes de servir archivos
+    - app.services.expediente_service: Usa validación en creación
+"""
+
 import re
 from typing import Optional, Dict, Any
 

@@ -1,16 +1,92 @@
 """
-Campos estandarizados de metadata en Milvus vectorstore.
+Campos Estandarizados de Metadata para Vectorstore y Base de Datos.
 
-FUENTE ÚNICA DE VERDAD para nombres de campos de metadata.
+Este módulo es la **FUENTE ÚNICA DE VERDAD** para nombres de campos de metadata
+en todo el sistema de almacenamiento vectorial (Milvus) y base de datos (SQL Server).
 
-Este módulo centraliza todos los nombres de campos usados en:
-- Vectorstore (Milvus)
-- Retriever (RAG)
-- Similarity Service
-- Document Services
+Propósito:
+    - Centralizar nombres de campos para evitar typos y bugs
+    - Facilitar refactorización y renombrado de campos
+    - Documentar convenciones de nomenclatura
+    - Proporcionar mapeo bidireccional BD ↔ Vectorstore
 
-IMPORTANTE: Usar estas constantes en lugar de strings hardcodeados
-para evitar bugs por typos y facilitar refactorización.
+Componentes principales:
+    1. MetadataFields: Campos en Milvus (snake_case)
+    2. DatabaseFields: Campos en SQL Server (prefijos CT_/CN_)
+    3. FieldMapper: Mapeo bidireccional y conversión de diccionarios
+
+Arquitectura de datos:
+    ```
+    SQL Server (T_Documento)     Milvus Vectorstore
+    ========================     ==================
+    CT_Num_expediente      →     expediente_numero
+    CN_Id_documento        →     id_documento
+    CT_Nombre_archivo      →     archivo
+    CT_Ruta_archivo        →     ruta_archivo
+    ```
+
+Convenciones de nomenclatura:
+    **Vectorstore (MetadataFields):**
+        - snake_case (estándar Python/backend)
+        - Prefijos descriptivos: expediente_, documento_, chunk_
+        - Sin prefijos de BD (CT_/CN_)
+        - Legible y auto-documentado
+    
+    **Base de Datos (DatabaseFields):**
+        - CamelCase con guiones bajos
+        - Prefijos: CT_ (texto), CN_ (número), CF_ (fecha)
+        - Consistente con esquema SQL Server existente
+
+Uso del FieldMapper:
+    Conversión automática entre formatos BD y vectorstore:
+    ```python
+    # BD → Vectorstore
+    db_data = {"CT_Num_expediente": "2022-003287-0166-LA"}
+    vector_data = FieldMapper.map_db_to_vector(db_data)
+    # → {"expediente_numero": "2022-003287-0166-LA"}
+    
+    # Vectorstore → BD
+    vector_data = {"expediente_numero": "2022-003287-0166-LA"}
+    db_data = FieldMapper.map_vector_to_db(vector_data)
+    # → {"CT_Num_expediente": "2022-003287-0166-LA"}
+    ```
+
+Example:
+    ```python
+    from app.constants.metadata_fields import MF, DF, FM
+    
+    # Usar constantes en lugar de strings
+    metadata = {
+        MF.EXPEDIENTE_NUMERO: '2022-003287-0166-LA',
+        MF.DOCUMENTO_NOMBRE: 'demanda.pdf',
+        MF.CHUNK_INDEX: 0,
+        MF.SIMILARITY_SCORE: 0.85
+    }
+    
+    # Mapear diccionario completo
+    db_dict = {
+        DF.EXPEDIENTE_NUMERO: '2022-003287-0166-LA',
+        DF.DOCUMENTO_NOMBRE: 'demanda.pdf'
+    }
+    vector_dict = FM.map_db_to_vector(db_dict)
+    
+    # Conversión individual
+    vector_field = FM.db_to_vector(DF.EXPEDIENTE_NUMERO)
+    # → 'expediente_numero'
+    ```
+
+Note:
+    Cualquier cambio en nombres de campos debe:
+        1. Actualizarse en este módulo
+        2. Propagarse a Milvus (recrear colección si es necesario)
+        3. Actualizarse en migraciones de BD si aplica
+        4. Actualizar mapeos en FieldMapper
+
+See Also:
+    - app.vectorstore: Usa MetadataFields para estructura de metadata
+    - app.services.similarity_service: Usa FieldMapper para convertir resultados
+    - app.embeddings: Usa MetadataFields al crear embeddings
+    - tasks.procesar_ingesta: Usa MetadataFields al ingestar documentos
 """
 
 class MetadataFields:

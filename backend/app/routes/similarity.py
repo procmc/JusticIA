@@ -1,3 +1,65 @@
+"""
+Endpoints de Búsqueda de Casos Similares por Similitud Semántica.
+
+Este módulo expone los endpoints de la API para buscar expedientes similares
+usando búsqueda vectorial en Milvus y generar resúmenes de IA con análisis
+de factores de similitud.
+
+Endpoints principales:
+    POST /similarity/search: Busca expedientes similares
+    POST /similarity/generate-summary: Genera resumen de IA de expediente
+
+Modos de búsqueda:
+    - 'texto': Búsqueda por fragmento de texto libre
+    - 'expediente': Búsqueda por número de expediente específico
+    
+Arquitectura de similitud:
+    1. Usuario ingresa texto o número de expediente
+    2. Si es texto: se genera embedding con modelo BGE-M3-ES-Legal
+    3. Si es expediente: se recuperan todos sus embeddings de Milvus
+    4. Búsqueda vectorial en Milvus con cosine similarity
+    5. Filtrado por umbral de similitud (default: 0.7)
+    6. Agrupación por expediente y cálculo de score promedio
+    7. Retorno de resultados ordenados por relevancia
+
+Generación de resúmenes:
+    - Recupera todos los documentos del expediente
+    - Analiza contenido con LLM (Ollama)
+    - Genera resumen estructurado con:
+      * Resumen ejecutivo
+      * Palabras clave
+      * Factores de similitud (hechos, tipo de caso, partes)
+      * Conclusión
+
+Auditoría:
+    - Registra todas las búsquedas en bitácora (T_Bitacora_acciones_similares)
+    - Incluye: usuario, modo, parámetros, resultados, errores
+    - Registra generación de resúmenes (T_Bitacora_resumen_ia)
+
+Example:
+    >>> # Búsqueda por texto
+    >>> response = requests.post('/similarity/search', json={
+    ...     'modo_busqueda': 'texto',
+    ...     'texto_consulta': 'homicidio culposo',
+    ...     'limite': 10,
+    ...     'umbral_similitud': 0.7
+    ... })
+    >>> print(response.json()['total_resultados'])
+    15
+    >>> 
+    >>> # Generar resumen
+    >>> response = requests.post('/similarity/generate-summary', json={
+    ...     'numero_expediente': '00-001234-0567-PE'
+    ... })
+    >>> print(response.json()['resumen_ia']['resumen'])
+
+Note:
+    - umbral_similitud válido: 0.0 a 1.0 (default: 0.7)
+    - limite máximo recomendado: 50 resultados
+    - La generación de resúmenes puede tardar varios segundos
+    - Requiere autenticación JWT (usuario judicial)
+"""
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -21,7 +83,57 @@ async def search_similar_cases(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_usuario_judicial),
 ) -> RespuestaBusquedaSimilitud:
-    """Buscar casos similares."""
+    """
+    Busca expedientes similares por contenido textual o número de expediente.
+    
+    Realiza búsqueda vectorial en Milvus para encontrar expedientes con
+    similitud semántica. Soporta dos modos: búsqueda por texto libre o
+    por número de expediente específico.
+    
+    Args:
+        data (SimilaritySearchRequest): Parámetros de búsqueda:
+            - modo_busqueda: 'texto' o 'expediente'
+            - texto_consulta: Texto para modo 'texto' (opcional)
+            - numero_expediente: Número para modo 'expediente' (opcional)
+            - limite: Cantidad máxima de resultados (default: 10)
+            - umbral_similitud: Umbral mínimo de similitud 0-1 (default: 0.7)
+        db (Session): Sesión de base de datos.
+        current_user (dict): Usuario autenticado (JWT).
+    
+    Returns:
+        RespuestaBusquedaSimilitud: Resultados de búsqueda con:
+            - casos_similares: Lista de expedientes encontrados con score
+            - total_resultados: Cantidad de resultados
+            - tiempo_busqueda_segundos: Tiempo de procesamiento
+            - precision_promedio: Score promedio de resultados
+    
+    Raises:
+        HTTPException 400: Si los parámetros son inválidos
+        HTTPException 500: Si hay error interno en la búsqueda
+    
+    Example:
+        >>> # Búsqueda por texto
+        >>> POST /similarity/search
+        >>> {
+        ...   "modo_busqueda": "texto",
+        ...   "texto_consulta": "homicidio culposo con arma de fuego",
+        ...   "limite": 20,
+        ...   "umbral_similitud": 0.75
+        ... }
+        >>> 
+        >>> # Búsqueda por expediente
+        >>> POST /similarity/search
+        >>> {
+        ...   "modo_busqueda": "expediente",
+        ...   "numero_expediente": "00-001234-0567-PE",
+        ...   "limite": 10
+        ... }
+    
+    Note:
+        - La búsqueda se registra en bitácora para auditoría
+        - Los resultados están ordenados por score (mayor a menor)
+        - El score representa similitud de coseno (0-1)
+    """
     try:
         similarity_service = SimilarityService()
         result = await similarity_service.search_similar_cases(data, db)  # Pasar db

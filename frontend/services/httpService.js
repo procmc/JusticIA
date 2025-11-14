@@ -1,28 +1,112 @@
 /**
- * httpService.js - Servicio HTTP
+ * Servicio HTTP Cliente con Autenticación y Gestión de Timeouts.
  * 
- * Filosofía: Este servicio solo maneja lo BÁSICO:
- * - Autenticación (JWT)
- * - Timeout (30s default, configurable)
- * - Propagación de errores del backend SIN sanitizar
+ * @module services/httpService
  * 
- * Cada servicio específico maneja:
- * - Sus propios reintentos (si los necesita)
- * - Sus propios AbortControllers
- * - Sus propios mensajes de error amigables
- * - Sus propias validaciones
+ * Cliente HTTP minimalista que maneja las operaciones básicas de comunicación
+ * con el backend, delegando lógica compleja a servicios específicos.
+ * 
+ * Filosofía de diseño:
+ *   - BÁSICO: Solo autenticación, timeouts, y propagación de errores
+ *   - DELEGACIÓN: Cada servicio maneja sus propios reintentos y validaciones
+ *   - TRANSPARENCIA: Errores del backend se propagan sin sanitizar
+ * 
+ * Responsabilidades del httpService:
+ *   - Autenticación: Inyección automática de JWT desde NextAuth
+ *   - Timeout: 30s por defecto, configurable por petición
+ *   - Propagación de errores: Sin transformación ni ocultamiento
+ * 
+ * Responsabilidades delegadas a servicios específicos:
+ *   - Reintentos: Cada servicio decide si y cómo reintentar
+ *   - AbortControllers: Control granular de cancelación
+ *   - Mensajes amigables: Traducción de errores técnicos
+ *   - Validaciones: Validación de datos antes de enviar
+ * 
+ * Configuración de timeouts:
+ *   - Por defecto: 30 segundos
+ *   - Configurable: Pasar `timeout` en options
+ *   - Sin timeout: Pasar `timeout: null` o usar fetchStream
+ * 
+ * @example
+ * ```javascript
+ * import httpService from '@/services/httpService';
+ * 
+ * // GET con timeout por defecto (30s)
+ * const data = await httpService.get('/usuarios');
+ * 
+ * // POST con timeout personalizado
+ * const result = await httpService.post('/auth/login', 
+ *   { username: 'admin', password: 'secret' },
+ *   { timeout: 10000 } // 10 segundos
+ * );
+ * 
+ * // Streaming sin timeout
+ * const response = await httpService.fetchStream(
+ *   '/rag/consulta-stream',
+ *   { pregunta: '¿Qué es esto?' }
+ * );
+ * 
+ * // Control manual de cancelación
+ * const controller = new AbortController();
+ * httpService.get('/data', { signal: controller.signal });
+ * setTimeout(() => controller.abort(), 5000);
+ * ```
+ * 
+ * @see {@link getSession} NextAuth session management
  */
 
 import { getSession } from 'next-auth/react';
 
+/**
+ * Cliente HTTP básico con autenticación automática y timeouts.
+ * 
+ * Maneja operaciones HTTP fundamentales delegando lógica compleja
+ * a servicios específicos del dominio.
+ * 
+ * @class HttpService
+ * @category Services
+ */
 class HttpService {
+  /**
+   * Construye el servicio HTTP con configuración personalizable.
+   * 
+   * @constructor
+   * @param {Object} [config={}] - Configuración del servicio
+   * @param {string} [config.baseURL] - URL base del backend (default: NEXT_PUBLIC_API_URL o localhost:8000)
+   * @param {number} [config.timeout=30000] - Timeout por defecto en milisegundos
+   * 
+   * @example
+   * ```javascript
+   * // Con configuración por defecto
+   * const httpService = new HttpService();
+   * 
+   * // Con configuración personalizada
+   * const httpService = new HttpService({
+   *   baseURL: 'https://api.example.com',
+   *   timeout: 60000
+   * });
+   * ```
+   */
   constructor(config = {}) {
     this.baseURL = config.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     this.defaultTimeout = config.timeout || 30000; // 30 segundos
   }
 
   /**
-   * Obtener headers con autenticación
+   * Obtiene headers HTTP con token de autenticación inyectado.
+   * 
+   * Recupera el JWT del contexto de NextAuth y lo agrega al header
+   * Authorization con formato Bearer. Si no hay sesión activa,
+   * retorna headers vacíos.
+   * 
+   * @async
+   * @returns {Promise<Object>} Headers con Authorization si hay token
+   * 
+   * @example
+   * ```javascript
+   * const headers = await httpService.getAuthHeaders();
+   * // { Authorization: 'Bearer eyJhbGc...' }
+   * ```
    */
   async getAuthHeaders() {
     const session = await getSession();
@@ -36,8 +120,40 @@ class HttpService {
   }
 
   /**
-   * Crear signal de timeout que se puede fusionar con signal externo
-   * Devuelve tanto el signal como la función cleanup
+   * Crea un signal de timeout que se puede fusionar con un signal externo.
+   * 
+   * Utiliza AbortController para cancelar peticiones que excedan el tiempo
+   * límite. Soporta fusión con signals externos para control manual de cancelación.
+   * Incluye limpieza automática del timeout cuando la petición finaliza.
+   * 
+   * @param {number} timeout - Tiempo límite en milisegundos
+   * @param {AbortSignal} [externalSignal=null] - Signal externo para fusionar
+   * @returns {Object} Objeto con:
+   *   - signal {AbortSignal}: Signal para pasar a fetch
+   *   - clearTimeout {Function}: Función para cancelar timeout manualmente
+   * 
+   * @example
+   * ```javascript
+   * // Timeout simple
+   * const { signal, clearTimeout } = httpService.createTimeoutSignal(5000);
+   * try {
+   *   const response = await fetch(url, { signal });
+   *   clearTimeout(); // Cancelar timeout al completar
+   * } catch (error) {
+   *   if (error.name === 'AbortError') {
+   *     console.log('Request timeout o cancelado');
+   *   }
+   * }
+   * 
+   * // Con signal externo (control manual)
+   * const externalController = new AbortController();
+   * const { signal } = httpService.createTimeoutSignal(
+   *   30000,
+   *   externalController.signal
+   * );
+   * // Cancelar manualmente antes del timeout
+   * externalController.abort();
+   * ```
    */
   createTimeoutSignal(timeout, externalSignal = null) {
     const controller = new AbortController();
@@ -74,8 +190,43 @@ class HttpService {
   }
 
   /**
-   * Request HTTP básico sin reintentos ni sanitización
-   * Propaga errores del backend tal cual para que cada servicio los maneje
+   * Ejecuta una petición HTTP básica sin reintentos ni sanitización de errores.
+   * 
+   * Método de bajo nivel que propaga errores del backend sin modificación,
+   * permitiendo que servicios específicos manejen errores según su contexto.
+   * Agrega autenticación automática y timeout configurable.
+   * 
+   * @async
+   * @param {string} url - URL relativa o absoluta del endpoint
+   * @param {Object} [options={}] - Opciones de la petición
+   * @param {string} [options.method='GET'] - Método HTTP
+   * @param {Object|FormData} [options.body] - Cuerpo de la petición
+   * @param {Object} [options.headers={}] - Headers adicionales
+   * @param {number} [options.timeout] - Timeout personalizado en ms
+   * @param {AbortSignal} [options.signal] - Signal externo para cancelación
+   * @returns {Promise<Object>} Respuesta parseada del backend
+   * @throws {Error} Error con código de estado HTTP o mensaje de red
+   * 
+   * @example
+   * ```javascript
+   * // GET simple
+   * const data = await httpService.request('/api/usuarios');
+   * 
+   * // POST con body y timeout personalizado
+   * const result = await httpService.request('/api/login', {
+   *   method: 'POST',
+   *   body: { username: 'admin', password: 'secret' },
+   *   timeout: 10000
+   * });
+   * 
+   * // Con FormData (upload)
+   * const formData = new FormData();
+   * formData.append('file', file);
+   * await httpService.request('/api/upload', {
+   *   method: 'POST',
+   *   body: formData
+   * });
+   * ```
    */
   async request(url, options = {}) {
     const { 
@@ -179,14 +330,50 @@ class HttpService {
   }
 
   /**
-   * GET request
+   * Ejecuta una petición HTTP GET.
+   * 
+   * @async
+   * @param {string} url - URL del endpoint
+   * @param {Object} [options={}] - Opciones adicionales (headers, timeout, signal)
+   * @returns {Promise<Object>} Respuesta parseada del servidor
+   * 
+   * @example
+   * ```javascript
+   * // GET simple
+   * const usuarios = await httpService.get('/usuarios');
+   * 
+   * // GET con timeout personalizado
+   * const data = await httpService.get('/data', { timeout: 5000 });
+   * ```
    */
   async get(url, options = {}) {
     return this.request(url, { ...options, method: 'GET' });
   }
 
   /**
-   * POST request
+   * Ejecuta una petición HTTP POST.
+   * 
+   * Soporta automáticamente FormData (para uploads) y JSON.
+   * 
+   * @async
+   * @param {string} url - URL del endpoint
+   * @param {Object|FormData} data - Datos a enviar
+   * @param {Object} [options={}] - Opciones adicionales
+   * @returns {Promise<Object>} Respuesta parseada del servidor
+   * 
+   * @example
+   * ```javascript
+   * // POST con JSON
+   * const result = await httpService.post('/auth/login', {
+   *   username: 'admin',
+   *   password: 'secret'
+   * });
+   * 
+   * // POST con FormData (upload)
+   * const formData = new FormData();
+   * formData.append('file', file);
+   * await httpService.post('/upload', formData);
+   * ```
    */
   async post(url, data, options = {}) {
     const isFormData = data instanceof FormData;
@@ -200,7 +387,21 @@ class HttpService {
   }
 
   /**
-   * PUT request
+   * Ejecuta una petición HTTP PUT.
+   * 
+   * @async
+   * @param {string} url - URL del endpoint
+   * @param {Object} data - Datos a enviar (se serializa a JSON)
+   * @param {Object} [options={}] - Opciones adicionales
+   * @returns {Promise<Object>} Respuesta parseada del servidor
+   * 
+   * @example
+   * ```javascript
+   * await httpService.put('/usuarios/123', {
+   *   nombre: 'Juan Actualizado',
+   *   email: 'juan@example.com'
+   * });
+   * ```
    */
   async put(url, data, options = {}) {
     return this.request(url, {
@@ -212,15 +413,53 @@ class HttpService {
   }
 
   /**
-   * DELETE request
+   * Ejecuta una petición HTTP DELETE.
+   * 
+   * @async
+   * @param {string} url - URL del endpoint
+   * @param {Object} [options={}] - Opciones adicionales
+   * @returns {Promise<Object>} Respuesta parseada del servidor
+   * 
+   * @example
+   * ```javascript
+   * await httpService.delete('/usuarios/123');
+   * ```
    */
   async delete(url, options = {}) {
     return this.request(url, { ...options, method: 'DELETE' });
   }
 
   /**
-   * POST con streaming (para chat RAG)
-   * Devuelve el response raw para que el caller pueda leer el stream
+   * Ejecuta una petición HTTP POST con soporte para streaming (SSE).
+   * 
+   * Utilizado principalmente para el chat RAG donde las respuestas del LLM
+   * se envían progresivamente mediante Server-Sent Events. Retorna el
+   * response raw para que el llamador pueda leer el stream chunk por chunk.
+   * 
+   * @async
+   * @param {string} url - URL del endpoint
+   * @param {Object} data - Datos a enviar (se serializa a JSON)
+   * @param {number} [timeout=300000] - Timeout largo (5 min) para streaming
+   * @param {Object} [options={}] - Opciones adicionales
+   * @returns {Promise<Response>} Response raw de fetch para leer stream
+   * 
+   * @example
+   * ```javascript
+   * const response = await httpService.postStream(
+   *   '/rag/consulta-stream',
+   *   { pregunta: '¿Qué es esto?', historial: [] }
+   * );
+   * 
+   * const reader = response.body.getReader();
+   * const decoder = new TextDecoder();
+   * 
+   * while (true) {
+   *   const { done, value } = await reader.read();
+   *   if (done) break;
+   *   const chunk = decoder.decode(value);
+   *   console.log(chunk);
+   * }
+   * ```
    */
   async postStream(url, data, timeout = 300000, options = {}) {
     const { signal: externalSignal, ...otherOptions } = options;

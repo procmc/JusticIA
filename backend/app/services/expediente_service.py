@@ -1,3 +1,37 @@
+"""
+Servicio de Lógica de Negocio para Expedientes y Documentos.
+
+Este módulo implementa la capa de servicio para la gestión de expedientes judiciales
+y sus documentos asociados. Maneja validaciones, estados de procesamiento y la
+coordinación entre repositorios.
+
+Funciones principales:
+    - buscar_o_crear_expediente: Gestiona expedientes por número único
+    - crear_documento: Registra documentos con validación de formato
+    - actualizar_estado_documento: Gestiona estados (Pendiente, Procesado, Error)
+    - actualizar_ruta_documento: Actualiza ubicación física de archivos
+    - listar_documentos_expediente: Obtiene todos los documentos de un expediente
+
+Validaciones:
+    - Formatos de archivo soportados (PDF, DOC, DOCX, MP3, TXT, etc.)
+    - Límite de tamaño de archivos
+    - Transiciones de estado permitidas
+    - Integridad de rutas de archivo
+
+Example:
+    >>> service = ExpedienteService()
+    >>> expediente = await service.buscar_o_crear_expediente(db, '00-001234-0567-PE')
+    >>> documento = await service.crear_documento(
+    ...     db, expediente, 'sentencia.pdf', '.pdf', '/uploads/...'
+    ... )
+    >>> await service.actualizar_estado_documento(db, documento, 'Procesado')
+
+Note:
+    - Los estados válidos son: 'Pendiente', 'Procesado', 'Error'
+    - Los documentos se crean con estado 'Pendiente' por defecto
+    - La validación de extensiones usa ALLOWED_EXTENSIONS de file_config
+"""
+
 from sqlalchemy.orm import Session
 from app.db.models.expediente import T_Expediente
 from app.db.models.documento import T_Documento
@@ -13,9 +47,20 @@ from pathlib import Path
 from fastapi import UploadFile
 
 class ExpedienteService:
-    """Servicio para manejar lógica de negocio de expedientes y documentos"""
+    """
+    Servicio de lógica de negocio para expedientes y documentos judiciales.
+    
+    Coordina operaciones entre repositorios, aplica validaciones de negocio
+    y gestiona estados de procesamiento de documentos.
+    
+    Attributes:
+        expediente_repo (ExpedienteRepository): Repositorio de expedientes.
+        documento_repo (DocumentoRepository): Repositorio de documentos.
+        estado_repo (EstadoProcesamientoRepository): Repositorio de estados.
+    """
     
     def __init__(self):
+        """Inicializa el servicio con los repositorios necesarios."""
         self.expediente_repo = ExpedienteRepository()
         self.documento_repo = DocumentoRepository()
         self.estado_repo = EstadoProcesamientoRepository()

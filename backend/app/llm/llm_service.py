@@ -1,3 +1,38 @@
+"""
+Servicio de Modelo de Lenguaje (LLM) con Ollama.
+
+Este módulo gestiona la conexión con el servidor Ollama para procesamiento
+de lenguaje natural. Implementa un patrón Singleton para reutilizar la
+instancia del LLM y proporciona streaming de respuestas para mejor UX.
+
+Funciones principales:
+    - get_llm: Obtiene instancia compartida del LLM (Singleton con lock)
+    - consulta_general_streaming: Streaming de respuestas en formato SSE
+
+Configuración:
+    - OLLAMA_MODEL: Modelo a usar (ej: gpt-oss:20b, llama2:7b)
+    - OLLAMA_BASE_URL: URL del servidor Ollama
+    - OLLAMA_API_KEY: API key (opcional, para Ollama Cloud)
+    - LLM_TEMPERATURE: Creatividad del modelo (0.0-1.0)
+    - LLM_NUM_CTX: Ventana de contexto (tokens)
+    - LLM_NUM_PREDICT: Máximo de tokens a generar
+    - LLM_REQUEST_TIMEOUT: Timeout en segundos
+
+Example:
+    >>> llm = await get_llm()
+    >>> async for chunk in llm.astream("Explica RAG"):
+    ...     print(chunk.content, end='')
+    
+    >>> # Streaming desde FastAPI endpoint
+    >>> return await consulta_general_streaming(prompt_completo)
+
+Note:
+    - El LLM se carga una sola vez en memoria (Singleton)
+    - La instancia se comparte entre todas las peticiones
+    - El streaming usa Server-Sent Events (SSE) con formato JSON
+    - Buffering inteligente para optimizar la experiencia de usuario
+"""
+
 import asyncio
 from langchain_ollama import ChatOllama
 from app.config.config import (
@@ -20,10 +55,25 @@ _llm = None
 _llm_lock = asyncio.Lock()
 
 async def get_llm():
-    """Obtiene la instancia compartida del LLM.
-
-    Versión minimalista: sin logs ni lógica adicional. Si `OLLAMA_API_KEY` está
-    definida, se pasa en los headers.
+    """
+    Obtiene la instancia compartida del LLM (patrón Singleton).
+    
+    Crea la instancia de ChatOllama con la configuración del entorno
+    la primera vez que se llama, y reutiliza esa instancia en llamadas
+    subsecuentes. Usa un lock asíncrono para evitar race conditions.
+    
+    Returns:
+        ChatOllama: Instancia configurada del LLM de Ollama con streaming habilitado.
+    
+    Example:
+        >>> llm = await get_llm()
+        >>> response = await llm.ainvoke("¿Qué es RAG?")
+        >>> print(response.content)
+    
+    Note:
+        - Thread-safe con asyncio.Lock
+        - La instancia persiste durante toda la vida de la aplicación
+        - Si OLLAMA_API_KEY está configurada, se incluye en headers de autorización
     """
     global _llm
     async with _llm_lock:

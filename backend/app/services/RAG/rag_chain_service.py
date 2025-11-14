@@ -1,3 +1,64 @@
+"""
+Servicio coordinador del sistema RAG (Retrieval-Augmented Generation).
+
+Este servicio es el punto de entrada principal para el asistente virtual JusticBot.
+Coordin consultas generales y específicas de expedientes, gestiona el flujo de
+streaming de respuestas y mantiene el contexto conversacional.
+
+Arquitectura RAG:
+    * Retriever: DynamicJusticIARetriever busca documentos relevantes en Milvus
+    * Chains: LangChain chains procesan contexto + historial + pregunta
+    * LLM: Modelo de lenguaje genera respuestas basadas en documentos
+    * Streaming: Server-Sent Events (SSE) para respuestas en tiempo real
+
+Flujos soportados:
+    1. Consulta general: Búsqueda semántica en toda la BD
+    2. Consulta de expediente: Análisis profundo de un expediente específico
+    3. Cambio de contexto: Actualización de expediente en sesión activa
+
+Características:
+    * Streaming SSE con detección de desconexión del cliente
+    * Gestión automática de títulos de conversaciones
+    * Validación de formato de expedientes
+    * Fallback a general si expediente inválido
+    * Límites configurables de documentos (top_k)
+
+Example:
+    >>> from app.services.rag.rag_chain_service import get_rag_service
+    >>> rag_service = await get_rag_service()
+    >>> 
+    >>> # Consulta general
+    >>> response = await rag_service.consulta_con_historial_streaming(
+    ...     pregunta="¿Qué es la prescripción?",
+    ...     session_id="session_user@example.com_1234567890",
+    ...     top_k=15
+    ... )
+    >>> 
+    >>> # Consulta de expediente específico
+    >>> response = await rag_service.consulta_con_historial_streaming(
+    ...     pregunta="¿Cuál es la sentencia?",
+    ...     session_id="session_user@example.com_1234567890",
+    ...     expediente_filter="24-000123-0001-PE"
+    ... )
+
+Note:
+    * Singleton: Una instancia global compartida (get_rag_service)
+    * Config centralizada: Parámetros en app.config.rag_config
+    * top_k máximo: 15 documentos para evitar overflow de contexto
+    * Formato expediente: YY-NNNNNN-NNNN-XX (validación con regex)
+
+Ver también:
+    * app.services.rag.retriever: Búsqueda vectorial
+    * app.services.rag.general_chains: Chains conversacionales
+    * app.services.rag.expediente_chains: Chains de expedientes
+    * app.services.rag.session_store: Gestión de historial
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - LangChain con streaming SSE
+"""
 from typing import Optional
 from fastapi.responses import StreamingResponse
 from fastapi import Request
@@ -17,6 +78,16 @@ logger = logging.getLogger(__name__)
 
 
 class RAGChainService:
+    """
+    Servicio coordinador de consultas RAG.
+    
+    Maneja routing entre consultas generales y de expedientes,
+    streaming de respuestas y gestión de contexto.
+    
+    Methods:
+        consulta_con_historial_streaming: Consulta principal con routing automático
+        update_expediente_context: Actualiza contexto de expediente en sesión
+    """
     def __init__(self):
         pass
 

@@ -1,3 +1,37 @@
+"""
+Servicio de Autenticación y Gestión de Contraseñas.
+
+Este módulo proporciona la lógica de negocio para autenticación de usuarios,
+gestión de contraseñas, recuperación de acceso mediante códigos por email,
+y restablecimiento de contraseñas por parte de administradores.
+
+Funciones principales:
+    - autenticar_usuario: Login con validación de credenciales y JWT
+    - cambiar_contrasenna: Cambio de contraseña por el usuario autenticado
+    - solicitar_recuperacion_contrasenna: Envío de código de recuperación por email
+    - verificar_codigo_recuperacion: Validación de código de 6 dígitos
+    - cambiar_contrasenna_recuperacion: Cambio de contraseña con token verificado
+    - restablecer_contrasenna: Reset de contraseña por administrador (genera temporal)
+
+Seguridad:
+    - Contraseñas encriptadas con bcrypt
+    - Tokens JWT con expiración configurable
+    - Códigos de recuperación de un solo uso (15 min)
+    - Validación de estado de usuario (activo/inactivo)
+
+Example:
+    >>> auth_service = AuthService()
+    >>> response = await auth_service.autenticar_usuario(
+    ...     db, 'usuario@example.com', 'password123'
+    ... )
+    >>> print(response.access_token)
+
+Note:
+    - Los tokens de recuperación expiran en 15 minutos
+    - Las contraseñas temporales requieren cambio obligatorio (CF_Ultimo_acceso=NULL)
+    - Se valida que el usuario esté en estado "Activo"
+"""
+
 import jwt
 import secrets
 import string
@@ -17,17 +51,67 @@ from app.services.usuario_service import UsuarioService
 from app.auth.jwt_auth import create_token
 
 class AuthService:
-    """Servicio de autenticación para usuarios"""
+    """
+    Servicio de autenticación y gestión de contraseñas para usuarios.
+    
+    Maneja el ciclo completo de autenticación: login, cambio de contraseña,
+    recuperación de acceso mediante email, y restablecimiento administrativo.
+    
+    Attributes:
+        usuario_repo (UsuarioRepository): Repositorio para operaciones de usuario.
+        usuario_service (UsuarioService): Servicio de negocio de usuarios.
+        jwt_secret (str): Clave secreta para firmar tokens JWT.
+    """
     
     def __init__(self):
+        """
+        Inicializa el servicio de autenticación.
+        
+        Carga la clave JWT desde variables de entorno.
+        """
         self.usuario_repo = UsuarioRepository()
         self.usuario_service = UsuarioService()
         self.jwt_secret = os.getenv("JWT_SECRET_KEY", "default-secret-key-change-in-production")
     
     async def autenticar_usuario(self, db: Session, email: str, password: str) -> Optional[LoginResponse]:
         """
-        Autentica un usuario y devuelve información del usuario autenticado
-        Similar al loginUsuario de MiLoker pero adaptado para JusticIA
+        Autentica un usuario mediante email y contraseña.
+        
+        Verifica las credenciales del usuario, valida que esté activo,
+        genera un token JWT y devuelve la información de sesión.
+        
+        Args:
+            db (Session): Sesión de base de datos SQLAlchemy.
+            email (str): Correo electrónico del usuario.
+            password (str): Contraseña en texto plano.
+        
+        Returns:
+            Optional[LoginResponse]: Objeto con información del usuario autenticado,
+                incluyendo access_token JWT. Contiene:
+                - success (bool): True si la autenticación fue exitosa
+                - message (str): Mensaje descriptivo
+                - user (UserInfo): Datos del usuario autenticado
+                - access_token (str): Token JWT para autenticación
+        
+        Raises:
+            ValueError: Si las credenciales son inválidas, el usuario está inactivo,
+                o hay un error interno.
+        
+        Example:
+            >>> response = await auth_service.autenticar_usuario(
+            ...     db, 'usuario@ejemplo.com', 'password123'
+            ... )
+            >>> print(response.user.name)
+            'Juan Pérez'
+            >>> print(response.user.role)
+            'Usuario Judicial'
+            >>> print(response.user.requiere_cambio_password)
+            False
+        
+        Note:
+            - Si CF_Ultimo_acceso es NULL, requiere cambio obligatorio de contraseña
+            - Solo actualiza CF_Ultimo_acceso si NO requiere cambio
+            - El token JWT expira según configuración (default: 8 horas)
         """
         if not email or not password:
             raise ValueError('Email y contraseña son requeridos')
@@ -93,7 +177,40 @@ class AuthService:
     
     async def cambiar_contrasenna(self, db: Session, cedula_usuario: str, 
                                 contrasenna_actual: str, nueva_contrasenna: str) -> bool:
-        """Cambia la contraseña de un usuario"""
+        """
+        Cambia la contraseña de un usuario autenticado.
+        
+        Valida la contraseña actual, verifica que la nueva sea diferente,
+        y actualiza el campo CF_Ultimo_acceso si era NULL (cambio obligatorio).
+        
+        Args:
+            db (Session): Sesión de base de datos SQLAlchemy.
+            cedula_usuario (str): Cédula (ID) del usuario.
+            contrasenna_actual (str): Contraseña actual en texto plano.
+            nueva_contrasenna (str): Nueva contraseña en texto plano (mínimo 6 caracteres).
+        
+        Returns:
+            bool: True si el cambio fue exitoso.
+        
+        Raises:
+            ValueError: Si:
+                - Algún campo está vacío
+                - La nueva contraseña tiene menos de 6 caracteres
+                - El usuario no existe
+                - La contraseña actual es incorrecta
+                - La nueva contraseña es igual a la actual
+                - Hay un error interno del servidor
+        
+        Example:
+            >>> success = await auth_service.cambiar_contrasenna(
+            ...     db, '123456789', 'oldPass123', 'newPass456'
+            ... )
+            >>> assert success == True
+        
+        Note:
+            - Si CF_Ultimo_acceso es NULL, se actualiza (significa cambio obligatorio completado)
+            - Las contraseñas se encriptan con bcrypt
+        """
         if not cedula_usuario or not contrasenna_actual or not nueva_contrasenna:
             raise ValueError('Todos los campos son requeridos')
         
@@ -163,7 +280,42 @@ class AuthService:
         }
     
     async def solicitar_recuperacion_contrasenna(self, db: Session, email: str) -> SolicitarRecuperacionResponse:
-        """Solicita recuperación de contraseña enviando código por correo"""
+        """
+        Solicita recuperación de contraseña enviando código de 6 dígitos por email.
+        
+        Genera un código numérico aleatorio, crea un token JWT con el código
+        y los datos del usuario, y envía el código por correo electrónico.
+        
+        Args:
+            db (Session): Sesión de base de datos SQLAlchemy.
+            email (str): Correo electrónico del usuario.
+        
+        Returns:
+            SolicitarRecuperacionResponse: Objeto con:
+                - success (bool): True si el proceso fue exitoso
+                - message (str): Mensaje para el usuario
+                - token (str): Token JWT con el código encriptado (expira en 15 min)
+        
+        Raises:
+            ValueError: Si:
+                - El email está vacío
+                - Hay error enviando el email
+                - Hay un error interno del servidor
+        
+        Example:
+            >>> response = await auth_service.solicitar_recuperacion_contrasenna(
+            ...     db, 'usuario@ejemplo.com'
+            ... )
+            >>> print(response.message)
+            'Si el correo existe en nuestro sistema, recibirás un email...'
+            >>> # El código de 6 dígitos se envía por email
+            >>> # El token se usa en verificar_codigo_recuperacion()
+        
+        Note:
+            - Por seguridad, siempre retorna éxito aunque el email no exista
+            - El código es válido por 15 minutos
+            - El token incluye: cedula, email, codigo, timestamp, exp
+        """
         if not email:
             raise ValueError('El correo electrónico es requerido')
         

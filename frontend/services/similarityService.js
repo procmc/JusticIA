@@ -1,17 +1,81 @@
 /**
- * SimilarityService - Servicio para búsqueda de casos similares
+ * Servicio de Búsqueda de Casos Judiciales Similares mediante Vector Search.
  * 
- * Maneja:
- * - Cancelación de búsquedas con AbortController propio
- * - Timeout de 60s para primera búsqueda (warm-up)
- * - Reintentos SOLO para 503 (servidor ocupado/warm-up)
- * - Validaciones de parámetros antes de enviar
- * - Mensajes de error específicos del contexto
+ * @module services/similarityService
+ * 
+ * Maneja búsquedas de casos judiciales similares utilizando embeddings vectoriales
+ * y búsqueda semántica en Milvus. Soporta dos modos de búsqueda: por descripción
+ * textual libre o por número de expediente existente.
+ * 
+ * Funciones principales:
+ *   - searchSimilarCases: Búsqueda con dos modos (descripción/expediente)
+ *   - generateCaseSummary: Generación de resumen con IA para un expediente
+ *   - cancelSearch: Cancelar búsqueda en progreso
+ * 
+ * Arquitectura robusta:
+ *   - Cancelación: AbortController propio para cada búsqueda
+ *   - Timeouts: 2 minutos para primera búsqueda (warm-up del modelo)
+ *   - Reintentos: SOLO para 503 (servidor ocupado/iniciándose)
+ *   - Validaciones: Parámetros verificados antes de enviar al backend
+ *   - Mensajes específicos: Errores contextualizados para el usuario
+ * 
+ * Modos de búsqueda:
+ *   - 'descripcion': Texto libre que se convierte en embedding para búsqueda
+ *   - 'expediente': Busca casos similares al expediente especificado
+ * 
+ * Configuración por defecto:
+ *   - Límite de resultados: 30 casos (configurable 1-100)
+ *   - Umbral de similitud: 0.3 (configurable 0.0-1.0)
+ *   - Timeout búsqueda: 120 segundos
+ *   - Timeout resumen IA: 120 segundos
+ *   - Reintentos 503: 2 con delay de 5 segundos
+ * 
+ * @example
+ * ```javascript
+ * import similarityService from '@/services/similarityService';
+ * 
+ * // Búsqueda por descripción
+ * const results = await similarityService.searchSimilarCases({
+ *   searchMode: 'descripcion',
+ *   query: 'demanda laboral por despido injustificado',
+ *   limit: 30,
+ *   threshold: 0.3
+ * });
+ * 
+ * console.log(`Encontrados ${results.totalResults} casos similares`);
+ * results.similarCases.forEach(caso => {
+ *   console.log(`${caso.expedientNumber}: ${caso.similarityPercentage}%`);
+ * });
+ * 
+ * // Búsqueda por expediente
+ * const similar = await similarityService.searchSimilarCases({
+ *   searchMode: 'expediente',
+ *   query: '00-000123-0456-PE',
+ *   limit: 10,
+ *   threshold: 0.5
+ * });
+ * 
+ * // Generar resumen con IA
+ * const summary = await similarityService.generateCaseSummary('00-000123-0456-PE');
+ * console.log(summary.resumen);
+ * console.log(summary.palabrasClave);
+ * ```
+ * 
+ * @see {@link RAG_CONFIG.SIMILARITY} Configuración de límites y umbrales
  */
 
 import httpService from './httpService';
 import RAG_CONFIG from '../config/ragConfig';
 
+/**
+ * Servicio de búsqueda de casos similares con vector search.
+ * 
+ * Maneja búsquedas semánticas, cancelación, reintentos, y generación
+ * de resúmenes con IA. Singleton exportado.
+ * 
+ * @class SimilarityService
+ * @category Services
+ */
 class SimilarityService {
   constructor() {
     this.abortController = null;

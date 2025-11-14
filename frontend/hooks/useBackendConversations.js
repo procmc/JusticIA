@@ -1,3 +1,65 @@
+/**
+ * Hook personalizado para gestión del historial de conversaciones con el backend.
+ * 
+ * @module hooks/useBackendConversations
+ * 
+ * Este hook proporciona funcionalidad completa para gestionar conversaciones
+ * del asistente de IA que están persistidas en el servidor, permitiendo
+ * mantener el historial entre sesiones.
+ * 
+ * Características:
+ *   - Carga automática de conversaciones al autenticarse
+ *   - Cache de 30 segundos para evitar llamadas repetidas
+ *   - Operaciones CRUD: listar, obtener detalle, eliminar, restaurar
+ *   - Manejo de estados de carga y errores
+ *   - Sincronización con estado de sesión de NextAuth
+ * 
+ * @hook
+ * 
+ * @returns {Object} Estado y funciones del hook:
+ *   @returns {Array<Object>} conversations - Lista de conversaciones del usuario
+ *   @returns {boolean} isLoading - Estado de carga de datos
+ *   @returns {string|null} error - Mensaje de error si existe
+ *   @returns {boolean} hasConversations - True si hay conversaciones
+ *   @returns {number} totalConversations - Cantidad total de conversaciones
+ *   @returns {Function} fetchConversations - Función para recargar conversaciones
+ *   @returns {Function} getConversationDetail - Obtiene detalle de conversación
+ *   @returns {Function} deleteConversation - Elimina una conversación
+ *   @returns {Function} restoreConversation - Restaura conversación desde archivo
+ * 
+ * @example
+ * ```javascript
+ * import { useBackendConversations } from '@/hooks/useBackendConversations';
+ * 
+ * function ChatHistory() {
+ *   const {
+ *     conversations,
+ *     isLoading,
+ *     error,
+ *     fetchConversations,
+ *     deleteConversation
+ *   } = useBackendConversations();
+ * 
+ *   if (isLoading) return <Loading />;
+ *   if (error) return <Error message={error} />;
+ * 
+ *   return (
+ *     <div>
+ *       {conversations.map(conv => (
+ *         <ConversationCard
+ *           key={conv.session_id}
+ *           conversation={conv}
+ *           onDelete={() => deleteConversation(conv.session_id)}
+ *         />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ * 
+ * @see {@link conversationService} Servicio de conversaciones
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import conversationService from '../services/conversationService';
@@ -5,8 +67,11 @@ import conversationService from '../services/conversationService';
 /**
  * Hook para gestionar el historial de conversaciones desde el backend.
  * 
- * Este hook obtiene las conversaciones persistidas en el servidor,
- * permitiendo que el historial se mantenga incluso después de cerrar sesión.
+ * Obtiene las conversaciones persistidas en el servidor, permitiendo
+ * que el historial se mantenga incluso después de cerrar sesión.
+ * 
+ * @function useBackendConversations
+ * @category Hooks
  */
 export const useBackendConversations = () => {
   const { data: session, status } = useSession();

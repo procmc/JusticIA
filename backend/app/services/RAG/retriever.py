@@ -1,3 +1,73 @@
+"""
+Retriever dinámico para búsqueda vectorial en Milvus.
+
+Implementa LangChain BaseRetriever con dos modos de operación:
+1. Búsqueda semántica general: Busca en toda la BD por similitud
+2. Recuperación de expediente: Obtiene todos los documentos de un expediente
+
+Características:
+    * Integración con Milvus para búsqueda vectorial (BGE-M3 embeddings)
+    * Fallback automático si no hay resultados (search_strategies)
+    * Limpieza de encoding en documentos recuperados
+    * Metadata enriquecida para el LLM (expediente, páginas, tipo, ruta)
+    * Configuración flexible de top_k y threshold
+
+Flujo de búsqueda general:
+    1. Query → Embedding (BGE-M3)
+    2. Búsqueda vectorial en Milvus
+    3. Fallback si pocos resultados (threshold relajado)
+    4. Limpieza de encoding
+    5. Construcción de Documents de LangChain
+
+Flujo de expediente específico:
+    1. Búsqueda por filtro de expediente
+    2. Recuperación completa (sin embedding query)
+    3. Limpieza de encoding
+    4. Limitación a top_k configurado
+
+Metadata enriquecida:
+    * expediente_numero: Número de expediente
+    * documento_nombre: Nombre del archivo
+    * indice_chunk/id_chunk: Identificación del chunk
+    * pagina_inicio/pagina_fin: Rango de páginas
+    * tipo_documento: Tipo de documento judicial
+    * ruta_archivo: Ruta para descarga
+    * similarity_score: Score de similitud vectorial
+
+Example:
+    >>> from app.services.rag.retriever import DynamicJusticIARetriever
+    >>> 
+    >>> # Búsqueda general
+    >>> retriever_general = DynamicJusticIARetriever(
+    ...     top_k=15,
+    ...     similarity_threshold=0.30
+    ... )
+    >>> docs = await retriever_general.ainvoke("¿Qué es la prescripción?")
+    >>> 
+    >>> # Expediente específico
+    >>> retriever_expediente = DynamicJusticIARetriever(
+    ...     top_k=50,
+    ...     expediente_filter="24-000123-0001-PE"
+    ... )
+    >>> docs = await retriever_expediente.ainvoke("cualquier query")  # Se ignora el query
+
+Note:
+    * Usa config centralizada (rag_config) si no se especifican parámetros
+    * MAX_TOP_K recomendado: 15 (límite de contexto del LLM)
+    * Threshold general: 0.30, expediente: 0.10
+    * Limpieza de encoding automática para todos los documentos
+
+Ver también:
+    * app.vectorstore.vectorstore: Búsqueda en Milvus
+    * app.services.rag.search_strategies: Fallback automático
+    * app.services.ingesta.text_cleaner: Limpieza de encoding
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - LangChain retriever con fallback
+"""
 from typing import List, Optional
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
@@ -19,6 +89,18 @@ logger = logging.getLogger(__name__)
 
 
 class DynamicJusticIARetriever(BaseRetriever):
+    """
+    Retriever dinámico para búsqueda vectorial.
+    
+    Implementa dos modos:
+    - General: Búsqueda semántica con fallback
+    - Expediente: Recuperación completa de un expediente
+    
+    Attributes:
+        top_k (int): Número máximo de documentos a recuperar.
+        similarity_threshold (float): Umbral mínimo de similitud.
+        expediente_filter (str|None): Filtro de expediente específico.
+    """
     # Campos Pydantic V2
     top_k: int = Field(default=rag_config.TOP_K_GENERAL, description="Número de documentos a recuperar")
     similarity_threshold: float = Field(default=rag_config.SIMILARITY_THRESHOLD_GENERAL, description="Umbral de similitud mínimo")

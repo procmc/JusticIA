@@ -1,6 +1,80 @@
 """
 Servicio especializado de auditoría para el módulo RAG (Consultas Inteligentes).
-Registra consultas generales y consultas por expediente específico.
+
+Este módulo maneja el registro de auditoría para todas las consultas RAG del sistema,
+distinguiendo entre consultas generales (búsqueda en todos los documentos) y consultas
+por expediente específico (búsqueda limitada a un expediente).
+
+Tipos de consultas RAG:
+    * Consulta GENERAL: Búsqueda en todos los documentos del sistema
+      - expediente_id = NULL en bitácora
+      - tipo_consulta = "general" en info_adicional
+    
+    * Consulta EXPEDIENTE: Búsqueda limitada a expediente específico
+      - expediente_id = ID real del expediente en bitácora
+      - tipo_consulta = "expediente" en info_adicional
+      - expediente_numero en info_adicional
+
+Esta distinción permite:
+    * Análisis de patrones de uso (general vs específico)
+    * Estadísticas segregadas por tipo de consulta
+    * Auditoría de acceso a expedientes específicos (GDPR)
+
+Información registrada:
+    * Pregunta completa del usuario
+    * Tipo de consulta (general/expediente)
+    * ID de sesión conversacional
+    * Número de expediente (si aplica)
+    * Tiempo de procesamiento
+
+Integración:
+    * app.services.llm_service: Llama a este servicio después de cada consulta RAG
+    * app.routes.rag: Endpoints que registran consultas
+    * bitacora_stats_service.obtener_estadisticas_rag(): Analiza estos registros
+
+Example:
+    >>> from app.services.bitacora.rag_audit_service import rag_audit_service
+    >>> from app.constants.tipos_accion import TiposAccion
+    >>> 
+    >>> # Registrar consulta general
+    >>> await rag_audit_service.registrar_consulta_rag(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     pregunta="¿Qué es la prescripción en derecho civil?",
+    ...     session_id="abc123",
+    ...     tipo_consulta="general",
+    ...     tiempo_procesamiento=2.5
+    ... )
+    >>> 
+    >>> # Registrar consulta de expediente específico
+    >>> await rag_audit_service.registrar_consulta_rag(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     pregunta="¿Cuál es el estado de este proceso?",
+    ...     session_id="abc123",
+    ...     tipo_consulta="expediente",
+    ...     expediente_numero="24-000123-0001-PE",
+    ...     tiempo_procesamiento=1.8
+    ... )
+
+Note:
+    * Tipo de acción siempre es TiposAccion.CONSULTA_RAG (12)
+    * expediente_id es NULL para consultas generales
+    * expediente_id es el ID real para consultas de expediente
+    * Texto del registro incluye el tipo de consulta para filtrado rápido
+    * Errores se loggean como WARNING pero no fallan la consulta
+    * Pregunta completa se almacena en info_adicional con timestamp
+
+Ver también:
+    * app.services.bitacora.bitacora_service: Servicio base
+    * app.services.llm_service: Servicio que ejecuta consultas RAG
+    * app.services.bitacora.bitacora_stats_service.obtener_estadisticas_rag()
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Auditoría diferenciada de consultas RAG
 """
 from typing import Optional
 from datetime import datetime

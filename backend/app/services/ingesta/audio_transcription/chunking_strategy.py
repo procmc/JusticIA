@@ -1,5 +1,87 @@
 """
-Estrategia de procesamiento con chunks para archivos grandes.
+"""
+Estrategia de transcripción con chunks para archivos grandes.
+
+Implementa división de audio en chunks con overlap para procesamiento
+de archivos extensos que no caben en memoria.
+
+Características:
+    * División automática: Chunks de duración configurable
+    * Overlap: Evita perder palabras en bordes
+    * Procesamiento secuencial: Chunk a chunk
+    * Progress tracking: Detallado por chunk
+    * Memory release: Libera modelo después
+    * Cleanup: Elimina chunks temporales
+
+Umbral:
+    * Archivos ≥ chunk_threshold_mb (default: 100 MB)
+    * Usado como fallback si directa falla
+    * Archivos muy extensos (>2 horas)
+
+Configuración chunking:
+    * chunk_duration_minutes: 5 minutos por chunk
+    * chunk_overlap_seconds: 5 segundos overlap
+    * Formato: MP3 (comprimido)
+    * Límite: 50 chunks máximo
+
+Configuración Whisper:
+    * beam_size: 5
+    * language: es (español)
+    * condition_on_previous_text: False (chunks independientes)
+    * temperature: 0.0 (determinístico)
+
+Memoria:
+    * Modelo + chunk temporal en memoria
+    * Chunks se liberan después de transcribir
+    * Modelo se libera al finalizar
+    * gc.collect() explícito
+
+Progress tracking:
+    * 30%: Analizando duración
+    * 35%: Dividiendo en chunks
+    * 40-90%: Transcribiendo chunks (proporcional)
+    * 95%: Uniendo transcripciones
+
+Example:
+    >>> from app.services.ingesta.audio_transcription.chunking_strategy import ChunkingTranscriptionStrategy
+    >>> from app.config.audio_config import AUDIO_CONFIG
+    >>> 
+    >>> # Crear estrategia
+    >>> strategy = ChunkingTranscriptionStrategy(
+    ...     whisper_model=model,
+    ...     config=AUDIO_CONFIG
+    ... )
+    >>> 
+    >>> # Verificar si puede manejar
+    >>> if strategy.can_handle(file_size_mb=250):
+    ...     # Transcribir
+    ...     texto = await strategy.transcribe(
+    ...         temp_file_path="/tmp/audiencia_larga.mp3",
+    ...         filename="audiencia_larga.mp3",
+    ...         file_size_mb=250,
+    ...         progress_tracker=tracker
+    ...     )
+
+Note:
+    * Estrategia para archivos grandes o fallback
+    * Overlap de 5s previene pérdida de palabras
+    * Chunks temporales se eliminan automáticamente
+    * Libera modelo para embeddings
+    * Chunks vacíos (silencio) retornan ""
+
+Ver también:
+    * app.services.ingesta.audio_transcription.whisper_service: Orquestador
+    * app.services.ingesta.audio_transcription.direct_strategy: Estrategia primaria
+    * app.services.ingesta.audio_transcription.audio_utils: División de chunks
+    * app.config.audio_config: Configuración
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Fallback robusto para archivos grandes
+"""
+"""Estrategia de procesamiento con chunks para archivos grandes.
 Camino de fallback para cuando la transcripción directa no es viable.
 """
 import asyncio
@@ -14,7 +96,17 @@ from .audio_utils import AudioUtils
 logger = logging.getLogger(__name__)
 
 class ChunkingTranscriptionStrategy:
-    """Estrategia de transcripción con división en chunks para archivos grandes."""
+    """
+    Estrategia de transcripción con división en chunks.
+    
+    Para archivos grandes (≥100 MB) o fallback,
+    divide audio en partes manejables.
+    
+    Attributes:
+        whisper_model: Modelo faster-whisper cargado.
+        config (AudioProcessingConfig): Configuración.
+        audio_utils (AudioUtils): Utilidades de audio.
+    """
     
     def __init__(self, whisper_model, config: AudioProcessingConfig):
         self.whisper_model = whisper_model

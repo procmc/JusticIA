@@ -1,3 +1,73 @@
+"""
+Rutas de Autenticación y Gestión de Contraseñas.
+
+Este módulo define endpoints REST para el sistema de autenticación JWT del sistema JusticIA.
+Maneja login, logout, renovación de tokens (sliding sessions), cambio de contraseñas,
+y recuperación de contraseñas mediante códigos de verificación por correo electrónico.
+
+Arquitectura de autenticación:
+    - JWT: Tokens con expiración para autenticación stateless
+    - Sliding Sessions: Renovación automática de tokens mientras el usuario está activo
+    - Recuperación por correo: Sistema de códigos de 6 dígitos con expiración
+    - Bitácora completa: Todos los eventos de autenticación se auditan
+
+Endpoints principales:
+    - POST /auth/login: Autenticación con email/password
+    - POST /auth/logout: Cierre de sesión (registro de auditoría)
+    - POST /auth/refresh-token: Renovación de token activo (sliding sessions)
+    - PUT /auth/cambiar-contrasenna: Cambio de contraseña por el usuario
+    - POST /auth/solicitar-recuperacion: Envío de código por correo
+    - POST /auth/verificar-codigo: Verificación del código de recuperación
+    - POST /auth/cambiar-contrasenna-recuperacion: Cambio con código verificado
+    - POST /auth/restablecer-contrasenna: Reset de contraseña por administrador
+
+Flujo de recuperación de contraseña:
+    1. Usuario solicita recuperación (email) → se envía código de 6 dígitos
+    2. Usuario verifica código → recibe verificationToken
+    3. Usuario establece nueva contraseña con verificationToken
+
+Auditoría:
+    Todos los eventos (login exitoso/fallido, logout, cambios de contraseña,
+    recuperaciones) se registran automáticamente en la bitácora del sistema.
+
+Example:
+    ```python
+    # Login
+    response = await client.post("/auth/login", json={
+        "email": "usuario@example.com",
+        "password": "mipassword"
+    })
+    access_token = response.json()["access_token"]
+    
+    # Renovar token (sliding session)
+    response = await client.post("/auth/refresh-token", headers={
+        "Authorization": f"Bearer {access_token}"
+    })
+    new_token = response.json()["access_token"]
+    
+    # Recuperación de contraseña
+    await client.post("/auth/solicitar-recuperacion", json={
+        "email": "usuario@example.com"
+    })
+    # Usuario recibe código por correo
+    verification_response = await client.post("/auth/verificar-codigo", json={
+        "token": recovery_token,
+        "codigo": "123456"
+    })
+    verification_token = verification_response.json()["verificationToken"]
+    
+    await client.post("/auth/cambiar-contrasenna-recuperacion", json={
+        "verificationToken": verification_token,
+        "nuevaContrasenna": "nueva_password"
+    })
+    ```
+
+See Also:
+    - app.services.auth_service.AuthService: Lógica de negocio de autenticación
+    - app.auth.jwt_auth: Funciones de generación y verificación de JWT
+    - app.services.bitacora.auth_audit_service: Auditoría de eventos de autenticación
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 import logging

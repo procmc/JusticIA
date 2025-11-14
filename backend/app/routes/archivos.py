@@ -1,5 +1,80 @@
 """
-Rutas para gestión de archivos de expedientes
+Rutas de Gestión y Descarga de Archivos de Expedientes Judiciales.
+
+Este módulo define endpoints REST para listar y descargar archivos asociados a
+expedientes judiciales. Todos los accesos a archivos se auditan en la bitácora.
+
+Funcionalidades principales:
+    - Listado de archivos por expediente
+    - Descarga de archivos específicos
+    - Validación de estado de procesamiento
+    - Auditoría completa de accesos
+
+Arquitectura de archivos:
+    - Almacenamiento: uploads/{expediente_numero}/{archivo}
+    - Control de acceso: require_usuario_judicial (usuarios judiciales y admins)
+    - Validación: Solo archivos procesados pueden descargarse
+    - Auditoría: Todos los listados y descargas se registran
+
+Validaciones de seguridad:
+    - Formato de expediente validado (regex)
+    - Estado de procesamiento verificado en BD
+    - Existencia de archivo en disco verificada
+    - Path traversal prevenido mediante validación
+
+Endpoints principales:
+    - GET /archivos/expediente/{numero}/archivos: Listar archivos del expediente
+    - GET /archivos/expediente/{numero}/archivo/{nombre}: Descargar archivo específico
+    - GET /archivos/download?ruta_archivo={ruta}: Descargar por ruta completa
+
+Example:
+    ```python
+    # Listar archivos de un expediente
+    response = await client.get(
+        "/archivos/expediente/00-000123-0456-PE/archivos",
+        headers={"Authorization": f"Bearer {user_token}"}
+    )
+    print(f"Total archivos: {response['total_archivos']}")
+    for archivo in response['archivos']:
+        print(f"- {archivo['nombre_archivo']} ({archivo['estado_procesamiento']})")
+    
+    # Descargar archivo específico
+    file_content = await client.get(
+        "/archivos/expediente/00-000123-0456-PE/archivo/demanda.pdf",
+        headers={"Authorization": f"Bearer {user_token}"}
+    )
+    # El navegador recibe FileResponse con Content-Disposition attachment
+    
+    # Descargar por ruta (migrado desde /documentos/file)
+    file_content = await client.get(
+        "/archivos/download?ruta_archivo=uploads/00-000123-0456-PE/sentencia.pdf",
+        headers={"Authorization": f"Bearer {user_token}"}
+    )
+    ```
+
+Formato de expediente:
+    Formato esperado: XX-XXXXXX-XXXX-YY
+    Ejemplo: 00-000123-0456-PE
+    - XX: Código de tipo (00-99)
+    - XXXXXX: Número secuencial (6-8 dígitos)
+    - XXXX: Año (4-6 dígitos)
+    - YY: Tipo de proceso (opciona, 1-2 letras)
+
+Estados de procesamiento:
+    - 1: PENDIENTE - En cola para procesar
+    - 2: EN_PROCESO - Actualmente procesándose
+    - 3: COMPLETADO - Procesado exitosamente, listo para descarga
+    - 4: ERROR - Error en procesamiento
+
+Note:
+    Solo archivos con estado COMPLETADO (3) pueden descargarse.
+    Intentos de descarga de archivos no procesados retornan HTTP 400.
+
+See Also:
+    - app.services.documentos.file_management_service: Gestión de archivos
+    - app.utils.expediente_validator: Validación de formato de expediente
+    - app.repositories.documento_repository: Acceso a BD de documentos
+    - app.services.bitacora.archivos_audit_service: Auditoría de acceso a archivos
 """
 from fastapi import APIRouter, HTTPException, Depends, Path as PathParam
 from fastapi.responses import FileResponse

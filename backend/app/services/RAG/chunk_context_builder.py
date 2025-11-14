@@ -1,3 +1,78 @@
+"""
+Constructor de contexto estructurado agrupando chunks por documento.
+
+Formatea documentos recuperados agrupando chunks del mismo archivo fuente
+para presentación legible al LLM con metadata completa.
+
+Características:
+    * Agrupa chunks por documento de origen (id_documento + nombre_archivo)
+    * Ordena chunks por indice_chunk dentro de cada documento
+    * Truncamiento inteligente de chunks largos
+    * Detección de audio transcrito
+    * Limpieza de timestamps y marcas de audio
+
+Estructura de salida:
+    **CONTEXTO ESTRUCTURADO**
+    Documentos: 3 | Chunks totales: 8
+    
+    ====================================================================================================
+    **DOCUMENTO 1**
+    Archivo: demanda.pdf
+    Expediente: 24-000123-0001-PE
+    Mostrando chunks: 1-3 de 5 totales
+    ====================================================================================================
+    **[CHUNK 1]** (Pags. 1-2, 1,234 chars)
+    [Contenido...]
+    
+    **[CHUNK 2]** (Pags. 3-4, 987 chars)
+    [Contenido...]
+
+Limpieza de audio transcrito:
+    * Elimina timestamps: [00:12:34]
+    * Normaliza marcas: [ruido] → [sonido ambiente]
+    * Normaliza inaudibles: [inaudible]
+
+Truncamiento inteligente:
+    * Busca fin de oración cercano al límite
+    * Fallback a espacio más cercano
+    * Añade "..." si se trunca
+
+Example:
+    >>> from app.services.rag.chunk_context_builder import format_documents_by_chunks
+    >>> from langchain_core.documents import Document
+    >>> 
+    >>> docs = [
+    ...     Document(
+    ...         page_content="Contenido chunk 1...",
+    ...         metadata={
+    ...             "id_documento": 123,
+    ...             "nombre_archivo": "demanda.pdf",
+    ...             "indice_chunk": 0,
+    ...             "pagina_inicio": 1,
+    ...             "pagina_fin": 2
+    ...         }
+    ...     ),
+    ...     # ...
+    ... ]
+    >>> contexto = format_documents_by_chunks(docs, max_docs=20)
+    >>> print(contexto)
+
+Note:
+    * Usado por versiones antiguas de RAG (pre-FormattedRetriever)
+    * FormattedRetriever es el approach actual
+    * Se mantiene para compatibilidad con código legacy
+    * max_chars_per_chunk: 800 por defecto
+
+Ver también:
+    * app.services.rag.formatted_retriever: Approach moderno
+    * app.services.rag.document_formatter: Formateo actual
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Constructor de contexto estructurado (legacy)
+"""
 from typing import List
 from langchain_core.documents import Document
 from collections import defaultdict
@@ -5,6 +80,17 @@ import re
 
 
 def format_documents_by_chunks(
+    """
+    Formatea documentos agrupando chunks por archivo.
+    
+    Args:
+        docs: Lista de documentos recuperados.
+        max_docs: Máximo de documentos a incluir.
+        max_chars_per_chunk: Máximo de caracteres por chunk.
+    
+    Returns:
+        String con contexto estructurado formateado.
+    """
     docs: List[Document], 
     max_docs: int = 20, 
     max_chars_per_chunk: int = 800

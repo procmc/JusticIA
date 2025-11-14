@@ -1,6 +1,72 @@
+"""
+Funciones de formateo de metadata de documentos para el LLM.
+
+Formatea metadata de documentos en Markdown legible que el LLM puede interpretar.
+Añade información contextual sobre expediente, archivo, páginas, tipo y ruta.
+
+Formato de salida:
+    **Expediente:** 24-000123-0001-PE | **Archivo:** demanda.pdf | **Pág:** 1-3
+    **Tipo:** Demanda
+    **Ruta:** uploads/24-000123-0001-PE/demanda.pdf
+    ---
+    [Contenido del documento...]
+    ---
+
+Metadata extraída:
+    * expediente_numero: Número de expediente
+    * archivo/ruta_archivo: Nombre del documento
+    * pagina_inicio/pagina_fin: Rango de páginas
+    * tipo_documento: Tipo de documento judicial
+    * ruta_archivo: Ruta para descarga
+
+Funciones:
+    * format_document_with_metadata: Formatea un documento individual
+    * create_expediente_header: Crea header visual de expediente
+
+Example:
+    >>> from app.services.rag.document_formatter import format_document_with_metadata
+    >>> from langchain_core.documents import Document
+    >>> 
+    >>> doc = Document(
+    ...     page_content="Contenido del documento...",
+    ...     metadata={
+    ...         "expediente_numero": "24-000123-0001-PE",
+    ...         "ruta_archivo": "uploads/24-000123-0001-PE/demanda.pdf",
+    ...         "pagina_inicio": 1,
+    ...         "pagina_fin": 3,
+    ...         "tipo_documento": "Demanda"
+    ...     }
+    ... )
+    >>> formatted = format_document_with_metadata(doc)
+    >>> print(formatted)
+
+Note:
+    * Usa Markdown para mejor legibilidad del LLM
+    * Separa header con --- para delimitar contenido
+    * Extrae nombre de archivo desde ruta si disponible
+    * Maneja casos donde metadata está incompleta
+
+Ver también:
+    * app.services.rag.formatted_retriever: Usa estas funciones
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Formateo de metadata en Markdown
+"""
 from langchain_core.documents import Document
 
 def format_document_with_metadata(doc: Document) -> str:
+    """
+    Formatea documento con metadata visible en Markdown.
+    
+    Args:
+        doc: Documento de LangChain con metadata.
+    
+    Returns:
+        String con metadata formateada + contenido original.
+    """
     metadata = doc.metadata
     
     # Extraer información de páginas si existe

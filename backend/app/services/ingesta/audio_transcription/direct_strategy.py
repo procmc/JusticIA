@@ -1,5 +1,82 @@
 """
-Estrategia de procesamiento directo de audio con faster-whisper.
+"""
+Estrategia de transcripción directa de audio con faster-whisper.
+
+Implementa procesamiento completo de archivos sin división en chunks,
+optimizada para archivos pequeños y medianos.
+
+Características:
+    * Transcripción completa: Una sola llamada a Whisper
+    * Progress tracking: Granular por segmentos
+    * Async execution: run_in_executor para no bloquear
+    * Memory release: Libera modelo Whisper después
+    * Idioma forzado: Español (es) para mejor rendimiento
+    * Determinístico: temperature=0.0
+
+Umbral:
+    * Archivos < chunk_threshold_mb (default: 100 MB)
+    * Usado como estrategia primaria
+    * Fallback a chunking si falla
+
+Configuración Whisper:
+    * beam_size: 5 (balance velocidad/calidad)
+    * language: es (español forzado)
+    * condition_on_previous_text: False (mejor para archivos completos)
+    * temperature: 0.0 (determinístico)
+    * compression_ratio_threshold: 2.4
+    * no_speech_threshold: 0.6
+
+Memoria:
+    * Modelo cargado: ~1-3 GB según tamaño
+    * Se libera después de transcripción
+    * gc.collect() para liberar memoria
+    * Permite cargar modelo embeddings después
+
+Progress tracking:
+    * 20%: Modelo cargado
+    * 30%: Iniciando transcripción
+    * 35-90%: Procesando segmentos (granular)
+    * 95%: Transcripción completada
+
+Example:
+    >>> from app.services.ingesta.audio_transcription.direct_strategy import DirectTranscriptionStrategy
+    >>> from app.config.audio_config import AUDIO_CONFIG
+    >>> 
+    >>> # Crear estrategia
+    >>> strategy = DirectTranscriptionStrategy(
+    ...     whisper_model=model,
+    ...     config=AUDIO_CONFIG
+    ... )
+    >>> 
+    >>> # Verificar si puede manejar archivo
+    >>> if strategy.can_handle(file_size_mb=50):
+    ...     # Transcribir
+    ...     texto = await strategy.transcribe(
+    ...         temp_file_path="/tmp/audio.mp3",
+    ...         filename="audiencia.mp3",
+    ...         file_size_mb=50,
+    ...         progress_tracker=tracker
+    ...     )
+
+Note:
+    * Estrategia primaria para archivos < 100 MB
+    * Falla con archivos muy grandes (memoria)
+    * Progreso granular por segmentos detectados
+    * Libera modelo para embeddings posteriores
+    * Texto vacío lanza ValueError
+
+Ver también:
+    * app.services.ingesta.audio_transcription.whisper_service: Orquestador
+    * app.services.ingesta.audio_transcription.chunking_strategy: Fallback
+    * app.config.audio_config: Configuración
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Progress tracking granular
+"""
+"""Estrategia de procesamiento directo de audio con faster-whisper.
 Camino principal optimizado para archivos que pueden procesarse completos.
 """
 import asyncio
@@ -13,7 +90,16 @@ from ..async_processing.progress_tracker import ProgressTracker
 logger = logging.getLogger(__name__)
 
 class DirectTranscriptionStrategy:
-    """Estrategia de transcripción directa sin división en chunks."""
+    """
+    Estrategia de transcripción directa sin división en chunks.
+    
+    Optimizada para archivos pequeños/medianos (<100 MB),
+    transcribe completo en una llamada.
+    
+    Attributes:
+        whisper_model: Modelo faster-whisper cargado.
+        config (AudioProcessingConfig): Configuración de audio.
+    """
     
     def __init__(self, whisper_model, config: AudioProcessingConfig):
         self.whisper_model = whisper_model

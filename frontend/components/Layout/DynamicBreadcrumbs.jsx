@@ -1,3 +1,73 @@
+/**
+ * Componente de Breadcrumbs Dinámicos basados en Ruta.
+ * 
+ * @module components/Layout/DynamicBreadcrumbs
+ * @component
+ * 
+ * Muestra breadcrumbs de navegación que se generan automáticamente según la ruta actual
+ * del router. Utiliza una configuración centralizada (breadcrumbsConfig) para mapear
+ * rutas a breadcrumbs específicos.
+ * 
+ * Características:
+ *   - Generación automática: Lee router.pathname y busca en breadcrumbsConfig
+ *   - Ícono de inicio: Primera miga siempre muestra ícono de casa
+ *   - Links activos: Migas no finales son clicables
+ *   - Miga actual: Última miga no es clicable (isCurrent=true)
+ *   - Oculto en home: No se muestra en la página de inicio (/)
+ *   - Separador visual: Usa › para separar migas
+ * 
+ * Configuración de breadcrumbs:
+ *   breadcrumbsConfig mapea rutas a arrays de objetos breadcrumb:
+ *   ```javascript
+ *   {
+ *     '/usuarios': [
+ *       { label: 'Inicio', href: '/', isHome: true },
+ *       { label: 'Administración', href: '/administracion' },
+ *       { label: 'Usuarios', href: '#', isCurrent: true }
+ *     ]
+ *   }
+ *   ```
+ * 
+ * Propiedades de breadcrumb:
+ *   - label: Texto a mostrar
+ *   - href: URL del link (# para miga actual)
+ *   - isHome: true para mostrar ícono de casa en lugar de texto
+ *   - isCurrent: true para miga actual (no clicable)
+ * 
+ * @returns {JSX.Element|null} Breadcrumbs o null si está en la página de inicio
+ * 
+ * @example
+ * ```jsx
+ * import DynamicBreadcrumbs from '@/components/Layout/DynamicBreadcrumbs';
+ * 
+ * function Layout() {
+ *   return (
+ *     <div>
+ *       <DynamicBreadcrumbs />
+ *       {/* Contenido de la página */}
+ *     </div>
+ *   );
+ * }
+ * ```
+ * 
+ * @example
+ * ```jsx
+ * // En /data/breadcrumbs.js
+ * export const breadcrumbsConfig = {
+ *   '/consultas': [
+ *     { label: 'Inicio', href: '/', isHome: true },
+ *     { label: 'Consultas IA', href: '#', isCurrent: true }
+ *   ],
+ *   '/usuarios/nuevo': [
+ *     { label: 'Inicio', href: '/', isHome: true },
+ *     { label: 'Administración', href: '/administracion' },
+ *     { label: 'Usuarios', href: '/usuarios' },
+ *     { label: 'Nuevo Usuario', href: '#', isCurrent: true }
+ *   ]
+ * };
+ * ```
+ */
+
 import React from "react";
 import { useRouter } from "next/router";
 import { IoHomeSharp } from "react-icons/io5";

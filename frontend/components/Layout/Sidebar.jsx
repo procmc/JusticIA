@@ -1,3 +1,83 @@
+/**
+ * Componente de Sidebar de Navegación con Menú Dinámico.
+ * 
+ * @module components/Layout/Sidebar
+ * @component
+ * 
+ * Sidebar colapsable que muestra el menú de navegación principal del sistema JusticIA.
+ * El menú se filtra dinámicamente según el rol del usuario (Administrador/Usuario Judicial).
+ * 
+ * Características:
+ *   - Colapsable: Alterna entre vista completa e iconos solamente
+ *   - Responsive: En móviles se oculta y se activa con hamburger menu
+ *   - Menú dinámico: Filtrado por rol usando filterMenuByRole
+ *   - Submenús expandibles: Ítems con subItems pueden expandirse/colapsarse
+ *   - Tooltips: En modo colapsado, tooltips muestran etiquetas
+ *   - Active states: Resalta ruta activa y subítems activos
+ *   - Transiciones suaves: Animaciones CSS para colapsar/expandir
+ * 
+ * Estados del sidebar:
+ *   - Expandido desktop: width: 256px (w-64)
+ *   - Colapsado desktop: width: 80px (w-20)
+ *   - Móvil cerrado: transform: translateX(-100%) (fuera de pantalla)
+ *   - Móvil abierto: transform: translateX(0) (visible)
+ * 
+ * Flujo de navegación:
+ *   1. Usuario autenticado → session.user.role determina menú visible
+ *   2. filterMenuByRole filtra menuItems según rol
+ *   3. Ítem con subItems → click expande/colapsa submenú
+ *   4. Ítem sin subItems → Link directo a la ruta
+ *   5. Logout → limpia contexto de chat y cierra sesión
+ * 
+ * Menú dinámico por rol:
+ *   Administrador: Acceso completo (usuarios, bitácora, configuración, etc.)
+ *   Usuario Judicial: Acceso limitado (consultas, expedientes, perfil)
+ * 
+ * @param {Object} props - Propiedades del componente
+ * @param {boolean} props.toggleCollapse - Estado de colapso del sidebar
+ * @param {Function} props.setToggleCollapse - Función para cambiar estado de colapso
+ * 
+ * @example
+ * ```jsx
+ * import Sidebar from '@/components/Layout/Sidebar';
+ * 
+ * function Layout() {
+ *   const [toggleCollapse, setToggleCollapse] = useState(false);
+ *   
+ *   return (
+ *     <Sidebar 
+ *       toggleCollapse={toggleCollapse}
+ *       setToggleCollapse={setToggleCollapse}
+ *     />
+ *   );
+ * }
+ * ```
+ * 
+ * @example
+ * ```jsx
+ * // Estructura de menuItem con subItems
+ * {
+ *   id: 'administracion',
+ *   label: 'Administración',
+ *   icon: AdminIcon,
+ *   subItems: [
+ *     { label: 'Usuarios', link: '/usuarios', icon: UserIcon },
+ *     { label: 'Bitácora', link: '/bitacora', icon: LogIcon }
+ *   ]
+ * }
+ * 
+ * // Ítem simple sin subItems
+ * {
+ *   id: 'consultas',
+ *   label: 'Consultas IA',
+ *   icon: ChatIcon,
+ *   link: '/consultas'
+ * }
+ * ```
+ * 
+ * @returns {JSX.Element} Sidebar con menú de navegación filtrado por rol
+ */
+
 import classNames from "classnames";
 import Link from "next/link";
 import { useRouter } from "next/router";

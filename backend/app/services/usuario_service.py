@@ -1,3 +1,43 @@
+"""
+Servicio de Lógica de Negocio para Gestión de Usuarios.
+
+Este módulo implementa la capa de servicio para operaciones CRUD de usuarios,
+incluye envío automático de credenciales por email, reseteo de contraseñas,
+y mapeo de entidades a esquemas de respuesta.
+
+Funciones principales:
+    - obtener_todos_usuarios: Lista todos los usuarios del sistema
+    - obtener_usuario: Obtiene un usuario por cédula (ID)
+    - crear_usuario: Crea usuario con contraseña aleatoria y envío por email
+    - editar_usuario: Actualiza datos de usuario incluyendo rol y estado
+    - resetear_contrasenna_usuario: Resetea contraseña y envía nueva por email
+    - actualizar_ultimo_acceso: Registra último acceso del usuario
+
+Integración con Email:
+    - Envío automático de credenciales al crear usuario
+    - Notificación de contraseña reseteada
+    - Configuración desde variables de entorno (Gmail, Outlook, etc.)
+    - Graceful degradation si el servicio de email no está disponible
+
+Mapeo de entidades:
+    - Convierte T_Usuario (modelo DB) a UsuarioRespuesta (schema API)
+    - Incluye información de relaciones (rol, estado)
+    - Formato consistente para respuestas de API
+
+Example:
+    >>> service = UsuarioService()
+    >>> nuevo_usuario = await service.crear_usuario(
+    ...     db, '123456789', 'jperez', 'Juan', 'Pérez', 'Gómez',
+    ...     'jperez@example.com', id_rol=2
+    ... )
+    >>> # Usuario creado y contraseña enviada por email
+
+Note:
+    - Las contraseñas se generan aleatoriamente (8 caracteres alfanuméricos)
+    - El servicio de email es opcional (log warning si no está configurado)
+    - Usar resetear_contrasenna_usuario solo desde endpoints de administrador
+"""
+
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.repositories.usuario_repository import UsuarioRepository
@@ -10,7 +50,16 @@ logger = logging.getLogger(__name__)
 
 
 class UsuarioService:
-    """Servicio para usuarios con funcionalidad de email"""
+    """
+    Servicio de lógica de negocio para gestión de usuarios.
+    
+    Coordina operaciones entre el repositorio de usuarios y el servicio
+    de email. Aplica validaciones de negocio y transforma entidades.
+    
+    Attributes:
+        repository (UsuarioRepository): Repositorio para acceso a datos.
+        email_service (EmailService): Servicio de envío de correos (opcional).
+    """
     
     def __init__(self):
         self.repository = UsuarioRepository()
@@ -24,7 +73,22 @@ class UsuarioService:
             self.email_service = None
     
     def _mapear_usuario_respuesta(self, usuario: T_Usuario) -> UsuarioRespuesta:
-        """Mapea un usuario del modelo a la respuesta con objetos de rol y estado"""
+        """
+        Mapea un usuario del modelo de BD a esquema de respuesta de API.
+        
+        Transforma T_Usuario (modelo SQLAlchemy) a UsuarioRespuesta (schema Pydantic)
+        incluyendo información de relaciones (rol, estado).
+        
+        Args:
+            usuario (T_Usuario): Modelo de usuario de la base de datos.
+        
+        Returns:
+            UsuarioRespuesta: Schema de respuesta con datos del usuario.
+        
+        Note:
+            - Método privado (uso interno del servicio)
+            - Incluye objetos RolInfo y EstadoInfo anidados
+        """
         return UsuarioRespuesta(
             CN_Id_usuario=usuario.CN_Id_usuario,
             CT_Nombre_usuario=usuario.CT_Nombre_usuario,
@@ -60,7 +124,40 @@ class UsuarioService:
     
     async def crear_usuario(self, db: Session, cedula: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, id_rol: int) -> UsuarioRespuesta:
         """
-        Crea un nuevo usuario con contraseña automática y envía correo
+        Crea un nuevo usuario con contraseña aleatoria y envía credenciales por email.
+        
+        Genera una contraseña segura de 8 caracteres, crea el usuario en la base
+        de datos, y envía un email con las credenciales. Si el servicio de email
+        no está disponible, el usuario se crea igualmente pero sin notificación.
+        
+        Args:
+            db (Session): Sesión de base de datos SQLAlchemy.
+            cedula (str): Cédula del usuario (ID único).
+            nombre_usuario (str): Nombre de usuario para login.
+            nombre (str): Primer nombre del usuario.
+            apellido_uno (str): Primer apellido del usuario.
+            apellido_dos (str): Segundo apellido del usuario.
+            correo (str): Correo electrónico del usuario.
+            id_rol (int): ID del rol a asignar (1=Admin, 2=Usuario Judicial).
+        
+        Returns:
+            UsuarioRespuesta: Objeto con datos del usuario creado incluyendo
+                información de rol y estado.
+        
+        Example:
+            >>> usuario = await service.crear_usuario(
+            ...     db, '123456789', 'jperez', 'Juan', 'Pérez', 'Gómez',
+            ...     'jperez@example.com', id_rol=2
+            ... )
+            >>> print(usuario.CT_Correo)
+            'jperez@example.com'
+            >>> # Email enviado automáticamente con credenciales
+        
+        Note:
+            - La contraseña se genera aleatoriamente (8 caracteres)
+            - El usuario queda en estado "Activo" por defecto
+            - CF_Ultimo_acceso = NULL (requiere cambio de contraseña)
+            - Si email falla, el usuario se crea pero se registra warning
         """
         # Generar contraseña aleatoria
         if self.email_service:
@@ -106,8 +203,32 @@ class UsuarioService:
 
     async def resetear_contrasenna_usuario(self, db: Session, usuario_id: str) -> Optional[UsuarioRespuesta]:
         """
-        Resetea la contraseña de un usuario y envía la nueva por correo
-        Solo para uso de administradores
+        Resetea la contraseña de un usuario y envía la nueva por email.
+        
+        Genera una nueva contraseña aleatoria, actualiza el usuario en la base
+        de datos (con CF_Ultimo_acceso=NULL para forzar cambio), y envía email
+        con la nueva contraseña. Solo debe ser llamado por administradores.
+        
+        Args:
+            db (Session): Sesión de base de datos SQLAlchemy.
+            usuario_id (str): Cédula del usuario a resetear.
+        
+        Returns:
+            Optional[UsuarioRespuesta]: Objeto con datos del usuario actualizado,
+                o None si el usuario no existe.
+        
+        Example:
+            >>> usuario = await service.resetear_contrasenna_usuario(db, '123456789')
+            >>> if usuario:
+            ...     print('Contraseña reseteada y email enviado')
+            >>> else:
+            ...     print('Usuario no encontrado')
+        
+        Note:
+            - Solo debe ser llamado desde endpoints con rol Administrador
+            - CF_Ultimo_acceso se pone en NULL (fuerza cambio obligatorio)
+            - La nueva contraseña es aleatoria de 8 caracteres
+            - Si email falla, la contraseña se resetea pero sin notificación
         """
         # Obtener el usuario
         usuario = self.repository.obtener_usuario_por_id(db, usuario_id)

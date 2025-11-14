@@ -1,3 +1,78 @@
+"""
+Procesador principal de archivos con transacciones atómicas.
+
+Maneja el procesamiento completo de archivos (PDF, audio, documentos) para expedientes,
+incluyendo extracción de texto, limpieza, almacenamiento en BD y vectorstore con
+transacciones atómicas.
+
+Características:
+    * Transacciones atómicas: BD + vectorstore (commit temprano)
+    * Progress tracking: Sistema global con Redis
+    * Cancelación: Verifica estado durante procesamiento
+    * Validación: Extensiones, tamaño, tipo MIME
+    * Routing: Audio→Whisper, PDF/docs→Tika, TXT→decode directo
+    * Limpieza: Normalización Unicode y corrección encoding
+    * Bitácora: Logging completo de operaciones
+    * Error handling: Rollback BD si falla vectorstore
+
+Flujo transaccional:
+    1. Validar archivo (extensión, tamaño, tipo)
+    2. Crear documento en BD con estado "Pendiente"
+    3. Commit temprano (visibilidad inmediata)
+    4. Extraer texto (Tika/Whisper según tipo)
+    5. Limpiar texto (normalización + encoding)
+    6. Almacenar en vectorstore (chunks + embeddings)
+    7. Actualizar estado "Procesado" en BD
+    8. Logging en bitácora (inicio/completado/error)
+
+Commit temprano:
+    * Documento visible aunque esté procesándose
+    * Estado "Pendiente" durante procesamiento
+    * Estado "Procesado" o "Error" al finalizar
+    * Rollback BD si falla vectorstore (consistencia)
+
+Progress tracking:
+    * Actualización por archivo procesado
+    * Porcentaje calculado: archivos_completados / total
+    * Verificación de cancelación entre archivos
+    * Mensajes informativos por fase
+
+Example:
+    >>> from app.services.ingesta.file_management.document_processor import process_uploaded_files
+    >>> from app.schemas.schemas import FileProcessingStatus
+    >>> 
+    >>> # Procesar archivos
+    >>> status = await process_uploaded_files(
+    ...     files=[archivo1, archivo2],
+    ...     CT_Num_expediente="00-000001-0001-PE",
+    ...     db=db_session,
+    ...     usuario_id="user_123",
+    ...     progress_tracker=tracker,
+    ...     cancel_check=lambda: check_cancelled()
+    ... )
+    >>> 
+    >>> print(f"Éxito: {status.successful_files}, Error: {status.failed_files}")
+
+Note:
+    * Archivos quedan en disco aunque falle BD (auditoría)
+    * Estado "Error" preserva información para debugging
+    * Tika timeout 600s para PDFs con OCR
+    * Whisper usa estrategias según tamaño
+    * Validación de texto limpio (encoding, longitud)
+
+Ver también:
+    * app.services.ingesta.tika_service: Extracción PDF/docs
+    * app.services.ingesta.audio_transcription.whisper_service: Transcripción audio
+    * app.services.ingesta.text_cleaner: Limpieza de texto
+    * app.services.ingesta.celery_tasks: Procesamiento asíncrono
+    * app.vectorstore.milvus_storage: Almacenamiento vectorial
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Transacciones atómicas con commit temprano
+"""
 import os
 import uuid
 import logging

@@ -1,3 +1,71 @@
+"""
+Chains conversacionales de LangChain para consultas generales.
+
+Implementa el pipeline completo de RAG conversacional:
+1. Contextualización de pregunta con historial
+2. Recuperación de documentos relevantes
+3. Generación de respuesta con LLM
+4. Streaming de respuesta token por token
+
+Componentes de la chain:
+    * History-aware retriever: Reformula pregunta con contexto
+    * Stuff documents chain: Combina documentos en contexto único
+    * Retrieval chain: Pipeline completo de recuperación + generación
+    * RunnableWithMessageHistory: Añade gestión de historial
+
+Prompts utilizados:
+    * CONTEXTUALIZE_Q_PROMPT: Reformulación con expansión semántica
+    * ANSWER_PROMPT: Generación de respuestas con JusticBot
+    * DOCUMENT_PROMPT: Formato de documentos para el LLM
+
+Streaming:
+    * Server-Sent Events (SSE) para respuestas en tiempo real
+    * Detección de desconexión del cliente
+    * Mensajes fallback si respuesta vacía
+    * Señal de finalización automática
+
+Flujo de ejecución:
+    1. Usuario envía pregunta + session_id
+    2. Reformulación con historial (contextualize)
+    3. Búsqueda vectorial en Milvus (retriever)
+    4. Formateo de documentos (FormattedRetriever)
+    5. Generación con LLM (streaming)
+    6. SSE al frontend chunk por chunk
+
+Example:
+    >>> from app.services.rag.general_chains import create_conversational_rag_chain, stream_chain_response
+    >>> 
+    >>> # Crear chain conversacional
+    >>> chain = await create_conversational_rag_chain(
+    ...     retriever=retriever,
+    ...     with_history=True
+    ... )
+    >>> 
+    >>> # Streaming de respuesta
+    >>> async for chunk in stream_chain_response(
+    ...     chain=chain,
+    ...     input_dict={"input": "¿Qué es la prescripción?"},
+    ...     config={"configurable": {"session_id": session_id}}
+    ... ):
+    ...     print(chunk, end="", flush=True)
+
+Note:
+    * La chain retorna dict con clave "answer" en streaming
+    * FormattedRetriever añade metadata visible en documentos
+    * Detección de desconexión evita generación innecesaria
+    * Fallback automático si LLM retorna respuesta vacía
+
+Ver también:
+    * app.services.rag.prompts: Definición de prompts
+    * app.services.rag.formatted_retriever: Formateo de documentos
+    * app.llm.llm_service: Servicio de LLM
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - LangChain con streaming SSE
+"""
 from typing import Dict, Any
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough

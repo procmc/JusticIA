@@ -1,5 +1,85 @@
 """
-Almacenamiento vectorial usando LangChain como orquestador.
+"""
+Almacenamiento vectorial con chunking y metadata enriquecida.
+
+Migrado a LangChain para automación completa de embeddings e inserción.
+Maneja chunking inteligente, estimación de páginas y preparación de metadata.
+
+Características:
+    * Chunking con RecursiveCharacterTextSplitter
+    * Chunks de 7000 chars (seguro bajo límite 8192 de Milvus)
+    * Overlap de 500 chars para continuidad contextual
+    * Estimación de páginas por chunk
+    * Metadata completa (expediente, documento, chunk, páginas)
+    * Embeddings automáticos via LangChain
+
+Flujo de almacenamiento:
+    1. Recibir texto completo del documento
+    2. Dividir en chunks con text_splitter
+    3. Calcular páginas estimadas por chunk
+    4. Preparar metadata enriquecida
+    5. Crear Documents de LangChain
+    6. Llamar add_documents (embeddings automáticos)
+
+Metadata por chunk:
+    * id_chunk: UUID único
+    * id_expediente/numero_expediente: Referencias a BD
+    * id_documento/nombre_archivo: Identificación del documento
+    * indice_chunk: Posición secuencial
+    * pagina_inicio/pagina_fin: Rango estimado de páginas
+    * tipo_archivo: Código de tipo (FILE_TYPE_CODES)
+    * fecha_carga/fecha_vectorizacion: Timestamps
+    * meta: JSON con info adicional (total_chunks, length, etc.)
+
+Chunking:
+    * Separadores: \n\n, \n, ".", " " (en orden de preferencia)
+    * Respeta límites de oración cuando es posible
+    * Overlap mantiene continuidad entre chunks
+    * Longitud función: len (caracteres)
+
+Estimación de páginas:
+    * 2500 caracteres por página (aprox 500 palabras)
+    * Cálculo basado en posición de caracteres
+    * Mantiene secuencia correcta entre chunks
+
+Example:
+    >>> from app.vectorstore.milvus_storage import store_in_vectorstore
+    >>> 
+    >>> # Almacenar documento
+    >>> texto = "Contenido del documento..." * 1000
+    >>> metadatos = {
+    ...     "nombre_archivo": "demanda.pdf",
+    ...     "ruta_archivo": "uploads/24-000123-0001-PE/demanda.pdf",
+    ...     "tipo": "PDF"
+    ... }
+    >>> ids, num_chunks = await store_in_vectorstore(
+    ...     texto=texto,
+    ...     metadatos=metadatos,
+    ...     CT_Num_expediente="24-000123-0001-PE",
+    ...     id_expediente=123,
+    ...     id_documento=456
+    ... )
+    >>> print(f"Almacenados {num_chunks} chunks con IDs {len(ids)}")
+
+Note:
+    * LangChain genera embeddings automáticamente (BGE-M3)
+    * IDs retornados son UUIDs asignados por Milvus
+    * Chunks respetan límite de 8192 chars de Milvus
+    * Metadata "meta" es JSON flexible para extensibilidad
+    * FILE_TYPE_CODES mapea extensiones a códigos numéricos
+
+Ver también:
+    * app.vectorstore.vectorstore: add_documents para inserción
+    * app.config.file_config: FILE_TYPE_CODES
+    * app.services.ingesta: Usa store_in_vectorstore
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - LangChain automático con metadata enriquecida
+"""
+"""Almacenamiento vectorial usando LangChain como orquestador.
 
 MIGRADO A LANGCHAIN: Este módulo ahora usa add_documents() para aprovechar
 la automación completa de embeddings e inserción de LangChain.
@@ -22,22 +102,50 @@ async def store_in_vectorstore(
     id_documento: int    # ID real de la BD
 ) -> tuple[list, int]:
     """
-    Almacena el texto en Milvus usando LangChain para automación completa.
+    Almacena documento en Milvus con chunking y embeddings automáticos.
     
-    BENEFICIOS LANGCHAIN:
-    - Embeddings automáticos (sin código manual)
-    - Inserción optimizada
-    - Gestión de errores integrada
+    Procesa texto completo dividiéndolo en chunks, preparando metadata
+    enriquecida y almacenando con embeddings generados automáticamente
+    por LangChain.
+    
+    Beneficios LangChain:
+        * Embeddings automáticos (sin código manual de BGE-M3)
+        * Inserción optimizada en batch
+        * Gestión de errores integrada
+        * Retry automático en fallos
     
     Args:
-        texto: Texto completo del documento
-        metadatos: Metadatos del documento  
-        CT_Num_expediente: Número de expediente
-        id_expediente: ID real del expediente en la BD transaccional
-        id_documento: ID real del documento en la BD transaccional
+        texto: Texto completo del documento extraído (PDF/audio transcrito).
+        metadatos: Dict con nombre_archivo, ruta_archivo, tipo, etc.
+        CT_Num_expediente: Número de expediente formato YY-NNNNNN-NNNN-XX.
+        id_expediente: ID del expediente en T_Expediente (FK).
+        id_documento: ID del documento en T_Documento (FK).
         
     Returns:
-        tuple: (IDs de documentos almacenados, número de chunks)
+        tuple[list, int]: (Lista de UUIDs asignados, Número de chunks creados)
+        
+    Raises:
+        Exception: Error en chunking o almacenamiento en Milvus.
+        
+    Example:
+        >>> metadatos = {
+        ...     "nombre_archivo": "demanda.pdf",
+        ...     "ruta_archivo": "uploads/24-000123-0001-PE/demanda.pdf"
+        ... }
+        >>> ids, num_chunks = await store_in_vectorstore(
+        ...     texto=texto_extraido,
+        ...     metadatos=metadatos,
+        ...     CT_Num_expediente="24-000123-0001-PE",
+        ...     id_expediente=123,
+        ...     id_documento=456
+        ... )
+        >>> print(f"{num_chunks} chunks almacenados")
+    
+    Note:
+        * Chunks de 7000 chars con overlap de 500 (límite Milvus: 8192)
+        * Estimación de páginas: 2500 caracteres por página
+        * Metadata "meta" es JSON flexible para extensibilidad
+        * Timestamps en epoch milliseconds
     """
     # Configurar text splitter con chunks que respeten el límite de Milvus (8192 chars)
     text_splitter = RecursiveCharacterTextSplitter(

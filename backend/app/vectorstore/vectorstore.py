@@ -1,3 +1,78 @@
+"""
+Cliente principal de Milvus con integración LangChain.
+
+Proporciona interfaz unificada para todas las operaciones vectoriales del sistema:
+búsqueda semántica, almacenamiento, recuperación de expedientes y estadísticas.
+
+Arquitectura dual:
+    * PyMilvus Client: Configuración, administración, queries directas
+    * LangChain Milvus: Búsquedas vectoriales, embeddings automáticos
+
+Colección Milvus:
+    * Nombre: COLLECTION_NAME (config)
+    * Schema: Definido en vectorstore.schema
+    * Índice vectorial: HNSW para similitud coseno
+    * Índices escalares: STL_SORT para filtros (expediente, documento, tipo, fecha)
+
+Embeddings:
+    * Modelo: BGE-M3 (1024 dims) via LangChainEmbeddingsAdapter
+    * Generación automática por LangChain en búsquedas y almacenamiento
+    * Métrica: Similitud coseno (COSINE)
+
+Filtrado de estado:
+    * TODAS las búsquedas filtran automáticamente por estado "Procesado"
+    * Usa DocumentoRepository para obtener IDs procesados
+    * Evita mostrar documentos en procesamiento o con error
+
+Funciones principales:
+    * search_by_text: Búsqueda semántica general o por expediente
+    * search_by_vector: Búsqueda con vector precomputado
+    * search_similar_expedients: Encuentra expedientes similares
+    * get_expedient_documents: Recupera todos los chunks de un expediente
+    * add_documents: Almacena documentos con embeddings automáticos
+    * get_stats: Estadísticas de la colección
+
+Example:
+    >>> from app.vectorstore.vectorstore import search_by_text, add_documents
+    >>> 
+    >>> # Búsqueda semántica general
+    >>> results = await search_by_text(
+    ...     query_text="¿Qué es la prescripción?",
+    ...     top_k=15,
+    ...     score_threshold=0.30
+    ... )
+    >>> 
+    >>> # Búsqueda en expediente específico
+    >>> results = await search_by_text(
+    ...     query_text="cualquier query",
+    ...     expediente_filter="24-000123-0001-PE",
+    ...     db=db_session
+    ... )
+    >>> 
+    >>> # Almacenar documentos (embeddings automáticos)
+    >>> from langchain_core.documents import Document
+    >>> docs = [Document(page_content="texto", metadata={...})]
+    >>> ids = await add_documents(docs)
+
+Note:
+    * Clientes singleton: _milvus_client y _langchain_vectorstore
+    * Creación lazy: Se inicializan en primera llamada
+    * Colección se crea automáticamente si no existe
+    * Filtrado por estado procesado en TODAS las búsquedas
+    * Session DB opcional: Crear temporal si no se proporciona
+
+Ver también:
+    * app.vectorstore.schema: Definición del schema
+    * app.vectorstore.milvus_storage: Almacenamiento con chunking
+    * app.embeddings.langchain_adapter: Adaptador de embeddings
+    * app.repositories.documento_repository: Filtrado por estado
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - LangChain integration + filtrado por estado
+"""
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -27,7 +102,22 @@ _langchain_vectorstore = None
 
 async def get_client():
     """
-    Cliente PyMilvus para configuración inicial y administración.
+    Obtiene cliente PyMilvus singleton para administración.
+    
+    Crea y configura el cliente si no existe. Crea la colección
+    automáticamente con schema e índices optimizados.
+    
+    Índices creados:
+        * embedding: HNSW (M=16, efConstruction=200, COSINE)
+        * Escalares: STL_SORT para filtros rápidos
+    
+    Returns:
+        MilvusClient: Cliente configurado y conectado.
+        
+    Note:
+        * Singleton: Una instancia global compartida
+        * Lazy initialization: Se crea en primera llamada
+        * Auto-crea colección si no existe
     """
     global _milvus_client
 

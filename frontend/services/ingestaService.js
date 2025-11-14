@@ -1,19 +1,66 @@
 /**
- * IngestaService - Servicio para ingesta de archivos con Celery
+ * Servicio de Ingesta de Archivos con Procesamiento Asíncrono (Celery).
  * 
- * Maneja:
- * - Reintentos SOLO para uploads (errores de red)
- * - Validación de parámetros
- * - Mensajes de error específicos del contexto
- * - NO reintenta consultas de progreso (son rápidas y se hacen en polling)
+ * @module services/ingestaService
+ * 
+ * Este servicio maneja la carga de documentos y audio a expedientes, con
+ * procesamiento asíncrono mediante tareas de Celery. Incluye validación de
+ * archivos, reintentos automáticos para errores de red, y consulta de progreso.
+ * 
+ * Características:
+ *   - Upload de archivos con FormData
+ *   - Reintentos automáticos (exponential backoff) solo para errores de red
+ *   - Validación de tamaño máximo (200MB)
+ *   - Polling de progreso sin reintentos (alta frecuencia)
+ *   - Consulta paralela de múltiples tareas
+ *   - Cancelación de procesamiento "best effort"
+ * 
+ * Flujo de ingesta:
+ *   1. Usuario selecciona archivos
+ *   2. validateFiles() verifica tamaño y cantidad
+ *   3. subirArchivos() crea tareas Celery y retorna task_ids
+ *   4. Frontend hace polling con consultarProgresoTarea()
+ *   5. Cuando ready=true, el procesamiento terminó
+ * 
+ * @example
+ * ```javascript
+ * import ingestaService from '@/services/ingestaService';
+ * 
+ * // Subir archivos
+ * const result = await ingestaService.subirArchivos('00-001234-0567-PE', files);
+ * console.log('Task IDs:', result.task_ids);
+ * 
+ * // Consultar progreso (polling cada 2 segundos)
+ * const progress = await ingestaService.consultarProgresoTarea(task_ids[0]);
+ * console.log(`Progreso: ${progress.progress}%`);
+ * 
+ * // Cancelar si es necesario
+ * await ingestaService.cancelarProcesamiento(task_ids[0]);
+ * ```
+ * 
+ * @see {@link httpService} Para llamadas HTTP configuradas
+ * @see {@link backend/tasks.py} Para lógica de procesamiento Celery
  */
 
 import httpService from './httpService';
 
+/**
+ * Servicio de ingesta de archivos con procesamiento asíncrono.
+ * 
+ * @class IngestaService
+ * @category Services
+ */
 class IngestaService {
+  /**
+   * Inicializa el servicio de ingesta.
+   * 
+   * @constructor
+   */
   constructor() {
-    this.maxRetries = 2; // Solo 2 reintentos para uploads
-    this.retryDelay = 1000; // 1 segundo inicial
+    /** @type {number} Máximo de reintentos para uploads (errores de red) */
+    this.maxRetries = 2;
+    /** @type {number} Delay inicial para reintentos en ms (usa exponential backoff) */
+    this.retryDelay = 1000;
   }
 
   /**

@@ -1,5 +1,68 @@
 """
-Servicio para comunicarse con Apache Tika Server.
+"""
+Cliente HTTP para Apache Tika Server con soporte OCR.
+
+Implementa integración directa con Apache Tika Server via llamadas HTTP REST,
+reemplazando el wrapper tika-python con control completo sobre requests y
+manejo de errores.
+
+Características:
+    * Extracción de texto de múltiples formatos (PDF, DOC, DOCX, HTML, TXT, etc.)
+    * OCR automático con Tesseract (español + inglés)
+    * PDFOcrStrategy 'auto': OCR solo en PDFs escaneados
+    * Reintentos automáticos (3 intentos por defecto)
+    * Timeout configurable (10 minutos para OCR)
+    * Detección de encoding UTF-8
+
+Configuración:
+    * TIKA_SERVER_URL: URL del servidor (default: http://tika:9998)
+    * TIKA_TIMEOUT: Timeout en segundos (default: 600)
+
+Endpoints de Tika:
+    * /tika: Extracción de texto (PUT)
+    * /meta: Metadata del documento (PUT)
+
+Headers importantes:
+    * Accept: text/plain; charset=utf-8 (especificar encoding)
+    * Content-Type: application/octet-stream (bytes raw)
+    * X-Tika-OCRLanguage: spa+eng (idiomas OCR)
+    * X-Tika-PDFOcrStrategy: auto (OCR solo si necesario)
+
+Reintentos:
+    * HTTP 500: Reintenta hasta max_retries
+    * Timeout: Reintenta (archivos grandes con OCR)
+    * HTTP 422: No reintenta (formato no soportado)
+
+Example:
+    >>> from app.services.ingesta.tika_service import tika_service
+    >>> 
+    >>> # Extraer texto de PDF
+    >>> with open("documento.pdf", "rb") as f:
+    ...     content = f.read()
+    >>> texto = tika_service.extract_text(
+    ...     content=content,
+    ...     filename="documento.pdf",
+    ...     enable_ocr=True
+    ... )
+    >>> print(f"Extraídos {len(texto)} caracteres")
+
+Note:
+    * OCR puede tardar varios minutos en archivos grandes
+    * Tika Server debe tener Tesseract instalado con idioma español
+    * Response vacío no es error (puede ser archivo sin texto)
+    * Metadata endpoint útil para diagnóstico
+
+Ver también:
+    * app.services.ingesta.document_processor: Usa tika_service
+    * app.services.ingesta.text_cleaner: Limpia texto de Tika
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - HTTP directo con OCR integrado
+"""
+"""Servicio para comunicarse con Apache Tika Server.
 Reemplaza el wrapper tika-python con llamadas HTTP directas.
 """
 import os
@@ -11,6 +74,17 @@ logger = logging.getLogger(__name__)
 
 
 class TikaService:
+    """
+    Cliente HTTP para Apache Tika Server.
+    
+    Maneja extracción de texto con OCR, reintentos automáticos
+    y detección de encoding.
+    
+    Attributes:
+        tika_url (str): URL del servidor Tika.
+        timeout (int): Timeout en segundos.
+        max_retries (int): Número máximo de reintentos.
+    """
     """Cliente HTTP para Apache Tika Server con OCR (Tesseract)"""
     
     def __init__(self, tika_url: Optional[str] = None):

@@ -1,3 +1,56 @@
+"""Repositorio de Acceso a Datos de Expedientes Judiciales.
+
+Este módulo implementa el patrón Repository para abstraer el acceso a datos
+de expedientes judiciales almacenados en SQL Server. Proporciona operaciones
+CRUD y consultas especializadas para la tabla T_Expediente.
+
+Patrón Repository:
+    Separa la lógica de negocio de la lógica de acceso a datos,
+    facilitando testing, mantenimiento y cambios de persistencia.
+
+Operaciones principales:
+    - obtener_por_numero: Buscar expediente por número único
+    - crear: Crear nuevo expediente
+    - buscar_o_crear: Obtener existente o crear nuevo (idempotente)
+    - obtener_expedientes_similares: Búsqueda múltiple por IDs
+    - validar_expediente_existe: Verificación ligera de existencia
+
+Modelo de datos:
+    T_Expediente:
+        - CN_Id_expediente (int, PK): ID autoincremental
+        - CT_Num_expediente (str, unique): Número de expediente (formato: XX-XXXXXX-XXXX-YY)
+        - CF_Fecha_creacion (datetime): Fecha de creación del registro
+        - documentos (relationship): Documentos asociados al expediente
+
+Example:
+    ```python
+    from app.repositories.expediente_repository import ExpedienteRepository
+    from app.db.database import get_db
+    
+    repo = ExpedienteRepository()
+    db = next(get_db())
+    
+    # Buscar o crear expediente
+    expediente = repo.buscar_o_crear(db, '00-000123-0456-PE')
+    print(f"ID: {expediente.CN_Id_expediente}")
+    
+    # Validar existencia sin carga completa
+    existe = repo.validar_expediente_existe(db, '00-000123-0456-PE')
+    
+    # Obtener múltiples expedientes para similitud
+    expedientes = repo.obtener_expedientes_similares(db, [1, 2, 3], limit=10)
+    ```
+
+Note:
+    Todos los métodos que modifican datos soportan auto_commit=False
+    para transacciones más complejas manejadas por servicios.
+
+See Also:
+    - app.db.models.expediente.T_Expediente: Modelo SQLAlchemy
+    - app.services.expediente_service.ExpedienteService: Lógica de negocio
+    - app.repositories.documento_repository.DocumentoRepository: Documentos del expediente
+"""
+
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -6,7 +59,14 @@ from datetime import datetime
 
 
 class ExpedienteRepository:
-    """Repositorio para operaciones CRUD de expedientes"""
+    """Repositorio de acceso a datos para expedientes judiciales.
+    
+    Implementa operaciones CRUD y consultas especializadas sobre la tabla
+    T_Expediente en SQL Server, abstrayendo la complejidad de SQLAlchemy.
+    
+    Attributes:
+        Ninguno. Todas las operaciones son stateless y reciben la sesión db como parámetro.
+    """
     
     def obtener_por_numero(self, db: Session, numero_expediente: str) -> Optional[T_Expediente]:
         """

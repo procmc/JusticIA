@@ -1,5 +1,69 @@
 """
-Prompt de contextualización de preguntas.
+"""
+Prompt de contextualización con expansión semántica.
+
+Reformula preguntas del usuario para mejorar la recuperación vectorial en Milvus.
+Añade sinónimos, términos relacionados y expansión de siglas para maximizar recall.
+
+Estrategi de expansión semántica:
+    1. Identificar términos legales clave
+    2. Añadir sinónimos y variantes (con y sin tildes)
+    3. Expandir siglas comunes (CPC, LOPJ, TSE, etc.)
+    4. Añadir términos relacionados del área legal
+    5. Incluir variantes ortográficas de artículos
+    6. Agregar contexto jurisdiccional costarricense
+
+Ejemplos de expansión:
+    * "prescripción" → prescripción prescripcion caducidad extinción extincion
+    * "CPC" → CPC Código Procesal Civil codigo procesal civil
+    * "artículo 8.4" → artículo 8.4 art. 8.4 articulo 8.4 art 8.4 numeral 8.4
+
+Manejo de historial:
+    * Referencias posicionales: "el primero", "el segundo", "el último"
+    * Extracción de números de expediente del historial
+    * Detección de cambios de contexto (laboral → penal)
+    * Pronombres y referencias: "ese caso", "aquél"
+
+Análisis dinámico:
+    * Detecta documentos largos (plantillas) + solicitud específica
+    * Extrae SOLO la solicitud relevante (ignora plantilla)
+    * Identifica patrones: "...para [TEMA]", "...expediente [NÚMERO]"
+
+Preguntas meta (NO reformular):
+    * Saludos: "hola", "buenos días"
+    * Sistema: "¿cómo te llamas?", "¿qué puedes hacer?"
+
+Cambios de contexto:
+    * Sin referencias + tema diferente → ignora historial
+    * Con referencias + tema diferente → incluye historial
+
+Example:
+    >>> from app.services.rag.prompts.contextualize_prompt import CONTEXTUALIZE_Q_PROMPT
+    >>> 
+    >>> # Usar en history-aware retriever
+    >>> retriever = create_history_aware_retriever(
+    ...     llm=llm,
+    ...     retriever=base_retriever,
+    ...     prompt=CONTEXTUALIZE_Q_PROMPT
+    ... )
+
+Note:
+    * SIEMPRE expande con 3-5 sinónimos/términos relacionados
+    * Mantiene lenguaje legal preciso
+    * Solo español (sinónimos también en español)
+    * NO inventa información del historial
+
+Ver también:
+    * app.services.rag.prompts.answer_prompt: Generación de respuestas
+    * app.services.rag.general_chains: Usa CONTEXTUALIZE_Q_PROMPT
+
+Authors:
+    JusticIA Team
+
+Version:
+    3.0.0 - Expansión semántica + análisis dinámico
+"""
+"""Prompt de contextualización de preguntas.
 Reformula preguntas del usuario con expansión semántica para mejorar la búsqueda vectorial.
 """
 

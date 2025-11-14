@@ -1,6 +1,68 @@
 """
 Servicio especializado de auditoría para el módulo de INGESTA.
-Registra acciones específicas del proceso de carga y procesamiento de documentos.
+
+Este módulo maneja el registro de auditoría para todas las operaciones del proceso
+de ingesta y procesamiento de documentos. Registra eventos del ciclo de vida completo
+de los documentos desde la carga hasta el almacenamiento vectorial.
+
+Responsabilidades:
+    * Registrar inicio, progreso y finalización de ingestas
+    * Registrar almacenamiento exitoso en Milvus (vectorstore)
+    * Registrar errores y cancelaciones de procesamiento
+    * Asociar registros con usuario, expediente y documento
+
+Fases del proceso de ingesta registradas:
+    * "inicio": Documento recibido, iniciando procesamiento
+    * "completado": Procesamiento exitoso, documento almacenado
+    * "vectorstore_exitoso": Chunks almacenados en Milvus
+    * "cancelado": Procesamiento cancelado por usuario
+    * "error": Error durante procesamiento
+
+Integración:
+    * tasks.py: Tareas Celery que procesan documentos llaman a este servicio
+    * archivos_service: Usa este servicio para registrar eventos de carga
+    * Usa bitacora_service como base (patrón Facade)
+
+Example:
+    >>> from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
+    >>> 
+    >>> # Registrar inicio de ingesta
+    >>> await ingesta_audit_service.registrar_ingesta(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     expediente_num="24-000123-0001-PE",
+    ...     filename="demanda.pdf",
+    ...     task_id="abc123-celery-task",
+    ...     fase="inicio"
+    ... )
+    >>> 
+    >>> # Registrar almacenamiento vectorial exitoso
+    >>> await ingesta_audit_service.registrar_almacenamiento_vectorial(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     expediente_num="24-000123-0001-PE",
+    ...     filename="demanda.pdf",
+    ...     documento_id=456,
+    ...     num_chunks=15
+    ... )
+
+Note:
+    * usuario_id es opcional (None para procesos automáticos)
+    * Tipo de acción siempre es TiposAccion.CARGA_DOCUMENTOS (2)
+    * info_adicional incluye task_id, fase, documento_id, num_chunks
+    * Errores en registro se loggean como WARNING pero no fallan el proceso
+    * Asocia automáticamente el expediente mediante su número
+
+Ver también:
+    * app.services.bitacora.bitacora_service: Servicio base
+    * tasks.process_pdf_task: Tarea que usa este servicio
+    * app.services.archivos_service: Orquestador de ingesta
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Auditoría de ingesta y procesamiento
 """
 from typing import Optional
 from sqlalchemy.orm import Session
