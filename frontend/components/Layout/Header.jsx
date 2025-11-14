@@ -1,3 +1,50 @@
+/**
+ * Componente de Header para Móviles.
+ * 
+ * @module components/Layout/Header
+ * @component
+ * 
+ * Header fijo superior que solo se muestra en dispositivos móviles (md:hidden).
+ * Proporciona acceso al menú hamburguesa y muestra el logo de la aplicación.
+ * 
+ * Características:
+ *   - Visible solo en móviles: clase md:hidden
+ *   - Posición fija: fixed top-0 con z-50
+ *   - Botón hamburguesa: Abre/cierra el sidebar móvil
+ *   - Logo clicable: Link a la página de inicio
+ *   - UserButton integrado: Menú de usuario en la esquina derecha
+ * 
+ * Layout móvil:
+ *   - Header siempre visible en la parte superior
+ *   - Sidebar se desliza desde la izquierda al abrir
+ *   - UserButton flotante en la esquina derecha
+ * 
+ * @param {Object} props - Propiedades del componente
+ * @param {boolean} props.toggleCollapse - Estado actual del sidebar (abierto/cerrado)
+ * @param {Function} props.setToggleCollapse - Función para cambiar estado del sidebar
+ * 
+ * @example
+ * ```jsx
+ * import Header from '@/components/Layout/Header';
+ * 
+ * function Layout() {
+ *   const [toggleCollapse, setToggleCollapse] = useState(false);
+ *   
+ *   return (
+ *     <>
+ *       <Header 
+ *         toggleCollapse={toggleCollapse}
+ *         setToggleCollapse={setToggleCollapse}
+ *       />
+ *       {/* Resto del layout */}
+ *     </>
+ *   );
+ * }
+ * ```
+ * 
+ * @returns {JSX.Element} Header móvil con menú hamburguesa, logo y botón de usuario
+ */
+
 import React from "react";
 import { FiMenu } from "react-icons/fi";
 import { UserButton } from "./UserButton";

@@ -1,7 +1,78 @@
 """
-Rutas para gestión y consulta de bitácora de acciones.
-Endpoints compatibles con los componentes del frontend en:
-- frontend/components/administracion/bitacora/
+Rutas de Consulta y Estadísticas de la Bitácora de Auditoría.
+
+Este módulo define endpoints REST para consultar y analizar los registros de bitácora
+del sistema JusticIA. Todos los eventos críticos del sistema (login, logout, consultas RAG,
+modificaciones de usuarios, acceso a archivos, etc.) se registran en la bitácora.
+
+Arquitectura de bitácora:
+    - Registro automático de eventos críticos en toda la aplicación
+    - Filtrado múltiple: usuario, tipo de acción, expediente, rango de fechas
+    - Paginación server-side para eficiencia con grandes volúmenes
+    - Estadísticas agregadas para dashboards administrativos
+    - Historial personal para usuarios no administradores
+
+Endpoints principales:
+    - GET /bitacora/registros: Consulta con filtros y paginación (admin)
+    - GET /bitacora/estadisticas: Estadísticas generales del sistema (admin)
+    - GET /bitacora/estadisticas-rag: Estadísticas específicas de RAG (admin)
+    - GET /bitacora/mi-historial: Historial del usuario autenticado (todos)
+    - GET /bitacora/expediente/{numero}: Historial de un expediente (todos)
+    - POST /bitacora/registrar-exportacion: Registra exportación de reporte (admin)
+
+Filtros soportados:
+    - usuario: Búsqueda por nombre o correo
+    - tipoAccion: ID del tipo de acción (1-15, ver TiposAccion)
+    - expediente: Número de expediente
+    - fechaInicio, fechaFin: Rango de fechas
+    - limite, offset: Paginación
+
+Tipos de acción (TiposAccion):
+    1: LOGIN, 2: LOGOUT, 3: CREAR_USUARIO, 4: EDITAR_USUARIO,
+    5: RESETEAR_PASSWORD, 6: CONSULTA_RAG, 7: LISTAR_ARCHIVOS,
+    8: DESCARGAR_ARCHIVO, 9: EXPORTAR_BITACORA, etc.
+
+Example:
+    ```python
+    # Consultar registros con filtros (administrador)
+    response = await client.get("/bitacora/registros", params={
+        "usuario": "jperez",
+        "tipoAccion": 6,  # CONSULTA_RAG
+        "fechaInicio": "2024-01-01T00:00:00",
+        "fechaFin": "2024-01-31T23:59:59",
+        "limite": 50,
+        "offset": 0
+    }, headers={"Authorization": f"Bearer {admin_token}"})
+    
+    print(f"Total: {response['total']} registros")
+    print(f"Página {response['page']} de {response['pages']}")
+    
+    # Obtener estadísticas RAG
+    stats = await client.get("/bitacora/estadisticas-rag", params={"dias": 30})
+    print(f"Total consultas RAG: {stats['totalConsultasRAG']}")
+    print(f"Consultas generales: {stats['consultasGenerales']}")
+    print(f"Consultas por expediente: {stats['consultasExpediente']}")
+    
+    # Ver mi historial (usuario)
+    mi_historial = await client.get("/bitacora/mi-historial",
+        params={"limite": 100},
+        headers={"Authorization": f"Bearer {user_token}"})
+    ```
+
+Note:
+    Importante: Los endpoints de consulta de bitácora NO registran su propia
+    consulta para evitar loops infinitos de auditoría.
+
+Compatibilidad Frontend:
+    Diseñado para funcionar con:
+    - frontend/components/administracion/bitacora/Bitacora.jsx
+    - frontend/components/administracion/bitacora/FiltrosBitacora.jsx
+    - frontend/components/administracion/bitacora/DashboardEstadisticas.jsx
+
+See Also:
+    - app.services.bitacora.bitacora_service: Registro de eventos
+    - app.services.bitacora.bitacora_stats_service: Consultas y estadísticas
+    - app.constants.tipos_accion.TiposAccion: Catálogo de tipos de acción
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session

@@ -1,14 +1,80 @@
+/**
+ * @fileoverview Utilidades para formateo de fechas y horas en zona horaria de Costa Rica.
+ * 
+ * Este módulo proporciona funciones para formatear fechas y horas considerando
+ * la zona horaria oficial de Costa Rica (UTC-6, sin horario de verano).
+ * 
+ * Características principales:
+ * - Conversión automática a zona horaria de Costa Rica (America/Costa_Rica)
+ * - Manejo de timestamps con y sin información de zona horaria
+ * - Múltiples formatos de salida (completo, corto, solo fecha, solo hora)
+ * - Compatibilidad con timestamps legacy (asume UTC si no tiene zona horaria)
+ * - Uso de Intl.DateTimeFormat para precisión en zona horaria
+ * 
+ * Zona horaria de Costa Rica:
+ * - Identificador IANA: America/Costa_Rica
+ * - Offset: UTC-6 (constante, sin horario de verano)
+ * - Diferencia con UTC: -6 horas todo el año
+ * 
+ * Formatos soportados:
+ * - "dd/MM/yyyy hh:mm:ss a": Fecha y hora completa (01/01/2024 02:30:00 PM)
+ * - "dd/MM/yyyy hh:mm a": Fecha y hora corta (01/01/2024 02:30 PM)
+ * - "dd/MM/yyyy": Solo fecha (01/01/2024)
+ * - "hh:mm:ss a": Solo hora con segundos (02:30:00 PM)
+ * - "d 'de' MMMM 'de' yyyy, hh:mm a": Fecha completa legible (1 de enero de 2024, 02:30 PM)
+ * 
+ * Manejo de timestamps:
+ * - Timestamps con zona horaria (+HH:MM, -HH:MM, Z): Se usa directamente
+ * - Timestamps sin zona horaria: Se asume UTC (comportamiento legacy)
+ * - Date objects: Se procesan directamente
+ * 
+ * @module dateUtils
+ * @requires date-fns
+ * @requires date-fns/locale
+ * 
+ * @example
+ * import { 
+ *   formatearFechaCostaRica, 
+ *   formatearSoloFechaCostaRica,
+ *   formatearSoloHoraCostaRica 
+ * } from '@/utils/dateUtils';
+ * 
+ * // Formatear fecha y hora completa
+ * const fechaHora = formatearFechaCostaRica('2024-01-15T20:30:00Z');
+ * console.log(fechaHora); // "15/01/2024 02:30:00 PM" (UTC-6)
+ * 
+ * // Solo fecha
+ * const fecha = formatearSoloFechaCostaRica('2024-01-15T20:30:00Z');
+ * console.log(fecha); // "15/01/2024"
+ * 
+ * // Solo hora
+ * const hora = formatearSoloHoraCostaRica('2024-01-15T20:30:00Z');
+ * console.log(hora); // "02:30 PM"
+ * 
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat} Intl.DateTimeFormat
+ * @see {@link https://en.wikipedia.org/wiki/Time_in_Costa_Rica} Zona horaria de Costa Rica
+ * 
+ * @author JusticIA Team
+ * @version 1.0.0
+ */
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 /**
- * Zona horaria de Costa Rica
- * Costa Rica no tiene horario de verano, siempre es UTC-6
+ * Zona horaria de Costa Rica.
+ * Costa Rica no tiene horario de verano, siempre es UTC-6.
+ * @constant {string}
  */
 const COSTA_RICA_TIMEZONE = 'America/Costa_Rica';
 
 /**
- * Convierte una fecha a la zona horaria de Costa Rica
+ * Convierte una fecha a la zona horaria de Costa Rica.
+ * 
+ * Función helper interna para conversión de zona horaria.
+ * 
+ * @private
+ * @param {Date|string} fecha - Fecha a convertir.
+ * @returns {Date|null} Fecha convertida o null si hay error.
  */
 const convertirACostaRica = (fecha) => {
   if (!fecha) return null;
@@ -27,7 +93,35 @@ const convertirACostaRica = (fecha) => {
 };
 
 /**
- * Convierte una fecha a la zona horaria de Costa Rica y la formatea
+ * Formatea una fecha en zona horaria de Costa Rica según el formato especificado.
+ * 
+ * Función principal de formateo que soporta múltiples formatos de salida.
+ * Convierte automáticamente a zona horaria de Costa Rica (UTC-6).
+ * 
+ * @function formatearFechaCostaRica
+ * @param {Date|string|null} fecha - Fecha a formatear (Date object o ISO string).
+ * @param {string} [formatoSalida='dd/MM/yyyy hh:mm:ss a'] - Formato de salida deseado.
+ * @returns {string} Fecha formateada o '-' si la fecha es null/inválida.
+ * 
+ * @example
+ * // Formato completo (default)
+ * formatearFechaCostaRica('2024-01-15T20:30:00Z');
+ * // "15/01/2024 02:30:00 PM"
+ * 
+ * @example
+ * // Solo hora
+ * formatearFechaCostaRica('2024-01-15T20:30:00Z', 'hh:mm:ss a');
+ * // "02:30:00 PM"
+ * 
+ * @example
+ * // Solo fecha
+ * formatearFechaCostaRica('2024-01-15T20:30:00Z', 'dd/MM/yyyy');
+ * // "15/01/2024"
+ * 
+ * @example
+ * // Fecha y hora corta
+ * formatearFechaCostaRica('2024-01-15T20:30:00Z', 'dd/MM/yyyy hh:mm a');
+ * // "15/01/2024 02:30 PM"
  */
 export const formatearFechaCostaRica = (fecha, formatoSalida = 'dd/MM/yyyy hh:mm:ss a') => {
   if (!fecha) return '-';

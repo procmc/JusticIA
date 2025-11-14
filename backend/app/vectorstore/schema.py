@@ -1,3 +1,76 @@
+"""
+Definición del schema de colección Milvus.
+
+Define la estructura completa de campos de la colección vectorial incluyendo
+identificadores, referencias, embeddings y metadata flexible.
+
+Estructura de campos:
+    * Identidad: id_chunk (PK, VARCHAR UUID)
+    * Referencias expedientes: id_expediente, numero_expediente, fecha_expediente_creacion
+    * Referencias documentos: id_documento, nombre_archivo, tipo_archivo, fecha_carga
+    * Datos RAG: texto, embedding, indice_chunk, paginas, tipo_documento
+    * Timestamps: fecha_vectorizacion
+    * Metadata flexible: meta (JSON)
+
+Campos clave:
+    * id_chunk: UUID único del chunk (PRIMARY KEY)
+    * id_expediente/id_documento: FKs a BD transaccional
+    * numero_expediente: Formato YY-NNNNNN-NNNN-XX para filtros
+    * texto: Contenido del chunk (máx 8192 chars)
+    * embedding: Vector BGE-M3 (DIM dimensiones)
+    * meta: JSON flexible para extensiones
+
+DataTypes:
+    * VARCHAR: Strings con max_length definido
+    * INT64/INT32: Enteros de diferentes tamaños
+    * FLOAT_VECTOR: Vector de embeddings con dimensión DIM
+    * JSON: Metadata flexible (schema-less)
+
+Índices (creados en vectorstore.py):
+    * embedding: HNSW para búsqueda vectorial (COSINE)
+    * Campos escalares: STL_SORT para filtros rápidos
+
+Configuraci��n:
+    * DIM: Dimensión de embeddings (default 768, BGE-M3 usa 1024)
+    * Load desde .env para flexibilidad
+
+Limites:
+    * texto: 8192 caracteres (límite Milvus)
+    * nombre_archivo: 512 caracteres
+    * id_chunk: 128 caracteres (UUIDs)
+    * numero_expediente: 64 caracteres
+
+Example:
+    >>> from app.vectorstore.schema import COLLECTION_SCHEMA, COLLECTION_FIELDS
+    >>> 
+    >>> # Ver campos del schema
+    >>> for field in COLLECTION_FIELDS:
+    ...     print(f"{field.name}: {field.dtype}")
+    >>> 
+    >>> # Crear colección con schema
+    >>> client.create_collection(
+    ...     collection_name="mi_coleccion",
+    ...     schema=COLLECTION_SCHEMA
+    ... )
+
+Note:
+    * Schema es inmutable después de crear la colección
+    * Cambios de schema requieren recrear colección (migration)
+    * DIM debe coincidir con dimensión del modelo de embeddings
+    * Campo meta permite extensibilidad sin cambiar schema
+    * Todos los campos tienen tipos explícitos para performance
+
+Ver también:
+    * app.vectorstore.vectorstore: Usa COLLECTION_SCHEMA
+    * app.embeddings: Genera vectores con dimensión DIM
+    * app.config.config: Configuración de Milvus
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Schema completo con metadata JSON
+"""
 
 import os
 from dotenv import load_dotenv

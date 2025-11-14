@@ -1,6 +1,47 @@
 """
-Rutas para funcionalidades de correo electrónico
-Funciones para probar y gestionar envío de correos
+Rutas de Testing y Diagnóstico del Servicio de Correo Electrónico.
+
+Este módulo define endpoints auxiliares para probar y verificar la configuración
+del servicio de envío de correos electrónicos del sistema JusticIA.
+
+Endpoints de utilidad:
+    - POST /email/test-email: Envía correo de prueba para validar configuración
+    - GET /email/email-config: Obtiene configuración actual (sin credenciales sensibles)
+
+Uso típico:
+    Estos endpoints se utilizan durante la configuración inicial del sistema
+    o para diagnóstico de problemas de envío de correos. No son parte
+    del flujo normal de la aplicación.
+
+Configuración requerida (variables de entorno):
+    - EMAIL_PROVIDER: Proveedor de correo (gmail, outlook, smtp)
+    - EMAIL_USERNAME: Cuenta de correo de envío
+    - EMAIL_PASSWORD: Contraseña o app password
+    - EMAIL_HOST: Servidor SMTP (opcional, se usa default según provider)
+    - EMAIL_PORT: Puerto SMTP (default: 587)
+
+Example:
+    ```python
+    # Probar configuración de correo
+    response = await client.post("/email/test-email", json={
+        "email": "destino@example.com",
+        "password": "password123",
+        "nombre_usuario": "Usuario Test"
+    })
+    
+    # Verificar configuración actual
+    config = await client.get("/email/email-config")
+    print(config["provider"])  # gmail
+    print(config["configured"])  # True si está configurado
+    ```
+
+Note:
+    Estos endpoints NO deberían estar expuestos en producción sin autenticación.
+    Considerar agregar require_administrador en ambientes productivos.
+
+See Also:
+    - app.email.EmailService: Servicio de envío de correos
+    - app.email.get_email_config_from_env: Carga de configuración desde .env
 """
 
 from fastapi import APIRouter, HTTPException

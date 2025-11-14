@@ -1,3 +1,58 @@
+"""
+Endpoints de Ingesta de Documentos con Procesamiento Asíncrono.
+
+Este módulo expone los endpoints de la API para la carga y procesamiento
+asíncrono de documentos y audio. Usa Celery para procesar archivos en
+background y proporciona endpoints para consultar el progreso en tiempo real.
+
+Endpoints principales:
+    POST /ingesta/archivos: Sube archivos y crea tareas Celery
+    GET /ingesta/progress/{task_id}: Consulta progreso de una tarea
+    GET /ingesta/stats: Estadísticas de tareas en memoria
+    POST /ingesta/cancel/{task_id}: Cancela una tarea en procesamiento
+
+Flujo de ingesta:
+    1. Usuario sube archivo(s) con número de expediente
+    2. Backend guarda archivo físicamente en /uploads
+    3. Crea tarea Celery para procesamiento asíncrono
+    4. Retorna task_id al frontend
+    5. Frontend hace polling con /progress/{task_id}
+    6. Worker de Celery procesa: extracción, chunking, embeddings, Milvus
+    7. Actualiza estado del documento en BD (Pendiente -> Procesado/Error)
+
+Formatos soportados:
+    - Documentos: PDF, DOC, DOCX, RTF, TXT, HTML
+    - Audio: MP3, WAV (transcripción con Faster-Whisper)
+    - OCR: Automático para PDFs escaneados (Tesseract)
+
+Progreso granular:
+    - Usa ProgressTracker para actualizar progreso en pasos
+    - Estados: pendiente, procesando, completado, fallido, cancelado
+    - Progreso: 0-100% con mensajes descriptivos
+
+Auditoría:
+    - Registra todas las ingestas en bitácora (T_Bitacora_acciones)
+    - Incluye: usuario, archivo, expediente, tiempo, estado final
+
+Example:
+    >>> # Subir archivos
+    >>> files = [('files', open('doc.pdf', 'rb'))]
+    >>> data = {'CT_Num_expediente': '00-001234-0567-PE'}
+    >>> response = requests.post('/ingesta/archivos', files=files, data=data)
+    >>> task_ids = response.json()['task_ids']
+    >>> 
+    >>> # Consultar progreso (polling)
+    >>> for task_id in task_ids:
+    ...     progress = requests.get(f'/ingesta/progress/{task_id}').json()
+    ...     print(f"{progress['progress']}% - {progress['message']}")
+
+Note:
+    - Tamaño máximo por archivo: configurado en file_config.py
+    - Concurrency de workers: configurado en docker-compose.yml
+    - Los task_ids son UUIDs generados por Celery
+    - Requiere autenticación JWT (usuario judicial)
+"""
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session

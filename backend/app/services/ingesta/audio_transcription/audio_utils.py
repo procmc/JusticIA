@@ -11,7 +11,87 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AudioUtils:
-    """Utilidades auxiliares para manejo de archivos de audio."""
+    """
+Utilidades auxiliares para procesamiento de archivos de audio.
+
+Proporciona funciones helper para obtener duración, dividir audio en chunks,
+y gestionar archivos temporales durante transcripción.
+
+Características:
+    * get_audio_duration: Obtiene duración con pydub
+    * split_audio_into_chunks: Divide audio con overlap
+    * cleanup_chunks: Limpieza automática de chunks temporales
+    * Gestión archivos temp: create_temp_file, cleanup_temp_file
+
+Formatos soportados:
+    * MP3, WAV, OGG, M4A, FLAC (via pydub/ffmpeg)
+
+Chunking:
+    * Divide audio en partes de duración especificada
+    * Overlap configurable para evitar perder palabras
+    * Límite de 50 chunks para prevenir exceso de memoria
+    * Formato de salida: MP3
+
+Example:
+    >>> from app.services.ingesta.audio_transcription.audio_utils import AudioUtils
+    >>> 
+    >>> utils = AudioUtils()
+    >>> 
+    >>> # Obtener duración
+    >>> duration_ms = utils.get_audio_duration("audiencia.mp3")
+    >>> print(f"Duración: {duration_ms / 1000 / 60:.1f} minutos")
+    >>> 
+    >>> # Dividir en chunks de 5 minutos con overlap de 5 segundos
+    >>> chunks = utils.split_audio_into_chunks(
+    ...     audio_path="audiencia_larga.mp3",
+    ...     chunk_length_ms=300000,  # 5 min
+    ...     overlap_ms=5000          # 5 s
+    ... )
+    >>> print(f"Creados {len(chunks)} chunks")
+    >>> 
+    >>> # Limpiar chunks
+    >>> utils.cleanup_chunks(chunks)
+
+Note:
+    * Requiere ffmpeg instalado para formatos comprimidos
+    * Chunks temporales se guardan en directorio del sistema
+    * Cleanup de chunks es importante para liberar disco
+    * Límite de 50 chunks previene archivos excesivamente largos
+
+Ver también:
+    * app.services.ingesta.audio_transcription.whisper_service: Usa AudioUtils
+    * app.services.ingesta.audio_transcription.chunking_strategy: Usa split/cleanup
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Utilidades básicas de audio
+"""
+"""Utilidades auxiliares para el procesamiento de archivos de audio.
+"""
+import logging
+import os
+import tempfile
+from pathlib import Path
+from typing import List, Optional, Tuple
+from pydub import AudioSegment
+
+logger = logging.getLogger(__name__)
+
+
+class AudioUtils:
+    """
+    Utilidades para procesamiento de audio.
+    
+    Métodos helper para duración, chunking y archivos temporales.
+    
+    Methods:
+        get_audio_duration: Obtiene duración en milisegundos.
+        split_audio_into_chunks: Divide audio en partes.
+        cleanup_chunks: Limpia archivos temporales.
+        get_file_size_mb: Obtiene tamaño en MB.
+    """
     
     async def get_audio_duration(self, audio_path: str) -> float:
         """Obtiene la duración del audio en segundos."""

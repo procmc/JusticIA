@@ -1,12 +1,98 @@
 """
-Configuración centralizada para el sistema RAG (Retrieval-Augmented Generation).
+Configuración Centralizada del Sistema RAG (Retrieval-Augmented Generation).
 
-Centraliza umbrales de similitud y top-k para garantizar consistencia.
+Este módulo define parámetros críticos del sistema RAG incluyendo umbrales de similitud,
+cantidades de documentos recuperados (top-k), y configuración de fallback.
+
+Propósito:
+    - Centralizar configuración RAG para consistencia en todo el sistema
+    - Documentar valores optimizados y el razonamiento detrás de cada uno
+    - Facilitar ajuste fino sin modificar código de múltiples archivos
+    - Prevenir context overflow en el LLM (gpt-oss:20b con 32k tokens)
+
+Parámetros principales:
+    1. **Umbrales de similitud**: Filtran chunks por relevancia semántica
+    2. **Top-K**: Cantidad de chunks recuperados del vectorstore
+    3. **Fallback**: Estrategia de recuperación cuando búsqueda inicial falla
+    4. **Historial**: Límite de mensajes enviados al LLM
+
+Arquitectura RAG:
+    ```
+    Usuario → Query → Embedding
+                ↓
+    Milvus Vectorstore (búsqueda vectorial)
+                ↓
+    Filtrado (umbral) → Top-K chunks
+                ↓
+    Reformulación (si hay historial) → LLM
+                ↓
+    Generación de respuesta
+    ```
+
+Optimización para gpt-oss:20b:
+    - Context window: 32,768 tokens (LLM_NUM_CTX)
+    - Presupuesto de tokens:
+        * Sistema + instrucciones: ~2k tokens
+        * Historial conversacional: ~3-5k tokens
+        * Chunks recuperados: 15-25k tokens
+        * Respuesta generada: ~2-4k tokens
+        * **Total**: ~28-32k tokens (margen seguro)
+
+Historial del ajuste de parámetros:
+    **Umbrales:**
+        - v1: General 0.22, Expediente 0.15 → Muchos falsos negativos
+        - v2: General 0.20, Expediente 0.18 → Balance mejorado
+        - Fallback: 0.12 → 0.25 → Eliminó falsos positivos fuera de dominio
+    
+    **Top-K:**
+        - v1: General 20, Expediente 15 → Context overflow en casos extremos
+        - v2: General 15, Expediente 10 → Estable con documentos extensos
+
+Estrategia de fallback:
+    Si búsqueda inicial retorna < MIN_RESULTS_THRESHOLD resultados:
+        1. Relajar umbral (70% del original)
+        2. Buscar nuevamente con umbral más permisivo
+        3. Garantizar umbral mínimo de calidad (0.25)
+
+Example:
+    ```python
+    from app.config.rag_config import rag_config
+    
+    # Usar configuración en búsqueda
+    threshold = rag_config.SIMILARITY_THRESHOLD_GENERAL  # 0.20
+    top_k = rag_config.TOP_K_GENERAL  # 15
+    
+    # Configuración para expediente específico
+    threshold = rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE  # 0.18
+    top_k = rag_config.TOP_K_EXPEDIENTE  # 10
+    
+    # Límite de historial
+    historial_limitado = mensajes[-rag_config.CHAT_HISTORY_LIMIT:]
+    ```
+
+Note:
+    Modificar estos valores afecta directamente:
+        - Calidad de respuestas (relevancia vs exhaustividad)
+        - Estabilidad del sistema (overflow de contexto)
+        - Velocidad de respuesta (más chunks = más procesamiento)
+        - Costos de inferencia (más tokens = más costo)
+
+See Also:
+    - app.services.rag_service: Usa esta configuración para consultas
+    - app.services.similarity_service: Usa umbrales para búsqueda similar
+    - app.vectorstore.retriever: Implementa recuperación con estos parámetros
 """
 
 
 class RAGConfig:
-    """Configuración unificada del sistema RAG."""
+    """
+    Configuración unificada del sistema RAG.
+    
+    Todos los parámetros están optimizados para:
+        - Modelo LLM: gpt-oss:20b (32k context window)
+        - Modelo embeddings: BGE-M3-ES-Legal
+        - Vectorstore: Milvus con búsqueda de similitud coseno
+    """
     
     # ========================================
     # UMBRALES DE SIMILITUD

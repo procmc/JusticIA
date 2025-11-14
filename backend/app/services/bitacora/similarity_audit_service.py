@@ -1,6 +1,110 @@
 """
 Servicio especializado de auditoría para el módulo de BÚSQUEDA DE SIMILARES.
-Registra acciones de búsqueda de casos similares y generación de resúmenes con IA.
+
+Este módulo maneja el registro de auditoría para el sistema de búsqueda de casos
+similares y generación de resúmenes con IA. Registra tanto búsquedas exitosas como
+errores, capturando metadata de resultados y parámetros de búsqueda.
+
+Funcionalidades auditadas:
+    * BÚSQUEDA DE SIMILARES (TiposAccion.BUSQUEDA_SIMILARES):
+      - Búsqueda por descripción de texto libre
+      - Búsqueda por expediente de referencia
+      - Parámetros: límite, umbral de similitud
+      - Resultados: total, precisión, top expedientes
+    
+    * GENERACIÓN DE RESÚMENES IA (TiposAccion.GENERAR_RESUMEN):
+      - Resúmenes automáticos de expedientes con LLM
+      - Análisis de documentos del expediente
+      - Metadata: longitud, palabras clave, factores similitud
+
+Modos de búsqueda:
+    * "descripcion": Búsqueda vectorial por texto libre del usuario
+    * "expediente": Búsqueda de expedientes similares a uno de referencia
+
+Información registrada en búsquedas:
+    * Modo de búsqueda y texto/expediente consultado
+    * Parámetros: límite, umbral de similitud
+    * Resultados: total_resultados, tiempo_busqueda, precision_promedio
+    * Top 5 expedientes encontrados
+    * Errores: tipo (validación/interno), mensaje
+
+Información registrada en resúmenes:
+    * Expediente resumido
+    * Documentos analizados
+    * Tiempo de generación
+    * Estadísticas del resumen: longitud, palabras clave, factores
+
+Integración:
+    * app.services.similarity_service: Llama a este servicio después de búsquedas
+    * app.routes.similarity: Endpoints que registran operaciones
+
+Example:
+    >>> from app.services.bitacora.similarity_audit_service import similarity_audit_service
+    >>> 
+    >>> # Registrar búsqueda exitosa por descripción
+    >>> await similarity_audit_service.registrar_busqueda_similares(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     modo_busqueda="descripcion",
+    ...     texto_consulta="Divorcio por mutuo acuerdo",
+    ...     limite=10,
+    ...     umbral_similitud=0.20,
+    ...     exito=True,
+    ...     resultado={
+    ...         "total_resultados": 8,
+    ...         "tiempo_busqueda_segundos": 1.2,
+    ...         "precision_promedio": 0.85,
+    ...         "casos_similares": [...]
+    ...     }
+    ... )
+    >>> 
+    >>> # Registrar error de validación
+    >>> await similarity_audit_service.registrar_busqueda_similares(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     modo_busqueda="expediente",
+    ...     numero_expediente="24-INVALID",
+    ...     exito=False,
+    ...     error="Número de expediente inválido"
+    ... )
+    >>> 
+    >>> # Registrar generación de resumen
+    >>> await similarity_audit_service.registrar_resumen_ia(
+    ...     db=db,
+    ...     usuario_id="112340567",
+    ...     numero_expediente="24-000123-0001-PE",
+    ...     exito=True,
+    ...     resultado={
+    ...         "total_documentos_analizados": 5,
+    ...         "tiempo_generacion_segundos": 8.5,
+    ...         "resumen_ia": {
+    ...             "resumen": "...",
+    ...             "palabras_clave": ["divorcio", "mutuo acuerdo"],
+    ...             "factores_similitud": [...],
+    ...             "conclusion": "..."
+    ...         }
+    ...     }
+    ... )
+
+Note:
+    * usuario_id es opcional (None para procesos automáticos)
+    * Dos tipos de acciones: BUSQUEDA_SIMILARES (1) y GENERAR_RESUMEN (13)
+    * Registra tanto éxitos como errores para análisis completo
+    * Errores se clasifican: "validacion" vs "interno"
+    * Top 5 expedientes se extraen de casos_similares
+    * Errores de registro se loggean como WARNING
+    * Asocia expediente automáticamente por número
+
+Ver también:
+    * app.services.bitacora.bitacora_service: Servicio base
+    * app.services.similarity_service: Servicio de búsqueda
+    * app.constants.tipos_accion: BUSQUEDA_SIMILARES, GENERAR_RESUMEN
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Auditoría de búsqueda y resúmenes IA
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session

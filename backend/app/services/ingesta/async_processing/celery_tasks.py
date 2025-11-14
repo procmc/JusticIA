@@ -1,3 +1,88 @@
+"""
+Tareas Celery para procesamiento asíncrono con idempotencia.
+
+Implementa tareas Celery para procesamiento de archivos con verificación
+de idempotencia, cancelación y bitácora completa.
+
+Características:
+    * Idempotencia: Verificación doble (Redis + BD)
+    * Cancelación: Check en Celery REVOKED + Redis status
+    * Bitácora: Logging inicio/completado/error
+    * Exception handling: Terminated, SoftTimeLimitExceeded
+    * Cleanup: Scheduling de limpieza con delays
+    * Progress tracking: Integrado con Redis
+
+Tarea principal:
+    procesar_archivo_celery:
+        * Procesa lista de archivos para expediente
+        * Verifica si ya fue procesada (idempotencia)
+        * Actualiza progress tracker
+        * Registra en bitácora
+        * Limpia recursos al finalizar
+
+Idempotencia:
+    1. Check en Redis: task_progress:{task_id}
+    2. Check en BD: Documentos ya procesados
+    3. Si ya completado: retorna sin procesar
+    4. Evita reintentos duplicados de Celery
+
+Cancelación:
+    * Celery: AsyncResult.state == 'REVOKED'
+    * Redis: EstadoTarea.CANCELADO
+    * Verificación periódica durante procesamiento
+    * Excepción Terminated si cancelado
+
+Bitácora:
+    * Inicio: Usuario, expediente, archivos
+    * Completado: Archivos exitosos/fallidos
+    * Error: Traceback completo
+    * Integración con ingesta_audit_service
+
+Example:
+    >>> from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
+    >>> from app.schemas.schemas import ArchivoSimplificado
+    >>> 
+    >>> # Crear tarea
+    >>> archivos = [
+    ...     ArchivoSimplificado(
+    ...         id="doc_1",
+    ...         nombre="sentencia.pdf",
+    ...         ruta_archivo="/uploads/sentencia.pdf"
+    ...     )
+    ... ]
+    >>> 
+    >>> # Ejecutar tarea asíncrona
+    >>> result = procesar_archivo_celery.apply_async(
+    ...     args=[
+    ...         "00-000001-0001-PE",
+    ...         [archivo.dict() for archivo in archivos],
+    ...         "user_123"
+    ...     ],
+    ...     task_id="task_123"
+    ... )
+    >>> 
+    >>> # Verificar estado
+    >>> print(result.state)  # PENDING, STARTED, SUCCESS, FAILURE, REVOKED
+
+Note:
+    * task_id debe ser único por expediente
+    * Archivos quedan en disco aunque falle
+    * Redis tracking TTL 3600s (1 hora)
+    * Celery result backend: Redis
+    * Broker: Redis con prefetch_multiplier=1
+
+Ver también:
+    * app.services.ingesta.document_processor: Procesamiento principal
+    * app.services.ingesta.progress_tracker: Tracking de progreso
+    * app.services.bitacora_service: Auditoría de operaciones
+    * app.celery_app: Configuración de Celery
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Idempotencia y cancelación robusta
+"""
 from celery_app import celery_app
 from celery.exceptions import Terminated, SoftTimeLimitExceeded
 from sqlalchemy.orm import sessionmaker
@@ -14,16 +99,15 @@ logger = logging.getLogger(__name__)
 @celery_app.task(bind=True)
 def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     """
-    Tarea Celery para procesar un archivo en segundo plano.
+    Tarea Celery para procesar archivos en segundo plano.
     
-    IMPORTANTE: Celery no soporta async/await directamente, pero process_uploaded_files
-    es una función async. Usamos asyncio.run() para ejecutarla de forma síncrona.
-    
-    IDEMPOTENCIA: Esta tarea verifica si el archivo ya fue procesado antes de reintentarlo.
+    Procesa lista de archivos con verificación de idempotencia,
+    progress tracking y bitácora completa.
     
     Args:
-        CT_Num_expediente: Número de expediente
-        archivo_data: Diccionario con datos del archivo
+        self: Task instance (bind=True).
+        CT_Num_expediente (str): Número de expediente.
+        archivo_data (List[Dict]): Lista de archivos simplificados.
         usuario_id: ID del usuario que inició la ingesta
     """
     # Usar el task_id de Celery como file_process_id para tracking

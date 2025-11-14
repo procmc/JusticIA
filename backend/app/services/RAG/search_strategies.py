@@ -1,3 +1,60 @@
+"""
+Gestor de estrategias de búsqueda con fallback automático.
+
+Implementa un sistema de fallback de 3 niveles para garantizar resultados relevantes
+inclu cuando el threshold inicial es muy restrictivo.
+
+Estrategias de fallback:
+    1. Búsqueda normal: threshold y top_k configurados
+    2. Threshold relajado: threshold * multiplier (ej: 0.30 → 0.15)
+    3. Threshold mínimo: threshold mínimo global con top_k aumentado
+
+Configuración:
+    * ENABLE_FALLBACK: Habilitar/deshabilitar fallback (rag_config)
+    * FALLBACK_THRESHOLD_MULTIPLIER: Factor de relajación (0.5 = mitad)
+    * SIMILARITY_THRESHOLD_FALLBACK: Threshold mínimo absoluto (0.10)
+    * TOP_K_FALLBACK: Número de docs en fallback final (30)
+    * MIN_RESULTS_THRESHOLD: Mínimo de resultados aceptables (3)
+
+Flujo de fallback:
+    1. Búsqueda con threshold original
+    2. Si resultados < MIN_RESULTS_THRESHOLD → relajar threshold
+    3. Si aún insuficiente → buscar con threshold mínimo
+    4. Retornar los mejores resultados disponibles
+
+Uso en RAG:
+    * Evita respuestas vacías por threshold muy estricto
+    * Prioriza precisión (threshold alto) sobre recall (threshold bajo)
+    * Log completo para debugging de relevancia
+
+Example:
+    >>> from app.services.rag.search_strategies import search_manager
+    >>> 
+    >>> # Búsqueda con fallback automático
+    >>> results = await search_manager.search_with_fallback(
+    ...     query_text="¿Qué es la prescripción?",
+    ...     top_k=15,
+    ...     threshold=0.30  # Estricto inicialmente
+    ... )
+    >>> # Si falla: intenta threshold 0.15, luego 0.10 con top_k=30
+
+Note:
+    * Fallback SOLO se activa si resultados < MIN_RESULTS_THRESHOLD
+    * Cada fallback se registra en logs para análisis
+    * Estadísticas: total_searches, fallback_attempts
+    * El fallback NO afecta búsquedas de expedientes específicos
+
+Ver también:
+    * app.config.rag_config: Configuración de fallback
+    * app.vectorstore.vectorstore: Búsqueda en Milvus
+    * app.services.rag.retriever: Usa search_manager
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Sistema de fallback de 3 niveles
+"""
 import logging
 from typing import List, Dict, Any, Optional
 
@@ -7,6 +64,16 @@ from app.vectorstore.vectorstore import search_by_text
 logger = logging.getLogger(__name__)
 
 class SearchStrategyManager:
+    """
+    Gestor de estrategias de búsqueda con fallback.
+    
+    Implementa 3 niveles de fallback para garantizar resultados.
+    
+    Attributes:
+        config: Configuración RAG global.
+        fallback_attempts (int): Contador de fallbacks ejecutados.
+        total_searches (int): Contador total de búsquedas.
+    """
     
     def __init__(self):
         self.config = rag_config

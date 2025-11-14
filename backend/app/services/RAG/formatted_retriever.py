@@ -1,3 +1,67 @@
+"""
+Retriever wrapper que formatea documentos con metadata visible.
+
+Envuelve cualquier retriever de LangChain y añade formateo de metadata
+directamente en el page_content de cada documento para que el LLM la vea.
+
+Características:
+    * Agrupa documentos por expediente
+    * Añade headers de expediente (separadores visuales)
+    * Formatea metadata en Markdown legible
+    * Mantiene metadata original para referencias
+
+Metadata formateada:
+    * Expediente: Número completo
+    * Archivo: Nombre del documento
+    * Páginas: Rango de páginas del chunk
+    * Tipo: Tipo de documento judicial
+    * Ruta: Ruta de descarga
+
+Agrupación:
+    * Documentos se agrupan por expediente_numero
+    * Cada grupo tiene un header visual
+    * Orden alfabético de expedientes
+
+Ejemplo de formateo:
+
+    ================================================================================
+    EXPEDIENTE: 24-000123-0001-PE (3 documentos)
+    ================================================================================
+    
+    **Expediente:** 24-000123-0001-PE | **Archivo:** demanda.pdf | **Pág:** 1-3
+    **Tipo:** Demanda
+    **Ruta:** uploads/24-000123-0001-PE/demanda.pdf
+    ---
+    [Contenido del documento...]
+    ---
+
+Example:
+    >>> from app.services.rag.formatted_retriever import FormattedRetriever
+    >>> 
+    >>> # Envolver retriever existente
+    >>> formatted = FormattedRetriever(base_retriever=my_retriever)
+    >>> 
+    >>> # Usar como retriever normal
+    >>> docs = await formatted.ainvoke("consulta")
+    >>> # docs tienen metadata formateada en page_content
+
+Note:
+    * NO modifica la metadata original (solo page_content)
+    * Headers de expediente son Documents separados (is_header=True)
+    * Usado por general_chains y expediente_chains
+    * El LLM ve la metadata formateada directamente
+
+Ver también:
+    * app.services.rag.document_formatter: Funciones de formateo
+    * app.services.rag.general_chains: Usa FormattedRetriever
+    * app.services.rag.expediente_chains: Usa FormattedRetriever
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Wrapper para formateo de metadata
+"""
 from typing import List, Any
 from collections import defaultdict
 from langchain_core.retrievers import BaseRetriever
@@ -11,6 +75,15 @@ logger = logging.getLogger(__name__)
 
 
 class FormattedRetriever(BaseRetriever):
+    """
+    Wrapper que formatea documentos con metadata visible.
+    
+    Toma documentos de cualquier retriever y añade metadata
+    formateada en Markdown directamente en el page_content.
+    
+    Attributes:
+        base_retriever: Retriever base a envolver.
+    """
     base_retriever: Any = Field(description="The base retriever to wrap")
     
     def __init__(self, base_retriever, **kwargs):

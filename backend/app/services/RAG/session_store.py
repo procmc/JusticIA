@@ -1,3 +1,66 @@
+"""
+Gestión de historial conversacional con persistencia en Redis.
+
+Implementa un sistema de almacenamiento dual:
+1. Memoria (RAM): Sesiones activas para acceso rápido
+2. Redis: Persistencia de todo el historial sin límites
+
+Características:
+    * Historial completo en Redis (sin límites de mensajes)
+    * Historial limitado para el LLM (CHAT_HISTORY_LIMIT configurable)
+    * Carga bajo demanda (lazy loading) desde Redis
+    * Metadata de conversaciones (título, fecha, expediente, contador)
+    * Generación automática de títulos
+    * Gestión por usuario con índices
+
+Arquitectura de clases:
+    * InMemoryChatMessageHistory: Historial completo sin límites
+    * LimitedChatMessageHistory: Wrapper que limita mensajes al LLM
+    * ConversationMetadata: Metadatos de sesión
+    * ConversationStore: Gestor principal (singleton)
+
+Limitación de contexto:
+    * Redis guarda TODO (persistencia completa)
+    * LLM recibe solo últimos N mensajes (rag_config.CHAT_HISTORY_LIMIT)
+    * Frontend puede ver todo el historial
+
+Formato de session_id:
+    session_{user_id}_{timestamp}
+    Ejemplo: session_user@example.com_1699999999
+
+Example:
+    >>> from app.services.rag.session_store import conversation_store
+    >>> 
+    >>> # Obtener historial de sesión (carga automática desde Redis)
+    >>> history = conversation_store.get_session_history(session_id)
+    >>> history.add_message(HumanMessage(content="Hola"))
+    >>> 
+    >>> # Actualizar metadata
+    >>> conversation_store.update_metadata(
+    ...     session_id=session_id,
+    ...     expediente_number="24-000123-0001-PE"
+    ... )
+    >>> 
+    >>> # Listar conversaciones de usuario
+    >>> conversations = conversation_store.get_user_sessions(user_id)
+
+Note:
+    * Redis es OBLIGATORIO - levanta RuntimeError si no disponible
+    * Persistencia automática después de cada mensaje
+    * Zona horaria: America/Costa_Rica (pytz)
+    * Límite LLM configurable: rag_config.CHAT_HISTORY_LIMIT
+
+Ver también:
+    * app.services.rag.conversation_history_redis: Cliente Redis
+    * app.config.rag_config: Configuración de límite de historial
+    * app.services.rag.rag_chain_service: Usa conversation_store
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Redis persistencia con lazy loading
+"""
 from typing import Dict, List, Optional, Callable
 from datetime import datetime
 import pytz

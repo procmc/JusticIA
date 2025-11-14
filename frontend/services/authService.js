@@ -1,15 +1,80 @@
+/**
+ * Servicio de Autenticación y Gestión de Contraseñas - Frontend.
+ * 
+ * @module services/authService
+ * 
+ * Este servicio maneja toda la lógica de autenticación del lado del cliente,
+ * incluyendo login, logout, cambio de contraseña, recuperación de acceso
+ * mediante email, y renovación de tokens (sliding sessions).
+ * 
+ * Funciones principales:
+ *   - login: Autenticación con email/contraseña
+ *   - logout: Cierre de sesión con registro en bitácora
+ *   - cambiarContrasena: Cambio de contraseña por usuario autenticado
+ *   - solicitarRecuperacion: Envío de código de recuperación por email
+ *   - verificarCodigoRecuperacion: Validación de código de 6 dígitos
+ *   - cambiarContrasenaRecuperacion: Cambio con token verificado
+ *   - refreshToken: Renovación de token JWT
+ * 
+ * Manejo de errores:
+ *   - Errores HTTP específicos (401, 403, 404, 429)
+ *   - Errores de red con mensajes amigables
+ *   - Validación de parámetros antes de llamadas API
+ * 
+ * @example
+ * ```javascript
+ * import authService from '@/services/authService';
+ * 
+ * // Login
+ * const result = await authService.login('user@example.com', 'password123');
+ * if (result.error) {
+ *   console.error(result.message);
+ * } else {
+ *   console.log('Token:', result.access_token);
+ *   console.log('Usuario:', result.user);
+ * }
+ * 
+ * // Cambiar contraseña
+ * const change = await authService.cambiarContrasena(
+ *   'oldPass', 'newPass', '123456789'
+ * );
+ * ```
+ * 
+ * @see {@link httpService} Para llamadas HTTP configuradas
+ */
+
 import httpService from './httpService';
 
 /**
- * AuthService - Servicio para autenticación y gestión de contraseñas
+ * Servicio de autenticación y gestión de contraseñas.
  * 
- * Maneja login, cambio de contraseña y recuperación de contraseña
+ * @class AuthService
+ * @category Services
  */
-
 class AuthService {
 
   /**
-   * Iniciar sesión
+   * Iniciar sesión con email y contraseña.
+   * 
+   * @async
+   * @param {string} email - Correo electrónico del usuario
+   * @param {string} password - Contraseña en texto plano
+   * 
+   * @returns {Promise<Object>} Resultado del login:
+   *   - Si éxito: { user: Object, access_token: string }
+   *   - Si error: { error: true, message: string }
+   * 
+   * @example
+   * ```javascript
+   * const result = await authService.login('usuario@ejemplo.com', 'miPassword');
+   * 
+   * if (result.error) {
+   *   alert(result.message); // "Credenciales incorrectas"
+   * } else {
+   *   localStorage.setItem('token', result.access_token);
+   *   // Navegar al dashboard
+   * }
+   * ```
    */
   async login(email, password) {
     try {

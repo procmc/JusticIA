@@ -1,3 +1,75 @@
+/**
+ * Componente de Botón de Usuario con Dropdown y Gestión de Perfil.
+ * 
+ * @module components/Layout/UserButton
+ * @component
+ * 
+ * Botón flotante con avatar del usuario que despliega un menú dropdown con opciones
+ * de perfil, cambio de avatar, cambio de contraseña y cierre de sesión.
+ * 
+ * Características:
+ *   - Avatar dinámico: Carga desde AvatarContext (uploads, predefinidos, iniciales)
+ *   - Dropdown con perfil: Muestra nombre, email y rol con badge de color
+ *   - Cambio de avatar: Modal AvatarSelector para subir imagen o elegir predefinido
+ *   - Cambio de contraseña: Drawer modal con formulario CambiarContraseña
+ *   - Logout con auditoría: Registra en bitácora antes de cerrar sesión
+ *   - Fallback de avatar: Si falla carga, muestra iniciales generadas
+ * 
+ * Gestión de avatares:
+ *   - Usa AvatarContext para centralizar estado
+ *   - Soporta 3 tipos: 'upload' (imagen subida), 'icon' (predefinido), 'default' (iniciales)
+ *   - Maneja errores de carga con fallback automático
+ *   - Avatar se actualiza en tiempo real al cambiar
+ * 
+ * Roles y badges:
+ *   - Administrador: Badge rojo (border-red-500, text-danger)
+ *   - Usuario Judicial: Badge verde (border-green-500, text-green-600)
+ *   - Por defecto: Badge gris (border-gray-400, text-default-600)
+ * 
+ * Flujo de cambio de avatar:
+ *   1. Usuario click en "Cambiar avatar" → abre AvatarSelector
+ *   2. Usuario selecciona/sube avatar → handleSaveAvatar
+ *   3. Si es File → subirAvatar() → upload al backend
+ *   4. Si es predefinido → actualizarTipoAvatar() → guarda preferencia
+ *   5. AvatarContext se actualiza → UI refleja cambio inmediatamente
+ * 
+ * Flujo de logout:
+ *   1. Usuario click en "Cerrar sesión" → handleLogout
+ *   2. authService.logout() → registra en bitácora del backend
+ *   3. clearAllChatContext() → limpia localStorage de conversaciones
+ *   4. signOut() → limpia sesión NextAuth y redirige a /auth/login
+ * 
+ * @returns {JSX.Element} Botón de usuario con dropdown de perfil y opciones
+ * 
+ * @example
+ * ```jsx
+ * import { UserButton } from '@/components/Layout/UserButton';
+ * 
+ * function Layout() {
+ *   return (
+ *     <div className="absolute top-0 right-0">
+ *       <UserButton />
+ *     </div>
+ *   );
+ * }
+ * ```
+ * 
+ * @example
+ * ```jsx
+ * // Estructura de sesión esperada
+ * session = {
+ *   user: {
+ *     id: '123456789',           // Cédula del usuario
+ *     name: 'Juan Pérez García',  // Nombre completo
+ *     email: 'juan@example.com',  // Email
+ *     role: 'Administrador',      // Rol para badge
+ *     avatar_ruta: '/uploads/...',// Ruta del avatar (opcional)
+ *     avatar_tipo: 'upload'       // Tipo de avatar (opcional)
+ *   }
+ * }
+ * ```
+ */
+
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/react";
 import { useRouter } from "next/router";
 import { useCallback, useState, useRef, useEffect } from "react";

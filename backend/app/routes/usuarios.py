@@ -1,3 +1,74 @@
+"""
+Rutas de Gestión de Usuarios del Sistema JusticIA.
+
+Este módulo define endpoints REST para CRUD completo de usuarios del sistema,
+incluyendo gestión de avatares y permisos basados en roles (RBAC).
+
+Funcionalidades principales:
+    - CRUD de usuarios: Crear, leer, actualizar usuarios
+    - Gestión de avatares: Subir, actualizar tipo, eliminar
+    - Control de acceso: Solo administradores pueden gestionar usuarios
+    - Auditoría completa: Todos los eventos se registran en bitácora
+    - Envío automático de credenciales por correo al crear usuarios
+
+Arquitectura de permisos:
+    - require_administrador: CRUD de usuarios, reseteo de contraseñas
+    - require_usuario_autenticado: Gestión del propio avatar
+
+Creación de usuarios:
+    Al crear un usuario, se genera automáticamente una contraseña aleatoria
+    y se envía por correo electrónico al nuevo usuario. No se requiere
+    especificar contraseña en el request.
+
+Gestión de avatares:
+    Soporta tres tipos de avatar:
+        - 'default': Avatar generado por defecto (iniciales)
+        - 'upload': Imagen subida por el usuario
+        - 'icon': Icono de HeroIcons seleccionado
+
+Endpoints principales:
+    - GET /usuarios: Listar todos los usuarios
+    - GET /usuarios/{usuario_id}: Obtener usuario específico
+    - POST /usuarios: Crear nuevo usuario (con email automático)
+    - PUT /usuarios/{usuario_id}: Editar usuario
+    - PATCH /usuarios/{usuario_id}/ultimo-acceso: Actualizar último acceso
+    - POST /usuarios/{usuario_id}/resetear-contrasenna: Resetear contraseña
+    - POST /usuarios/{usuario_id}/avatar/upload: Subir avatar
+    - PUT /usuarios/{usuario_id}/avatar/tipo: Cambiar tipo de avatar
+    - DELETE /usuarios/{usuario_id}/avatar: Eliminar avatar
+
+Example:
+    ```python
+    # Crear usuario (administrador)
+    response = await client.post("/usuarios", json={
+        "cedula": "123456789",
+        "nombre_usuario": "jperez",
+        "nombre": "Juan",
+        "apellido_uno": "Pérez",
+        "apellido_dos": "García",
+        "correo": "jperez@example.com",
+        "id_rol": 2  # Rol usuario judicial
+    }, headers={"Authorization": f"Bearer {admin_token}"})
+    # Usuario recibe contraseña por correo automáticamente
+    
+    # Resetear contraseña
+    await client.post("/usuarios/123456789/resetear-contrasenna",
+        headers={"Authorization": f"Bearer {admin_token}"})
+    
+    # Subir avatar (usuario autenticado)
+    files = {"file": open("avatar.jpg", "rb")}
+    await client.post("/usuarios/123456789/avatar/upload",
+        files=files,
+        headers={"Authorization": f"Bearer {user_token}"})
+    ```
+
+See Also:
+    - app.services.usuario_service.UsuarioService: Lógica de negocio de usuarios
+    - app.services.avatar_service.AvatarService: Gestión de avatares
+    - app.auth.jwt_auth: Decoradores de autorización
+    - app.services.bitacora.usuarios_audit_service: Auditoría de usuarios
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List

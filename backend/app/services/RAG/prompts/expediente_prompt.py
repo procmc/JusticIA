@@ -1,5 +1,79 @@
 """
-Prompt para análisis de expedientes específicos.
+"""
+Prompt especializado para análisis de expedientes específicos.
+
+Crea prompts personalizados con el número de expediente específico embebido
+en el system prompt. Instruye al LLM a analizar SOLO ese expediente.
+
+Características:
+    * Número de expediente en system prompt dinámico
+    * Restricciones similares a answer_prompt (idioma, contenido)
+    * Énfasis en que documentos se recuperaron automáticamente
+    * Prevención de confusión con otros expedientes del historial
+    * Capacidad de completar plantillas con info del expediente
+
+Restricciones adicionales:
+    * SOLO información del expediente especificado
+    * NO inventar documentos que no se recuperaron
+    * NO asumir contenido faltante
+    * NO usar casos externos o conocimiento general
+    * Cada afirmación debe ser verificable en documentos
+
+Contexto limpio:
+    * Al cambiar expediente: resetea contexto completamente
+    * Ignora información de expedientes anteriores en historial
+    * Solo usa documentos del expediente actual
+
+Estructura del expediente:
+    * Demandas y escritos iniciales
+    * Resoluciones judiciales
+    * Transcripciones de audio (si aplica)
+    * Documentos de soporte
+
+Instrucciones de análisis:
+    * Exhaustividad: Revisar TODOS los documentos
+    * Cronología: Usar orden temporal para contexto
+    * Precisión: SIEMPRE citar archivos específicos
+    * Síntesis: Para preguntas amplias, sintetizar citando fuentes
+    * Especificidad: Para preguntas puntuales, citar textualmente
+
+Manejo de plantillas:
+    * Sistema YA recuperó todos los documentos del expediente
+    * Usar info de documentos recuperados para completar plantilla
+    * Mantener formato original de la plantilla
+    * Marcar campos faltantes: **[PENDIENTE: especificar]**
+
+Example:
+    >>> from app.services.rag.prompts.expediente_prompt import get_expediente_prompt
+    >>> 
+    >>> # Crear prompt para expediente específico
+    >>> prompt = get_expediente_prompt("24-000123-0001-PE")
+    >>> 
+    >>> # Usar en chain
+    >>> chain = prompt | llm
+    >>> response = chain.invoke({
+    ...     "context": docs_del_expediente,
+    ...     "chat_history": history,
+    ...     "input": "pregunta"
+    ... })
+
+Note:
+    * Función get_expediente_prompt genera prompt dinámico
+    * Número de expediente aparece múltiples veces en prompt
+    * Formato de fuentes idéntico a answer_prompt
+    * Usado SOLO en expediente_chains, NO en general_chains
+
+Ver también:
+    * app.services.rag.prompts.answer_prompt: Prompt general
+    * app.services.rag.expediente_chains: Usa get_expediente_prompt
+
+Authors:
+    JusticIA Team
+
+Version:
+    3.0.0 - Análisis especializado con plantillas
+"""
+"""Prompt para análisis de expedientes específicos.
 Define cómo JusticBot debe analizar un expediente en particular.
 """
 

@@ -1,3 +1,59 @@
+/**
+ * Componente de Layout Principal del Sistema JusticIA.
+ * 
+ * @module components/Layout
+ * @component
+ * 
+ * Este componente envuelve todas las páginas de la aplicación proporcionando
+ * la estructura base: sidebar, header, breadcrumbs, y botón de usuario.
+ * Maneja también el flujo de cambio de contraseña obligatorio para nuevos usuarios.
+ * 
+ * Características:
+ *   - Sidebar colapsable con menú dinámico según rol
+ *   - Header para móviles con botón de menú hamburguesa
+ *   - Breadcrumbs dinámicos según la ruta actual
+ *   - UserButton flotante con dropdown de perfil
+ *   - Drawer modal forzado para cambio de contraseña obligatorio
+ *   - Limpieza automática del contexto de chat
+ * 
+ * Flujo de cambio de contraseña obligatorio:
+ *   1. Usuario nuevo/reseteado tiene session.user.requiere_cambio_password = true
+ *   2. Se muestra drawer modal que no puede cerrarse
+ *   3. Usuario debe cambiar contraseña antes de usar el sistema
+ *   4. Al cambiar exitosamente, se quita la bandera y se permite acceso
+ * 
+ * Responsive:
+ *   - Desktop: Sidebar siempre visible, colapsable a iconos
+ *   - Tablet/Mobile: Sidebar oculto por defecto, hamburger menu en header
+ * 
+ * @param {Object} props - Propiedades del componente
+ * @param {React.ReactNode} props.children - Contenido de la página a renderizar
+ * 
+ * @example
+ * ```jsx
+ * // En _app.js
+ * import Layout from '@/components/Layout/Layout';
+ * 
+ * function MyApp({ Component, pageProps }) {
+ *   return (
+ *     <Layout>
+ *       <Component {...pageProps} />
+ *     </Layout>
+ *   );
+ * }
+ * ```
+ * 
+ * @example
+ * ```jsx
+ * // Usuario con cambio de contraseña obligatorio
+ * // session.user.requiere_cambio_password = true
+ * // → Se muestra drawer modal automáticamente
+ * // → No puede cerrarse hasta cambiar la contraseña
+ * ```
+ * 
+ * @returns {JSX.Element} Layout completo con sidebar, header, breadcrumbs, y contenido
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Sidebar from "./Sidebar";

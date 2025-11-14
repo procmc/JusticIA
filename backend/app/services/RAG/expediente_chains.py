@@ -1,3 +1,68 @@
+"""
+Chains especializadas para análisis de expedientes específicos.
+
+Crea chains de LangChain optimizadas para consultas sobre un expediente particular.
+A diferencia de consultas generales, estas chains:
+- NO reformulan la pregunta (no hay contextualización)
+- Recuperan TODOS los documentos del expediente (no solo similares)
+- Usan prompts especializados para análisis profundo
+
+Características:
+    * Prompt personalizado por expediente (con número en system prompt)
+    * Sin contextualización (pregunta directa)
+    * Recuperación completa del expediente (no búsqueda semántica)
+    * Metadata visible con FormattedRetriever
+    * Soporte de historial conversacional
+
+Diferencias con general_chains:
+    * General: contextualize + semantic search
+    * Expediente: NO contextualize + full retrieval
+
+Flujo de ejecución:
+    1. Usuario pregunta sobre expediente específico
+    2. NO reformulación (pregunta directa)
+    3. Recuperación completa de documentos del expediente
+    4. Formateo con metadata (FormattedRetriever)
+    5. Generación con LLM usando prompt especializado
+    6. Streaming al frontend
+
+Prompt especializado:
+    * Incluye número de expediente en system prompt
+    * Instruye al LLM a analizar SOLO ese expediente
+    * Documenta que documentos se recuperaron automáticamente
+    * Previene invención de información
+
+Example:
+    >>> from app.services.rag.expediente_chains import create_expediente_specific_chain
+    >>> 
+    >>> # Crear chain para expediente específico
+    >>> chain = await create_expediente_specific_chain(
+    ...     retriever=retriever,  # Ya filtrado por expediente
+    ...     expediente_numero="24-000123-0001-PE",
+    ...     with_history=True
+    ... )
+    >>> 
+    >>> # Usar con stream_chain_response de general_chains
+    >>> async for chunk in stream_chain_response(chain, input_dict, config):
+    ...     print(chunk)
+
+Note:
+    * El retriever YA debe estar filtrado por expediente
+    * El número de expediente se usa SOLO en el prompt
+    * Usa mismo streaming que general_chains (stream_chain_response)
+    * FormattedRetriever añade headers de expediente
+
+Ver también:
+    * app.services.rag.prompts.expediente_prompt: Prompt especializado
+    * app.services.rag.general_chains: stream_chain_response
+    * app.services.rag.formatted_retriever: Formateo de documentos
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Chains especializadas para expedientes
+"""
 from typing import Dict, Any
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain

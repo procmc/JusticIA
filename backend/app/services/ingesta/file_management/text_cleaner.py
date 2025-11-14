@@ -1,5 +1,71 @@
 """
-Helper para limpieza y normalización de texto extraído de documentos.
+"""
+Limpieza y normalización de texto extraído de documentos.
+
+Proporciona funciones especializadas para limpiar texto de documentos PDF,
+HTML y OCR, corrigiendo problemas comunes de encoding, espacios excesivos
+y caracteres extraños.
+
+Problemas corregidos:
+    * Doble encoding UTF-8 → Latin-1 (Ã© → é, Ãº → ú, etc.)
+    * Caracteres de control (excepto \n y \t)
+    * Espacios no-breaking ( ) y Unicode raros
+    * Múltiples espacios/saltos de línea
+    * Espacios alrededor de puntuación
+    * Artefactos de OCR ([image], [graphic])
+    * Comillas y guiones mal codificados (â€œ → ")
+
+Funciones principales:
+    * clean_extracted_text: Limpieza general completa
+    * fix_encoding_issues: Corrección de encoding UTF-8/Latin-1
+    * clean_pdf_text: Especializada para PDFs
+    * clean_ocr_text: Especializada para OCR
+    * validate_cleaned_text: Validación de calidad
+
+Pipeline de limpieza (10 pasos):
+    1. Normalización Unicode (NFKC)
+    2. Remoción de caracteres de control
+    3. Corrección de encoding
+    4. Limpieza de espacios Unicode
+    5. Reducción de espacios múltiples
+    6. Reducción de saltos de línea
+    7. Trim de espacios en líneas
+    8. Limpieza de líneas vacías
+    9. Espaciado de puntuación
+    10. Remoción de artefactos OCR
+
+Example:
+    >>> from app.services.ingesta.file_management.text_cleaner import clean_extracted_text
+    >>> 
+    >>> # Texto con problemas
+    >>> texto_sucio = "Ã Ã San JosÃ©, a las diez   horas..."
+    >>> 
+    >>> # Limpiar
+    >>> texto_limpio = clean_extracted_text(texto_sucio, "documento.pdf")
+    >>> print(texto_limpio)
+    "San José, a las diez horas..."
+    >>> 
+    >>> # Validar calidad
+    >>> is_valid, msg = validate_cleaned_text(texto_limpio)
+
+Note:
+    * Optimizado con regex para alto rendimiento
+    * Logging automático de reducciones >10%
+    * Detección de problemas persistentes
+    * Funciones especializadas por tipo de documento
+
+Ver también:
+    * app.services.ingesta.tika_service: Genera texto sucio
+    * app.services.ingesta.document_processor: Usa text_cleaner
+    * app.services.rag.retriever: Usa fix_encoding_issues
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Corrección de encoding optimizada
+"""
+"""Helper para limpieza y normalización de texto extraído de documentos.
 
 Este módulo proporciona funciones para limpiar texto extraído de documentos,
 corrigiendo problemas comunes de encoding, espacios excesivos, y caracteres extraños.

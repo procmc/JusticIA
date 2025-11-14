@@ -1,10 +1,75 @@
 """
 Servicio especializado para ESTADÍSTICAS y REPORTES de bitácora.
-Maneja todas las operaciones de consulta (read operations) para análisis y reportes.
 
-Separado del bitacora_service.py para mantener:
-- bitacora_service.py: Write operations (registrar)
-- bitacora_stats_service.py: Read operations (consultas, estadísticas, reportes)
+Este módulo maneja todas las operaciones de consulta (read operations) de la bitácora,
+incluyendo filtros, estadísticas agregadas, reportes y métricas para dashboards.
+
+Separación de responsabilidades:
+    * bitacora_service.py: Operaciones de escritura (registrar)
+    * bitacora_stats_service.py: Operaciones de lectura (consultas, stats)
+
+El servicio proporciona múltiples niveles de análisis:
+    * Consultas con filtros múltiples y paginación
+    * Estadísticas agregadas (contadores, tops, tendencias)
+    * Reportes específicos por usuario o expediente
+    * Métricas para dashboards administrativos
+    * Análisis especializado de RAG (consultas generales vs expediente)
+
+Funcionalidades principales:
+    * obtener_con_filtros(): Consulta con paginación y filtros múltiples
+    * obtener_estadisticas(): Estadísticas agregadas para periodo de 30 días
+    * obtener_estadisticas_rag(): Análisis detallado de consultas RAG
+    * obtener_metricas_dashboard(): Métricas con tendencias comparativas
+    * generar_reporte_usuario(): Reporte completo de actividad de usuario
+    * generar_reporte_expediente(): Timeline completo de expediente
+
+Integración con frontend:
+    * FiltrosBitacora.jsx: Usa obtener_con_filtros()
+    * DashboardEstadisticas.jsx: Usa obtener_estadisticas()
+    * RAGAnalytics.jsx: Usa obtener_estadisticas_rag()
+
+Example:
+    >>> from app.services.bitacora.bitacora_stats_service import bitacora_stats_service
+    >>> 
+    >>> # Obtener estadísticas generales (últimos 30 días)
+    >>> stats = bitacora_stats_service.obtener_estadisticas(db, dias=30)
+    >>> print(f"Registros hoy: {stats['registrosHoy']}")
+    >>> print(f"Top usuario: {stats['usuariosMasActivos'][0]}")
+    >>> 
+    >>> # Estadísticas específicas de RAG
+    >>> rag_stats = bitacora_stats_service.obtener_estadisticas_rag(db, dias=7)
+    >>> print(f"Consultas generales: {rag_stats['consultasGenerales']}")
+    >>> print(f"Consultas expediente: {rag_stats['consultasExpediente']}")
+    >>> 
+    >>> # Consultas con filtros
+    >>> resultado = bitacora_stats_service.obtener_con_filtros(
+    ...     db=db,
+    ...     tipo_accion_id=TiposAccion.CONSULTA_RAG,
+    ...     fecha_inicio=datetime(2024, 1, 1),
+    ...     limite=20
+    ... )
+    >>> print(f"Total: {resultado['total']}")
+    >>> for item in resultado['items']:
+    ...     print(item['texto'])
+
+Note:
+    * Todos los métodos son síncronos (no async)
+    * Los registros se expanden automáticamente con relaciones (usuario, expediente, tipo)
+    * Los contadores usan consultas optimizadas del repository
+    * Compatible con filtros del frontend (camelCase en respuestas)
+    * Maneja errores gracefully retornando estructuras vacías
+
+Ver también:
+    * app.services.bitacora.bitacora_service: Operaciones de escritura
+    * app.repositories.bitacora_repository: Capa de datos
+    * app.routes.bitacora: Endpoints REST de bitácora
+    * app.constants.tipos_accion: Tipos de acciones registrables
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Sistema unificado de estadísticas de auditoría
 """
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta

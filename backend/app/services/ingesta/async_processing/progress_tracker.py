@@ -1,7 +1,89 @@
 """
-Servicio de seguimiento de progreso para tareas de procesamiento.
-Sistema simplificado que se integra con Celery.
-Usa Redis como almacenamiento compartido entre procesos.
+Sistema de tracking de progreso en Redis compartido entre procesos.
+
+Proporciona tracking de progreso para tareas de procesamiento de archivos,
+compartido entre backend (FastAPI) y celery-worker.
+
+Características:
+    * Almacenamiento Redis: TTL 3600s (1 hora)
+    * Estados: PENDIENTE, PROCESANDO, COMPLETADO, FALLIDO, CANCELADO
+    * Compartido: Accesible desde múltiples procesos
+    * Progress: Porcentaje (0-100) con mensaje descriptivo
+    * Cancelación: Flag persistent para verificación
+    * ProgressManager: Gestor global de múltiples tareas
+
+Estructura Redis:
+    Key: "task_progress:{task_id}"
+    Value: JSON {
+        "status": "procesando",
+        "progress": 45,
+        "message": "Procesando archivo 3 de 10",
+        "timestamp": "2024-01-15T10:30:00",
+        "error": null
+    }
+    TTL: 3600 segundos
+
+Estados (EstadoTarea):
+    * PENDIENTE: Tarea creada pero no iniciada
+    * PROCESANDO: En ejecución activa
+    * COMPLETADO: Finalizada exitosamente
+    * FALLIDO: Error durante procesamiento
+    * CANCELADO: Cancelada por usuario
+
+Example:
+    >>> from app.services.ingesta.async_processing.progress_tracker import ProgressTracker, EstadoTarea
+    >>> 
+    >>> # Crear tracker
+    >>> tracker = ProgressTracker(task_id="task_123")
+    >>> 
+    >>> # Actualizar progreso
+    >>> tracker.update_progress(
+    ...     progress=25,
+    ...     message="Procesando archivo 1 de 4",
+    ...     status=EstadoTarea.PROCESANDO
+    ... )
+    >>> 
+    >>> # Verificar cancelación
+    >>> if tracker.is_cancelled():
+    ...     print("Tarea cancelada por usuario")
+    >>> 
+    >>> # Marcar completado
+    >>> tracker.mark_completed(message="4 archivos procesados exitosamente")
+    >>> 
+    >>> # Obtener estado
+    >>> data = tracker.get_progress()
+    >>> print(f"Progreso: {data['progress']}%")
+
+ProgressManager:
+    >>> from app.services.ingesta.async_processing.progress_tracker import progress_manager
+    >>> 
+    >>> # Obtener tracker existente
+    >>> tracker = progress_manager.get_tracker("task_123")
+    >>> 
+    >>> # Cancelar tarea
+    >>> progress_manager.cancel_task("task_123")
+    >>> 
+    >>> # Limpiar tracker
+    >>> progress_manager.cleanup_tracker("task_123")
+
+Note:
+    * Redis debe estar disponible (falla silenciosamente si no)
+    * TTL automático previene acumulación de datos
+    * ProgressManager es singleton (importar progress_manager)
+    * Usado en document_processor y celery_tasks
+    * Compatible con multiprocessing (Redis compartido)
+
+Ver también:
+    * app.services.ingesta.celery_tasks: Usa ProgressTracker
+    * app.services.ingesta.document_processor: Actualiza progreso
+    * app.db.redis_client: Cliente Redis singleton
+    * app.routes.expedientes: Endpoints de progreso
+
+Authors:
+    JusticIA Team
+
+Version:
+    1.0.0 - Sistema de tracking en Redis
 """
 import logging
 import json
@@ -23,7 +105,15 @@ redis_client = redis.Redis.from_url(
 )
 
 class EstadoTarea(Enum):
-    """Estados posibles de una tarea."""
+    """Estados posibles de una tarea.
+    
+    Attributes:
+        PENDIENTE: Tarea creada pero no iniciada.
+        PROCESANDO: En ejecución activa.
+        COMPLETADO: Finalizada exitosamente.
+        FALLIDO: Error durante procesamiento.
+        CANCELADO: Cancelada por usuario.
+    """
     PENDIENTE = "pendiente"
     PROCESANDO = "procesando"
     COMPLETADO = "completado"

@@ -1,10 +1,76 @@
 /**
- * Configuración de RAG (Retrieval-Augmented Generation)
+ * @fileoverview Configuración de RAG (Retrieval-Augmented Generation) para frontend.
  * 
- * Valores unificados que deben coincidir con el backend (backend/app/config/rag_config.py)
- * para mantener consistencia en las consultas y búsquedas.
+ * Este módulo define los parámetros de configuración para las búsquedas vectoriales
+ * y generación aumentada por recuperación (RAG) en el frontend de JusticIA.
+ * 
+ * IMPORTANTE: Estos valores DEBEN coincidir con backend/app/config/rag_config.py
+ * para mantener consistencia en consultas y resultados entre cliente y servidor.
+ * 
+ * Configuraciones incluidas:
+ * - GENERAL: Búsqueda en toda la base de documentos
+ * - EXPEDIENTE: Búsqueda limitada a expediente específico
+ * - SIMILARITY: Búsqueda de casos similares
+ * - FALLBACK: Mecanismo de fallback automático si no hay resultados
+ * 
+ * Uso de configuraciones:
+ * - TOP_K: Cantidad de documentos/chunks a recuperar
+ * - SIMILARITY_THRESHOLD: Umbral mínimo de similitud (0.0 - 1.0)
+ * - LIMIT: Límite de resultados a retornar
+ * 
+ * Optimización para LLM:
+ * - Modelo: gpt-oss:20b (Ollama)
+ * - Context window: 32K tokens
+ * - TOP_K calculado para maximizar contexto sin overflow
+ * 
+ * @module ragConfig
+ * 
+ * @example
+ * import RAG_CONFIG from '@/config/ragConfig';
+ * 
+ * // Usar en consulta general
+ * const response = await fetch('/api/rag/consulta', {
+ *   method: 'POST',
+ *   body: JSON.stringify({
+ *     pregunta: '¿Qué es la prescripción?',
+ *     top_k: RAG_CONFIG.GENERAL.TOP_K,
+ *     threshold: RAG_CONFIG.GENERAL.SIMILARITY_THRESHOLD
+ *   })
+ * });
+ * 
+ * @example
+ * // Usar en búsqueda de expediente
+ * const expedienteResponse = await consultarExpediente(
+ *   expedienteId,
+ *   pregunta,
+ *   RAG_CONFIG.EXPEDIENTE.TOP_K,
+ *   RAG_CONFIG.EXPEDIENTE.SIMILARITY_THRESHOLD
+ * );
+ * 
+ * @example
+ * // Usar en búsqueda de casos similares
+ * const casosResponse = await buscarSimilares(
+ *   descripcion,
+ *   RAG_CONFIG.SIMILARITY.LIMIT,
+ *   RAG_CONFIG.SIMILARITY.THRESHOLD
+ * );
+ * 
+ * @see {@link ../../backend/app/config/rag_config.py} Configuración de backend (DEBE coincidir)
+ * @see {@link ../services/consultaService.js} Servicio que usa esta configuración
+ * @see {@link ../services/similarityService.js} Servicio de búsqueda de similares
+ * 
+ * @author JusticIA Team
+ * @version 1.0.0
  */
 
+/**
+ * Configuración de RAG (Retrieval-Augmented Generation).
+ * 
+ * Objeto con parámetros optimizados para diferentes tipos de búsqueda.
+ * DEBE mantenerse sincronizado con backend/app/config/rag_config.py.
+ * 
+ * @constant {Object}
+ */
 const RAG_CONFIG = {
   // ============================================
   // BÚSQUEDA GENERAL (Consulta en toda la base)

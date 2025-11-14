@@ -1,6 +1,79 @@
 """
-Servicio orquestador para procesamiento de audio con faster-whisper.
-Sistema modular con estrategias separadas para procesamiento directo y chunks.
+Orquestador de transcripción de audio con faster-whisper.
+
+Maneja transcripción automática de audio con selección inteligente de estrategias
+según tamaño de archivo, incluyendo lazy loading del modelo y fallback.
+
+Características:
+    * Lazy loading: Modelo Whisper carga bajo demanda
+    * Estrategias modulares: DirectTranscriptionStrategy, ChunkingTranscriptionStrategy
+    * Selección automática: Basada en threshold configurable
+    * Fallback: Si estrategia primaria falla, intenta alternativa
+    * Progress tracking: Integrado con sistema global
+    * Cancelación: Verifica estado entre chunks
+
+Estrategias:
+    DirectTranscriptionStrategy:
+        * Archivos pequeños (< threshold MB)
+        * Transcribe en una sola llamada
+        * Más rápido, menos overhead
+        * Ejemplo: Audios de < 100 MB
+    
+    ChunkingTranscriptionStrategy:
+        * Archivos grandes (≥ threshold MB)
+        * Divide audio en chunks con overlap
+        * Más robusto para archivos extensos
+        * Progress tracking detallado
+        * Ejemplo: Audiencias de > 100 MB
+
+Configuración (AUDIO_CONFIG):
+    * model: base, small, medium, large-v3 (default: medium)
+    * device: cpu, cuda (auto-detección)
+    * compute_type: int8, float16, float32
+    * num_workers: Threads para transcripción (default: 4)
+    * chunk_threshold_mb: Threshold para chunking (default: 100)
+    * chunk_length_ms: Duración del chunk (default: 300000 = 5 min)
+    * chunk_overlap_ms: Overlap entre chunks (default: 5000 = 5 s)
+
+Example:
+    >>> from app.services.ingesta.audio_transcription.whisper_service import AudioTranscriptionOrchestrator
+    >>> 
+    >>> orchestrator = AudioTranscriptionOrchestrator()
+    >>> 
+    >>> # Transcripción simple
+    >>> texto = orchestrator.transcribe(
+    ...     audio_path="audiencia.mp3",
+    ...     task_id="task_123"
+    ... )
+    >>> 
+    >>> # Con progress callback
+    >>> def on_progress(percent, message):
+    ...     print(f"{percent}%: {message}")
+    >>> 
+    >>> texto = orchestrator.transcribe(
+    ...     audio_path="audiencia_larga.mp3",
+    ...     task_id="task_456",
+    ...     progress_callback=on_progress
+    ... )
+
+Note:
+    * Primera transcripción carga modelo (puede tardar)
+    * Modelo se mantiene en memoria hasta reinicio
+    * CUDA acelera transcripción 5-10x
+    * Chunk overlap evita perder palabras en bordes
+    * Fallback aumenta robustez ante errores de memoria
+
+Ver también:
+    * app.services.ingesta.document_processor: Usa orchestrator
+    * app.services.ingesta.audio_transcription.direct_strategy: Estrategia directa
+    * app.services.ingesta.audio_transcription.chunking_strategy: Estrategia chunking
+    * app.services.ingesta.audio_transcription.audio_utils: Utilidades audio
+
+Authors:
+    JusticIA Team
+
+Version:
+    2.0.0 - Arquitectura modular con estrategias
 """
 import os
 from typing import Optional
@@ -17,7 +90,16 @@ logger = logging.getLogger(__name__)
 class AudioTranscriptionOrchestrator:
     """
     Orquestador principal para transcripción de audio.
-    Selecciona automáticamente la mejor estrategia (directa o chunks) según el contexto.
+    
+    Selecciona automáticamente la mejor estrategia (directa o chunks) según
+    tamaño de archivo, con lazy loading del modelo y fallback.
+    
+    Attributes:
+        config (AudioProcessingConfig): Configuración de audio.
+        _whisper_model (Optional[WhisperModel]): Modelo Whisper (lazy loaded).
+        audio_utils (AudioUtils): Utilidades de audio.
+        direct_strategy (Optional[DirectTranscriptionStrategy]): Estrategia directa.
+        chunking_strategy (Optional[ChunkingTranscriptionStrategy]): Estrategia chunking.
     """
     
     def __init__(self, config: Optional[AudioProcessingConfig] = None):
