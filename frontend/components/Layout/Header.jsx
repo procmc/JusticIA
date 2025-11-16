@@ -36,7 +36,7 @@
  *         toggleCollapse={toggleCollapse}
  *         setToggleCollapse={setToggleCollapse}
  *       />
- *       {/* Resto del layout */}
+ *       
  *     </>
  *   );
  * }
