@@ -27,46 +27,46 @@ with Diagram(
     graph_attr={
         "fontsize": "11",
         "bgcolor": "white",
-        "ranksep": "2.5",
-        "nodesep": "1.5",
-        "pad": "1.5",
-        "splines": "ortho"
+        "ranksep": "3.0",
+        "nodesep": "2.0",
+        "pad": "2.0",
+        "splines": "polyline"
     }
 ):
     usuarios = Client("Usuarios\nBrowser")
     
     # ========== CAPA 1: FRONTEND (FUERA DE DOCKER) ==========
     with Cluster("Frontend (Servidor Web / Vercel)", graph_attr={"bgcolor": "#BBDEFB", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        frontend = Custom("next-frontend\n\nNext.js 15 + React 18\nNode.js 20 Alpine\nnpm dependencies\n\nPort: 3000\nSSR + Static\nRAM: 512MB", "/diagrams/icons/nextjs.png")
+        frontend = Custom("next-frontend\n\nNext.js 15\nReact 18\nTailwindCSS\nFetch API\nNode.js 20", "/diagrams/icons/nextjs.png")
     
     # ========== CAPA 2: DOCKER HOST LOCAL ==========
     with Cluster("Docker Host Local (VM/Server)", graph_attr={"bgcolor": "#E3F2FD", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
         
         # Backend API
         with Cluster("API Layer", graph_attr={"bgcolor": "#CE93D8", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            backend = Fastapi("fastapi-backend\n\nPython 3.11 + venv\nODBC Driver 18 (SQL)\nffmpeg + curl\n\nUvicorn ASGI\nPort: 8000\nRAM: 6GB\n(Embeddings ~3GB)")
+            backend = Fastapi("fastapi-backend\n\nPython 3.11\nFastAPI + Uvicorn\nLangChain\nSQLAlchemy\nBGE-M3 (embeddings)")
         
         # Workers
         with Cluster("Processing Layer", graph_attr={"bgcolor": "#F8BBD0", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            celery = Python("celery-worker\n\nPython 3.11 + venv\nffmpeg (audio)\nODBC Driver 18\nFaster-Whisper libs\n\nCelery 5.3\nConcurrency: 1\nPrefork pool\n\nRAM: 8GB\n(Audio+Embeddings)")
+            celery = Python("celery-worker\n\nPython 3.11\nCelery 5.3\nFaster-Whisper\nSentence-Transformers")
         
         # Cache
         with Cluster("Cache Layer", graph_attr={"bgcolor": "#FFCCBC", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            redis = Redis("redis\n\nRedis 7 Alpine\n\nPort: 6379\nMaxmemory: 1GB\nPolicy: allkeys-lru")
+            redis = Redis("redis\n\nRedis 7 Alpine")
         
         # Document Processing
         with Cluster("Document Processing", graph_attr={"bgcolor": "#C5E1A5", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            tika = Custom("apache-tika\n\nJava 17 JRE\nTika 2.8.0\nTesseract OCR (eng+spa)\nPoppler + ImageMagick\nGhostscript\n\nPort: 9998\nRAM: 2GB\nXmx: 2048m", "/diagrams/icons/tika.svg.png")
+            tika = Custom("apache-tika\n\nJava 17\nTika 2.8.0\nTesseract OCR", "/diagrams/icons/tika.svg.png")
     
     # ========== CAPA 3: SERVICIOS CLOUD ==========
     with Cluster("Azure Cloud", graph_attr={"bgcolor": "#BBDEFB", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        azure_sql = Custom("Azure SQL Server\n\nTier: Standard S3\n100 DTUs\nStorage: 250GB\n\nBackup: 7 días\nGeo-replication", "/diagrams/icons/azure.png")
+        azure_sql = Custom("Azure SQL Server", "/diagrams/icons/azure.png")
     
     with Cluster("Milvus (Local/Docker)", graph_attr={"bgcolor": "#B2DFDB", "penwidth": "3", "style": "rounded", "margin": "50", "pad": "1.0"}):
-        milvus = Custom("Milvus\n\nCollection: justicia_docs\nDimensions: 1024", "/diagrams/icons/milvus.png")
+        milvus = Custom("Milvus\n\nVector Database", "/diagrams/icons/milvus.png")
     
     with Cluster("Ollama Cloud", graph_attr={"bgcolor": "#E1BEE7", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        ollama = Custom("Ollama API\n\nModel: gpt-oss:20b-cloud\nEndpoint: ollama.com\n\nContext: 32K tokens\nStreaming: enabled", "/diagrams/icons/ollama.png")
+        ollama = Custom("Ollama API\n\nLLM: gpt-oss-120B", "/diagrams/icons/ollama.png")
     
     # ===== FLUJO DE CONEXIONES =====
     
