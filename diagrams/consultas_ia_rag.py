@@ -63,7 +63,7 @@ with Diagram(
         vector_store = Python("VectorStore Service\n\nCliente Milvus\nBúsqueda similitud")
     
     with Cluster("LLM", graph_attr={"bgcolor": "#fff3e0", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        llm = Custom("Ollama LLM\n\ngpt-oss:20b\nTemp: 0.3 | Stream", "/diagrams/icons/ollama.png")
+        llm = Custom("Ollama LLM\n\ngpt-oss:120b\nTemp: 0.3 | Stream", "/diagrams/icons/ollama.png")
     
     # Capa 6: Bases de datos (abajo)
     with Cluster("Base de Datos", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
