@@ -64,11 +64,14 @@ def main():
     # Lista de diagramas a generar
     diagrams = [
         ("contexto_sistema.py", "Contexto del Sistema"),
+        ("stack_tecnologico.py", "Stack Tecnológico y Dependencias"),
+        ("arquitectura_despliegue.py", "Arquitectura de Despliegue"),
         ("procesamiento_documentos.py", "Procesamiento de Documentos Legales"),
         ("consultas_ia_rag.py", "Consultas con IA (RAG)"),
         ("busqueda_similitud.py", "Búsqueda de Similitud de Casos"),
-        ("stack_tecnologico.py", "Stack Tecnológico y Dependencias"),
-        ("arquitectura_despliegue.py", "Arquitectura de Despliegue"),
+        ("ingesta_simple.py", "Ingesta de Documentos (Flujo General)"),
+        ("rag_simple.py", "Consultas con IA RAG (Flujo General)"),
+        ("busqueda_simple.py", "Búsqueda de Similitud (Flujo General)"),
     ]
     
     start_total = time.time()
