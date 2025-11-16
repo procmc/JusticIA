@@ -24,111 +24,110 @@ with Diagram(
     filename="output/busqueda_similitud",
     outformat="png",
     graph_attr={
-        "fontsize": "11",
+        "fontsize": "10",
         "bgcolor": "white",
-        "ranksep": "2.0",
-        "nodesep": "1.5",
-        "pad": "1.5",
-        "splines": "ortho"
+        "ranksep": "2.5",
+        "nodesep": "1.8",
+        "pad": "2.0",
+        "splines": "polyline"
     }
 ):
     usuario = User("Usuario")
     
     # Capa 1: Frontend
-    with Cluster("Frontend", graph_attr={"bgcolor": "#e3f2fd", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        search_ui = React("Search Interface\n\nModos: descripción\no expediente")
+    with Cluster("Frontend", graph_attr={"bgcolor": "#e3f2fd", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        search_ui = React("Search Interface")
     
     # Capa 2: API Gateway
-    with Cluster("API Gateway", graph_attr={"bgcolor": "#f3e5f5", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        similarity_router = Fastapi("Similarity Router\n\nroutes/similarity.py\nPOST /search")
+    with Cluster("API", graph_attr={"bgcolor": "#f3e5f5", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        similarity_router = Fastapi("Similarity Router\n\nPOST /search")
     
     # Capa 3: Almacenamiento (arriba)
-    with Cluster("Persistencia", graph_attr={"bgcolor": "#e8f5e9", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        sql_audit = Mssql("Azure SQL Server\n\nAuditoría búsquedas\nExpedientes")
+    with Cluster("Persistencia", graph_attr={"bgcolor": "#e8f5e9", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        sql_audit = Mssql("Azure SQL\n\nAuditoría")
     
     # Capa 4: Orquestador
-    with Cluster("Orquestador Similitud", graph_attr={"bgcolor": "#ede7f6", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        similarity_service = Python("SimilarityService\n\nDos modos búsqueda\nAgregación resultados")
-        
-        with Cluster("Estrategias Búsqueda", graph_attr={"bgcolor": "#f3e5f5", "style": "rounded", "margin": "20", "pad": "0.4"}):
-            busqueda_desc = Python("Búsqueda Descripción\n\nDynamicJusticIARetriever\ntop_k=30")
-            busqueda_exp = Python("Búsqueda Expediente\n\nsearch_similar_expedients\nComparación vectorial")
+    with Cluster("Orquestador", graph_attr={"bgcolor": "#ede7f6", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        similarity_service = Python("SimilarityService\n\nAgregación resultados")
+        busqueda_desc = Python("Búsqueda Descripción\n\ntop_k=30")
+        busqueda_exp = Python("Búsqueda Expediente\n\nComparación vectorial")
     
     # Capa 5: Servicios de Procesamiento
-    with Cluster("Procesamiento Documentos", graph_attr={"bgcolor": "#fff3e0", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        doc_retrieval = Python("DocumentoRetrievalService\n\nAgrupa por expediente\nCalcula scores")
-        doc_service = Python("DocumentoService\n\nObtiene metadata BD\nEnriquece resultados")
+    with Cluster("Procesamiento", graph_attr={"bgcolor": "#fff3e0", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        doc_retrieval = Python("DocumentoRetrievalService\n\nAgrupa expedientes")
+        doc_service = Python("DocumentoService\n\nEnriquece metadata")
     
     # Capa 6: Retrieval
-    with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        retriever = Python("DynamicJusticIARetriever\n\ntop_k configurable\nthreshold 0.3")
-        embedder = Custom("Embedding Service\n\nBGE-M3-ES-Legal\n1024 dimensiones", "/diagrams/icons/bge.jpeg")
-        vector_store = Custom("VectorStore Service\n\nCliente Milvus\nBúsqueda similitud", "/diagrams/icons/milvus.png")
+    with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        retriever = Python("Retriever\n\ntop_k configurable")
+        embedder = Custom("Embeddings\n\nBGE-M3", "/diagrams/icons/bge.jpeg")
+        vector_store = Custom("VectorStore\n\nMilvus Client", "/diagrams/icons/milvus.png")
     
-    # Capa 7: Bases de datos (abajo)
-    with Cluster("Base de Datos", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        milvus_db = Custom("Milvus\n\nVector Database\njusticia_docs\n", "/diagrams/icons/milvus.png")
-        sql_db = Custom("Azure SQL Server\n\nExpedientes\nDocumentos", "/diagrams/icons/azure.png")
+    # Capa 7: Base de datos vectorial
+    with Cluster("Vector Database", graph_attr={"bgcolor": "#e0f2f1", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        milvus_db = Custom("Milvus\n\nVector DB", "/diagrams/icons/milvus.png")
+    
+    # Capa 8: Base de datos relacional
+    with Cluster("Relational Database", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
+        sql_db = Custom("Azure SQL\n\nMetadata", "/diagrams/icons/azure.png")
     
     # ===== FLUJO PRINCIPAL =====
     # 1. Usuario → Frontend
-    usuario >> Edge(label="1. Búsqueda", color="#1976d2", style="bold") >> search_ui
+    usuario >> Edge(label=" 1. Búsqueda ", color="#1976d2", style="bold", fontsize="10") >> search_ui
     
     # 2. Frontend → API
-    search_ui >> Edge(label="2. POST /search", color="#1976d2", style="bold") >> similarity_router
+    search_ui >> Edge(label=" 2. POST /search ", color="#1976d2", style="bold", fontsize="10") >> similarity_router
     
     # 3. API → Orquestador
-    similarity_router >> Edge(label="3. Invocar búsqueda", color="#7b1fa2", style="bold") >> similarity_service
+    similarity_router >> Edge(label=" 3. Invocar búsqueda ", color="#7b1fa2", style="bold", fontsize="10") >> similarity_service
     
-    # 4. Orquestador → Estrategia (decidir cuál)
-    similarity_service >> Edge(label="4a. Modo descripción", color="#f57c00") >> busqueda_desc
-    similarity_service >> Edge(label="4b. Modo expediente", color="#0288d1") >> busqueda_exp
+    # 4. Orquestador → Estrategias
+    similarity_service >> Edge(label=" 4a. Modo descripción ", color="#f57c00", fontsize="9") >> busqueda_desc
+    similarity_service >> Edge(label=" 4b. Modo expediente ", color="#0288d1", fontsize="9") >> busqueda_exp
     
     # 5. Descripción → Retriever
-    busqueda_desc >> Edge(label="5. Query texto", color="#f57c00") >> retriever
+    busqueda_desc >> Edge(label=" 5. Query texto ", color="#f57c00", fontsize="10") >> retriever
     
     # 6. Retriever → Embeddings
-    retriever >> Edge(label="6. Vectorizar", color="#f57c00") >> embedder
+    retriever >> Edge(label=" 6. Vectorizar ", color="#f57c00", fontsize="10") >> embedder
     
     # 7. Embeddings → VectorStore
-    embedder >> Edge(label="7. Buscar similares", color="#f57c00") >> vector_store
+    embedder >> Edge(label=" 7. Buscar similares ", color="#f57c00", fontsize="10") >> vector_store
     
-    # 8. VectorStore → Milvus (búsqueda)
-    vector_store >> Edge(label="8. Query vectorial", color="#c2185b", style="dashed") >> milvus_db
+    # 8. Expediente → VectorStore (directo)
+    busqueda_exp >> Edge(label=" 8. Comparar vectores ", color="#0288d1", fontsize="10") >> vector_store
     
-    # 9. Milvus → VectorStore → Retriever (resultados)
-    milvus_db >> Edge(label="9. Top K chunks", color="#c2185b", style="dashed") >> vector_store
-    vector_store >> Edge(label="Documentos", color="#f57c00") >> retriever
+    # 9. VectorStore → Milvus
+    vector_store >> Edge(label=" 9. Query vectorial ", color="#c2185b", style="dashed", fontsize="9") >> milvus_db
     
-    # 10. Expediente también usa VectorStore
-    busqueda_exp >> Edge(label="10. Búsqueda expediente", color="#0288d1") >> vector_store
+    # 10. Milvus → VectorStore (resultados)
+    milvus_db >> Edge(label=" 10. Top K chunks ", color="#c2185b", style="dashed", fontsize="9") >> vector_store
     
-    # 11. Ambas estrategias → DocumentoRetrievalService
-    retriever >> Edge(label="11a. Docs recuperados", color="#388e3c") >> doc_retrieval
-    busqueda_exp >> Edge(label="11b. Expedientes similares", color="#388e3c") >> doc_retrieval
+    # 11. VectorStore → DocumentoRetrievalService
+    vector_store >> Edge(label=" 11. Docs recuperados ", color="#388e3c", fontsize="10") >> doc_retrieval
     
-    # 12. DocumentoRetrieval → DocumentoService (enriquecer)
-    doc_retrieval >> Edge(label="12. Agrupar casos", color="#388e3c") >> doc_service
+    # 12. DocumentoRetrieval → DocumentoService
+    doc_retrieval >> Edge(label=" 12. Agrupar casos ", color="#388e3c", fontsize="10") >> doc_service
     
-    # 13. DocumentoService → SQL (obtener metadata)
-    doc_service >> Edge(label="13. Obtener expedientes", color="#5e35b1", style="dashed") >> sql_db
+    # 13. DocumentoService → SQL
+    doc_service >> Edge(label=" 13. Obtener metadata ", color="#5e35b1", style="dashed", fontsize="9") >> sql_db
     
-    # 14. SQL → DocumentoService (datos)
-    sql_db >> Edge(label="14. Metadata", color="#5e35b1", style="dashed") >> doc_service
+    # 14. SQL → DocumentoService
+    sql_db >> Edge(label=" 14. Enriquecer datos ", color="#5e35b1", style="dashed", fontsize="9") >> doc_service
     
-    # 15. DocumentoService → Orquestador (resultados finales)
-    doc_service >> Edge(label="15. Casos similares", color="#388e3c") >> similarity_service
+    # 15. DocumentoService → Orquestador
+    doc_service >> Edge(label=" 15. Casos similares ", color="#388e3c", style="bold", fontsize="10") >> similarity_service
     
     # 16. Orquestador → API
-    similarity_service >> Edge(label="16. Respuesta procesada", color="#7b1fa2", style="bold") >> similarity_router
+    similarity_service >> Edge(label=" 16. Respuesta ", color="#7b1fa2", style="bold", fontsize="10") >> similarity_router
     
     # 17. API → SQL (auditoría)
-    similarity_router >> Edge(label="17. Log auditoría", color="#5e35b1", style="dashed") >> sql_audit
+    similarity_router >> Edge(label=" 17. Auditoría ", color="#5e35b1", style="dashed", fontsize="9") >> sql_audit
     
-    # 18. API → Frontend (respuesta)
-    similarity_router >> Edge(label="18. JSON response", color="#1976d2", style="bold") >> search_ui
+    # 18. API → Frontend
+    similarity_router >> Edge(label=" 18. JSON response ", color="#1976d2", style="bold", fontsize="10") >> search_ui
     
     # 19. Frontend → Usuario
-    search_ui >> Edge(label="19. Mostrar resultados", color="#1976d2", style="bold") >> usuario
+    search_ui >> Edge(label=" 19. Mostrar resultados ", color="#1976d2", style="bold", fontsize="10") >> usuario
 
 print("Diagrama generado: output/busqueda_similitud.png")
