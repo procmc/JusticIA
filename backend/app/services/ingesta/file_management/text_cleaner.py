@@ -1,5 +1,4 @@
 """
-"""
 Limpieza y normalización de texto extraído de documentos.
 
 Proporciona funciones especializadas para limpiar texto de documentos PDF,

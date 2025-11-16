@@ -1,5 +1,4 @@
 """
-"""
 Procesamiento asíncrono con Celery.
 
 Gestión de tareas de larga duración para ingesta de archivos

@@ -1,5 +1,4 @@
 """
-"""
 Almacenamiento vectorial con chunking y metadata enriquecida.
 
 Migrado a LangChain para automación completa de embeddings e inserción.

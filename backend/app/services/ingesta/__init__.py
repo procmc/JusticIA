@@ -1,5 +1,4 @@
 """
-"""
 Módulo de ingesta de archivos y transcripción de audio.
 
 Centraliza todo el procesamiento de documentos (PDF, DOCX, audio) desde
@@ -16,7 +15,7 @@ Estructura:
     audio_transcription/
         * whisper_service.py: Orquestador de transcripción
         * direct_strategy.py: Estrategia directa (<100 MB)
-        * chunking_strategy.py: Estrategia chunks (≥100 MB)
+        * chunking_strategy.py: Estrategia chunks (>=100 MB)
         * audio_utils.py: Utilidades (duración, splitting)
     
     file_management/

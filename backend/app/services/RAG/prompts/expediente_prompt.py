@@ -1,5 +1,4 @@
 """
-"""
 Prompt especializado para análisis de expedientes específicos.
 
 Crea prompts personalizados con el número de expediente específico embebido
