@@ -1,5 +1,4 @@
 """
-"""
 Estrategia de transcripción directa de audio con faster-whisper.
 
 Implementa procesamiento completo de archivos sin división en chunks,

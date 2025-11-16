@@ -1,5 +1,4 @@
 """
-"""
 Transcripción de audio con faster-whisper.
 
 Módulo especializado para convertir audio a texto con estrategias
@@ -18,7 +17,7 @@ Estrategias:
         * Más rápido
     
     ChunkingTranscriptionStrategy:
-        * Archivos grandes (≥100 MB)
+        * Archivos grandes (>=100 MB)
         * División con overlap
         * Más robusto
 

@@ -1,5 +1,4 @@
 """
-"""
 Estrategia de transcripción con chunks para archivos grandes.
 
 Implementa división de audio en chunks con overlap para procesamiento

@@ -1,5 +1,4 @@
 """
-"""
 Prompt de generación de respuestas para JusticBot.
 
 Define el comportamiento completo del asistente virtual JusticBot, incluyendo:
@@ -66,9 +65,6 @@ Authors:
 
 Version:
     3.0.0 - Capacidades de plantillas + sistema de fuentes
-"""
-""""""Prompt de generación de respuestas.
-Define cómo JusticBot debe responder basándose en los documentos recuperados.
 """
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate

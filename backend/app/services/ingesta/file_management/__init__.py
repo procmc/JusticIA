@@ -1,5 +1,4 @@
 """
-"""
 Gestión y procesamiento de documentos.
 
 Módulo para ingesta, validación y almacenamiento transaccional de archivos.

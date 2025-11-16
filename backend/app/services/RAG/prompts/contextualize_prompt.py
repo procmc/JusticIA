@@ -1,5 +1,4 @@
 """
-"""
 Prompt de contextualización con expansión semántica.
 
 Reformula preguntas del usuario para mejorar la recuperación vectorial en Milvus.

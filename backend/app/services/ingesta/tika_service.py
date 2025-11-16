@@ -1,5 +1,4 @@
 """
-"""
 Cliente HTTP para Apache Tika Server con soporte OCR.
 
 Implementa integración directa con Apache Tika Server via llamadas HTTP REST,
