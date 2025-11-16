@@ -44,7 +44,7 @@
  *   return (
  *     <div>
  *       <DynamicBreadcrumbs />
- *       {/* Contenido de la página */}
+ *       
  *     </div>
  *   );
  * }
