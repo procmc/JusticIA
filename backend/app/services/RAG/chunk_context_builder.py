@@ -80,6 +80,10 @@ import re
 
 
 def format_documents_by_chunks(
+    docs: List[Document], 
+    max_docs: int = 20, 
+    max_chars_per_chunk: int = 800
+) -> str:
     """
     Formatea documentos agrupando chunks por archivo.
     
@@ -91,10 +95,6 @@ def format_documents_by_chunks(
     Returns:
         String con contexto estructurado formateado.
     """
-    docs: List[Document], 
-    max_docs: int = 20, 
-    max_chars_per_chunk: int = 800
-) -> str:
     if not docs:
         return "No hay información disponible."
     
