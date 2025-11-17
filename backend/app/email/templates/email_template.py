@@ -61,7 +61,7 @@ class EmailTemplate:
         self,
         usuario_nombre: str,
         password: str,
-        titulo_sistema: str = "JusticIA - Sistema de Información"
+        titulo_sistema: str = "JusticIA"
     ) -> str:
         """
         Genera el HTML completo para correos de credenciales
@@ -101,7 +101,7 @@ class EmailTemplate:
         datos_adicionales: Optional[Dict[str, Any]] = None,
         mostrar_credenciales: bool = False,
         credenciales: Optional[Dict[str, str]] = None,
-        titulo_sistema: str = "JusticIA - Sistema de Información"
+        titulo_sistema: str = "JusticIA"
     ) -> str:
         """
         Genera HTML para cualquier tipo de correo usando la misma plantilla base

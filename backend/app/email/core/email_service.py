@@ -178,47 +178,66 @@ class EmailService:
             return False
     
     async def send_password_reset_email(self, to_email: str, user_name: str, new_password: str) -> bool:
-        """Envía email con nueva contraseña restablecida"""
+        """Envía email con nueva contraseña restablecida por el administrador"""
         try:
-            subject = "Contraseña Restablecida - JusticIA"
+            subject = "Contraseña Restablecida por Administrador - JusticIA"
             
             html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center;">
-                    <h2 style="color: #2c3e50; margin-bottom: 20px;">🔑 Contraseña Restablecida</h2>
-                    <p style="color: #34495e; font-size: 16px; margin-bottom: 15px;">
-                        Hola <strong>{user_name}</strong>,
-                    </p>
-                    <p style="color: #34495e; font-size: 14px; margin-bottom: 25px;">
-                        Tu contraseña ha sido restablecida exitosamente. Tu nueva contraseña temporal es:
-                    </p>
-                    <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 5px; font-size: 18px; font-weight: bold; letter-spacing: 1px; margin: 20px 0;">
-                        {new_password}
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+            </head>
+            <body style="font-family: Arial, sans-serif; margin: 40px;">
+                <div style="max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+                    <div style="background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0;">JusticIA</h1>
                     </div>
-                    <p style="color: #e74c3c; font-size: 14px; margin-top: 20px;">
-                        ⚠️ <strong>Importante:</strong> Por tu seguridad, cambia esta contraseña después de iniciar sesión.
-                    </p>
-                    <p style="color: #7f8c8d; font-size: 12px; margin-top: 15px;">
-                        Si no solicitaste este restablecimiento, contacta al administrador inmediatamente.
-                    </p>
+                    <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px;">
+                        <h2>Hola {user_name},</h2>
+                        <p>Un administrador ha restablecido tu contraseña en el sistema JusticIA. Tu nueva contraseña temporal es:</p>
+                        
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 18px; font-weight: bold; text-align: center; margin: 20px 0;">
+                            {new_password}
+                        </div>
+                        
+                        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <strong>⚠️ Importante:</strong> Esta es una contraseña temporal. Debes cambiarla obligatoriamente al iniciar sesión.
+                        </div>
+                        
+                        <p><strong>Recomendaciones:</strong></p>
+                        <ul>
+                            <li>Guarda esta contraseña en un lugar seguro</li>
+                            <li>Cámbiala inmediatamente después del primer acceso</li>
+                            <li>No compartas esta información con terceros</li>
+                        </ul>
+                        
+                        <p>Si no esperabas este cambio o tienes dudas, contacta al administrador del sistema.</p>
+                    </div>
+                    <div style="text-align: center; color: #666; margin-top: 20px;">
+                        <p style="font-size: 12px;">Este es un mensaje automático, no responder a este correo.</p>
+                    </div>
                 </div>
-                <div style="text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px;">
-                    Sistema JusticIA - Gestión de Documentos Jurídicos
-                </div>
-            </div>
+            </body>
+            </html>
             """
             
             text_content = f"""
-            Contraseña Restablecida - JusticIA
+            Contraseña Restablecida por Administrador - JusticIA
             
             Hola {user_name},
             
-            Tu contraseña ha sido restablecida exitosamente.
+            Un administrador ha restablecido tu contraseña en el sistema JusticIA.
             Tu nueva contraseña temporal es: {new_password}
             
-            IMPORTANTE: Por tu seguridad, cambia esta contraseña después de iniciar sesión.
+            IMPORTANTE: Esta es una contraseña temporal. Debes cambiarla obligatoriamente al iniciar sesión.
             
-            Si no solicitaste este restablecimiento, contacta al administrador inmediatamente.
+            Recomendaciones:
+            - Guarda esta contraseña en un lugar seguro
+            - Cámbiala inmediatamente después del primer acceso
+            - No compartas esta información con terceros
+            
+            Si no esperabas este cambio o tienes dudas, contacta al administrador del sistema.
             
             Sistema JusticIA
             """

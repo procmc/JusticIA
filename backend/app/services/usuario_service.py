@@ -248,13 +248,14 @@ class UsuarioService:
         if not usuario_actualizado:
             return None
         
-        # Enviar correo con la nueva contraseña
+        # Enviar correo con la nueva contraseña (reseteo por administrador)
         if self.email_service:
             try:
-                await self.email_service.send_password_email(
-                    to=usuario.CT_Correo,
-                    password=nueva_contrasenna,
-                    usuario_nombre=usuario.CT_Nombre_usuario
+                nombre_completo = f"{usuario.CT_Nombre} {usuario.CT_Apellido_uno} {usuario.CT_Apellido_dos}".strip()
+                await self.email_service.send_password_reset_email(
+                    to_email=usuario.CT_Correo,
+                    user_name=nombre_completo,
+                    new_password=nueva_contrasenna
                 )
                 logger.info(f"Contraseña reseteada y correo enviado a {usuario.CT_Correo}")
             except Exception as e:
