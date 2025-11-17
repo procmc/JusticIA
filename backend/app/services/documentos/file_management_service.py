@@ -14,6 +14,25 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Mapeo explícito de extensiones a tipos MIME para archivos de audio y documentos
+# Esto garantiza la correcta detección en todos los sistemas operativos
+MIME_TYPE_MAP = {
+    # Audio
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    # Documentos
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.rtf': 'application/rtf',
+    '.txt': 'text/plain',
+    '.html': 'text/html',
+    '.htm': 'text/html',
+    '.xhtml': 'application/xhtml+xml',
+}
+
 
 class FileManagementService:
     """Servicio centralizado para manejo de archivos (subida y descarga)"""
@@ -164,10 +183,20 @@ class FileManagementService:
             # Obtener nombre del archivo
             nombre_archivo = os.path.basename(ruta_final)
 
-            # Detectar el tipo MIME real del archivo
-            mime_type, _ = mimetypes.guess_type(ruta_final)
+            # Detectar el tipo MIME del archivo
+            # 1. Primero intentar con el mapeo explícito (más confiable)
+            extension = os.path.splitext(ruta_final)[1].lower()
+            mime_type = MIME_TYPE_MAP.get(extension)
+            
+            # 2. Si no está en el mapeo, usar mimetypes.guess_type
+            if not mime_type:
+                mime_type, _ = mimetypes.guess_type(ruta_final)
+            
+            # 3. Fallback final a application/octet-stream
             if not mime_type:
                 mime_type = 'application/octet-stream'
+            
+            logger.debug(f"Descargando archivo: {nombre_archivo} con tipo MIME: {mime_type}")
 
             return FileResponse(
                 path=ruta_final,
