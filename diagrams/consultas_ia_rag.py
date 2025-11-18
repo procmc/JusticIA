@@ -58,7 +58,7 @@ with Diagram(
     
     # Capa 5: Servicios
     with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        retriever = Python("DynamicJusticIARetriever\n\ntop_k=15 general\ntop_k=30 expediente")
+        retriever = Python("DynamicJusticIARetriever\n\ntop_k=15 general\ntop_k=10 expediente")
         embedder = Python("Embedding Service\n\nBGE-M3-ES-Legal\n1024 dimensiones")
         vector_store = Python("VectorStore Service\n\nCliente Milvus\nBúsqueda similitud")
     

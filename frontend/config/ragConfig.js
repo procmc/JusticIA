@@ -102,9 +102,16 @@ const RAG_CONFIG = {
   FALLBACK: {
     ENABLED: true,                         // Habilitar fallback automático
     THRESHOLD_MULTIPLIER: 0.7,             // Multiplicador para relajar umbral (70%)
-    MINIMUM_THRESHOLD: 0.05,               // Umbral mínimo en último intento
-    TOP_K: 50,                             // Top-K aumentado en fallback final
-    MIN_RESULTS: 3,                        // Mínimo de resultados para considerar exitosa
+    MINIMUM_THRESHOLD: 0.25,               // Ajustado de 0.05 → 0.25 para evitar falsos positivos
+    TOP_K: 10,                             // Consistente con expediente (máxima estabilidad)
+    MIN_RESULTS: 5,                        // Ajustado de 3 → 5 para mejor calidad
+  },
+
+  // ============================================
+  // HISTORIAL DE CONVERSACIÓN
+  // ============================================
+  CHAT: {
+    HISTORY_LIMIT: 20,                     // Límite de mensajes enviados al LLM (últimos 10 intercambios)
   },
 };
 
