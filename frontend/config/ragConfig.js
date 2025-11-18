@@ -76,16 +76,16 @@ const RAG_CONFIG = {
   // BÚSQUEDA GENERAL (Consulta en toda la base)
   // ============================================
   GENERAL: {
-    TOP_K: 10,                    // Optimizado para gpt-oss:20b (32K ctx) = ~17.5K tokens docs (mejor calidad)
-    SIMILARITY_THRESHOLD: 0.22,   // Umbral de similitud (22%)
+    TOP_K: 15,                    // Optimizado para gpt-oss:20b (32K ctx) = ~17.5K tokens docs (mejor calidad)
+    SIMILARITY_THRESHOLD: 0.20,   // Umbral de similitud (20%)
   },
 
   // ============================================
   // BÚSQUEDA EN EXPEDIENTE ESPECÍFICO
   // ============================================
   EXPEDIENTE: {
-    TOP_K: 20,                    // Más documentos para expediente específico (análisis profundo)
-    SIMILARITY_THRESHOLD: 0.15,   // Umbral más permisivo (15%)
+    TOP_K: 10,                    // Más documentos para expediente específico (análisis profundo)
+    SIMILARITY_THRESHOLD: 0.18,   // Umbral más permisivo (18%)
   },
 
   // ============================================
