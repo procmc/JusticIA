@@ -1,9 +1,3 @@
-# Ignorar diagramas generados (se pueden regenerar)
-output/
-*.png
-*.svg
-*.pdf
-
 # Python cache
 __pycache__/
 *.py[cod]
