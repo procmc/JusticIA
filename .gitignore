@@ -13,6 +13,5 @@
 
 /*/.env
 
-# Diagrams - archivos generados
-/diagrams/output/
+# Diagrams - solo cache
 /diagrams/__pycache__/
