@@ -54,7 +54,8 @@ Ver también:
     * app.services.rag.session_store: Gestión de historial
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - LangChain con streaming SSE

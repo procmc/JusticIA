@@ -1,35 +1,127 @@
 """
-Servicio de Autenticación y Gestión de Contraseñas.
+Servicio de Autenticación y Gestión de Contraseñas para JusticIA.
 
-Este módulo proporciona la lógica de negocio para autenticación de usuarios,
-gestión de contraseñas, recuperación de acceso mediante códigos por email,
-y restablecimiento de contraseñas por parte de administradores.
+Este módulo implementa el sistema completo de autenticación, autorización y
+gestión de credenciales para usuarios del sistema JusticIA. Provee funcionalidades
+de login, recuperación de contraseña, cambio de contraseña y restablecimiento
+administrativo.
 
-Funciones principales:
-    - autenticar_usuario: Login con validación de credenciales y JWT
-    - cambiar_contrasenna: Cambio de contraseña por el usuario autenticado
-    - solicitar_recuperacion_contrasenna: Envío de código de recuperación por email
-    - verificar_codigo_recuperacion: Validación de código de 6 dígitos
-    - cambiar_contrasenna_recuperacion: Cambio de contraseña con token verificado
-    - restablecer_contrasenna: Reset de contraseña por administrador (genera temporal)
+Arquitectura de Seguridad:
+    - Encriptación: Bcrypt con salt automático (passlib)
+    - Tokens JWT: HS256 con SECRET_KEY de entorno
+    - Recuperación: Códigos numéricos de 6 dígitos + token JWT
+    - Validación: Estado activo del usuario en cada operación
 
-Seguridad:
-    - Contraseñas encriptadas con bcrypt
-    - Tokens JWT con expiración configurable
-    - Códigos de recuperación de un solo uso (15 min)
-    - Validación de estado de usuario (activo/inactivo)
+Flujos principales:
+
+1. Autenticación (Login):
+    └─ Validar email y contraseña
+    └─ Verificar estado "Activo"
+    └─ Generar token JWT
+    └─ Detectar si requiere cambio obligatorio (CF_Ultimo_acceso=NULL)
+    └─ Actualizar último acceso (solo si no requiere cambio)
+
+2. Cambio de contraseña (por usuario):
+    └─ Validar contraseña actual
+    └─ Verificar que nueva sea diferente
+    └─ Actualizar CF_Ultimo_acceso si era NULL (completa cambio obligatorio)
+
+3. Recuperación de contraseña (por email):
+    └─ Solicitar recuperación: Genera código de 6 dígitos + token JWT (15 min)
+    └─ Verificar código: Valida código y genera token de verificación (10 min)
+    └─ Cambiar contraseña: Usa token verificado para cambiar credencial
+
+4. Restablecimiento administrativo:
+    └─ Genera contraseña temporal aleatoria (8 caracteres)
+    └─ Establece CF_Ultimo_acceso=NULL (fuerza cambio obligatorio)
+    └─ Envía contraseña temporal por email
+
+Funciones públicas:
+    - autenticar_usuario(): Login con credenciales
+    - cambiar_contrasenna(): Cambio por usuario autenticado
+    - solicitar_recuperacion_contrasenna(): Inicio flujo recuperación
+    - verificar_codigo_recuperacion(): Validación de código por email
+    - cambiar_contrasenna_recuperacion(): Completar recuperación
+    - restablecer_contrasenna(): Reset administrativo
+
+Seguridad implementada:
+    - Bcrypt: Hash de contraseñas con salt automático
+    - JWT tokens: Firma HMAC SHA-256 con clave secreta
+    - Timeouts: 15 min para recuperación, 10 min para verificación
+    - Validación de estado: Solo usuarios "Activo" pueden autenticarse
+    - Cambio obligatorio: CF_Ultimo_acceso=NULL fuerza cambio en próximo login
+    - Unicidad de código: Códigos de recuperación de un solo uso
+    - No revelación: Respuestas genéricas en recuperación (seguridad por oscuridad)
+
+Integración con otros módulos:
+    - UsuarioRepository: Acceso a datos de usuarios
+    - UsuarioService: Lógica de negocio de usuarios
+    - EmailService: Envío de códigos y contraseñas temporales
+    - jwt_auth: Creación de tokens JWT
+    - Bitácora: Registro de eventos de autenticación
+
+Modelos de respuesta (Schemas):
+    - LoginResponse: Datos de usuario + access_token JWT
+    - SolicitarRecuperacionResponse: Token JWT con código encriptado
+    - VerificarCodigoResponse: Token de verificación después de validar código
+    - RestablecerContrasenaResponse: Confirmación de reset administrativo
+    - MensajeExito: Respuesta genérica de operación exitosa
+
+Estados de usuario:
+    - "Activo": Puede autenticarse y operar normalmente
+    - "Inactivo": No puede autenticarse (credenciales inválidas)
+    - CF_Ultimo_acceso=NULL: Requiere cambio obligatorio de contraseña
 
 Example:
+    >>> from app.services.auth_service import AuthService
     >>> auth_service = AuthService()
+    >>> 
+    >>> # Login normal
     >>> response = await auth_service.autenticar_usuario(
-    ...     db, 'usuario@example.com', 'password123'
+    ...     db, 'usuario@poderjudicial.go.cr', 'password123'
     ... )
+    >>> print(response.user.name)
+    'Juan Pérez'
     >>> print(response.access_token)
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+    >>> 
+    >>> # Recuperación de contraseña
+    >>> solicitud = await auth_service.solicitar_recuperacion_contrasenna(
+    ...     db, 'usuario@poderjudicial.go.cr'
+    ... )
+    >>> # Usuario recibe email con código de 6 dígitos
+    >>> 
+    >>> verificacion = await auth_service.verificar_codigo_recuperacion(
+    ...     db, solicitud.token, '123456'
+    ... )
+    >>> 
+    >>> cambio = await auth_service.cambiar_contrasenna_recuperacion(
+    ...     db, verificacion.verificationToken, 'nuevaPassword456'
+    ... )
+    >>> print(cambio.message)
+    'Contraseña recuperada exitosamente'
 
 Note:
-    - Los tokens de recuperación expiran en 15 minutos
-    - Las contraseñas temporales requieren cambio obligatorio (CF_Ultimo_acceso=NULL)
-    - Se valida que el usuario esté en estado "Activo"
+    - JWT_SECRET_KEY debe configurarse en variables de entorno (producción)
+    - Los códigos de recuperación expiran en 15 minutos
+    - Los tokens de verificación expiran en 10 minutos
+    - Las contraseñas deben tener mínimo 6 caracteres
+    - CF_Ultimo_acceso=NULL indica cambio de contraseña obligatorio
+    - El sistema NO revela si un email existe durante recuperación (seguridad)
+
+Ver también:
+    - app.repositories.usuario_repository: Operaciones CRUD de usuarios
+    - app.services.usuario_service: Lógica de negocio de usuarios
+    - app.email.core.email_service: Envío de emails
+    - app.auth.jwt_auth: Creación y validación de tokens JWT
+    - app.schemas.auth_schemas: Modelos de respuesta
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import jwt

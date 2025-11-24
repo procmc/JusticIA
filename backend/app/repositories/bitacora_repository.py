@@ -1,6 +1,197 @@
 """
-Repository para operaciones de base de datos de bitácora.
-Maneja todas las consultas y operaciones CRUD sobre T_Bitacora.
+Repositorio de Acceso a Datos para la Bitácora del Sistema JusticIA.
+
+Este módulo gestiona todas las operaciones de persistencia, consulta y análisis
+sobre la tabla T_Bitacora, que constituye el registro de auditoría centralizado
+del sistema para trazabilidad, seguridad y cumplimiento normativo.
+
+Responsabilidades:
+
+    1. **Creación de registros**:
+       - Insertar nuevas entradas de auditoría
+       - Validar estructura de datos
+       - Manejar transacciones y rollback
+
+    2. **Consultas básicas**:
+       - Por usuario (historial de acciones)
+       - Por expediente (trazabilidad documental)
+       - Por tipo de acción (filtrar eventos)
+
+    3. **Consultas avanzadas con filtros**:
+       - Rango de fechas (fecha_inicio, fecha_fin)
+       - Múltiples criterios combinados
+       - Paginación (limite, offset)
+       - Conteo total de resultados
+
+    4. **Consultas analíticas**:
+       - Estadísticas por tipo de acción
+       - Actividad por usuario
+       - Eventos por expediente
+       - Resumen de operaciones
+
+    5. **Joins con otras tablas**:
+       - T_Usuario: Obtener nombres de usuarios
+       - T_Expediente: Obtener números de expediente
+       - T_Tipo_Accion: Obtener descripciones de acciones
+
+Operaciones disponibles:
+
+    **CRUD básico**:
+    - crear(): Insertar nuevo registro
+    - obtener_por_usuario(): Historial de un usuario
+    - obtener_por_expediente(): Trazabilidad de expediente
+
+    **Consultas con filtros**:
+    - obtener_con_filtros(): Búsqueda avanzada con múltiples criterios
+    - Paginación: limite, offset
+    - Retorna: (registros, total_count)
+
+    **Estadísticas**:
+    - obtener_estadisticas_por_tipo_accion(): Conteo por tipo
+    - obtener_actividad_por_usuario(): Ranking de usuarios más activos
+    - obtener_eventos_por_expediente(): Eventos por expediente
+
+Estructura de T_Bitacora:
+
+    Campos principales:
+    - CN_Id_bitacora: PK autoincremental (BigInt)
+    - CN_Id_usuario: FK a T_Usuario (cédula, nullable)
+    - CN_Id_tipo_accion: FK a T_Tipo_Accion (catálogo)
+    - CT_Texto: Descripción legible de la acción
+    - CN_Id_expediente: FK a T_Expediente (opcional)
+    - CT_Informacion_adicional: JSON string con metadata
+    - CF_Fecha_hora: Timestamp UTC de la acción
+
+    Relaciones:
+    - N:1 con T_Usuario (usuario que ejecuta acción)
+    - N:1 con T_Tipo_Accion (categoría de acción)
+    - N:1 con T_Expediente (expediente afectado, opcional)
+
+Patrón de uso típico:
+
+    1. Servicio especializado (auth, usuarios, archivos) construye datos
+    2. BitacoraService convierte info_adicional a JSON
+    3. **BitacoraRepository.crear()** inserta en BD
+    4. Commit automático con refresh
+
+Consultas con filtros - Parámetros:
+
+    - fecha_inicio: datetime - Filtrar desde esta fecha (inclusive)
+    - fecha_fin: datetime - Filtrar hasta esta fecha (inclusive)
+    - tipo_accion_id: int - Filtrar por tipo específico
+    - usuario_id: str - Filtrar por usuario específico
+    - expediente_numero: str - Filtrar por expediente (join con T_Expediente)
+    - limite: int - Máximo registros a retornar (paginación)
+    - offset: int - Saltar N registros (paginación)
+
+Consultas optimizadas:
+
+    - Índices en: CN_Id_usuario, CN_Id_tipo_accion, CF_Fecha_hora
+    - Joins eficientes con SQLAlchemy 2.0 (select())
+    - Eager loading para reducir N+1 queries
+    - Ordenamiento descendente por fecha (más recientes primero)
+
+Formato de respuesta (con filtros):
+
+    tuple[List[T_Bitacora], int]:
+    - [0]: Lista de registros paginados
+    - [1]: Total de registros que cumplen filtros (para UI de paginación)
+
+Estadísticas - Estructura de retorno:
+
+    obtener_estadisticas_por_tipo_accion():
+    [
+        {
+            "tipo_accion": "LOGIN",
+            "descripcion": "Inicio de sesión",
+            "total_eventos": 1543
+        },
+        ...
+    ]
+
+    obtener_actividad_por_usuario():
+    [
+        {
+            "usuario_id": "123456789",
+            "nombre_completo": "Juan Pérez Rodríguez",
+            "total_acciones": 245
+        },
+        ...
+    ]
+
+Integración con sistema de auditoría:
+
+    BitacoraRepository (este módulo)
+    ↑ usado por
+    BitacoraService (orquestador)
+    ↑ usado por
+    Servicios especializados:
+    - AuthAuditService
+    - UsuariosAuditService
+    - ArchivosAuditService
+    - IngestionAuditService
+    - RAGAuditService
+    - SimilarityAuditService
+
+Example:
+    >>> from app.repositories.bitacora_repository import BitacoraRepository
+    >>> repo = BitacoraRepository()
+    >>> 
+    >>> # Crear registro
+    >>> registro = repo.crear(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     tipo_accion_id=TiposAccion.LOGIN,
+    ...     texto="Inicio de sesión exitoso",
+    ...     info_adicional='{"email": "usuario@ejemplo.com"}'
+    ... )
+    >>> 
+    >>> # Consultar historial de usuario
+    >>> historial = repo.obtener_por_usuario(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     limite=50
+    ... )
+    >>> 
+    >>> # Consulta con filtros avanzados
+    >>> registros, total = repo.obtener_con_filtros(
+    ...     db=db,
+    ...     fecha_inicio=datetime(2025, 11, 1),
+    ...     fecha_fin=datetime(2025, 11, 30),
+    ...     tipo_accion_id=TiposAccion.LOGIN,
+    ...     limite=10,
+    ...     offset=0
+    ... )
+    >>> print(f"Mostrando 10 de {total} registros")
+
+Manejo de errores:
+    - crear(): Rollback automático, propaga excepción
+    - Consultas: Log de error, propaga excepción
+    - Transacciones explícitas con commit/rollback
+
+Performance:
+    - Consultas básicas: <10ms
+    - Consultas con filtros: 20-100ms (depende de joins)
+    - Estadísticas: 50-200ms (agregaciones)
+
+Note:
+    - Los registros de bitácora son **inmutables** (no se modifican/eliminan)
+    - info_adicional se almacena como JSON string
+    - Timestamps en UTC para consistencia
+    - usuario_id puede ser NULL (acciones del sistema)
+
+Ver también:
+    - app.services.bitacora.bitacora_service: Servicio orquestador
+    - app.services.bitacora.*_audit_service: Servicios especializados
+    - app.db.models.bitacora: Modelo SQLAlchemy
+    - app.constants.tipos_accion: Catálogo de tipos de acción
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 from typing import Optional, List
 from datetime import datetime

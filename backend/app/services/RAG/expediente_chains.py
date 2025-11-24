@@ -58,7 +58,8 @@ Ver también:
     * app.services.rag.formatted_retriever: Formateo de documentos
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - Chains especializadas para expedientes

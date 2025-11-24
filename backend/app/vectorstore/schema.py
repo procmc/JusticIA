@@ -66,7 +66,8 @@ Ver también:
     * app.config.config: Configuración de Milvus
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Schema completo con metadata JSON

@@ -1,5 +1,189 @@
 """
-Servicio principal de búsqueda de similares unificado con vectorstore.
+Servicio Principal de Búsqueda de Casos Similares y Generación de Resúmenes con IA.
+
+Este módulo implementa el servicio de alto nivel para el sistema de búsqueda de
+expedientes judiciales similares y generación automática de resúmenes legales,
+unificando búsqueda vectorial (Milvus), búsqueda por expediente, y generación
+de resúmenes con LLM en una arquitectura RAG (Retrieval-Augmented Generation).
+
+Arquitectura del servicio:
+
+    SimilarityService (Orquestador)
+    ├─> DocumentRetriever: Obtención de documentos (Milvus + Fallback BD)
+    ├─> SummaryGenerator: Generación de resúmenes con LLM + Reintentos
+    ├─> ResponseParser: Parseo y reparación de respuestas LLM
+    ├─> DocumentoService: Acceso a metadatos en BD
+    └─> DocumentoRetrievalService: Procesamiento de resultados
+
+Modos de búsqueda soportados:
+
+    1. **Búsqueda por descripción** (modo="descripcion"):
+       └─> Usuario escribe consulta en lenguaje natural
+           └─> Embedding de consulta → Búsqueda vectorial en Milvus
+               └─> DynamicJusticIARetriever con top_k y threshold
+                   └─> Retorna documentos más similares semánticamente
+
+    2. **Búsqueda por expediente** (modo="expediente"):
+       └─> Usuario proporciona número de expediente de referencia
+           └─> Búsqueda híbrida: vectorstore + filtros de BD
+               └─> search_similar_expedients() del vectorstore
+                   └─> Retorna expedientes similares al de referencia
+
+Flujos principales:
+
+    A. Búsqueda de casos similares (search_similar_cases):
+       1. Validar parámetros de búsqueda
+       2. Seleccionar modo (descripción vs expediente)
+       3. Ejecutar búsqueda vectorial con retriever
+       4. Procesar resultados (metadata, scores, previews)
+       5. Calcular métricas (precisión promedio, tiempo)
+       6. Retornar RespuestaBusquedaSimilitud
+
+    B. Generación de resumen (generate_case_summary):
+       1. Obtener documentos del expediente (DocumentRetriever)
+       2. Crear contexto optimizado (SummaryGenerator)
+       3. Generar respuesta con LLM + reintentos (SummaryGenerator)
+       4. Parsear y validar JSON (ResponseParser)
+       5. Retornar RespuestaGenerarResumen con ResumenIA
+
+Parámetros de búsqueda:
+
+    Búsqueda por descripción:
+    - top_k: 30 (default) documentos recuperados
+    - similarity_threshold: 0.3 (default) umbral de similitud
+
+    Búsqueda por expediente:
+    - top_k: 30 (default) expedientes similares
+    - score_threshold: configurable
+    - Filtra por estado de procesamiento (solo "Procesado")
+
+Estructura de respuesta (búsqueda):
+
+    RespuestaBusquedaSimilitud {
+        criterio_busqueda: str,           # Texto o número de expediente
+        modo_busqueda: str,               # "descripcion" o "expediente"
+        total_resultados: int,            # Cantidad de casos encontrados
+        casos_similares: List[Dict],      # Resultados con metadata
+        tiempo_busqueda_segundos: float,  # Performance metric
+        precision_promedio: float         # Score promedio (0-100)
+    }
+
+Estructura de respuesta (resumen):
+
+    RespuestaGenerarResumen {
+        numero_expediente: str,                # Expediente resumido
+        total_documentos_analizados: int,      # Documentos procesados
+        resumen_ia: ResumenIA {                # Resumen generado
+            resumen: str,                      # Texto descriptivo
+            palabras_clave: List[str],         # 3-10 palabras
+            factores_similitud: List[str],     # Factores legales
+            conclusion: str                    # Análisis jurídico
+        },
+        tiempo_generacion_segundos: float      # Performance metric
+    }
+
+Metadata incluida en resultados:
+
+    Cada caso similar incluye:
+    - id: ID del documento en BD
+    - expedient_id: Número de expediente (formato estándar)
+    - document_name: Nombre del archivo original
+    - content_preview: Primeros 500 caracteres del contenido
+    - similarity_score: Score de similitud (0.0-1.0)
+    - metadata: Metadata completa de Milvus (timestamps, chunks, etc.)
+
+Separación de responsabilidades:
+
+    **SimilarityService** (este módulo):
+    - Orquestación de flujos completos
+    - Selección de modo de búsqueda
+    - Métricas y timing
+    - Manejo de errores de alto nivel
+
+    **DocumentRetriever**:
+    - Obtención de documentos con fallback
+    - Integración con Milvus/BD
+
+    **SummaryGenerator**:
+    - Generación de resúmenes con LLM
+    - Sistema de reintentos
+    - Validaciones de respuesta
+
+    **ResponseParser**:
+    - Parseo de JSON del LLM
+    - Reparación automática
+    - Creación de objetos ResumenIA
+
+Integración con RAG:
+
+    La búsqueda por descripción usa arquitectura RAG completa:
+    1. Retrieval: DynamicJusticIARetriever obtiene contexto relevante
+    2. Augmentation: Contexto se agrega al prompt del LLM
+    3. Generation: LLM genera respuesta informada por contexto
+
+    La generación de resumen también usa RAG:
+    1. Retrieval: DocumentRetriever obtiene documentos del expediente
+    2. Augmentation: Documentos se formatean como contexto estructurado
+    3. Generation: LLM genera resumen basado en documentos reales
+
+Performance esperada:
+
+    Búsqueda por descripción:
+    - ~200-500ms (búsqueda vectorial Milvus)
+
+    Búsqueda por expediente:
+    - ~300-700ms (búsqueda híbrida + filtros BD)
+
+    Generación de resumen:
+    - ~5-15s (intento exitoso)
+    - ~20-30s (con reintentos)
+
+Manejo de errores:
+
+    - ValueError: Parámetros inválidos, documentos no encontrados
+    - Exception genérica: Errores del LLM, Milvus, BD
+    - Logging detallado para debugging
+
+Example:
+    >>> service = SimilarityService()
+    >>> 
+    >>> # Búsqueda por descripción
+    >>> request = SimilaritySearchRequest(
+    ...     modo_busqueda="descripcion",
+    ...     texto_consulta="despido injustificado por embarazo",
+    ...     limite=10,
+    ...     umbral_similitud=0.4
+    ... )
+    >>> resultado = await service.search_similar_cases(request, db)
+    >>> print(f"Encontrados {resultado.total_resultados} casos")
+    >>> print(f"Precisión: {resultado.precision_promedio}%")
+    >>> 
+    >>> # Generación de resumen
+    >>> resumen_response = await service.generate_case_summary(
+    ...     "24-000123-0001-LA"
+    ... )
+    >>> print(resumen_response.resumen_ia.resumen)
+    >>> print(resumen_response.resumen_ia.palabras_clave)
+
+Note:
+    - Las búsquedas requieren que los documentos estén vectorizados en Milvus
+    - La generación de resumen requiere que el expediente tenga documentos procesados
+    - Los scores de similitud son normalizados (0.0-1.0)
+    - La precisión promedio se calcula como porcentaje (0-100)
+
+Ver también:
+    - app.services.busqueda_similares.document_retriever: Recuperación de documentos
+    - app.services.busqueda_similares.summary_generator: Generación con LLM
+    - app.services.busqueda_similares.response_parser: Parseo de respuestas
+    - app.services.RAG.retriever: DynamicJusticIARetriever
+    - app.vectorstore.vectorstore: search_similar_expedients
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import logging

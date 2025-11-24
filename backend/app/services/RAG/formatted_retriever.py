@@ -57,7 +57,8 @@ Ver también:
     * app.services.rag.expediente_chains: Usa FormattedRetriever
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Wrapper para formateo de metadata

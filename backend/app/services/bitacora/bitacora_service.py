@@ -51,7 +51,8 @@ Ver también:
     * app.repositories.bitacora_repository: Capa de datos
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Sistema unificado de auditoría

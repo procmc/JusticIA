@@ -1,6 +1,92 @@
 """
-Módulo para obtención de documentos de expedientes.
-Maneja la lógica de retrieval desde Milvus y fallback a BD.
+Servicio de Recuperación de Documentos de Expedientes con Estrategias de Fallback.
+
+Este módulo implementa un sistema robusto de obtención de documentos judiciales
+con múltiples estrategias de recuperación para garantizar disponibilidad de datos
+incluso cuando el vectorstore presenta problemas.
+
+Arquitectura de recuperación:
+
+    Estrategia Principal: Milvus Vectorstore
+    └─> DynamicJusticIARetriever con filtro por expediente
+        └─> Búsqueda vectorial de hasta 50 documentos
+            └─> Threshold: 0.2 (permisivo para recuperar todo el expediente)
+
+    Estrategia Fallback: Base de Datos SQL Server
+    └─> Consulta directa a T_Documento + T_Expediente_Documento
+        └─> Conversión a formato LangChain Document
+            └─> Preserva metadata para compatibilidad con pipeline RAG
+
+Casos de uso de fallback:
+    1. Milvus no disponible (conexión, timeout)
+    2. Colección no existe o está vacía
+    3. Expediente no encontrado en vectorstore (aún no indexado)
+    4. Error de embeddings durante la búsqueda
+
+Flujo de recuperación:
+    1. Intentar recuperación desde Milvus con filtro de expediente
+    2. Si retorna documentos → Éxito (fin)
+    3. Si retorna vacío o error → Activar fallback
+    4. Consultar BD para obtener documentos del expediente
+    5. Convertir formato BD → LangChain Document
+    6. Validar que haya contenido real (no vacíos)
+    7. Retornar documentos o lanzar ValueError
+
+Formato de salida (LangChain Document):
+    Document(
+        page_content=str,  # Contenido extraído del documento
+        metadata={
+            "numero_expediente": str,  # Ej: "24-000123-0001-PE"
+            "nombre_archivo": str,     # Ej: "demanda.pdf"
+            "id_documento": int,       # ID en BD
+            "chunk_index": int,        # Índice de chunk (si aplica)
+        }
+    )
+
+Parámetros de configuración:
+    - top_k: 50 (recuperar todos los documentos del expediente)
+    - similarity_threshold: 0.2 (muy permisivo, no filtrar por similitud)
+    - expediente_filter: Número de expediente exacto
+
+Integración con otros servicios:
+    - DynamicJusticIARetriever: Búsqueda vectorial en Milvus
+    - DocumentoService: Consultas directas a BD (fallback)
+    - SimilarityService: Consumidor principal para búsquedas por expediente
+
+Example:
+    >>> retriever = DocumentRetriever()
+    >>> docs = await retriever.obtener_documentos_expediente("24-000123-0001-PE")
+    >>> print(f"Recuperados {len(docs)} documentos")
+    Recuperados 12 documentos
+    >>> print(docs[0].metadata)
+    {'numero_expediente': '24-000123-0001-PE', 'nombre_archivo': 'demanda.pdf'}
+
+Manejo de errores:
+    - ValueError: Cuando no se encuentran documentos en ninguna fuente
+    - Log warning: Cuando Milvus falla pero fallback tiene éxito
+    - Log error: Cuando ambas estrategias fallan
+
+Performance:
+    - Milvus: ~100-300ms (vectorstore en red)
+    - Fallback BD: ~50-150ms (SQL Server local)
+    - Overhead total: <500ms en el peor caso
+
+Note:
+    - El fallback NO incluye búsqueda semántica, solo recuperación completa
+    - Los documentos desde BD pueden no estar vectorizados aún
+    - Se preserva la estructura de metadata para compatibilidad con RAG
+
+Ver también:
+    - app.services.RAG.retriever: DynamicJusticIARetriever
+    - app.services.busqueda_similares.documentos.documento_service: Acceso a BD
+    - app.services.busqueda_similares.similarity_service: Consumidor principal
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import logging

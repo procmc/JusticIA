@@ -66,7 +66,8 @@ Ver también:
     * app.constants.tipos_accion: Tipos de acciones registrables
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Sistema unificado de estadísticas de auditoría

@@ -1,6 +1,197 @@
 """
-Servicio especializado de auditoría para el módulo de ARCHIVOS.
-Registra acciones de descarga, listado y visualización de archivos.
+Servicio Especializado de Auditoría para el Módulo de Gestión de Archivos.
+
+Este módulo registra todas las operaciones relacionadas con acceso, visualización
+y descarga de archivos y documentos judiciales en el sistema JusticIA, proporcionando
+trazabilidad completa para seguridad, cumplimiento normativo y control de acceso
+a información sensible.
+
+Eventos auditados:
+
+    1. **Descarga de archivo** (TiposAccion.DESCARGAR_ARCHIVO):
+       - Usuario descarga documento judicial
+       - Registra: usuario_id, nombre_archivo, expediente, tamaño
+       - Info adicional: ruta, tamaño_bytes, resultado (exitoso/error)
+       - **Crítico**: Documentos legales sensibles
+
+    2. **Listado de archivos** (TiposAccion.LISTAR_ARCHIVOS):
+       - Usuario consulta lista de documentos de un expediente
+       - Registra: usuario_id, expediente_numero, total_archivos
+       - Info adicional: total_archivos, tipo_consulta
+
+    3. **Visualización de archivo** (TiposAccion.VER_ARCHIVO):
+       - Usuario visualiza documento sin descargar
+       - Registra: usuario_id, nombre_archivo, expediente
+       - Info adicional: ruta, tipo_visualizacion (preview/completo)
+
+Arquitectura de auditoría:
+
+    ArchivosAuditService (este módulo)
+    └─> BitacoraService (orquestador general)
+        └─> BitacoraRepository (acceso a datos)
+            └─> T_Bitacora + T_Expediente (enlace)
+
+Responsabilidades:
+
+    **Este servicio**:
+    - Registrar acceso a documentos judiciales
+    - Capturar metadata de archivos (tamaño, ruta, tipo)
+    - Enlazar descarga con expediente (si aplica)
+    - Manejar descargas exitosas y fallidas
+    - Resolver expediente_id desde número de expediente
+
+    **BitacoraService**:
+    - Convertir info_adicional a JSON
+    - Validar tipos de acción
+
+    **BitacoraRepository**:
+    - Insertar registros con expediente_id
+
+Estructura de info_adicional (JSON):
+
+    Descarga exitosa:
+    {
+        "nombre_archivo": "demanda.pdf",
+        "expediente_numero": "24-000123-0001-LA",
+        "ruta": "uploads/expedientes/24-000123-0001-LA/demanda.pdf",
+        "tamaño_bytes": 1245680,
+        "resultado": "exitoso",
+        "tipo_accion": "descarga",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Descarga fallida:
+    {
+        "nombre_archivo": "documento.pdf",
+        "expediente_numero": "24-000123-0001-LA",
+        "resultado": "error",
+        "error": "Archivo no encontrado",
+        "tipo_accion": "descarga",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Listado de archivos:
+    {
+        "expediente_numero": "24-000123-0001-LA",
+        "total_archivos": 15,
+        "tipo_consulta": "listar_documentos",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+Flujo de descarga con auditoría:
+
+    1. Usuario solicita descarga de documento
+    2. Sistema valida permisos
+    3. Se obtiene archivo del storage
+    4. **Antes de enviar**: Registrar en bitácora
+    5. Enviar archivo al usuario
+    6. Si falla: Registrar error en bitácora
+
+Casos especiales manejados:
+
+    1. **Descarga sin usuario autenticado**:
+       - usuario_id = None (opcional)
+       - Posible para procesos automáticos
+
+    2. **Archivo sin expediente asociado**:
+       - expediente_numero = None
+       - expediente_id = None
+       - Ejemplo: avatares de usuarios
+
+    3. **Error en descarga**:
+       - exito = False
+       - error = mensaje descriptivo
+       - Se registra igual para auditoría
+
+    4. **Resolución de expediente_id**:
+       - Busca en BD usando expediente_numero
+       - Si no existe: expediente_id = None
+       - No falla, solo registra sin enlace
+
+Integración con otros módulos:
+    - Routes (archivos.py): Endpoints de descarga/listado
+    - FileManagementService: Gestión física de archivos
+    - ExpedienteRepository: Resolución de expediente_id
+
+Casos de uso de seguridad:
+
+    1. **Auditoría de acceso a expedientes**:
+       - Quién descargó qué documentos
+       - Cuándo se accedió a información sensible
+
+    2. **Detección de accesos sospechosos**:
+       - Descargas masivas
+       - Acceso a expedientes no autorizados
+
+    3. **Cumplimiento GDPR**:
+       - Registro de acceso a datos personales
+       - Trazabilidad de información sensible
+
+    4. **Control de distribución**:
+       - Rastreo de documentos descargados
+       - Evidencia de cadena de custodia
+
+    5. **Monitoreo de errores**:
+       - Archivos faltantes o corruptos
+       - Problemas de permisos
+
+Example:
+    >>> from app.services.bitacora.archivos_audit_service import archivos_audit_service
+    >>> 
+    >>> # Descarga exitosa
+    >>> await archivos_audit_service.registrar_descarga_archivo(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     nombre_archivo="demanda.pdf",
+    ...     expediente_numero="24-000123-0001-LA",
+    ...     ruta_archivo="uploads/expedientes/.../demanda.pdf",
+    ...     tamaño_bytes=1245680,
+    ...     exito=True
+    ... )
+    >>> 
+    >>> # Descarga fallida
+    >>> await archivos_audit_service.registrar_descarga_archivo(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     nombre_archivo="documento.pdf",
+    ...     expediente_numero="24-000123-0001-LA",
+    ...     exito=False,
+    ...     error="Archivo no encontrado en el servidor"
+    ... )
+    >>> 
+    >>> # Listado de archivos
+    >>> await archivos_audit_service.registrar_listado_archivos(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     expediente_numero="24-000123-0001-LA",
+    ...     total_archivos=15
+    ... )
+
+Manejo de errores:
+    - Captura excepciones y retorna None
+    - Logging de errores (warning level)
+    - No propaga errores (auditoría no rompe flujo)
+    - Si falla resolución de expediente_id: Registra sin enlace
+
+Note:
+    - Descarga de documentos es operación crítica (sensible)
+    - Los registros permiten rastrear acceso a información judicial
+    - Timestamps en UTC para consistencia internacional
+    - usuario_id puede ser None para procesos automáticos
+    - Singleton: Use instancia global `archivos_audit_service`
+
+Ver también:
+    - app.services.bitacora.bitacora_service: Servicio base
+    - app.services.documentos.file_management_service: Gestión de archivos
+    - app.repositories.expediente_repository: Resolución de IDs
+    - app.constants.tipos_accion: Catálogo de acciones
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 from typing import Optional, Dict, Any
 from datetime import datetime

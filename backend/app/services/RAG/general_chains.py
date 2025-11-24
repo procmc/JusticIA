@@ -61,7 +61,8 @@ Ver también:
     * app.llm.llm_service: Servicio de LLM
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - LangChain con streaming SSE

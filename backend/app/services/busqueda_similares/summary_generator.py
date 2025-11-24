@@ -1,6 +1,147 @@
 """
-Módulo para generación de resúmenes con LLM.
-Maneja la invocación del modelo, reintentos y validación de respuestas.
+Generador de Resúmenes de Expedientes con LLM y Sistema Robusto de Reintentos.
+
+Este módulo gestiona la generación de resúmenes automáticos de expedientes
+judiciales utilizando modelos de lenguaje (LLM), implementando un sistema
+avanzado de reintentos con validaciones progresivas y backoff exponencial.
+
+Arquitectura de generación:
+
+    Fase 1: Preparación de contexto
+    └─> Formatear documentos del expediente
+        └─> Limitar longitud (max_docs=20, max_chars=7000)
+            └─> Validar contexto mínimo (>100 chars)
+
+    Fase 2: Generación con LLM (hasta 3 intentos)
+    └─> Intento 1: Prompt + LLM invocation
+        └─> Validaciones:
+            1. Respuesta no vacía
+            2. Longitud mínima (200 chars)
+            3. Contiene JSON básico {"resumen"...}
+            4. Contiene campos requeridos
+        └─> Si falla → Esperar 2s → Intento 2
+
+    Intento 2: Backoff 4s
+    └─> Mismas validaciones
+        └─> Si falla → Esperar 4s → Intento 3
+
+    Intento 3: Backoff 8s (último intento)
+    └─> Validaciones relajadas (aceptar respuesta aunque no pase todas)
+        └─> Retornar mejor respuesta disponible
+
+Sistema de reintentos:
+    - **Máximo intentos**: 3
+    - **Backoff exponencial**: 2s, 4s, 8s
+    - **Validaciones progresivas**: Estrictas → Relajadas
+    - **Degradación elegante**: Aceptar respuesta parcial en último intento
+
+Validaciones aplicadas (en orden):
+
+    1. **Validación de vacío**:
+       - Verificar que respuesta no sea None o ""
+       - Crítica: Siempre falla si está vacía
+
+    2. **Validación de longitud**:
+       - Mínimo 200 caracteres
+       - Relajada en último intento (acepta cualquier longitud)
+
+    3. **Validación de estructura JSON**:
+       - Debe contener '{', '}' y '"resumen"'
+       - Relajada en último intento
+
+    4. **Validación de campos requeridos**:
+       - "resumen", "palabras_clave", "factores_similitud", "conclusion"
+       - Relajada en último intento (puede faltar algunos campos)
+
+Parámetros de configuración:
+    - MAX_INTENTOS: 3
+    - TIEMPO_ESPERA_BASE: 2 segundos
+    - MIN_LONGITUD_RESPUESTA: 200 caracteres
+    - max_docs: 20 chunks (balance contexto/tokens)
+    - max_chars_per_doc: 7000 caracteres por chunk
+
+Estrategia de backoff exponencial:
+    - Intento 1 → Fallo → Esperar 2s (2^0 * 2)
+    - Intento 2 → Fallo → Esperar 4s (2^1 * 2)
+    - Intento 3 → Fallo → Esperar 8s (2^2 * 2)
+    - Permite al LLM "recuperarse" de errores temporales
+
+Escenarios manejados:
+
+    1. **LLM devuelve respuesta vacía**:
+       → Reintentar hasta 3 veces
+       → Si persiste: ValueError
+
+    2. **LLM corta la respuesta (JSON incompleto)**:
+       → Validación detecta JSON incompleto
+       → Reintentar
+       → Último intento: Aceptar y dejar que ResponseParser repare
+
+    3. **LLM responde en inglés o formato incorrecto**:
+       → Validación de campos detecta problema
+       → Reintentar
+       → Último intento: Aceptar y dejar que ResponseParser maneje
+
+    4. **Error de conexión o timeout del LLM**:
+       → Capturar excepción
+       → Reintentar con backoff
+       → Último intento: Propagar error
+
+    5. **Contexto demasiado corto**:
+       → ValueError inmediato (no reintentar)
+       → Problema con documentos, no con LLM
+
+Integración con otros módulos:
+    - similarity_prompt_builder: Construcción de prompts especializados
+    - llm_service: Obtención de instancia LLM (Ollama)
+    - ResponseParser: Parseo y reparación de respuestas (siguiente etapa)
+    - SimilarityService: Orquestador principal
+
+Example:
+    >>> generator = SummaryGenerator()
+    >>> 
+    >>> # Crear contexto
+    >>> contexto = await generator.crear_contexto_resumen(docs_expediente)
+    >>> print(f"Contexto: {len(contexto)} chars")
+    Contexto: 15847 chars
+    >>> 
+    >>> # Generar resumen con reintentos automáticos
+    >>> respuesta = await generator.generar_respuesta_llm(
+    ...     contexto, "24-000123-0001-PE"
+    ... )
+    >>> print(f"Respuesta: {len(respuesta)} chars")
+    Intento 1/3 de generación
+    Respuesta válida generada en intento 1
+    Respuesta: 1245 chars
+
+Logging y observabilidad:
+    - Info: Inicio de generación, contexto creado, intento actual
+    - Warning: Validaciones fallidas (respuesta corta, sin JSON, campos faltantes)
+    - Error: Excepciones del LLM, contexto vacío
+
+Performance:
+    - Intento exitoso (1): ~2-5 segundos (depende del LLM)
+    - Intento exitoso (2): ~8-12 segundos (incluye 2s espera)
+    - Intento exitoso (3): ~20-30 segundos (incluye 6s espera acumulada)
+
+Note:
+    - El backoff exponencial evita saturar el LLM
+    - Las validaciones relajadas en último intento maximizan disponibilidad
+    - ResponseParser maneja reparación de JSON (siguiente etapa del pipeline)
+    - La longitud de contexto afecta calidad y tiempo de respuesta
+
+Ver también:
+    - app.services.busqueda_similares.similarity_prompt_builder: Construcción de prompts
+    - app.services.busqueda_similares.response_parser: Parseo de respuestas
+    - app.llm.llm_service: Servicio LLM (Ollama)
+    - app.services.busqueda_similares.similarity_service: Orquestador
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import logging

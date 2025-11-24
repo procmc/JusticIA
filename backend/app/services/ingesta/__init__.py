@@ -75,7 +75,8 @@ Ver también:
     * app.celery_app: Configuración Celery
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - Arquitectura modular con estrategias

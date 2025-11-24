@@ -56,7 +56,8 @@ Ver también:
     * app.services.ingesta.text_cleaner: Limpia texto de Tika
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - HTTP directo con OCR integrado

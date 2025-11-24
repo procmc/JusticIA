@@ -101,7 +101,8 @@ Ver también:
     * app.constants.tipos_accion: BUSQUEDA_SIMILARES, GENERAR_RESUMEN
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Auditoría de búsqueda y resúmenes IA
