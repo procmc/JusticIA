@@ -2,7 +2,7 @@
 Servicio coordinador del sistema RAG (Retrieval-Augmented Generation).
 
 Este servicio es el punto de entrada principal para el asistente virtual JusticBot.
-Coordin consultas generales y específicas de expedientes, gestiona el flujo de
+Coordina consultas generales y específicas de expedientes, gestiona el flujo de
 streaming de respuestas y mantiene el contexto conversacional.
 
 Arquitectura RAG:
