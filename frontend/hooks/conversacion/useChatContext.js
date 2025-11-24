@@ -77,14 +77,14 @@ export const useChatContext = () => {
 
   // Obtener contexto formateado para enviar al backend
   const getFormattedContext = useCallback(() => {
-    console.log('🔄 getFormattedContext llamado, contextHistory.length:', contextHistory.length);
+    console.log('getFormattedContext llamado, contextHistory.length:', contextHistory.length);
     
     if (contextHistory.length === 0) {
-      console.log('✅ No hay contexto - devolviendo string vacío');
+      console.log('No hay contexto - devolviendo string vacío');
       return '';
     }
 
-    console.log('📝 Formateando contexto con', contextHistory.length, 'entradas');
+    console.log('Formateando contexto con', contextHistory.length, 'entradas');
     const contextLines = ['HISTORIAL DE CONVERSACIÓN PREVIA:'];
     
     // Usar los últimos 3 intercambios para mantener contexto completo sin sobrecargar
@@ -102,7 +102,7 @@ export const useChatContext = () => {
     contextLines.push('\n---\nNUEVA CONSULTA:');
     
     const resultado = contextLines.join('\n');
-    console.log('📤 Contexto formateado:', resultado.substring(0, 200) + '...');
+    console.log('Contexto formateado:', resultado.substring(0, 200) + '...');
     
     return resultado;
   }, [contextHistory]);
