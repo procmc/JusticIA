@@ -76,7 +76,8 @@ Ver también:
     * docker-compose.yml: Configuración de workers en Docker
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0

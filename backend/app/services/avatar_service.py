@@ -1,6 +1,123 @@
 """
-Servicio para gestión de avatares de usuarios.
-Maneja la subida, actualización, eliminación y validación de avatares.
+Servicio de Gestión de Avatares de Usuarios.
+
+Este módulo proporciona funcionalidades completas para la gestión de avatares
+de usuarios en el sistema JusticIA, incluyendo subida, actualización, eliminación
+y validación de imágenes de perfil.
+
+Arquitectura:
+    - Almacenamiento: Sistema de archivos local (uploads/avatars/)
+    - Base de datos: Ruta relativa en T_Usuario (CT_Avatar_ruta, CT_Avatar_tipo)
+    - Validación: Tipo, tamaño, extensión de archivos
+    - Auditoría: Registro en bitácora de todos los cambios
+
+Tipos de avatar soportados:
+    1. "custom": Avatar personalizado subido por el usuario (imagen)
+    2. "initials": Avatar generado con iniciales del nombre
+    3. "hombre": Avatar predefinido masculino
+    4. "mujer": Avatar predefinido femenino
+
+Restricciones de archivos:
+    - Tipos MIME permitidos: image/jpeg, image/png, image/gif, image/webp
+    - Extensiones permitidas: .jpg, .jpeg, .png, .gif, .webp
+    - Tamaño máximo: 5 MB (configurable en avatar_constants)
+    - Nombre de archivo: {usuario_id}{extension} (ej: 123456789.jpg)
+
+Funcionalidades principales:
+    - subir_avatar(): Sube y guarda una imagen personalizada
+    - actualizar_tipo_avatar(): Cambia a avatar predefinido o iniciales
+    - eliminar_avatar(): Elimina imagen y limpia registros en BD
+    - validar_permiso_usuario(): Verifica que usuario solo modifique su avatar
+
+Flujo de subida de avatar:
+    1. Validar tipo de archivo (MIME + extensión)
+    2. Validar tamaño (máximo 5 MB)
+    3. Verificar que usuario existe
+    4. Eliminar avatar anterior si existe
+    5. Guardar nuevo archivo: uploads/avatars/{usuario_id}.{ext}
+    6. Actualizar ruta en BD: CT_Avatar_ruta
+    7. Establecer tipo en BD: CT_Avatar_tipo = "custom"
+    8. Registrar cambio en bitácora
+
+Seguridad:
+    - Validación estricta de tipos de archivo
+    - Límite de tamaño para prevenir DoS
+    - Solo el propietario puede modificar su avatar
+    - Verificación de existencia de archivo después de guardar
+    - Manejo seguro de errores (no expone rutas del sistema)
+
+Integración con otros módulos:
+    - UsuarioRepository: Actualización de campos en T_Usuario
+    - usuarios_audit_service: Registro de cambios en bitácora
+    - avatar_constants: Configuración centralizada (tamaños, tipos, rutas)
+
+Estructura de directorios:
+    backend/
+    └── uploads/
+        └── avatars/
+            ├── 123456789.jpg
+            ├── 987654321.png
+            └── ...
+
+Example:
+    >>> from app.services.avatar_service import avatar_service
+    >>> 
+    >>> # Subir avatar personalizado
+    >>> result = await avatar_service.subir_avatar(
+    ...     usuario_id="123456789",
+    ...     file=uploaded_file,
+    ...     db=db_session
+    ... )
+    >>> print(result)
+    {
+        "mensaje": "Avatar subido exitosamente",
+        "ruta": "uploads/avatars/123456789.jpg",
+        "tamaño_bytes": 245680
+    }
+    >>> 
+    >>> # Cambiar a avatar predefinido
+    >>> result = await avatar_service.actualizar_tipo_avatar(
+    ...     usuario_id="123456789",
+    ...     avatar_tipo="hombre",
+    ...     db=db_session
+    ... )
+    >>> print(result)
+    {"mensaje": "Preferencia de avatar actualizada"}
+    >>> 
+    >>> # Eliminar avatar (volver a iniciales)
+    >>> result = await avatar_service.eliminar_avatar(
+    ...     usuario_id="123456789",
+    ...     db=db_session
+    ... )
+    >>> print(result)
+    {"mensaje": "Avatar eliminado exitosamente"}
+
+Manejo de errores:
+    - HTTPException 400: Tipo de archivo no permitido
+    - HTTPException 413: Archivo excede tamaño máximo
+    - HTTPException 404: Usuario no encontrado
+    - HTTPException 403: Sin permiso para modificar avatar
+    - HTTPException 500: Error del servidor (guardado, BD, etc.)
+
+Note:
+    - Los archivos se guardan con el ID del usuario como nombre
+    - Solo se mantiene un avatar por usuario (se elimina el anterior)
+    - El campo CT_Avatar_tipo determina cómo se renderiza en frontend
+    - La ruta se almacena como ruta relativa desde la raíz del proyecto
+    - El servicio crea automáticamente el directorio si no existe
+
+Ver también:
+    - app.repositories.usuario_repository: Actualización de campos de avatar
+    - app.services.bitacora.usuarios_audit_service: Auditoría de cambios
+    - app.constants.avatar_constants: Configuración de avatares
+    - app.routes.usuarios: Endpoints HTTP para avatares
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import os

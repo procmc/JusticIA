@@ -71,7 +71,8 @@ Ver también:
     * app.services.bitacora.bitacora_stats_service.obtener_estadisticas_rag()
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Auditoría diferenciada de consultas RAG

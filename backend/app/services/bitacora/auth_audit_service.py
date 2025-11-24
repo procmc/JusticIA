@@ -1,6 +1,169 @@
 """
-Servicio especializado de auditoría para el módulo de AUTENTICACIÓN.
-Registra acciones de login, cambios de contraseña y recuperación de cuentas.
+Servicio Especializado de Auditoría para el Módulo de Autenticación.
+
+Este módulo registra todas las acciones relacionadas con autenticación,
+autorización y gestión de credenciales en la bitácora del sistema JusticIA,
+proporcionando trazabilidad completa para seguridad y cumplimiento normativo.
+
+Eventos auditados:
+
+    1. **LOGIN exitoso** (TiposAccion.LOGIN):
+       - Usuario se autentica correctamente
+       - Registra: email, rol, timestamp
+       - Info adicional: resultado="exitoso"
+
+    2. **LOGIN fallido** (TiposAccion.LOGIN):
+       - Intento de autenticación rechazado
+       - Registra: email intentado, motivo de rechazo
+       - Motivos: usuario_no_encontrado, password_incorrecto, usuario_inactivo
+       - Info adicional: resultado="fallido"
+       - **Sin usuario_id** (no autenticado)
+
+    3. **LOGOUT** (TiposAccion.LOGOUT):
+       - Cierre de sesión voluntario
+       - Registra: email, timestamp
+       - Info adicional: accion="logout"
+
+    4. **Cambio de contraseña** (TiposAccion.CAMBIAR_PASSWORD):
+       - Usuario cambia su propia contraseña
+       - Tipo: "cambio_usuario" o "recuperacion"
+       - Registra: tipo de cambio, timestamp
+
+    5. **Recuperación de contraseña** (TiposAccion.RECUPERAR_PASSWORD):
+       - Solicitud de código de recuperación
+       - Código de verificación enviado por email
+       - Registra: email, timestamp
+       - Info adicional: accion="solicitar_recuperacion"
+
+    6. **Reset por administrador** (TiposAccion.RESET_PASSWORD):
+       - Administrador restablece contraseña de otro usuario
+       - Registra: admin_id, usuario_afectado_id, email
+       - Info adicional: accion="reset_por_admin", admin_rol
+
+Arquitectura de auditoría:
+
+    AuthAuditService (este módulo)
+    └─> BitacoraService (orquestador general)
+        └─> BitacoraRepository (acceso a datos)
+            └─> T_Bitacora (modelo de BD)
+
+Responsabilidades:
+
+    **Este servicio**:
+    - Construir mensajes descriptivos para cada evento
+    - Agregar info_adicional específica de autenticación
+    - Seleccionar TiposAccion apropiado
+    - Manejar casos especiales (login sin usuario_id)
+
+    **BitacoraService**:
+    - Convertir info_adicional a JSON
+    - Validar tipos de acción
+    - Delegar a repository
+
+    **BitacoraRepository**:
+    - Insertar registros en T_Bitacora
+    - Manejar transacciones y rollback
+
+Estructura de info_adicional (JSON):
+
+    Login exitoso:
+    {
+        "email": "usuario@ejemplo.com",
+        "rol": "Usuario Judicial",
+        "resultado": "exitoso",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Login fallido:
+    {
+        "email": "usuario@ejemplo.com",
+        "motivo": "password_incorrecto",
+        "resultado": "fallido",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Reset por admin:
+    {
+        "usuario_afectado": "123456789",
+        "email_afectado": "usuario@ejemplo.com",
+        "admin_rol": "Administrador",
+        "accion": "reset_por_admin",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+Integración con otros módulos:
+    - AuthService: Llama a métodos de auditoría en cada operación
+    - UsuarioService: Registra cambios de contraseña
+    - auth_audit_service (este): Proporciona API de auditoría
+
+Casos de uso de seguridad:
+
+    1. **Detección de intentos de intrusión**:
+       - Múltiples login_fallido del mismo email
+       - Alertar administradores
+
+    2. **Auditoría de acceso**:
+       - Quién inició sesión y cuándo
+       - Roles accedidos
+
+    3. **Trazabilidad de credenciales**:
+       - Historial de cambios de contraseña
+       - Resets administrativos realizados
+
+    4. **Cumplimiento normativo**:
+       - Registro inmutable de eventos
+       - Timestamps UTC para consistencia
+
+Example:
+    >>> from app.services.bitacora.auth_audit_service import auth_audit_service
+    >>> 
+    >>> # Login exitoso
+    >>> await auth_audit_service.registrar_login_exitoso(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     email="usuario@ejemplo.com",
+    ...     rol="Usuario Judicial"
+    ... )
+    >>> 
+    >>> # Login fallido
+    >>> await auth_audit_service.registrar_login_fallido(
+    ...     db=db,
+    ...     email="intruso@malicious.com",
+    ...     motivo="password_incorrecto"
+    ... )
+    >>> 
+    >>> # Reset por admin
+    >>> await auth_audit_service.registrar_reset_password(
+    ...     db=db,
+    ...     admin_id="987654321",
+    ...     usuario_afectado_id="123456789",
+    ...     email_afectado="usuario@ejemplo.com",
+    ...     admin_rol="Administrador"
+    ... )
+
+Manejo de errores:
+    - Captura excepciones y retorna None
+    - Logging de errores (warning level)
+    - No propaga errores (auditoría no debe romper flujo principal)
+
+Note:
+    - Los timestamps se registran en UTC
+    - Login fallido no tiene usuario_id (no autenticado)
+    - Los registros son inmutables (no se modifican/eliminan)
+    - Singleton: Use instancia global `auth_audit_service`
+
+Ver también:
+    - app.services.bitacora.bitacora_service: Servicio base de auditoría
+    - app.services.auth_service: Consumidor principal
+    - app.constants.tipos_accion: Catálogo de tipos de acción
+    - app.db.models.bitacora: Modelo de datos
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 from typing import Optional
 from datetime import datetime

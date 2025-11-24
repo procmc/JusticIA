@@ -59,7 +59,8 @@ Ver también:
     * app.services.archivos_service: Orquestador de ingesta
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Auditoría de ingesta y procesamiento

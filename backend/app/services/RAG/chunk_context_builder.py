@@ -68,7 +68,8 @@ Ver también:
     * app.services.rag.document_formatter: Formateo actual
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0 - Constructor de contexto estructurado (legacy)

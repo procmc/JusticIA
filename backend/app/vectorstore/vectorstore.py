@@ -68,7 +68,8 @@ Ver también:
     * app.repositories.documento_repository: Filtrado por estado
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - LangChain integration + filtrado por estado

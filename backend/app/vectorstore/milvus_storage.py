@@ -73,7 +73,8 @@ Ver también:
     * app.services.ingesta: Usa store_in_vectorstore
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - LangChain automático con metadata enriquecida

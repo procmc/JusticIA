@@ -69,7 +69,8 @@ Ver también:
     * app/config/config.py: Configuración general
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     1.0.0

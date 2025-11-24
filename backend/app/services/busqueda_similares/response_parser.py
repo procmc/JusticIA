@@ -1,6 +1,148 @@
 """
-Módulo para parseo y validación de respuestas del LLM.
-Maneja la extracción de JSON y reparación de respuestas mal formadas.
+Parser Robusto de Respuestas LLM con Reparación Automática de JSON.
+
+Este módulo implementa un sistema sofisticado de parseo y validación de respuestas
+del LLM (Large Language Model) para el sistema de generación de resúmenes de
+expedientes judiciales, con capacidades avanzadas de recuperación ante errores.
+
+Problemática resuelta:
+    Los LLMs son impredecibles y pueden devolver:
+    1. JSON válido ✅
+    2. JSON con markdown (```json...```) ⚠️
+    3. JSON incompleto (cortado) ⚠️
+    4. JSON con escape incorrecto ⚠️
+    5. Texto plano sin JSON ❌
+    6. Mezcla de texto + JSON ⚠️
+
+Arquitectura de parseo (cascada de estrategias):
+
+    Estrategia 1: Parseo directo
+    └─> json.loads() sobre respuesta limpia
+        └─> Éxito → Retornar inmediatamente
+
+    Estrategia 2: Extracción con regex
+    └─> Buscar patrón: {"resumen":..."conclusion":...}
+        └─> Parsear JSON extraído
+            └─> Éxito → Retornar
+
+    Estrategia 3: Búsqueda por llaves
+    └─> Encontrar primer '{' y último '}'
+        └─> Extraer substring
+            └─> Intentar parsear
+                └─> Fallo → Activar reparación
+
+    Estrategia 4: Reparación automática de JSON
+    └─> Cerrar strings sin cerrar
+        └─> Completar arrays incompletos
+            └─> Agregar campos faltantes (español)
+                └─> Cerrar llaves faltantes
+                    └─> Validar JSON reparado
+                        └─> Éxito → Retornar
+                        └─> Fallo → Fallback
+
+    Estrategia 5: Fallback completo
+    └─> Crear ResumenIA con valores predeterminados en español
+        └─> Usar respuesta cruda como resumen (primeros 600 chars)
+
+Técnicas de reparación de JSON:
+
+    1. Limpieza básica:
+       - Eliminar markdown (```json, ```)
+       - Strip espacios en blanco
+       - Eliminar texto antes/después de llaves
+
+    2. Corrección estructural:
+       - Balancear comillas (pares)
+       - Cerrar arrays abiertos [ ... ]
+       - Cerrar llaves faltantes { ... }
+       - Eliminar comas trailing
+
+    3. Completado de campos:
+       - Agregar "palabras_clave" si falta
+       - Agregar "factores_similitud" si falta
+       - Agregar "conclusion" si falta
+       - **Siempre en español** (Costa Rica)
+
+    4. Validación post-reparación:
+       - json.loads() sobre resultado
+       - Verificar campos mínimos
+       - Validar longitud de resumen (>50 chars)
+
+Formato esperado (ResumenIA):
+    {
+        "resumen": str,               # Mínimo 50 caracteres
+        "palabras_clave": List[str],  # 3-10 palabras
+        "factores_similitud": List[str],  # 2-7 factores
+        "conclusion": str             # Mínimo 50 caracteres
+    }
+
+Valores de fallback (español):
+    - palabras_clave: ["Análisis Jurídico", "Procedimiento Legal", "Documentación Judicial"]
+    - factores_similitud: ["Naturaleza del Procedimiento", "Materia Jurídica Involucrada"]
+    - conclusion: "Se requiere análisis jurídico adicional"
+
+Validaciones aplicadas:
+    - Campo "resumen" debe existir
+    - Resumen debe tener mínimo 50 caracteres
+    - Resumen no debe ser recursivo ({"resumen": "{\"resumen\"...")
+    - Todos los textos en español (no inglés)
+
+Logging y observabilidad:
+    - Debug: Longitud de respuesta recibida
+    - Warning: Activación de fallback, JSON inválido
+    - Error: Excepciones durante parseo/reparación
+    - Info: Reparación exitosa de JSON
+
+Integration:
+    - SimilarityService: Consumidor principal de parseo
+    - ResponseParser.parsear_respuesta_ia(): Método público principal
+    - ResumenIA (schema): Modelo de salida validado
+
+Example:
+    >>> parser = ResponseParser()
+    >>> 
+    >>> # Caso 1: JSON válido
+    >>> respuesta = '{"resumen": "Demanda...", "palabras_clave": [...]}'
+    >>> resumen = parser.parsear_respuesta_ia(respuesta)
+    >>> print(resumen.resumen)
+    'Demanda...'
+    >>> 
+    >>> # Caso 2: JSON con markdown
+    >>> respuesta = '```json\\n{"resumen": "..."}\\n```'
+    >>> resumen = parser.parsear_respuesta_ia(respuesta)  # ✅ Se limpia automáticamente
+    >>> 
+    >>> # Caso 3: JSON incompleto
+    >>> respuesta = '{"resumen": "...", "palabras_clave": ["Legal'
+    >>> resumen = parser.parsear_respuesta_ia(respuesta)  # ✅ Se repara automáticamente
+    >>> 
+    >>> # Caso 4: Texto sin JSON
+    >>> respuesta = 'Este expediente trata sobre...'
+    >>> resumen = parser.parsear_respuesta_ia(respuesta)  # ✅ Usa fallback
+    >>> print(resumen.palabras_clave)
+    ['Análisis Jurídico', 'Procedimiento Legal', 'Documentación Judicial']
+
+Performance:
+    - Parseo exitoso (Estrategia 1): <1ms
+    - Reparación de JSON (Estrategia 4): 5-15ms
+    - Fallback completo (Estrategia 5): <1ms
+
+Note:
+    - La reparación NO es 100% confiable para JSON muy corrupto
+    - Los valores de fallback están en español para consistencia
+    - Se prioriza disponibilidad sobre perfección (degradación elegante)
+    - El logging detallado permite diagnosticar problemas del LLM
+
+Ver también:
+    - app.services.busqueda_similares.similarity_service: Consumidor
+    - app.services.busqueda_similares.similarity_prompt_builder: Generación de prompts
+    - app.schemas.similarity_schemas: Definición de ResumenIA
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 import logging

@@ -1,5 +1,86 @@
 """
-Servicio de persistencia de historial de conversaciones usando Redis.
+Servicio de Persistencia de Historial de Conversaciones en Redis.
+
+Este módulo gestiona el almacenamiento, recuperación y eliminación de conversaciones
+del sistema RAG utilizando Redis como backend de persistencia de alta velocidad.
+
+Arquitectura:
+    - Redis DB 2: Base de datos dedicada para conversaciones (separada de Celery)
+    - Tres tipos de claves:
+        1. conversation:{session_id} - Datos completos (metadata + mensajes)
+        2. conversation_meta:{session_id} - Solo metadata (listado rápido)
+        3. user_sessions:{user_id} - Índice ordenado por timestamp (sorted set)
+
+Características principales:
+    - TTL automático: 30 días de expiración para todas las claves
+    - Zona horaria: América/Costa Rica para timestamps
+    - Decodificación automática: decode_responses=True para strings directos
+    - Índices eficientes: Sorted sets para orden cronológico
+
+Estructura de datos:
+    conversation_data = {
+        "metadata": {
+            "session_id": str,
+            "user_id": str,
+            "created_at": ISO timestamp,
+            "updated_at": ISO timestamp,
+            "title": str,
+            "message_count": int,
+            "expediente_number": Optional[str]
+        },
+        "messages": [
+            {"role": "user", "content": str, "timestamp": str},
+            {"role": "assistant", "content": str, "timestamp": str}
+        ]
+    }
+
+Operaciones soportadas:
+    - save_conversation(): Guardar/actualizar conversación completa
+    - load_conversation(): Recuperar conversación por session_id
+    - get_user_conversations(): Listar conversaciones de un usuario (ordenadas)
+    - delete_conversation(): Eliminar conversación con validación de permisos
+    - get_stats(): Estadísticas de uso (conversaciones, usuarios, memoria)
+    - health_check(): Verificación de conectividad
+
+Seguridad:
+    - Validación de pertenencia: Solo el dueño puede eliminar sus conversaciones
+    - Timeouts configurados: 5 segundos para conexión y operaciones
+    - Manejo robusto de errores con logging detallado
+
+Example:
+    >>> redis_history = RedisConversationHistory()
+    >>> redis_history.save_conversation(
+    ...     session_id="session_123",
+    ...     user_id="user_456",
+    ...     messages=[{"role": "user", "content": "Hola"}],
+    ...     metadata={"title": "Consulta expediente"}
+    ... )
+    True
+    >>> conversation = redis_history.load_conversation("session_123")
+    >>> print(conversation["metadata"]["title"])
+    'Consulta expediente'
+
+Performance:
+    - Listado de conversaciones: O(log N) gracias a sorted sets
+    - Carga de conversación individual: O(1) acceso directo
+    - Metadata separada permite listados sin deserializar mensajes completos
+
+Note:
+    - Redis DB 0: Broker Celery
+    - Redis DB 1: Backend Celery (resultados)
+    - Redis DB 2: Conversaciones (este servicio)
+
+Ver también:
+    - app.services.RAG.rag_chain_service: Consumidor principal
+    - app.services.RAG.session_store: Gestión de sesiones activas
+    - app.config.config: Configuración de REDIS_URL
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 import json
 import logging

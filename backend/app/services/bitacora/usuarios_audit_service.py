@@ -1,6 +1,192 @@
 """
-Servicio especializado de auditoría para el módulo de USUARIOS.
-Registra operaciones CRUD sobre usuarios del sistema.
+Servicio Especializado de Auditoría para el Módulo de Gestión de Usuarios.
+
+Este módulo registra todas las operaciones administrativas sobre usuarios
+del sistema JusticIA, proporcionando trazabilidad completa de acciones CRUD
+y cambios de configuración para auditoría, seguridad y cumplimiento normativo.
+
+Eventos auditados:
+
+    1. **Consulta de usuarios** (TiposAccion.CONSULTAR_USUARIOS):
+       - Administrador lista todos los usuarios
+       - Registra: admin_id, timestamp
+       - Info adicional: accion="listar_usuarios"
+
+    2. **Consulta de usuario individual** (TiposAccion.CONSULTAR_USUARIO):
+       - Consulta de perfil de un usuario específico
+       - Registra: admin_id, usuario_consultado_id
+       - Info adicional: usuario_consultado, email_consultado
+
+    3. **Creación de usuario** (TiposAccion.CREAR_USUARIO):
+       - Administrador crea nuevo usuario
+       - Registra: admin_id, nuevo_usuario_id, email, rol
+       - Info adicional: rol_asignado, estado_inicial
+
+    4. **Edición de usuario** (TiposAccion.EDITAR_USUARIO):
+       - Modificación de datos del usuario
+       - Registra: admin_id, usuario_editado_id, cambios realizados
+       - Info adicional: cambios={campo: {antes, despues}}
+
+    5. **Cambio de rol** (TiposAccion.CAMBIAR_ROL_USUARIO):
+       - Promoción/degradación de rol
+       - Registra: admin_id, usuario_id, rol_anterior, rol_nuevo
+       - Info adicional: rol_anterior, rol_nuevo
+
+    6. **Cambio de estado** (TiposAccion.CAMBIAR_ESTADO_USUARIO):
+       - Activación/desactivación de cuenta
+       - Registra: admin_id, usuario_id, estado_anterior, estado_nuevo
+       - Info adicional: estado_anterior, estado_nuevo
+
+    7. **Cambio de avatar** (cambios de perfil):
+       - Subida/actualización/eliminación de avatar
+       - Registra: usuario_id, tipo_cambio (upload/tipo/eliminar)
+       - Info adicional: ruta, tamaño_bytes, extension, avatar_tipo
+
+Arquitectura de auditoría:
+
+    UsuariosAuditService (este módulo)
+    └─> BitacoraService (orquestador general)
+        └─> BitacoraRepository (acceso a datos)
+            └─> T_Bitacora (modelo de BD)
+
+Responsabilidades:
+
+    **Este servicio**:
+    - Construir mensajes descriptivos para cada operación CRUD
+    - Capturar estado "antes" y "después" de cambios
+    - Agregar info_adicional específica de usuarios
+    - Manejar cambios de avatar (tipos: upload, tipo, eliminar)
+
+    **BitacoraService**:
+    - Convertir info_adicional a JSON
+    - Validar tipos de acción
+    - Delegar a repository
+
+    **BitacoraRepository**:
+    - Insertar registros en T_Bitacora
+    - Manejar transacciones
+
+Estructura de info_adicional (JSON):
+
+    Creación de usuario:
+    {
+        "nuevo_usuario_id": "123456789",
+        "email": "nuevo@ejemplo.com",
+        "rol_asignado": "Usuario Judicial",
+        "estado_inicial": "Activo",
+        "modulo": "administracion_usuarios",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Edición de usuario:
+    {
+        "usuario_editado": "123456789",
+        "cambios": {
+            "nombre": {"antes": "Juan", "despues": "Juan Carlos"},
+            "email": {"antes": "viejo@ejemplo.com", "despues": "nuevo@ejemplo.com"}
+        },
+        "modulo": "administracion_usuarios",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Cambio de rol:
+    {
+        "usuario_afectado": "123456789",
+        "email": "usuario@ejemplo.com",
+        "rol_anterior": "Usuario Judicial",
+        "rol_nuevo": "Administrador",
+        "modulo": "administracion_usuarios",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Cambio de avatar:
+    {
+        "tipo_cambio": "upload",
+        "ruta": "uploads/avatars/123456789.jpg",
+        "tamaño_bytes": 245680,
+        "extension": ".jpg"
+    }
+
+Integración con otros módulos:
+    - UsuarioService: Llama a métodos de auditoría en operaciones CRUD
+    - AvatarService: Registra cambios de avatar
+    - Routes (usuarios.py): Registra accesos administrativos
+
+Casos de uso de auditoría:
+
+    1. **Trazabilidad de privilegios**:
+       - Historial de cambios de rol
+       - Quién otorgó permisos administrativos
+
+    2. **Auditoría de creación de cuentas**:
+       - Quién creó cada usuario
+       - Roles asignados inicialmente
+
+    3. **Seguimiento de desactivaciones**:
+       - Usuarios desactivados y por quién
+       - Motivos de desactivación
+
+    4. **Registro de modificaciones**:
+       - Cambios en datos personales
+       - Estado "antes" y "después"
+
+    5. **Gestión de perfiles**:
+       - Cambios de avatar
+       - Actualizaciones de información
+
+Example:
+    >>> from app.services.bitacora.usuarios_audit_service import usuarios_audit_service
+    >>> 
+    >>> # Crear usuario
+    >>> await usuarios_audit_service.registrar_creacion_usuario(
+    ...     db=db,
+    ...     admin_id="987654321",
+    ...     nuevo_usuario_id="123456789",
+    ...     email="nuevo@ejemplo.com",
+    ...     rol="Usuario Judicial"
+    ... )
+    >>> 
+    >>> # Cambio de rol
+    >>> await usuarios_audit_service.registrar_cambio_rol(
+    ...     db=db,
+    ...     admin_id="987654321",
+    ...     usuario_id="123456789",
+    ...     email="usuario@ejemplo.com",
+    ...     rol_anterior="Usuario Judicial",
+    ...     rol_nuevo="Administrador"
+    ... )
+    >>> 
+    >>> # Cambio de avatar
+    >>> await usuarios_audit_service.registrar_cambio_avatar(
+    ...     db=db,
+    ...     usuario_id="123456789",
+    ...     tipo_cambio="upload",
+    ...     detalles={"ruta": "uploads/avatars/123456789.jpg", "tamaño_bytes": 245680}
+    ... )
+
+Manejo de errores:
+    - Captura excepciones y retorna None
+    - Logging de errores (warning level)
+    - No propaga errores (auditoría no debe romper flujo)
+
+Note:
+    - Cambios de datos personales requieren GDPR compliance
+    - Los registros de edición capturan estado "antes" y "después"
+    - Timestamps en UTC para consistencia
+    - Singleton: Use instancia global `usuarios_audit_service`
+
+Ver también:
+    - app.services.bitacora.bitacora_service: Servicio base
+    - app.services.usuario_service: Consumidor principal
+    - app.services.avatar_service: Auditoría de avatares
+    - app.constants.tipos_accion: Catálogo de tipos
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 from typing import Optional, Dict, Any
 from datetime import datetime

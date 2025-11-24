@@ -42,7 +42,8 @@ Ver también:
     * app.embeddings: Genera embeddings
 
 Authors:
-    JusticIA Team
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
 
 Version:
     2.0.0 - Integración LangChain

@@ -1,6 +1,98 @@
 """
-Constructor de prompts específicos para servicios de similitud y resúmenes.
-Separado del servicio principal para mejor organización y mantenimiento.
+Constructor de Prompts Especializados para Búsqueda de Similares y Generación de Resúmenes.
+
+Este módulo contiene funciones especializadas en la construcción de prompts
+optimizados para el sistema de búsqueda de casos similares y generación de
+resúmenes automáticos de expedientes judiciales con IA.
+
+Responsabilidades:
+    - Construir prompts para resúmenes de expedientes (create_similarity_summary_prompt)
+    - Formatear contexto de documentos para búsquedas (create_similarity_search_context)
+    - Aplicar mejores prácticas de prompt engineering para LLMs legales
+
+Separación de responsabilidades:
+    - Este módulo: Solo construcción de prompts (string templates)
+    - SimilarityService: Orquestación y llamadas al LLM
+    - ResponseParser: Parseo y validación de respuestas
+
+Características del prompt de resumen:
+    1. **Instrucción de idioma obligatoria**: TODO en español (Costa Rica)
+    2. **Formato JSON estricto**: Sin markdown, sin texto adicional
+    3. **Estructura fija**: resumen, palabras_clave, factores_similitud, conclusion
+    4. **Ejemplos de factores**: Provee ejemplos válidos en español
+    5. **Validación de contenido**: Reglas para mantener fidelidad a datos (fechas, montos)
+    6. **Escape de caracteres**: Instrucciones para comillas y caracteres especiales
+    7. **Longitud definida**: ~200 palabras resumen, mínimo 50 palabras conclusión
+
+Prompt engineering aplicado:
+    - Role prompting: "Eres un asistente jurídico especializado..."
+    - Few-shot learning: Ejemplos de factores correctos vs incorrectos
+    - Chain of thought: Instrucciones paso a paso
+    - Format enforcement: Estructura JSON con campos explícitos
+    - Constraint specification: Reglas de contenido claras
+
+Formato de salida esperado (JSON):
+    {
+        "resumen": "Texto descriptivo del expediente...",
+        "palabras_clave": ["Palabra 1", "Palabra 2", ...],
+        "factores_similitud": ["Factor 1", "Factor 2", ...],
+        "conclusion": "Análisis jurídico final..."
+    }
+
+Contexto de documentos:
+    - Agrupa chunks por documento origen
+    - Ordena chunks secuencialmente para coherencia
+    - Limita longitud total (max_docs, max_chars_per_doc)
+    - Preserva metadata relevante (número expediente, archivo)
+
+Parámetros de configuración:
+    - max_docs: 15 chunks totales (balance contexto/performance)
+    - max_chars_per_doc: 7000 caracteres por chunk (documentos legales largos)
+
+Problemas comunes resueltos:
+    1. ❌ LLM responde en inglés → ✅ Instrucción de idioma explícita
+    2. ❌ JSON con markdown → ✅ "NO uses comillas triples"
+    3. ❌ JSON incompleto → ✅ "NO cortes el JSON a la mitad"
+    4. ❌ Factores en inglés → ✅ Ejemplos correctos en español
+    5. ❌ Escape incorrecto → ✅ Instrucciones de escape explícitas
+
+Integration:
+    - SimilarityService: Consume los prompts construidos
+    - ResponseParser: Valida que el output cumpla el formato esperado
+    - chunk_context_builder: Formatea documentos para contexto
+
+Example:
+    >>> prompt = create_similarity_summary_prompt(
+    ...     contexto="Demanda por despido injustificado...",
+    ...     numero_expediente="24-000123-0001-LA"
+    ... )
+    >>> print(len(prompt))
+    2847  # Prompt completo con instrucciones
+    >>> 
+    >>> contexto = create_similarity_search_context(
+    ...     docs=langchain_documents,
+    ...     max_docs=15
+    ... )
+    >>> print("DOCUMENTO:" in contexto)
+    True
+
+Note:
+    - Los prompts son independientes del sistema RAG general
+    - El formato JSON debe ser parseado por ResponseParser
+    - Los factores de similitud son términos legales en español (Title Case)
+    - La fidelidad a datos es crítica (fechas, montos exactos)
+
+Ver también:
+    - app.services.busqueda_similares.similarity_service: Consumidor principal
+    - app.services.busqueda_similares.response_parser: Validación de respuestas
+    - app.services.RAG.chunk_context_builder: Formateo de documentos
+
+Authors:
+    Roger Calderón Urbina
+    Yeslin Chinchilla Ruiz
+
+Version:
+    1.0.0
 """
 
 
