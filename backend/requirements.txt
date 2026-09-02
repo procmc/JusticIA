@@ -66,3 +66,7 @@ redis>=5.0.0
 fastapi-mail>=1.4.1  # Biblioteca para envío de correos con FastAPI
 aiosmtplib>=3.0.0    # Cliente SMTP asíncrono
 jinja2>=3.1.0        # Para plantillas de correo
+
+# Qdrant SDK + Integración con LangChain
+qdrant-client>=1.9.0
+langchain-qdrant>=0.2.0
