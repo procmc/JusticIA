@@ -88,17 +88,24 @@ class EmbeddingsWrapper:
     Attributes:
         model (SentenceTransformer): Modelo sentence-transformers cargado.
     """
-    
-    def __init__(self, model):
+
+    def __init__(self, model, model_name: str = ""):
         self.model = model
-    
+        # multilingual-e5-large (y la familia E5) requiere prefijos "query:"/"passage:"
+        self._use_e5_prefix = "e5" in model_name.lower()
+
     async def aembed_query(self, text: str):
         """Genera embedding para una consulta de texto"""
+        if self._use_e5_prefix:
+            text = f"query: {text}"
         return self.model.encode(text).tolist()
-    
+
     async def aembed_documents(self, texts: list):
         """Genera embeddings para múltiples documentos"""
+        if self._use_e5_prefix:
+            texts = [f"passage: {t}" for t in texts]
         return self.model.encode(texts).tolist()
+    
 
 async def get_embeddings():
     global _embeddings
@@ -120,7 +127,7 @@ async def get_embeddings():
             model = SentenceTransformer(EMBEDDING_MODEL)
         
         logger.info("Modelo de embeddings cargado exitosamente")
-        _embeddings = EmbeddingsWrapper(model)
+        _embeddings = EmbeddingsWrapper(model, EMBEDDING_MODEL)
     return _embeddings
 
 async def get_embedding(text: str) -> list:

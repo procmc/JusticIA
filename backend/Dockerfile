@@ -2,12 +2,16 @@
 # Dockerfile para el backend usando Ubuntu minimal y Python 3.11
 
 FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalar dependencias del sistema y Python 3.11
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common gnupg dirmngr \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
     python3.11 python3.11-venv python3.11-distutils python3.11-dev python3-pip \
     ffmpeg git curl build-essential \
-    ca-certificates gnupg apt-transport-https unzip htop \
+    ca-certificates apt-transport-https unzip htop \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar ODBC Driver 18 for SQL Server

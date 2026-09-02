@@ -48,3 +48,16 @@ Authors:
 Version:
     2.0.0 - Integración LangChain
 """
+
+from app.config.config import VECTORSTORE_BACKEND
+
+
+def get_vectorstore_backend():
+    """Devuelve la instancia del backend vectorial activo según VECTORSTORE_BACKEND."""
+    if VECTORSTORE_BACKEND == "qdrant":
+        raise NotImplementedError(
+            "QdrantBackend aún no está implementado (próxima tarea del cronograma)."
+        )
+
+    from app.vectorstore.milvus_backend import MilvusBackend
+    return MilvusBackend()
