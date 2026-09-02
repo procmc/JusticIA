@@ -96,7 +96,7 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
-  #Qdrant local - base de datos vectorial (reemplaza a Milvus/Zilliz)
+  # Qdrant local - base de datos vectorial (reemplaza a Milvus/Zilliz)
   qdrant:
     image: qdrant/qdrant
     ports: 

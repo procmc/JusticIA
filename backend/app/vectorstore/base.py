@@ -1,9 +1,41 @@
 """
-Interdaz abtracta del backend de base de datos vectorial
+Interfaz abstracta del backend de base de datos vectorial.
 
-Permite intercambiar el motor vectorial (Malvius, Qdrant, ...) sin cambiar
-el resto del sistema (embeddings, RAG, endpoints). Todo backend concreto
-debe heredar de VesctorStoreBase e implementar los métodos.
+Define el contrato común que debe cumplir cualquier motor vectorial (Milvus,
+Qdrant, ...), permitiendo intercambiarlos sin cambiar el resto del sistema
+(embeddings, RAG, endpoints).
+
+Componentes:
+    * VectorStoreBackend: clase abstracta con los 7 métodos del contrato
+
+Tecnologías:
+    * abc (Python estándar): define métodos abstractos obligatorios
+    * langchain_core.documents.Document: tipo de documento compartido
+
+Funcionalidades principales:
+    * Búsqueda por vector precomputado y por texto
+    * Recuperación de documentos/chunks por expediente o documento
+    * Búsqueda de expedientes similares
+    * Almacenamiento de documentos con embeddings automáticos
+    * Estadísticas de la colección activa
+
+Example:
+    >>> from app.vectorstore.base import VectorStoreBackend
+    >>>
+    >>> class MiBackend(VectorStoreBackend):
+    ...     async def search_by_text(self, query_text, top_k=20, ...):
+    ...         ...  # implementación concreta
+
+Ver también:
+    * app.vectorstore.milvus_backend: Implementación sobre Milvus
+    * app.vectorstore.qdrant_backend: Implementación sobre Qdrant
+    * app.vectorstore.__init__: Selector get_vectorstore_backend()
+
+Authors:
+    Andrés Araya Agüero
+
+Version:
+    1.0.0 - Interfaz inicial (Fase 2, backend conmutable)
 """
 
 from abc import ABC, abstractmethod
@@ -11,17 +43,13 @@ from typing import List, Dict, Any, Optional
 from langchain_core.documents import Document
 
 class VectorStoreBackend(ABC):
-    """"
-    Contrato que debe cumplir cualquier backend vectorial (Milvus, Qdrant, ...).
-    """
+    """Contrato que debe cumplir cualquier backend vectorial (Milvus, Qdrant, ...)."""
 
     @abstractmethod
     async def search_by_vector(
         self, query_vector: List[float], top_k: int = 20, score_threshold: float = 0.0
     ) -> List[Dict[str, Any]]:
-        """"
-        Búsqueda por vector precomputado
-        """
+        """" Búsqueda por vector precomputado."""
 
     @abstractmethod
     async def search_by_text(

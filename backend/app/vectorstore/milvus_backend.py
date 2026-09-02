@@ -1,8 +1,34 @@
 """
-Implementación de VectorStoreBackend usando Milvus (motor actual del sistema).
+Implementación de VectorStoreBackend usando Milvus (motor original del sistema).
 
-Envuelve las funciones existentes de app.vectorstore.vectorstore sin modificarlas,
-para no arriesgar el código que ya está en producción.
+Envuelve, sin modificarlas, las funciones existentes de app.vectorstore.vectorstore,
+para no arriesgar el código que ya está en producción durante la migración a Qdrant.
+
+Componentes:
+    * MilvusBackend: clase que implementa VectorStoreBackend delegando a vectorstore.py
+
+Tecnologías:
+    * Milvus + LangChain (vía app.vectorstore.vectorstore, sin cambios)
+
+Funcionalidades principales:
+    * Los 7 métodos del contrato VectorStoreBackend, cada uno delegando 1:1
+      a la función equivalente ya existente en vectorstore.py
+
+Example:
+    >>> from app.vectorstore.milvus_backend import MilvusBackend
+    >>> backend = MilvusBackend()
+    >>> results = await backend.search_by_text("¿Qué es la prescripción?")
+
+Ver también:
+    * app.vectorstore.base: Contrato VectorStoreBackend
+    * app.vectorstore.vectorstore: Implementación real que se envuelve aquí
+    * app.vectorstore.qdrant_backend: Backend alternativo (Fase 2)
+
+Authors:
+    Andrés Araya Agüero
+
+Version:
+    1.0.0 - Wrapper inicial (Fase 2, backend conmutable)
 """
 
 
