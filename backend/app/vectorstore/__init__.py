@@ -1,20 +1,25 @@
 """
-Módulo de vectorstore con Milvus y LangChain.
+Módulo de vectorstore con (Milvus / Qdrant) y LangChain.
 
-Proporciona acceso a la base de datos vectorial Milvus para almacenamiento
-y recuperación de embeddings de documentos judiciales.
+Proporciona acceso a la base de datos vectorial activa (Milvus o Qdrant, según
+VECTORSTORE_BACKEND) para almacenamiento y recuperación de embeddings de 
+documentos judiciales, a través de una interfaz común.
 
 Componentes:
-    * vectorstore.py: Cliente principal con búsquedas y gestión
+    * base.py: Interfaz abstracta VectorStoreBackend (contrato común)
+    * milvus_backend.py: Implementación sobre Milvus (motor original)
+    * qdrant_backend.py: Implementación sobre Qdrant (motor nuevo, Fase 2)
+    * vectorstore.py: Cliente Milvus con búsquedas y gestión (usado por milvus_backend)
     * milvus_storage.py: Almacenamiento con chunking automático
-    * schema.py: Definición del schema de colección
+    * schema.py: Definición del schema de colección (Milvus)
 
 Tecnologías:
-    * Milvus: Base de datos vectorial de alto rendimiento
+    * Milvus / Qdrant: Bases de datos vectoriales (intercambiables)
     * LangChain: Orquestación y embeddings automáticos
-    * BGE-M3: Modelo de embeddings multilingüe
+    * multilingual-e5-large: Modelo de embeddings multilingüe (no chino)
 
 Funcionalidades principales:
+    * Selección del backend activo por variable de entorno (VECTORSTORE_BACKEND)
     * Búsqueda semántica por similitud coseno
     * Búsqueda por expediente específico
     * Búsqueda de expedientes similares
@@ -22,21 +27,19 @@ Funcionalidades principales:
     * Filtrado automático por estado procesado
 
 Example:
-    >>> from app.vectorstore import search_by_text, store_in_vectorstore
-    >>> 
+    >>> from app.vectorstore import get_vectorstore_backend
+    >>>
+    >>> # Obtener el backend activo (Milvus o Qdrant según configuración)
+    >>> backend = get_vectorstore_backend()
+    >>>
     >>> # Búsqueda
-    >>> results = await search_by_text("¿Qué es la prescripción?")
-    >>> 
+    >>> results = await backend.search_by_text("¿Qué es la prescripción?")
+    >>>
     >>> # Almacenamiento
-    >>> ids, chunks = await store_in_vectorstore(
-    ...     texto="contenido",
-    ...     metadatos={...},
-    ...     CT_Num_expediente="24-000123-0001-PE",
-    ...     id_expediente=123,
-    ...     id_documento=456
-    ... )
+    >>> ids = await backend.add_documents(documentos)
 
 Ver también:
+    * app.vectorstore.base: Contrato VectorStoreBackend
     * app.services.rag: Usa vectorstore para RAG
     * app.services.ingesta: Almacena documentos procesados
     * app.embeddings: Genera embeddings
@@ -44,9 +47,9 @@ Ver también:
 Authors:
     Roger Calderón Urbina
     Yeslin Chinchilla Ruiz
-
+    Andrés Araya Agüero
 Version:
-    2.0.0 - Integración LangChain
+    3.0.0 - Backend conmutable Milvus/Qdrant
 """
 
 from app.config.config import VECTORSTORE_BACKEND
@@ -55,9 +58,8 @@ from app.config.config import VECTORSTORE_BACKEND
 def get_vectorstore_backend():
     """Devuelve la instancia del backend vectorial activo según VECTORSTORE_BACKEND."""
     if VECTORSTORE_BACKEND == "qdrant":
-        raise NotImplementedError(
-            "QdrantBackend aún no está implementado (próxima tarea del cronograma)."
-        )
+        from app.vectorstore.qdrant_backend import QdrantBackend
+        return QdrantBackend()
 
     from app.vectorstore.milvus_backend import MilvusBackend
     return MilvusBackend()

@@ -1,23 +1,25 @@
 """
-Generación de embeddings con sentence-transformers.
+Generación de embeddings con sentence-transformers (modelo configurable).
 
-Proporciona servicio de embeddings usando BGE-M3 (o modelo configurado)
-con lazy loading y compatibilidad async.
+Proporciona servicio de embeddings usando el modelo definido en EMBEDDING_MODEL,
+con lazy loading, compatibilidad async, y soporte para los prefijos "query:"/
+"passage:" que exige la familia de modelos E5.
 
 Características:
-    * Modelo: BGE-M3 (Dariolopez/bge-m3-es-legal-tmp-6)
+    * Modelo actual: multilingual-e5-large (Microsoft/intfloat)
     * Dimensiones: 1024
-    * Idioma: Español optimizado para legal
+    * Prefijos E5: agregados automáticamente si el modelo pertenece a la familia E5
     * Lazy loading: Carga bajo demanda
     * Cache local: Pre-descarga en Docker
     * Async compatible: Wrapper para sentence-transformers
 
-Modelo BGE-M3:
-    * BAAI General Embedding v3 (Multi-lingual)
-    * Fine-tuned para documentos legales en español
-    * Dense retrieval (vectores densos)
-    * Normalizado: Similitud coseno directa
-    * Tamaño: ~2.3 GB
+Cambio de modelo (Fase 2):
+    * Modelo anterior: BGE-M3 (Dariolopez/bge-m3-es-legal-tmp-6) — origen chino (BAAI)
+    * Modelo actual: multilingual-e5-large — origen no chino, misma dimensión (1024)
+    * Justificación técnica completa: ver Registro_Indicaciones/16_Investigacion_Modelo_Embeddings.md
+    * Detalle importante: los modelos E5 requieren prefijar el texto con "query: "
+      (consultas) o "passage: " (documentos) para un desempeño óptimo — manejado
+      automáticamente por EmbeddingsWrapper según el nombre del modelo configurado.
 
 Cache local:
     * Ruta: /app/models/{EMBEDDING_MODEL}
@@ -37,11 +39,11 @@ Example:
     >>> # Obtener servicio
     >>> embeddings = await get_embeddings()
     >>> 
-    >>> # Embedding de consulta
+    >>> # Embedding de consulta (se le agrega "query: " automáticamente si aplica)
     >>> vector = await embeddings.aembed_query("¿Qué dice la sentencia?")
     >>> print(len(vector))  # 1024
     >>> 
-    >>> # Embeddings de documentos
+    >>> # Embeddings de documentos (se les agrega "passage: " automáticamente si aplica)
     >>> vectors = await embeddings.aembed_documents([
     ...     "Documento 1...",
     ...     "Documento 2..."
@@ -50,8 +52,8 @@ Example:
     >>> # Función de conveniencia
     >>> vector = await get_embedding("Texto a vectorizar")
 
-Note:
-    * Primera carga tarda ~5-10s (cargar modelo 2.3GB)
+Note: 
+    * Primera carga tarda ~5-10s (cargar modelo 2GB)
     * Encode batch más eficiente que individual
     * GPU acelera 5-10x (CUDA compatible)
     * Vectors son listas Python (JSON serializable)
@@ -65,9 +67,9 @@ Ver también:
 
 Authors:
     JusticIA Team
-
+    Andrés Araya Agüero
 Version:
-    1.0.0 - BGE-M3 con lazy loading
+    2.0.0 - Modelo configurable + soporte de prefijos E5
 """
 from sentence_transformers import SentenceTransformer
 from app.config.config import EMBEDDING_MODEL

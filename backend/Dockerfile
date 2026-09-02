@@ -2,9 +2,17 @@
 # Dockerfile para el backend usando Ubuntu minimal y Python 3.11
 
 FROM ubuntu:22.04
+# Evita que apt se quede esperando una respuesta interactiva (ej. zona horaria de tzdata)
 ENV DEBIAN_FRONTEND=noninteractive
 
+
+
 # Instalar dependencias del sistema y Python 3.11
+# NOTA: los repositorios de Ubuntu 22.04 tienen congelado python3.11 en la versión
+# 3.11.0~rc1 (nunca actualizada a la final) — incompatible con versiones recientes
+# de torch/transformers. Se agrega el PPA "deadsnakes" para instalar la versión final.
+# gnupg/dirmngr deben instalarse ANTES de add-apt-repository (si no, falla al no
+# poder importar la clave GPG del repositorio).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common gnupg dirmngr \
     && add-apt-repository -y ppa:deadsnakes/ppa \
