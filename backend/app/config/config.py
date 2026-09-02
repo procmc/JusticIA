@@ -54,5 +54,11 @@ LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))
 LLM_TOP_P = float(os.getenv("LLM_TOP_P", "0.95"))
 LLM_REPEAT_PENALTY = float(os.getenv("LLM_REPEAT_PENALTY", "1.1"))
 
-if not MILVUS_URI or not MILVUS_TOKEN:
+# Backend vectorial activo: "milvus" (actual) o "qdrant" (nuevo, Fase 2)
+VECTORSTORE_BACKEND = os.getenv("VECTORSTORE_BACKEND", "milvus")
+
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", COLLECTION_NAME)
+
+if VECTORSTORE_BACKEND == "milvus" and (not MILVUS_URI or not MILVUS_TOKEN):
     raise RuntimeError("Configura MILVUS_URI y MILVUS_TOKEN (.env o variables de entorno).")
