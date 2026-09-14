@@ -26,7 +26,7 @@ Flujo de procesamiento:
     2. Worker inicia → EN_PROCESAMIENTO
     3. Extracción de texto (Tika/Whisper)
     4. Generación de embeddings (BGE-M3)
-    5. Almacenamiento en Milvus
+    5. Almacenamiento en Qdrant
     6. Actualización a PROCESADO
 
 Example:

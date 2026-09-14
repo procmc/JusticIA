@@ -16,7 +16,7 @@ Flujo de procesamiento:
     3. Extracción de texto (Tika para PDF, Whisper para audio)
     4. Chunking y limpieza de texto
     5. Generación de embeddings con BGE-M3
-    6. Almacenamiento de vectores en Milvus
+    6. Almacenamiento de vectores en Qdrant
     7. Actualización a PROCESADO (o ERROR si falla)
 
 Relaciones:

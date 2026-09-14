@@ -35,7 +35,7 @@ with Diagram(
     api = Fastapi("API\n\nSimilarity Router")
     service = Python("Service\n\n2 modos")
     embedder = Custom("Embeddings\n\nBGE-M3\n(solo descripción)", "/diagrams/icons/bge.jpeg")
-    milvus = Custom("Milvus\n\nVector Search", "/diagrams/icons/milvus.png")
+    qdrant = Custom("Qdrant\n\nVector Search", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     sql = Custom("Azure SQL\n\nMetadata", "/diagrams/icons/azure.png")
     
     # Flujo simplificado
@@ -43,9 +43,9 @@ with Diagram(
     search_ui >> Edge(label=" 2. POST /search ", color="#2563eb", style="bold", fontsize="10") >> api
     api >> Edge(label=" 3. Procesa ", color="#7b1fa2", style="bold", fontsize="10") >> service
     service >> Edge(label=" 4a. Por descripción\nvectoriza ", color="#f57c00", fontsize="10") >> embedder
-    service >> Edge(label=" 4b. Por expediente\ncompara directo ", color="#0288d1", fontsize="10") >> milvus
-    embedder >> Edge(label=" 5. Búsqueda vectorial ", color="#c2185b", fontsize="10") >> milvus
-    milvus >> Edge(label=" 6. Top K docs ", color="#c2185b", style="dashed", fontsize="9") >> service
+    service >> Edge(label=" 4b. Por expediente\ncompara directo ", color="#0288d1", fontsize="10") >> qdrant
+    embedder >> Edge(label=" 5. Búsqueda vectorial ", color="#c2185b", fontsize="10") >> qdrant
+    qdrant >> Edge(label=" 6. Top K docs ", color="#c2185b", style="dashed", fontsize="9") >> service
     service >> Edge(label=" 7. Enriquece ", color="#5e35b1", fontsize="10") >> sql
     sql >> Edge(label=" 8. Metadata ", color="#5e35b1", style="dashed", fontsize="9") >> service
     service >> Edge(label=" 9. Resultados ", color="#388e3c", style="bold", fontsize="10") >> search_ui

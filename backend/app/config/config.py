@@ -4,13 +4,6 @@ from urllib.parse import quote_plus
 
 load_dotenv()
 
-# Configuración Milvus (Base de datos vectorial)
-MILVUS_URI = os.getenv("MILVUS_URI", "")
-MILVUS_TOKEN = os.getenv("MILVUS_TOKEN", "")
-MILVUS_DB_NAME = os.getenv("MILVUS_DB_NAME", "")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-mpnet-base-v2")
-
 # Configuración Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
@@ -54,13 +47,12 @@ LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))
 LLM_TOP_P = float(os.getenv("LLM_TOP_P", "0.95"))
 LLM_REPEAT_PENALTY = float(os.getenv("LLM_REPEAT_PENALTY", "1.1"))
 
-# Backend vectorial activo: "milvus" (actual) o "qdrant" (nuevo, Fase 2)
-VECTORSTORE_BACKEND = os.getenv("VECTORSTORE_BACKEND", "milvus")
-
-# Configuración Qdrant (usada solo si VECTORSTORE_BACKEND=qdrant)
+# Configuración Qdrant (único motor vectorial del sistema)
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", COLLECTION_NAME)
+QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "justicia_docs")
 
-# Solo exige credenciales de Milvus si es el backend activo (permite usar Qdrant sin ellas)
-if VECTORSTORE_BACKEND == "milvus" and (not MILVUS_URI or not MILVUS_TOKEN):
-    raise RuntimeError("Configura MILVUS_URI y MILVUS_TOKEN (.env o variables de entorno).")
+# Modelo de embeddings activo (ver app.embeddings)
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
+
+# Dimensión de los embeddings (debe coincidir con el modelo activo en app.embeddings)
+DIM = int(os.getenv("DIM", "1024"))

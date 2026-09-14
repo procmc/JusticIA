@@ -166,7 +166,7 @@ def create_similarity_search_context(docs, max_docs: int = 15, max_chars_per_doc
     Agrupa por documento y ordena chunks para dar coherencia al LLM.
     
     Args:
-        docs: Lista de documentos LangChain con metadata de Milvus
+        docs: Lista de documentos LangChain con metadata de Qdrant
         max_docs: Máximo número de chunks totales (15-20 para casos legales)
         max_chars_per_doc: Máximo caracteres por chunk individual (800 para documentos legales)
         

@@ -7,7 +7,7 @@ incluso cuando el vectorstore presenta problemas.
 
 Arquitectura de recuperación:
 
-    Estrategia Principal: Milvus Vectorstore
+    Estrategia Principal: Qdrant Vectorstore
     └─> DynamicJusticIARetriever con filtro por expediente
         └─> Búsqueda vectorial de hasta 50 documentos
             └─> Threshold: 0.2 (permisivo para recuperar todo el expediente)
@@ -18,13 +18,13 @@ Arquitectura de recuperación:
             └─> Preserva metadata para compatibilidad con pipeline RAG
 
 Casos de uso de fallback:
-    1. Milvus no disponible (conexión, timeout)
+    1. Qdrant no disponible (conexión, timeout)
     2. Colección no existe o está vacía
     3. Expediente no encontrado en vectorstore (aún no indexado)
     4. Error de embeddings durante la búsqueda
 
 Flujo de recuperación:
-    1. Intentar recuperación desde Milvus con filtro de expediente
+    1. Intentar recuperación desde Qdrant con filtro de expediente
     2. Si retorna documentos → Éxito (fin)
     3. Si retorna vacío o error → Activar fallback
     4. Consultar BD para obtener documentos del expediente
@@ -49,7 +49,7 @@ Parámetros de configuración:
     - expediente_filter: Número de expediente exacto
 
 Integración con otros servicios:
-    - DynamicJusticIARetriever: Búsqueda vectorial en Milvus
+    - DynamicJusticIARetriever: Búsqueda vectorial en Qdrant
     - DocumentoService: Consultas directas a BD (fallback)
     - SimilarityService: Consumidor principal para búsquedas por expediente
 
@@ -63,11 +63,11 @@ Example:
 
 Manejo de errores:
     - ValueError: Cuando no se encuentran documentos en ninguna fuente
-    - Log warning: Cuando Milvus falla pero fallback tiene éxito
+    - Log warning: Cuando Qdrant falla pero fallback tiene éxito
     - Log error: Cuando ambas estrategias fallan
 
 Performance:
-    - Milvus: ~100-300ms (vectorstore en red)
+    - Qdrant: ~100-300ms (vectorstore en red)
     - Fallback BD: ~50-150ms (SQL Server local)
     - Overhead total: <500ms en el peor caso
 
@@ -133,11 +133,11 @@ class DocumentRetriever:
                 logger.info(f"Recuperados {len(docs_expediente)} documentos para expediente {numero_expediente}")
                 return docs_expediente
             else:
-                logger.warning(f"No se encontraron documentos en Milvus, usando fallback para {numero_expediente}")
+                logger.warning(f"No se encontraron documentos en Qdrant, usando fallback para {numero_expediente}")
                 return await self._obtener_documentos_fallback(numero_expediente)
                 
         except Exception as e:
-            logger.error(f"Error con retriever/Milvus para expediente {numero_expediente}: {e}")
+            logger.error(f"Error con retriever/Qdrant para expediente {numero_expediente}: {e}")
             return await self._obtener_documentos_fallback(numero_expediente)
     
     async def _obtener_documentos_fallback(self, numero_expediente: str) -> List[Document]:

@@ -17,7 +17,7 @@ Flujo de ingesta:
     3. Crea tarea Celery para procesamiento asíncrono
     4. Retorna task_id al frontend
     5. Frontend hace polling con /progress/{task_id}
-    6. Worker de Celery procesa: extracción, chunking, embeddings, Milvus
+    6. Worker de Celery procesa: extracción, chunking, embeddings, Qdrant
     7. Actualiza estado del documento en BD (Pendiente -> Procesado/Error)
 
 Formatos soportados:

@@ -7,7 +7,7 @@ carga hasta almacenamiento en vectorstore.
 Arquitectura:
     * Extracción: Tika (PDF/docs) + Whisper (audio)
     * Limpieza: Normalización Unicode + corrección encoding
-    * Almacenamiento: BD (PostgreSQL) + vectorstore (Milvus)
+    * Almacenamiento: BD (PostgreSQL) + vectorstore (Qdrant)
     * Async: Celery workers con progress tracking
     * Transaccional: Commit temprano para visibilidad
 
@@ -69,7 +69,7 @@ Note:
     * Bitácora completa para auditoría
 
 Ver también:
-    * app.vectorstore.milvus_storage: Almacenamiento vectorial
+    * app.vectorstore.storage: Almacenamiento vectorial
     * app.embeddings.embeddings: Generación de vectores
     * app.routes.expedientes: Endpoints de subida
     * app.celery_app: Configuración Celery

@@ -61,11 +61,11 @@ with Diagram(
     with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
         retriever = Python("Retriever\n\ntop_k configurable")
         embedder = Custom("Embeddings\n\nBGE-M3", "/diagrams/icons/bge.jpeg")
-        vector_store = Custom("VectorStore\n\nMilvus Client", "/diagrams/icons/milvus.png")
+        vector_store = Custom("VectorStore\n\nQdrant Client", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     # Capa 7: Base de datos vectorial
     with Cluster("Vector Database", graph_attr={"bgcolor": "#e0f2f1", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
-        milvus_db = Custom("Milvus\n\nVector DB", "/diagrams/icons/milvus.png")
+        qdrant_db = Custom("Qdrant\n\nVector DB", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     # Capa 8: Base de datos relacional
     with Cluster("Relational Database", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
@@ -97,11 +97,11 @@ with Diagram(
     # 8. Expediente → VectorStore (directo)
     busqueda_exp >> Edge(label=" 8. Comparar vectores ", color="#0288d1", fontsize="10") >> vector_store
     
-    # 9. VectorStore → Milvus
-    vector_store >> Edge(label=" 9. Query vectorial ", color="#c2185b", style="dashed", fontsize="9") >> milvus_db
-    
-    # 10. Milvus → VectorStore (resultados)
-    milvus_db >> Edge(label=" 10. Top K chunks ", color="#c2185b", style="dashed", fontsize="9") >> vector_store
+    # 9. VectorStore → Qdrant
+    vector_store >> Edge(label=" 9. Query vectorial ", color="#c2185b", style="dashed", fontsize="9") >> qdrant_db
+
+    # 10. Qdrant → VectorStore (resultados)
+    qdrant_db >> Edge(label=" 10. Top K chunks ", color="#c2185b", style="dashed", fontsize="9") >> vector_store
     
     # 11. VectorStore → DocumentoRetrievalService
     vector_store >> Edge(label=" 11. Docs recuperados ", color="#388e3c", fontsize="10") >> doc_retrieval

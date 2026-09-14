@@ -4,7 +4,7 @@
  * @module services/similarityService
  * 
  * Maneja búsquedas de casos judiciales similares utilizando embeddings vectoriales
- * y búsqueda semántica en Milvus. Soporta dos modos de búsqueda: por descripción
+ * y búsqueda semántica en Qdrant. Soporta dos modos de búsqueda: por descripción
  * textual libre o por número de expediente existente.
  * 
  * Funciones principales:

@@ -5,13 +5,13 @@ Este módulo inicializa la aplicación FastAPI con todos sus componentes:
 - Routers de endpoints REST
 - Middleware de CORS
 - Archivos estáticos (avatares)
-- Inicialización de recursos (embeddings, Milvus, modelos)
+- Inicialización de recursos (embeddings, Qdrant, modelos)
 - Eventos de ciclo de vida (startup/shutdown)
 
 Arquitectura de la aplicación:
     * FastAPI como framework web asíncrono
     * SQLAlchemy para ORM con SQL Server
-    * Milvus para búsqueda vectorial
+    * Qdrant para búsqueda vectorial
     * Ollama LLM para generación de respuestas
     * Celery para tareas asíncronas
     * Redis para caché y broker
@@ -33,7 +33,7 @@ Archivos estáticos:
     * /uploads: Avatares de usuario y documentos cargados
 
 Eventos de ciclo de vida:
-    * startup: Inicializa embeddings, Milvus, modelos
+    * startup: Inicializa embeddings, Qdrant, modelos
     * shutdown: Guarda conversaciones activas, libera recursos
 
 Ejecución:
@@ -47,8 +47,7 @@ Ejecución:
 Variables de entorno requeridas:
     * EMBEDDING_MODEL: Nombre del modelo de embeddings
     * DATABASE_URL: URL de conexión a SQL Server
-    * MILVUS_HOST: Host de Milvus
-    * MILVUS_PORT: Puerto de Milvus
+    * QDRANT_URL: URL del servidor Qdrant
     * REDIS_URL: URL de conexión a Redis
     * OLLAMA_BASE_URL: URL del servidor Ollama
 
@@ -60,7 +59,7 @@ Example:
 
 Note:
     * El modelo de embeddings (~2.5GB) se descarga automáticamente al inicio
-    * Milvus debe estar corriendo antes de iniciar la API
+    * Qdrant debe estar corriendo antes de iniciar la API
     * Las conversaciones se guardan automáticamente al cerrar
 
 Ver también:
@@ -80,7 +79,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from app.vectorstore.vectorstore import get_client
+from app.vectorstore import get_vectorstore_backend
 from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora
 from app.db import database
 import asyncio
@@ -107,11 +106,11 @@ async def startup_event():
     Secuencia de inicialización:
     1. Descarga y valida el modelo de embeddings desde HuggingFace (~2.5GB)
     2. Pre-carga el modelo en memoria con inferencia de prueba (warm-up)
-    3. Establece conexión con Milvus y verifica colección
-    
+    3. Establece conexión con Qdrant y verifica colección
+
     Raises:
         RuntimeError: Si falla la descarga del modelo, carga de embeddings o
-                     conexión a Milvus. La aplicación NO iniciará si hay error.
+                     conexión a Qdrant. La aplicación NO iniciará si hay error.
     
     Note:
         * Este evento se ejecuta UNA VEZ al iniciar la aplicación
@@ -132,12 +131,12 @@ async def startup_event():
     except Exception as e:
         raise RuntimeError(f"Error cargando embeddings: {e}")
     
-    # 3. Inicializar Milvus
+    # 3. Inicializar Qdrant
     try:
-        await get_client()
-        print("Milvus configurado correctamente")
+        await get_vectorstore_backend().get_stats()
+        print("Qdrant configurado correctamente")
     except Exception as e:
-        raise RuntimeError(f"Error inicializando Milvus: {e}")
+        raise RuntimeError(f"Error inicializando Qdrant: {e}")
 
 
 @app.on_event("shutdown")

@@ -1,9 +1,10 @@
 """
 Interfaz abstracta del backend de base de datos vectorial.
 
-Define el contrato común que debe cumplir cualquier motor vectorial (Milvus,
-Qdrant, ...), permitiendo intercambiarlos sin cambiar el resto del sistema
-(embeddings, RAG, endpoints).
+Define el contrato que cumple el motor vectorial activo (Qdrant), permitiendo
+intercambiarlo en el futuro sin cambiar el resto del sistema (embeddings,
+RAG, endpoints). Milvus fue retirado del proyecto; Qdrant es hoy la única
+implementación (ver app.vectorstore.qdrant_backend).
 
 Componentes:
     * VectorStoreBackend: clase abstracta con los 7 métodos del contrato
@@ -27,7 +28,6 @@ Example:
     ...         ...  # implementación concreta
 
 Ver también:
-    * app.vectorstore.milvus_backend: Implementación sobre Milvus
     * app.vectorstore.qdrant_backend: Implementación sobre Qdrant
     * app.vectorstore.__init__: Selector get_vectorstore_backend()
 
@@ -43,7 +43,7 @@ from typing import List, Dict, Any, Optional
 from langchain_core.documents import Document
 
 class VectorStoreBackend(ABC):
-    """Contrato que debe cumplir cualquier backend vectorial (Milvus, Qdrant, ...)."""
+    """Contrato que debe cumplir el backend vectorial (Qdrant)."""
 
     @abstractmethod
     async def search_by_vector(

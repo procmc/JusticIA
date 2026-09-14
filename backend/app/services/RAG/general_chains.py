@@ -27,7 +27,7 @@ Streaming:
 Flujo de ejecución:
     1. Usuario envía pregunta + session_id
     2. Reformulación con historial (contextualize)
-    3. Búsqueda vectorial en Milvus (retriever)
+    3. Búsqueda vectorial en Qdrant (retriever)
     4. Formateo de documentos (FormattedRetriever)
     5. Generación con LLM (streaming)
     6. SSE al frontend chunk por chunk

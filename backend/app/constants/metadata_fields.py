@@ -2,7 +2,7 @@
 Campos Estandarizados de Metadata para Vectorstore y Base de Datos.
 
 Este módulo es la **FUENTE ÚNICA DE VERDAD** para nombres de campos de metadata
-en todo el sistema de almacenamiento vectorial (Milvus) y base de datos (SQL Server).
+en todo el sistema de almacenamiento vectorial (Qdrant) y base de datos (SQL Server).
 
 Propósito:
     - Centralizar nombres de campos para evitar typos y bugs
@@ -11,13 +11,13 @@ Propósito:
     - Proporcionar mapeo bidireccional BD ↔ Vectorstore
 
 Componentes principales:
-    1. MetadataFields: Campos en Milvus (snake_case)
+    1. MetadataFields: Campos en Qdrant (snake_case)
     2. DatabaseFields: Campos en SQL Server (prefijos CT_/CN_)
     3. FieldMapper: Mapeo bidireccional y conversión de diccionarios
 
 Arquitectura de datos:
     ```
-    SQL Server (T_Documento)     Milvus Vectorstore
+    SQL Server (T_Documento)     Qdrant Vectorstore
     ========================     ==================
     CT_Num_expediente      →     expediente_numero
     CN_Id_documento        →     id_documento
@@ -78,7 +78,7 @@ Example:
 Note:
     Cualquier cambio en nombres de campos debe:
         1. Actualizarse en este módulo
-        2. Propagarse a Milvus (recrear colección si es necesario)
+        2. Propagarse a Qdrant (recrear colección si es necesario)
         3. Actualizarse en migraciones de BD si aplica
         4. Actualizar mapeos en FieldMapper
 

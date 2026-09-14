@@ -22,7 +22,7 @@ Tareas soportadas:
     * Procesamiento de PDF con OCR (Apache Tika + Tesseract)
     * Transcripción de audio (Faster-Whisper)
     * Generación de embeddings (BGE-M3)
-    * Almacenamiento vectorial (Milvus)
+    * Almacenamiento vectorial (Qdrant)
 
 Ejecución de workers:
     Desarrollo:

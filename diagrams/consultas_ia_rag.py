@@ -60,14 +60,14 @@ with Diagram(
     with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
         retriever = Python("DynamicJusticIARetriever\n\ntop_k=15 general\ntop_k=10 expediente")
         embedder = Python("Embedding Service\n\nBGE-M3-ES-Legal\n1024 dimensiones")
-        vector_store = Python("VectorStore Service\n\nCliente Milvus\nBúsqueda similitud")
+        vector_store = Python("VectorStore Service\n\nCliente Qdrant\nBúsqueda similitud")
     
     with Cluster("LLM", graph_attr={"bgcolor": "#fff3e0", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
         llm = Custom("Ollama LLM\n\ngpt-oss:120b\nTemp: 0.3 | Stream", "/diagrams/icons/ollama.png")
     
     # Capa 6: Bases de datos (abajo)
     with Cluster("Base de Datos", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        milvus_db = Custom("Milvus\n\nVector Database\njusticia_docs\n", "/diagrams/icons/milvus.png")
+        qdrant_db = Custom("Qdrant\n\nVector Database\njusticia_docs\n", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     # ===== FLUJO PRINCIPAL =====
     # 1. Usuario → Frontend
@@ -95,11 +95,11 @@ with Diagram(
     # 8. Embeddings → VectorStore
     embedder >> Edge(label=" 8. Buscar similares ", color="#0288d1", fontsize="10") >> vector_store
     
-    # 9. VectorStore → Milvus
-    vector_store >> Edge(label=" 9. Query vectorial ", color="#c2185b", style="dashed", fontsize="9") >> milvus_db
-    
-    # 10. Milvus → VectorStore → Retriever (resultados)
-    milvus_db >> Edge(label=" 10. Top K chunks ", color="#c2185b", style="dashed", fontsize="9") >> vector_store
+    # 9. VectorStore → Qdrant
+    vector_store >> Edge(label=" 9. Query vectorial ", color="#c2185b", style="dashed", fontsize="9") >> qdrant_db
+
+    # 10. Qdrant → VectorStore → Retriever (resultados)
+    qdrant_db >> Edge(label=" 10. Top K chunks ", color="#c2185b", style="dashed", fontsize="9") >> vector_store
     vector_store >> Edge(label=" Documentos ", color="#0288d1", fontsize="9") >> retriever
     
     # 11. Retriever → Stuff Chain

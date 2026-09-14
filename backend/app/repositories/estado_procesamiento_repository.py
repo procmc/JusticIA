@@ -7,7 +7,7 @@ que controla el ciclo de vida del procesamiento de documentos en el sistema de i
 Estados del sistema:
     - "Pendiente": Documento en cola, esperando procesamiento
     - "Procesado": Documento procesado exitosamente y vectorizado
-    - "Error": Falló el procesamiento (parse, embedding, Milvus, etc.)
+    - "Error": Falló el procesamiento (parse, embedding, Qdrant, etc.)
 
 Responsabilidades:
     - Consultar estados por nombre (para actualizar documentos)

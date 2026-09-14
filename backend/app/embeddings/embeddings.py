@@ -61,7 +61,7 @@ Note:
 
 Ver también:
     * app.embeddings.langchain_adapter: Adaptador para LangChain
-    * app.vectorstore.milvus_storage: Usa embeddings
+    * app.vectorstore.storage: Usa embeddings
     * app.config.config: EMBEDDING_MODEL configurado
     * utils/hf_model.py: Pre-descarga del modelo
 

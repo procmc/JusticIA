@@ -96,7 +96,7 @@ with Diagram(
         "margin": "20",
         "pad": "0.6"
     }):
-        milvus = Custom("Milvus\n\nVectores chunks", "/diagrams/icons/milvus.png")
+        qdrant = Custom("Qdrant\n\nVectores chunks", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     with Cluster("Relational Database", graph_attr={
         "bgcolor": "#fce4ec",
@@ -131,7 +131,7 @@ with Diagram(
     chunker >> Edge(label=" 9. Vectoriza ", color="#9333ea", fontsize="10") >> embedder
     
     # Almacenamiento final
-    embedder >> Edge(label=" 10. Guarda vectores ", color="#10b981", fontsize="10") >> milvus
+    embedder >> Edge(label=" 10. Guarda vectores ", color="#10b981", fontsize="10") >> qdrant
     embedder >> Edge(label=" 11. Guarda metadata ", color="#0891b2", fontsize="10") >> sql
 
 print("Diagrama generado: output/procesamiento_documentos.png")

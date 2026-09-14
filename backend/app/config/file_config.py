@@ -24,7 +24,7 @@ MAX_FILE_SIZE = 1024 * 1024 * 1024
 # Extensiones permitidas
 ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a']
 
-# Mapeo de extensiones a códigos numéricos para Milvus
+# Mapeo de extensiones a códigos numéricos para Qdrant
 FILE_TYPE_CODES = {
     '.txt': 1,
     '.pdf': 2,
