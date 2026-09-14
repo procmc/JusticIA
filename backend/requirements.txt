@@ -17,7 +17,6 @@ email-validator>=2.0.0
 
 # LangChain (núcleo + integraciones)
 langchain==0.3.27
-langchain-milvus==0.2.1
 langchain-ollama>=0.1.0
 langchain-community>=0.3.0  # Para chains adicionales
 langchain-core>=0.3.0      # Core components
@@ -42,9 +41,7 @@ ffmpeg-python>=0.2.0  # FFmpeg wrapper para conversión de audio
 # NOTA: EasyOCR ha sido reemplazado por Tesseract OCR integrado en Tika Server Docker
 # Tesseract es más rápido, ligero y está configurado con idiomas español e inglés
 
-# Milvus SDK (2.5.x o superior)
 protobuf>=5.27.2,<6.0.0
-pymilvus>=2.5.14,<2.7
 
 # Compatibilidad para evitar conflictos numpy/pandas
 numpy>=1.24.0,<2.0.0

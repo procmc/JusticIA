@@ -12,7 +12,7 @@ Endpoints principales:
 Arquitectura RAG:
     1. Usuario envía pregunta con session_id
     2. Backend recupera historial de la sesión
-    3. Búsqueda semántica en Milvus (top_k documentos similares)
+    3. Búsqueda semántica en Qdrant (top_k documentos similares)
     4. Construcción de prompt con contexto + historial
     5. LLM genera respuesta (streaming)
     6. Respuesta se guarda en historial de sesión

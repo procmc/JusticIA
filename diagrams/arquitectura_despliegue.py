@@ -62,8 +62,8 @@ with Diagram(
     with Cluster("Azure Cloud", graph_attr={"bgcolor": "#BBDEFB", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
         azure_sql = Custom("Azure SQL Server", "/diagrams/icons/azure.png")
     
-    with Cluster("Milvus (Local/Docker)", graph_attr={"bgcolor": "#B2DFDB", "penwidth": "3", "style": "rounded", "margin": "50", "pad": "1.0"}):
-        milvus = Custom("Milvus\n\nVector Database", "/diagrams/icons/milvus.png")
+    with Cluster("Qdrant (Local/Docker)", graph_attr={"bgcolor": "#B2DFDB", "penwidth": "3", "style": "rounded", "margin": "50", "pad": "1.0"}):
+        qdrant = Custom("Qdrant\n\nVector Database", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     with Cluster("Ollama Cloud", graph_attr={"bgcolor": "#E1BEE7", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
         ollama = Custom("Ollama API\n\nLLM: gpt-oss-120B", "/diagrams/icons/ollama.png")
@@ -82,8 +82,8 @@ with Diagram(
     # Backend → Azure SQL
     backend >> Edge(label="TDS :1433\nMetadata", color="#0078D4") >> azure_sql
     
-    # Backend → Milvus
-    backend >> Edge(label="gRPC :19530\nVector Search", color="#00C7B7") >> milvus
+    # Backend → Qdrant
+    backend >> Edge(label="REST :6333\nVector Search", color="#00C7B7") >> qdrant
     
     # Backend → Ollama
     backend >> Edge(label="HTTPS\nLLM Inference", color="#7C3AED") >> ollama
@@ -100,7 +100,7 @@ with Diagram(
     # Celery → Azure SQL (store metadata)
     celery >> Edge(label="TDS :1433\nStore Metadata", color="#0078D4") >> azure_sql
     
-    # Celery → Milvus (store vectors)
-    celery >> Edge(label="gRPC :19530\nStore Embeddings", color="#00C7B7") >> milvus
+    # Celery → Qdrant (store vectors)
+    celery >> Edge(label="REST :6333\nStore Embeddings", color="#00C7B7") >> qdrant
 
 print("Diagrama generado: output/arquitectura_despliegue.png")

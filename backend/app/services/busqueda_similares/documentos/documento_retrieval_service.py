@@ -26,7 +26,7 @@ class DocumentoRetrievalService:
         Procesa documentos similares para generar casos agrupados.
 
         Args:
-            similar_docs: Lista de documentos similares de Milvus
+            similar_docs: Lista de documentos similares de Qdrant
 
         Returns:
             Lista de casos similares

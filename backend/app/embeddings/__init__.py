@@ -45,7 +45,7 @@ Note:
     * Cache local evita download en producción
 
 Ver también:
-    * app.vectorstore.milvus_storage: Usa embeddings
+    * app.vectorstore.storage: Usa embeddings
     * app.services.rag.retriever: Usa para búsqueda
     * app.config.config: EMBEDDING_MODEL configurado
     * utils/hf_model.py: Pre-descarga del modelo

@@ -34,21 +34,22 @@ Event loop handling:
 
 Example:
     >>> from app.embeddings.langchain_adapter import LangChainEmbeddingsAdapter
-    >>> from langchain_milvus import Milvus
-    >>> 
+    >>> from langchain_qdrant import QdrantVectorStore
+    >>> from qdrant_client import QdrantClient
+    >>>
     >>> # Crear adaptador
     >>> embeddings = LangChainEmbeddingsAdapter()
-    >>> 
+    >>>
     >>> # Usar con LangChain VectorStore
-    >>> vectorstore = Milvus(
-    ...     embedding_function=embeddings,
-    ...     collection_name="expedientes",
-    ...     connection_args={"host": "milvus", "port": "19530"}
+    >>> vectorstore = QdrantVectorStore(
+    ...     client=QdrantClient(url="http://localhost:6333"),
+    ...     collection_name="justicia_docs",
+    ...     embedding=embeddings,
     ... )
-    >>> 
+    >>>
     >>> # Búsqueda por similitud
     >>> docs = vectorstore.similarity_search("consulta legal", k=5)
-    >>> 
+    >>>
     >>> # Uso async directo
     >>> vector = await embeddings.aembed_query("¿Qué dice la ley?")
 
@@ -61,7 +62,7 @@ Note:
 
 Ver también:
     * app.embeddings.embeddings: Servicio base de embeddings
-    * app.vectorstore.milvus_storage: Usa este adaptador
+    * app.vectorstore.storage: Usa este adaptador
     * app.services.rag.retriever: Usa para retrieval
 
 Authors:

@@ -44,7 +44,7 @@ def procesar_ingesta(self, datos):
     2. Transcripción de audio con Faster-Whisper (si es archivo MP3/WAV)
     3. Chunking inteligente del texto
     4. Generación de embeddings con modelo BGE-M3-ES-Legal
-    5. Almacenamiento de vectores en Milvus
+    5. Almacenamiento de vectores en Qdrant
     
     Args:
         self: Referencia a la tarea (bind=True)

@@ -8,7 +8,7 @@ Arquitectura de documentos:
     Cada documento pertenece a un expediente y tiene un estado de procesamiento:
         1. PENDIENTE: Recién subido, en cola
         2. EN_PROCESO: Siendo procesado por Celery (Tika/Whisper)
-        3. COMPLETADO: Procesado exitosamente, embeddings en Milvus
+        3. COMPLETADO: Procesado exitosamente, embeddings en Qdrant
         4. ERROR: Falló el procesamiento
 
 Operaciones principales:

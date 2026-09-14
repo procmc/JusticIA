@@ -1,12 +1,12 @@
 """
-Retriever dinámico para búsqueda vectorial en Milvus.
+Retriever dinámico para búsqueda vectorial en Qdrant.
 
 Implementa LangChain BaseRetriever con dos modos de operación:
 1. Búsqueda semántica general: Busca en toda la BD por similitud
 2. Recuperación de expediente: Obtiene todos los documentos de un expediente
 
 Características:
-    * Integración con Milvus para búsqueda vectorial (BGE-M3 embeddings)
+    * Integración con Qdrant para búsqueda vectorial (BGE-M3 embeddings)
     * Fallback automático si no hay resultados (search_strategies)
     * Limpieza de encoding en documentos recuperados
     * Metadata enriquecida para el LLM (expediente, páginas, tipo, ruta)
@@ -14,7 +14,7 @@ Características:
 
 Flujo de búsqueda general:
     1. Query → Embedding (BGE-M3)
-    2. Búsqueda vectorial en Milvus
+    2. Búsqueda vectorial en Qdrant
     3. Fallback si pocos resultados (threshold relajado)
     4. Limpieza de encoding
     5. Construcción de Documents de LangChain
@@ -58,7 +58,7 @@ Note:
     * Limpieza de encoding automática para todos los documentos
 
 Ver también:
-    * app.vectorstore.vectorstore: Búsqueda en Milvus
+    * app.vectorstore: Búsqueda en Qdrant (get_vectorstore_backend)
     * app.services.rag.search_strategies: Fallback automático
     * app.services.ingesta.text_cleaner: Limpieza de encoding
 
@@ -71,7 +71,7 @@ Version:
 from typing import List, Optional
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
-from app.vectorstore.vectorstore import search_by_text, get_expedient_documents
+from app.vectorstore import get_vectorstore_backend
 import logging
 from pydantic import Field
 
@@ -159,7 +159,7 @@ class DynamicJusticIARetriever(BaseRetriever):
             logger.info(f"Obteniendo documentos del expediente: {expediente_numero}")
             
             # Obtener documentos completos del expediente
-            docs = await get_expedient_documents(expediente_numero)
+            docs = await get_vectorstore_backend().get_expedient_documents(expediente_numero)
             
             if not docs:
                 logger.warning(f"Expediente {expediente_numero}: sin documentos")
@@ -207,27 +207,27 @@ class DynamicJusticIARetriever(BaseRetriever):
                         # Limpiar encoding antes de crear el documento
                         content_limpio = fix_encoding_issues(content)
                         
-                        # Extraer metadata completa de Milvus
-                        milvus_metadata = doc.get("metadata", {})
-                        meta_data = milvus_metadata.get("meta", {})
-                        
+                        # Extraer metadata completa de Qdrant
+                        doc_metadata = doc.get("metadata", {})
+                        meta_data = doc_metadata.get("meta", {})
+
                         # Construir metadata enriquecida para el LLM
                         enriched_metadata = {
                             # Identificación del expediente
                             MF.EXPEDIENTE_NUMERO: doc.get("expedient_id", ""),
                             MF.DOCUMENTO_NOMBRE: doc.get("document_name", ""),
                             MF.DOCUMENTO_ID: doc.get("id", ""),
-                            
+
                             # Información del chunk
-                            "indice_chunk": milvus_metadata.get("indice_chunk", 0),
-                            "id_chunk": milvus_metadata.get("id_chunk", ""),
-                            
+                            "indice_chunk": doc_metadata.get("indice_chunk", 0),
+                            "id_chunk": doc_metadata.get("id_chunk", ""),
+
                             # Información de páginas (si existe)
-                            "pagina_inicio": milvus_metadata.get("pagina_inicio"),
-                            "pagina_fin": milvus_metadata.get("pagina_fin"),
-                            
+                            "pagina_inicio": doc_metadata.get("pagina_inicio"),
+                            "pagina_fin": doc_metadata.get("pagina_fin"),
+
                             # Tipo de documento (sentencia, resolución, etc.)
-                            "tipo_documento": milvus_metadata.get("tipo_documento", ""),
+                            "tipo_documento": doc_metadata.get("tipo_documento", ""),
                             
                             # Ruta del archivo para descarga (desde meta)
                             "ruta_archivo": meta_data.get("ruta_archivo", ""),

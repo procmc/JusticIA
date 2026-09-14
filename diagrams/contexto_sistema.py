@@ -54,7 +54,7 @@ with Diagram(
         "pad": "0.6"
     }):
         azure_sql = Custom("Azure SQL Server\n\nDatos transaccionales", "/diagrams/icons/azure.png")
-        milvus = Custom("Milvus\n(Cloud o Local)\n\nBusqueda vectorial", "/diagrams/icons/milvus.png")
+        qdrant = Custom("Qdrant\n(Local)\n\nBusqueda vectorial", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
         ollama = Custom("Ollama\n(Cualquier LLM)\n\nGeneracion IA", "/diagrams/icons/ollama.png")
     
     # Relaciones - Usuarios (azul sistema)
@@ -63,7 +63,7 @@ with Diagram(
     
     # Relaciones - Servicios externos (paleta sistema)
     sistema >> Edge(label="  Almacena documentos  \n  y metadatos  ", color="#0891b2", fontsize="11") >> azure_sql
-    sistema >> Edge(label="  Busqueda semantica  \n  de casos  ", color="#9333ea", fontsize="11") >> milvus
+    sistema >> Edge(label="  Busqueda semantica  \n  de casos  ", color="#9333ea", fontsize="11") >> qdrant
     sistema >> Edge(label="  Generacion de  \n  respuestas  ", color="#8b5cf6", fontsize="11") >> ollama
 
 print("Diagrama generado: output/contexto_sistema.png")

@@ -20,7 +20,7 @@ Arquitectura RAG:
     ```
     Usuario → Query → Embedding
                 ↓
-    Milvus Vectorstore (búsqueda vectorial)
+    Qdrant Vectorstore (búsqueda vectorial)
                 ↓
     Filtrado (umbral) → Top-K chunks
                 ↓
@@ -91,7 +91,7 @@ class RAGConfig:
     Todos los parámetros están optimizados para:
         - Modelo LLM: gpt-oss:20b (32k context window)
         - Modelo embeddings: BGE-M3-ES-Legal
-        - Vectorstore: Milvus con búsqueda de similitud coseno
+        - Vectorstore: Qdrant con búsqueda de similitud coseno
     """
     
     # ========================================

@@ -6,7 +6,7 @@ Coordina consultas generales y específicas de expedientes, gestiona el flujo de
 streaming de respuestas y mantiene el contexto conversacional.
 
 Arquitectura RAG:
-    * Retriever: DynamicJusticIARetriever busca documentos relevantes en Milvus
+    * Retriever: DynamicJusticIARetriever busca documentos relevantes en Qdrant
     * Chains: LangChain chains procesan contexto + historial + pregunta
     * LLM: Modelo de lenguaje genera respuestas basadas en documentos
     * Streaming: Server-Sent Events (SSE) para respuestas en tiempo real

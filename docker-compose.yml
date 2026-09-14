@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude 'uploads/*' --reload-exclude '*.pyc'
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude 'uploads/*' --reload-exclude '*.pyc'"
     ports:
       - "8000:8000"
     volumes:
@@ -87,16 +87,23 @@ services:
     restart: unless-stopped
     mem_limit: 2G
 
-  #Ollama local - LLM para el RAG (modelo de prueba temporal)
-  ollama: 
+  # Ollama local - LLM para el RAG (modelo definitivo: llama3.1:8b, elegido según GPU disponible — Fase 2)
+  ollama:
     image: ollama/ollama
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
-  # Qdrant local - base de datos vectorial (reemplaza a Milvus/Zilliz)
+  # Qdrant local - base de datos vectorial (Fase 2: backend conmutable, activo cuando VECTORSTORE_BACKEND=qdrant)
   qdrant:
     image: qdrant/qdrant
     ports: 

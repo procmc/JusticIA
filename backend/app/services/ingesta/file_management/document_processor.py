@@ -65,7 +65,7 @@ Ver también:
     * app.services.ingesta.audio_transcription.whisper_service: Transcripción audio
     * app.services.ingesta.text_cleaner: Limpieza de texto
     * app.services.ingesta.celery_tasks: Procesamiento asíncrono
-    * app.vectorstore.milvus_storage: Almacenamiento vectorial
+    * app.vectorstore.storage: Almacenamiento vectorial
 
 Authors:
     JusticIA Team
@@ -92,7 +92,7 @@ from app.schemas.schemas import (
     ArchivoSimplificado
 )
 from app.config.file_config import ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
-from app.vectorstore.milvus_storage import store_in_vectorstore
+from app.vectorstore.storage import store_in_vectorstore
 from app.services.expediente_service import ExpedienteService
 from app.services.documentos.file_management_service import file_management_service
 from app.services.transaction_service import TransactionManager
@@ -461,7 +461,7 @@ async def process_single_file_with_content(
                 if progress_tracker:
                     progress_tracker.update_progress(60, "Generando embeddings vectoriales")
                 
-                # 5. Almacenar en Milvus con IDs reales
+                # 5. Almacenar en el vectorstore con IDs reales
                 doc_ids, num_chunks = await store_in_vectorstore(
                     texto=texto_extraido, 
                     metadatos=metadatos, 
@@ -560,7 +560,7 @@ async def process_single_file_with_content(
                 raise e
         
         else:
-            # Sin BD disponible - NO almacenar en Milvus
+            # Sin BD disponible - NO almacenar en el vectorstore
             logger.warning(f"No se almacena en vectorstore: requiere transacción de BD exitosa")
             metadatos.update({"status": "procesado_sin_bd"})
 

@@ -102,7 +102,7 @@ EXPEDIENTE BAJO ANÁLISIS: {expediente_numero}
 
 CÓMO FUNCIONAS:
 - El usuario solicitó información sobre el expediente {expediente_numero}
-- El sistema RECUPERÓ AUTOMÁTICAMENTE todos los documentos de este expediente desde la base de datos (Milvus)
+- El sistema RECUPERÓ AUTOMÁTICAMENTE todos los documentos de este expediente desde la base de datos (Qdrant)
 - Los documentos recuperados aparecen abajo en la sección "DOCUMENTOS DEL EXPEDIENTE"
 - Tu trabajo es ANALIZAR esos documentos y responder la pregunta
 

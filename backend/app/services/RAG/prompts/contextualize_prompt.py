@@ -1,7 +1,7 @@
 """
 Prompt de contextualización con expansión semántica.
 
-Reformula preguntas del usuario para mejorar la recuperación vectorial en Milvus.
+Reformula preguntas del usuario para mejorar la recuperación vectorial en Qdrant.
 Añade sinónimos, términos relacionados y expansión de siglas para maximizar recall.
 
 Estrategi de expansión semántica:

@@ -2,7 +2,7 @@
 Endpoints de Búsqueda de Casos Similares por Similitud Semántica.
 
 Este módulo expone los endpoints de la API para buscar expedientes similares
-usando búsqueda vectorial en Milvus y generar resúmenes de IA con análisis
+usando búsqueda vectorial en Qdrant y generar resúmenes de IA con análisis
 de factores de similitud.
 
 Endpoints principales:
@@ -16,8 +16,8 @@ Modos de búsqueda:
 Arquitectura de similitud:
     1. Usuario ingresa texto o número de expediente
     2. Si es texto: se genera embedding con modelo BGE-M3-ES-Legal
-    3. Si es expediente: se recuperan todos sus embeddings de Milvus
-    4. Búsqueda vectorial en Milvus con cosine similarity
+    3. Si es expediente: se recuperan todos sus embeddings de Qdrant
+    4. Búsqueda vectorial en Qdrant con cosine similarity
     5. Filtrado por umbral de similitud (default: 0.7)
     6. Agrupación por expediente y cálculo de score promedio
     7. Retorno de resultados ordenados por relevancia
@@ -86,7 +86,7 @@ async def search_similar_cases(
     """
     Busca expedientes similares por contenido textual o número de expediente.
     
-    Realiza búsqueda vectorial en Milvus para encontrar expedientes con
+    Realiza búsqueda vectorial en Qdrant para encontrar expedientes con
     similitud semántica. Soporta dos modos: búsqueda por texto libre o
     por número de expediente específico.
     

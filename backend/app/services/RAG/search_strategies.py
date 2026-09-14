@@ -46,7 +46,7 @@ Note:
 
 Ver también:
     * app.config.rag_config: Configuración de fallback
-    * app.vectorstore.vectorstore: Búsqueda en Milvus
+    * app.vectorstore: Búsqueda en Qdrant (get_vectorstore_backend)
     * app.services.rag.retriever: Usa search_manager
 
 Authors:
@@ -59,7 +59,7 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from app.config.rag_config import rag_config
-from app.vectorstore.vectorstore import search_by_text
+from app.vectorstore import get_vectorstore_backend
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +95,11 @@ class SearchStrategyManager:
         if min_results is None:
             min_results = self.config.MIN_RESULTS_THRESHOLD
         
+        backend = get_vectorstore_backend()
+
         # Estrategia 1: Búsqueda normal
         logger.info(f"Búsqueda con threshold={threshold:.2f}, top_k={top_k}")
-        results = await search_by_text(query_text, top_k, threshold, expediente_filter, db)
+        results = await backend.search_by_text(query_text, top_k, threshold, expediente_filter, db)
         
         if len(results) >= min_results:
             logger.info(f"Búsqueda exitosa: {len(results)} resultados")
@@ -112,7 +114,7 @@ class SearchStrategyManager:
         relaxed_threshold = threshold * self.config.FALLBACK_THRESHOLD_MULTIPLIER
         logger.info(f"Fallback: relajando umbral a {relaxed_threshold:.2f}")
         
-        results = await search_by_text(query_text, top_k, relaxed_threshold, expediente_filter, db)
+        results = await backend.search_by_text(query_text, top_k, relaxed_threshold, expediente_filter, db)
         
         if len(results) >= min_results:
             logger.info(f"Fallback exitoso: {len(results)} resultados")
@@ -120,7 +122,7 @@ class SearchStrategyManager:
         
         # Estrategia 3: Umbral mínimo con más resultados
         logger.info(f"Fallback final: umbral mínimo {self.config.SIMILARITY_THRESHOLD_FALLBACK}")
-        results = await search_by_text(
+        results = await backend.search_by_text(
             query_text,
             self.config.TOP_K_FALLBACK,
             self.config.SIMILARITY_THRESHOLD_FALLBACK,

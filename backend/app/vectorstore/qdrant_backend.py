@@ -1,18 +1,20 @@
 """
-Implementación de VectorStoreBackend usando Qdrant.
+Implementación de VectorStoreBackend usando Qdrant (único motor vectorial del sistema).
 
-Arquitectura dual, igual que Milvus:
+Arquitectura dual:
     * QdrantClient: administración (colección, índices)
     * QdrantVectorStore (LangChain): búsquedas y almacenamiento con embeddings automáticos
 
-A diferencia de Milvus, Qdrant no usa un schema fijo de campos: toda la metadata
-(numero_expediente, id_documento, indice_chunk, etc.) vive en el "payload" (JSON)
-de cada punto, sin necesidad de declarar cada campo por adelantado.
+Qdrant no usa un schema fijo de campos: toda la metadata (numero_expediente,
+id_documento, indice_chunk, etc.) vive en el "payload" (JSON) de cada punto,
+sin necesidad de declarar cada campo por adelantado.
 
 Componentes:
     * QdrantBackend: clase que implementa VectorStoreBackend con la API de Qdrant
     * _get_client / _get_langchain_vectorstore: clientes singleton (lazy loading)
     * _payload_to_result: formatea el payload de Qdrant al formato común del sistema
+    * _filter_by_processed_status / _get_processed_document_ids: filtro por
+      estado "Procesado" (genérico, no depende del motor vectorial)
 
 Tecnologías:
     * qdrant-client: administración y búsquedas de bajo nivel (query_points, scroll)
@@ -20,11 +22,9 @@ Tecnologías:
     * multilingual-e5-large: modelo de embeddings (vía LangChainEmbeddingsAdapter)
 
 Funcionalidades principales:
-    * Los 7 métodos del contrato VectorStoreBackend, reimplementados con
-      Filter/FieldCondition/MatchValue de Qdrant en vez del filtro de Milvus
+    * Los 7 métodos del contrato VectorStoreBackend, implementados con
+      Filter/FieldCondition/MatchValue de Qdrant
     * Creación automática de la colección (VectorParams con distancia coseno)
-    * Reutiliza _filter_by_processed_status de vectorstore.py (mismo filtro
-      de estado "Procesado" que usa Milvus, sin duplicar esa lógica)
 
 Example:
     >>> from app.vectorstore.qdrant_backend import QdrantBackend
@@ -33,7 +33,6 @@ Example:
 
 Ver también:
     * app.vectorstore.base: Contrato VectorStoreBackend
-    * app.vectorstore.milvus_backend: Backend alternativo (motor original)
     * app.vectorstore.__init__: Selector get_vectorstore_backend()
     * Registro_Indicaciones_2026/16_Investigacion_Modelo_Embeddings.md: justificación del modelo
 
@@ -41,7 +40,7 @@ Authors:
     Andrés Araya Agüero
 
 Version:
-    1.0.0 - Implementación inicial, probada end-to-end)
+    2.0.0 - Único backend vectorial tras el retiro de Milvus
 """
 
 from typing import List, Dict, Any, Optional
@@ -52,12 +51,66 @@ from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition,
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
 
-from app.config.config import QDRANT_URL, QDRANT_COLLECTION_NAME
-from app.vectorstore.schema import DIM
+from app.config.config import QDRANT_URL, QDRANT_COLLECTION_NAME, DIM
 from app.vectorstore.base import VectorStoreBackend
-from app.vectorstore.vectorstore import _filter_by_processed_status
 
 logger = logging.getLogger(__name__)
+
+
+def _get_processed_document_ids(db=None) -> set:
+    """
+    Obtiene IDs de documentos procesados usando repository centralizado.
+    Crea sesión temporal si no se proporciona db.
+    """
+    from app.repositories.documento_repository import DocumentoRepository
+
+    db_creada = False
+    if db is None:
+        try:
+            from app.db.database import get_db
+            db = next(get_db())
+            db_creada = True
+        except Exception as e:
+            logger.error(f"No se pudo crear sesión de BD para filtrar: {e}")
+            return set()
+
+    try:
+        repo = DocumentoRepository()
+        return repo.obtener_ids_procesados(db)
+    except Exception as e:
+        logger.error(f"Error obteniendo IDs procesados: {e}")
+        return set()
+    finally:
+        if db_creada and db:
+            db.close()
+
+
+def _filter_by_processed_status(results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
+    """Filtra resultados para incluir solo documentos con estado 'Procesado'."""
+    if not results:
+        return results
+
+    processed_ids = _get_processed_document_ids(db)
+
+    if not processed_ids:
+        logger.warning("No se pudieron obtener IDs procesados, devolviendo todos los resultados")
+        return results
+
+    filtered_results = []
+    for doc in results:
+        doc_id = None
+        if isinstance(doc, dict):
+            doc_id = doc.get("metadata", {}).get("id_documento") or doc.get("documento_id")
+        elif isinstance(doc, Document):
+            doc_id = doc.metadata.get("id_documento") if hasattr(doc, "metadata") else None
+
+        if doc_id and doc_id in processed_ids:
+            filtered_results.append(doc)
+        elif doc_id:
+            logger.debug(f"Documento {doc_id} excluido (estado != Procesado)")
+
+    logger.info(f"Filtrado: {len(results)} → {len(filtered_results)} (solo procesados)")
+    return filtered_results
 
 _qdrant_client = None
 _langchain_vectorstore = None

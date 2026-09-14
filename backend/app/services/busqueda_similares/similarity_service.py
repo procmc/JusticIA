@@ -3,13 +3,13 @@ Servicio Principal de Búsqueda de Casos Similares y Generación de Resúmenes c
 
 Este módulo implementa el servicio de alto nivel para el sistema de búsqueda de
 expedientes judiciales similares y generación automática de resúmenes legales,
-unificando búsqueda vectorial (Milvus), búsqueda por expediente, y generación
+unificando búsqueda vectorial (Qdrant), búsqueda por expediente, y generación
 de resúmenes con LLM en una arquitectura RAG (Retrieval-Augmented Generation).
 
 Arquitectura del servicio:
 
     SimilarityService (Orquestador)
-    ├─> DocumentRetriever: Obtención de documentos (Milvus + Fallback BD)
+    ├─> DocumentRetriever: Obtención de documentos (Qdrant + Fallback BD)
     ├─> SummaryGenerator: Generación de resúmenes con LLM + Reintentos
     ├─> ResponseParser: Parseo y reparación de respuestas LLM
     ├─> DocumentoService: Acceso a metadatos en BD
@@ -19,7 +19,7 @@ Modos de búsqueda soportados:
 
     1. **Búsqueda por descripción** (modo="descripcion"):
        └─> Usuario escribe consulta en lenguaje natural
-           └─> Embedding de consulta → Búsqueda vectorial en Milvus
+           └─> Embedding de consulta → Búsqueda vectorial en Qdrant
                └─> DynamicJusticIARetriever con top_k y threshold
                    └─> Retorna documentos más similares semánticamente
 
@@ -90,7 +90,7 @@ Metadata incluida en resultados:
     - document_name: Nombre del archivo original
     - content_preview: Primeros 500 caracteres del contenido
     - similarity_score: Score de similitud (0.0-1.0)
-    - metadata: Metadata completa de Milvus (timestamps, chunks, etc.)
+    - metadata: Metadata completa de Qdrant (timestamps, chunks, etc.)
 
 Separación de responsabilidades:
 
@@ -102,7 +102,7 @@ Separación de responsabilidades:
 
     **DocumentRetriever**:
     - Obtención de documentos con fallback
-    - Integración con Milvus/BD
+    - Integración con Qdrant/BD
 
     **SummaryGenerator**:
     - Generación de resúmenes con LLM
@@ -129,7 +129,7 @@ Integración con RAG:
 Performance esperada:
 
     Búsqueda por descripción:
-    - ~200-500ms (búsqueda vectorial Milvus)
+    - ~200-500ms (búsqueda vectorial Qdrant)
 
     Búsqueda por expediente:
     - ~300-700ms (búsqueda híbrida + filtros BD)
@@ -141,7 +141,7 @@ Performance esperada:
 Manejo de errores:
 
     - ValueError: Parámetros inválidos, documentos no encontrados
-    - Exception genérica: Errores del LLM, Milvus, BD
+    - Exception genérica: Errores del LLM, Qdrant, BD
     - Logging detallado para debugging
 
 Example:
@@ -166,7 +166,7 @@ Example:
     >>> print(resumen_response.resumen_ia.palabras_clave)
 
 Note:
-    - Las búsquedas requieren que los documentos estén vectorizados en Milvus
+    - Las búsquedas requieren que los documentos estén vectorizados en Qdrant
     - La generación de resumen requiere que el expediente tenga documentos procesados
     - Los scores de similitud son normalizados (0.0-1.0)
     - La precisión promedio se calcula como porcentaje (0-100)
@@ -176,7 +176,7 @@ Ver también:
     - app.services.busqueda_similares.summary_generator: Generación con LLM
     - app.services.busqueda_similares.response_parser: Parseo de respuestas
     - app.services.RAG.retriever: DynamicJusticIARetriever
-    - app.vectorstore.vectorstore: search_similar_expedients
+    - app.vectorstore: get_vectorstore_backend().search_similar_expedients
 
 Authors:
     Roger Calderón Urbina
@@ -322,9 +322,9 @@ class SimilarityService:
         if not expedient_id:
             raise ValueError("numero_expediente es requerido")
 
-        from app.vectorstore.vectorstore import search_similar_expedients
+        from app.vectorstore import get_vectorstore_backend
 
-        similar_docs = await search_similar_expedients(
+        similar_docs = await get_vectorstore_backend().search_similar_expedients(
             expedient_id=expedient_id,
             top_k=request.limite or 30,
             score_threshold=request.umbral_similitud,

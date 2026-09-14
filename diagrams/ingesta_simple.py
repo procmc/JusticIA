@@ -37,7 +37,7 @@ with Diagram(
     tika = Custom("Tika\n\nPDF, Word, RTF", "/diagrams/icons/tika.svg.png")
     whisper = Custom("Whisper\n\nAudio MP3/WAV", "/diagrams/icons/openai.png")
     embedder = Custom("Embeddings\n\nBGE-M3", "/diagrams/icons/bge.jpeg")
-    storage = Custom("Storage\n\nMilvus + Azure SQL", "/diagrams/icons/milvus.png")
+    storage = Custom("Storage\n\nQdrant + SQL Server", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     
     # Flujo simplificado
     usuario >> Edge(label=" 1. Sube archivo ", color="#2563eb", style="bold", fontsize="10") >> upload

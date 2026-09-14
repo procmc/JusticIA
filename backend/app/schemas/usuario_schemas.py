@@ -39,7 +39,7 @@ class UsuarioRespuesta(BaseModel):
     CT_Nombre_usuario: str
     CT_Nombre: str
     CT_Apellido_uno: str
-    CT_Apellido_dos: str  # Requerido
+    CT_Apellido_dos: Optional[str] = None  # Nullable en BD (T_Usuario.CT_Apellido_dos)
     CT_Correo: str
     CT_Avatar_ruta: Optional[str] = None  # Ruta de la imagen de perfil
     CT_Avatar_tipo: Optional[str] = None  # Tipo de avatar preferido

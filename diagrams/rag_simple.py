@@ -35,7 +35,7 @@ with Diagram(
     api = Fastapi("API\n\nRAG Router")
     rag_service = Python("RAG Service\n\nLangChain")
     retriever = Python("Retriever\n\nVector Search")
-    milvus = Custom("Milvus\n\nDocumentos", "/diagrams/icons/milvus.png")
+    qdrant = Custom("Qdrant\n\nDocumentos", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
     llm = Custom("LLM\n\ngpt-oss-120B", "/diagrams/icons/ollama.png")
     
     # Flujo simplificado
@@ -43,8 +43,8 @@ with Diagram(
     chat_ui >> Edge(label=" 2. POST /consulta ", color="#1976d2", style="bold", fontsize="10") >> api
     api >> Edge(label=" 3. Invoca RAG ", color="#7b1fa2", style="bold", fontsize="10") >> rag_service
     rag_service >> Edge(label=" 4. Busca contexto ", color="#0288d1", fontsize="10") >> retriever
-    retriever >> Edge(label=" 5. Query vectorial ", color="#c2185b", fontsize="10") >> milvus
-    milvus >> Edge(label=" 6. Documentos relevantes ", color="#c2185b", style="dashed", fontsize="9") >> retriever
+    retriever >> Edge(label=" 5. Query vectorial ", color="#c2185b", fontsize="10") >> qdrant
+    qdrant >> Edge(label=" 6. Documentos relevantes ", color="#c2185b", style="dashed", fontsize="9") >> retriever
     retriever >> Edge(label=" 7. Contexto ", color="#388e3c", fontsize="10") >> rag_service
     rag_service >> Edge(label=" 8. Prompt + Contexto ", color="#388e3c", style="bold", fontsize="10") >> llm
     llm >> Edge(label=" 9. Respuesta generada ", color="#f57f17", style="bold", fontsize="10") >> rag_service

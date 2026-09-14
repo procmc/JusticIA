@@ -7,14 +7,14 @@ de los documentos desde la carga hasta el almacenamiento vectorial.
 
 Responsabilidades:
     * Registrar inicio, progreso y finalización de ingestas
-    * Registrar almacenamiento exitoso en Milvus (vectorstore)
+    * Registrar almacenamiento exitoso en Qdrant (vectorstore)
     * Registrar errores y cancelaciones de procesamiento
     * Asociar registros con usuario, expediente y documento
 
 Fases del proceso de ingesta registradas:
     * "inicio": Documento recibido, iniciando procesamiento
     * "completado": Procesamiento exitoso, documento almacenado
-    * "vectorstore_exitoso": Chunks almacenados en Milvus
+    * "vectorstore_exitoso": Chunks almacenados en Qdrant
     * "cancelado": Procesamiento cancelado por usuario
     * "error": Error durante procesamiento
 
@@ -156,7 +156,7 @@ class IngestaAuditService:
         fase: str = "vectorstore_exitoso"
     ) -> Optional[T_Bitacora]:
         """
-        Registra el almacenamiento exitoso de documentos en Milvus (vectorstore).
+        Registra el almacenamiento exitoso de documentos en Qdrant (vectorstore).
         
         Args:
             db: Sesión de base de datos
