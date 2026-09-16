@@ -21,3 +21,19 @@ Registro_Indicaciones_2026/
 .claude/
 antigravity-instructions.md
 prompt-inicial-antigravity.md
+
+# ---------------------------------------------------------------------------
+# Documentos de expedientes: NO se versionan.
+#
+# Motivo (16/09/2026): contenian datos personales reales de 266 expedientes
+# judiciales (87 penales, 13 de familia) en un repositorio PUBLICO. Ver
+# Registro_Indicaciones_2026/24_Hallazgo_Datos_Personales_Repositorio_Publico.md
+#
+# Marco normativo: Art. 37 del "Reglamento para el Tratamiento de los Datos
+# Personales contenidos en Bases de Datos de acceso publico del Poder
+# Judicial" (Corte Plena, sesion 33-2024) y Ley 8968.
+#
+# El material de prueba de la ingesta debe ser sintetico o anonimizado, o
+# normativa publica (leyes, decretos) que no contenga datos de personas.
+# ---------------------------------------------------------------------------
+/backend/uploads/
