@@ -70,7 +70,8 @@ def partir_por_valle(perfil: np.ndarray, a: int, b: int, partes: int
     return [(cortes[i], cortes[i + 1]) for i in range(partes)]
 
 
-def recorte_horizontal(tinta_linea: np.ndarray, ancho: int
+def recorte_horizontal(tinta_linea: np.ndarray, ancho: int,
+                       zona_margen: int = 0, hueco_numero: int = 28
                        ) -> tuple[int, int]:
     """
     Devuelve (izq, der) de la línea, descartando el número de renglón.
@@ -101,6 +102,27 @@ def recorte_horizontal(tinta_linea: np.ndarray, ancho: int
         if (b0 - a0) < 90 and (a1 - b0) > 30:
             return int(a1) - 10, int(activas[-1]) + 10
 
+    # Regla de respaldo: el número puede quedar pegado al texto (hueco de
+    # ~30 px) y entonces la detección por bloques lo mete en el primer
+    # bloque. Se busca el HUECO MÁS ANCHO dentro de la zona del margen: si
+    # supera el umbral, es la separación entre el número y el texto.
+    if zona_margen > 0:
+        limite = min(int(activas[0]) + zona_margen, len(cols))
+        vacias = cols[:limite] == 0
+        mejor_ancho, mejor_fin = 0, None
+        x = int(activas[0])
+        while x < limite:
+            if vacias[x]:
+                ini = x
+                while x < limite and vacias[x]:
+                    x += 1
+                if (x - ini) > mejor_ancho:
+                    mejor_ancho, mejor_fin = x - ini, x
+            else:
+                x += 1
+        if mejor_fin is not None and mejor_ancho >= hueco_numero:
+            return int(mejor_fin) - 8, int(activas[-1]) + 10
+
     return int(activas[0]) - 10, int(activas[-1]) + 10
 
 
@@ -121,6 +143,11 @@ def main() -> None:
                     help="cuánto más oscura que el papel debe ser la tinta")
     ap.add_argument("--salida", default="dataset/muestras_propias")
     ap.add_argument("--prefijo", default="hoja")
+    ap.add_argument("--zona-numero", type=int, default=0,
+                    help="px desde el inicio de la tinta donde buscar el "
+                         "número de renglón para descartarlo (0 = no buscar)")
+    ap.add_argument("--hueco-numero", type=int, default=28,
+                    help="hueco mínimo que separa el número del texto")
     args = ap.parse_args()
 
     ruta = Path(args.foto)
@@ -183,7 +210,9 @@ def main() -> None:
             relleno = 6
             arriba = max(ya - relleno, 0)
             abajo = min(yb + relleno, recorte.height)
-            izq, der = recorte_horizontal(tinta[arriba:abajo], recorte.width)
+            izq, der = recorte_horizontal(
+                tinta[arriba:abajo], recorte.width,
+                zona_margen=args.zona_numero, hueco_numero=args.hueco_numero)
             izq = max(izq, 0)
             der = min(der, recorte.width)
             linea = recorte.crop((izq, arriba, der, abajo))

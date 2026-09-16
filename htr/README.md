@@ -17,11 +17,11 @@ de celular), con Ollama detenido para liberar la GPU:
 
 | # | Modelo | Param | **CER** | WER | s/línea | VRAM |
 |:-:|---|---:|---:|---:|---:|---:|
-| 🥇 | **`microsoft/trocr-large-handwritten`** | 558M | **0.2868** | 0.8690 | 0.198 | 2.12 GB |
-| 🥈 | `qantev/trocr-large-spanish` | 609M | 0.3857 | 0.7738 | 0.378 | 2.32 GB |
-| 🥉 | `microsoft/trocr-base-handwritten` | 334M | 0.3953 | 0.9762 | 0.168 | 1.29 GB |
-| 4 | `ifesther/trocr-spanish-handwritten` | 334M | 0.6453 | 0.9048 | 0.339 | 1.29 GB |
-| 5 | `qantev/trocr-base-spanish` | 385M | 0.6647 | 0.9643 | 0.338 | 1.49 GB |
+| 🥇 | **`microsoft/trocr-large-handwritten`** | 558M | **0.2771** | 0.8333 | 0.271 | 2.12 GB |
+| 🥈 | `microsoft/trocr-base-handwritten` | 334M | 0.3934 | 0.9405 | 0.199 | 1.29 GB |
+| 🥉 | `qantev/trocr-large-spanish` | 609M | 0.4031 | 0.8214 | 0.324 | 2.32 GB |
+| 4 | `qantev/trocr-base-spanish` | 385M | 0.6260 | 0.9286 | 0.298 | 1.49 GB |
+| 5 | `ifesther/trocr-spanish-handwritten` | 334M | 0.6570 | 0.9286 | 0.365 | 1.29 GB |
 
 Los cinco tienen **licencia MIT**. El resultado se repitió en dos
 escrituras independientes del mismo texto.
@@ -253,20 +253,20 @@ fondo más oscuro que la tinta, rasgos descendentes que unen renglones
 contiguos, y texto que toca el borde de la foto. Cae en el alcance del
 **Ciclo 2** (preprocesamiento).
 
-**6. 🔴 Bug abierto: los números de renglón se filtran.** En algunos
+**6. ✅ RESUELTO — los números de renglón se filtraban.** En algunos
 recortes el número del cuaderno queda pegado al texto (hueco de ~30 px) y
 la detección por bloques no lo separa. El modelo lee `IL`, `13`, `15` y
 cuenta como error. **Afecta a los 5 modelos por igual, así que el ranking
-es válido**, pero los CER absolutos están inflados unos 5–7 puntos: el
-valor real de `large_en` probablemente esté cerca de **0.24–0.25**.
+era válido**, pero los CER estaban inflados. Corregido con la regla del
+hueco más ancho en el margen más recorte individual de las dos líneas
+rebeldes: el CER de `large_en` pasó de 0.2868 a **0.2771**.
 
-**7. ⚠️ HTR y Ollama no caben juntos con holgura.** Medido con
-`nvidia-smi`: el servidor HTR retiene **~2.45 GB netos**, Ollama con
-`llama3.1:8b` ~5.5 GB. Suma **~7.95 GB de 8 GB**, sin margen para picos.
-Si Ollama pierde, el chat vuelve a CPU (~5 min por respuesta). Hay que
-resolverlo **antes** de dejar el HTR en el `docker-compose.yml` principal
-con `restart: unless-stopped`. Opciones en
-`integracion_backend/PASOS_INTEGRACION.md`.
+**7. ✅ RESUELTO — HTR y Ollama compartiendo la GPU.** El HTR retiene
+~2.1 GB y Ollama ~5.5 GB: 7.6 GB de 8, sin margen. Se resolvió con
+**intercambio por inactividad**: cada servicio devuelve la VRAM cuando
+queda sin uso (`HTR_IDLE_TIMEOUT=120` y `OLLAMA_KEEP_ALIVE=2m`). Medido:
+la GPU baja de 2,602 a 440 MiB al quedar inactiva, y el traslado de vuelta
+cuesta ~0.02 s. Detalle en `integracion_backend/PASOS_INTEGRACION.md`.
 
 ---
 
@@ -280,10 +280,11 @@ con `restart: unless-stopped`. Opciones en
 - [x] **5 modelos evaluados; modelo elegido y justificado**
 - [x] Servidor HTTP con GPU, probado de punta a punta
 - [x] Cliente y pasos de integración redactados
-- [ ] Corregir el bug de los números de renglón y volver a medir
+- [x] Bug de los números de renglón corregido; CER limpio **0.2771**
 - [ ] Muestras de varios escritores
-- [ ] Aplicar los 6 pasos de integración al backend
-- [ ] Resolver el conflicto de VRAM
+- [x] **Integración al backend aplicada y verificada** (16/09)
+- [x] **Conflicto de VRAM resuelto** — intercambio por inactividad
+      (`HTR_IDLE_TIMEOUT` + `OLLAMA_KEEP_ALIVE`)
 - [ ] Fine-tuning con LoRA (Ciclo 4)
 
 > Documentación: `Registro_Indicaciones_2026/` docs **20** (criterios y

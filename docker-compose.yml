@@ -14,9 +14,11 @@ services:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379
       - TIKA_SERVER_URL=http://tika:9998
+      - HTR_SERVER_URL=http://servidor-htr:9100
     depends_on:
       - redis
       - tika
+      - servidor-htr
     restart: unless-stopped
     deploy:
       resources:
@@ -40,9 +42,11 @@ services:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379
       - TIKA_SERVER_URL=http://tika:9998
+      - HTR_SERVER_URL=http://servidor-htr:9100
     depends_on:
       - redis
       - tika
+      - servidor-htr
       - backend
     restart: unless-stopped
     mem_limit: 8G  # Modelo embeddings (~3GB) + Audio chunks (~2GB) + overhead
@@ -94,6 +98,11 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      # Devuelve la VRAM tras 2 min sin uso. Es la contraparte del
+      # intercambio: el servidor de HTR hace lo mismo (HTR_IDLE_TIMEOUT),
+      # así ninguno de los dos expulsa al otro de la GPU. Ver doc 22.
+      - OLLAMA_KEEP_ALIVE=2m
     restart: unless-stopped
     deploy:
       resources:
@@ -125,8 +134,45 @@ services:
     profiles:
       - tools  # Solo se ejecuta cuando se especifica: docker-compose --profile tools up diagrams
 
+  # Servidor de HTR - reconocimiento de escritura a mano alzada (Fase 4).
+  # Mismo patron que Tika: contenedor propio que el backend consume por
+  # HTTP. Es el unico servicio, junto con Ollama, que necesita GPU.
+  #
+  # Modelo elegido en el Ciclo 1 (doc 22): trocr-large-handwritten,
+  # CER 0.2771 sobre letra humana real.
+  #
+  # HTR_IDLE_TIMEOUT: segundos sin peticiones antes de devolver la GPU.
+  # Junto con OLLAMA_KEEP_ALIVE implementa el intercambio de GPU entre
+  # ambos servicios (2.1 GB del HTR + 5.5 GB de Ollama = 7.6 GB de 8 GB:
+  # entra, pero sin margen, asi que conviene que cada uno libere al
+  # quedar inactivo).
+  servidor-htr:
+    build:
+      context: ./htr
+      dockerfile: Dockerfile
+    command: uvicorn servidor_htr:app --host 0.0.0.0 --port 9100
+    ports:
+      - "9100:9100"
+    volumes:
+      - ./htr:/htr
+      - htr_hf_cache:/cache/huggingface
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HF_HOME=/cache/huggingface
+      - HTR_MODELO=microsoft/trocr-large-handwritten
+      - HTR_IDLE_TIMEOUT=120
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
 volumes:
   redis_data:
   sqlserver_data:
   ollama_data:
   qdrant_data:
+  htr_hf_cache:

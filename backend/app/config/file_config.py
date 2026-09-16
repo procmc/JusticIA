@@ -22,7 +22,9 @@ ALLOWED_FILE_TYPES = {
 MAX_FILE_SIZE = 1024 * 1024 * 1024
 
 # Extensiones permitidas
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a']
+# Las imágenes (.jpg, .png, .tif, .bmp) se agregaron en el Ciclo 1 de la
+# Fase 4: se procesan con HTR (reconocimiento de manuscrito), no con Tika.
+ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
 
 # Mapeo de extensiones a códigos numéricos para Qdrant
 FILE_TYPE_CODES = {
@@ -37,5 +39,12 @@ FILE_TYPE_CODES = {
     '.mp3': 10,
     '.wav': 11,
     '.ogg': 12,
-    '.m4a': 13
+    '.m4a': 13,
+    # Imágenes manuscritas, procesadas con HTR (Fase 4, Ciclo 1)
+    '.jpg': 20,
+    '.jpeg': 20,
+    '.png': 21,
+    '.tif': 22,
+    '.tiff': 22,
+    '.bmp': 23
 }

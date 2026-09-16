@@ -1,95 +1,103 @@
-# Integración del HTR al backend — pasos para aplicar a mano
+# Integración del HTR al backend — **APLICADA** el 16/09/2026
 
-> Estos cambios tocan `backend/**` y `docker-compose.yml`, que se editan a
-> mano por decisión de trabajo. Acá están los fragmentos exactos.
+> Segunda mitad del **Ciclo 1** de la Fase 4 (cronograma: 28/09–01/10),
+> completada el 16/09 — doce días antes de su fecha de inicio.
 >
-> Corresponde a la **segunda mitad del Ciclo 1** (28/09–01/10):
-> *"Integrar el modelo elegido al flujo y documentar"*.
+> Este documento era la lista de pasos a aplicar; ahora es el **registro de
+> lo aplicado**, para poder auditarlo o revertirlo.
 
 ---
 
-## Paso 1 · Mover el cliente
+## Arquitectura: el HTR es infraestructura, no un microservicio
 
-```
-htr/integracion_backend/htr_service.py
-        ->  backend/app/services/ingesta/htr_service.py
-```
+El servicio sigue **el mismo patrón que Apache Tika** en este proyecto:
+contenedor propio que el backend consume por HTTP. No contradice la
+decisión de mantener el monolito modular ([doc 21](../../Registro_Indicaciones_2026/21_Aclaracion_Arquitectura_Monolito_vs_Microservicios.md)):
+igual que Tika, Qdrant, Redis u Ollama, es infraestructura que la
+aplicación consume, no una pieza del dominio propio.
 
-Queda al lado de `tika_service.py`, que es su modelo.
+Tres razones concretas para que sea servicio aparte:
 
-## Paso 2 · `backend/app/config/config.py`
+1. **GPU:** es el único contenedor, junto con Ollama, que la necesita. El
+   backend y el celery-worker siguen sin GPU.
+2. **Costo de carga:** el modelo tarda 60–150 s en cargar. Acá se paga una
+   vez al arrancar, no en cada proceso ni en cada worker de Celery.
+3. **Dependencias:** `torch` + `transformers` pesan ~3 GB. Mantenerlos
+   fuera deja liviana la imagen del backend.
 
-Agregar junto a `TIKA_SERVER_URL` (línea 19):
+---
+
+## Los seis cambios aplicados
+
+### 1 · `backend/app/services/ingesta/htr_service.py` — **nuevo**
+
+Cliente HTTP calcado de `tika_service.py`: misma forma, mismo estilo,
+configuración por variable de entorno, `is_available()`, reintentos y
+logging.
+
+Detalle propio del HTR: `is_available()` no se conforma con que el
+servidor responda — consulta `/salud` y verifica el campo `listo`, porque
+el servicio acepta conexiones **antes** de terminar de cargar el modelo.
+
+### 2 · `backend/app/config/config.py`
+
+Agregado junto a `TIKA_SERVER_URL`:
 
 ```python
-HTR_SERVER_URL = os.getenv("HTR_SERVER_URL", "http://servidor-htr:9100")
+HTR_SERVER_URL = os.getenv("HTR_SERVER_URL", "http://localhost:9100")
 HTR_TIMEOUT = int(os.getenv("HTR_TIMEOUT", "300"))
 ```
 
-## Paso 3 · `backend/app/config/file_config.py` línea 25
+### 3 · `backend/app/config/file_config.py`
 
-Habilitar imágenes. **Antes:**
+`ALLOWED_EXTENSIONS` ahora acepta imágenes:
 
 ```python
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a']
+..., '.m4a', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
 ```
 
-**Después:**
+Y `FILE_TYPE_CODES` recibió sus códigos para Qdrant — **esto es fácil de
+olvidar** y sin ello la metadata del vector queda sin tipo de archivo:
 
 ```python
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
+'.jpg': 20, '.jpeg': 20, '.png': 21,
+'.tif': 22, '.tiff': 22, '.bmp': 23
 ```
 
-## Paso 4 · `backend/app/services/ingesta/file_management/document_processor.py`
+### 4 · `backend/app/services/ingesta/file_management/document_processor.py`
 
-En `extract_text_from_file()` (línea ~594), **después** de la rama de
-audio y **antes** de la de Tika:
+Se agregó `import asyncio` al bloque de imports (no estaba), y la rama de
+HTR en `extract_text_from_file()`:
 
 ```python
-    # Imágenes: reconocimiento de manuscrito (HTR) en su propio servicio
+    # Imágenes: reconocimiento de escritura a mano (HTR) en su propio servicio.
+    #
+    # IMPORTANTE: esta rama va ANTES de la de Tika. Tika también acepta
+    # imágenes y las procesaría con Tesseract, que lee texto impreso pero
+    # NO manuscrito. Si esta rama quedara después, nunca se ejecutaría.
     if file_extension in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']:
         from app.services.ingesta.htr_service import htr_service
-        return htr_service.extract_text(content, filename)
+        return await asyncio.to_thread(htr_service.extract_text, content, filename)
 ```
 
-> **Ojo con el orden.** Tiene que ir *antes* de la rama de Tika: Tika
-> también acepta imágenes y las procesaría con Tesseract, que **no lee
-> manuscrito**. Si queda después, nunca se ejecuta.
+Dos decisiones ahí:
 
-## Paso 5 · `docker-compose.yml` (el principal)
+* **El orden importa.** Va después de la rama de audio y antes de la de
+  Tika, por el motivo del comentario.
+* **`asyncio.to_thread`** porque `htr_service.extract_text` usa `requests`,
+  que es bloqueante. Llamarlo directo dentro de una función `async`
+  frenaría el bucle de eventos durante toda la inferencia.
 
-Agregar el servicio, y `depends_on` en `backend` y `celery-worker`:
+### 5 · `docker-compose.yml` (el principal)
 
-```yaml
-  servidor-htr:
-    build: ./htr
-    command: uvicorn servidor_htr:app --host 0.0.0.0 --port 9100
-    ports:
-      - "9100:9100"
-    volumes:
-      - ./htr:/htr
-      - htr_hf_cache:/cache/huggingface
-    environment:
-      - HF_HOME=/cache/huggingface
-      - PYTHONUNBUFFERED=1
-      - HTR_MODELO=qantev/trocr-large-spanish
-    restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-```
+Se agregó el servicio `servidor-htr` con reserva de GPU y volumen
+`htr_hf_cache` para los pesos descargados. Además:
 
-Y en `volumes:` del final:
+* `backend` y `celery-worker` recibieron `HTR_SERVER_URL=http://servidor-htr:9100`
+  y `servidor-htr` en su `depends_on`.
+* **`ollama` recibió `OLLAMA_KEEP_ALIVE=2m`** — ver la sección de VRAM.
 
-```yaml
-  htr_hf_cache:
-```
-
-## Paso 6 · `backend/.env`
+### 6 · `backend/.env`
 
 ```
 HTR_SERVER_URL=http://servidor-htr:9100
@@ -98,55 +106,118 @@ HTR_TIMEOUT=300
 
 ---
 
-## ⚠️ Antes de aplicar el paso 5: el problema de la VRAM
+## ⚡ La VRAM: intercambio por inactividad
 
-Medición real con `nvidia-smi`, servidor HTR cargado con
-`trocr-large-spanish`:
+El problema medido: el HTR retiene **~2.1 GB** y Ollama con `llama3.1:8b`
+**~5.5 GB**. Suma **7.6 GB de 8 GB** — entra, pero sin margen para picos.
+Si uno expulsa al otro y le toca a Ollama, el chat vuelve a CPU: ~5
+minutos por respuesta, el problema que se corrigió el 10/09.
 
-| | VRAM |
-|---|---|
-| Base del sistema (sin nada cargado) | ~0.35 GB |
-| Total con el servidor HTR arriba | **2.80 GB** |
-| → neto del HTR | **~2.45 GB** |
-| Ollama con `llama3.1:8b` | ~5.5 GB |
-| **Suma** | **~7.95 GB de 8 GB** |
+**Solución adoptada: repartir la GPU en el tiempo, no en el espacio.**
+Cada servicio la devuelve cuando queda inactivo.
 
-Queda **al filo**: entra sobre el papel, sin margen para ningún picoded
-de inferencia. Cualquier imagen grande o un contexto largo en el chat
-puede producir un *out of memory*.
-
-Y el riesgo concreto: si Ollama es el que pierde, el chat vuelve a caer a
-CPU — los ~5 minutos por respuesta que se corrigieron el 10/09.
-
-> Nota: el contador interno de torch reporta 3.43 GB porque cuenta
-> memoria *reservada* además de la asignada. El valor que importa para
-> esta cuenta es el de `nvidia-smi`.
-
-Opciones, en orden de preferencia:
-
-| Opción | Cómo | Costo |
+| Servicio | Mecanismo | Valor |
 |---|---|---|
-| **Modelo base en vez de large** | `HTR_MODELO=qantev/trocr-base-spanish` (~1.5 GB) | Peor CER; medir primero |
-| **HTR en CPU** | Quitar la reserva de GPU del servicio | ~10-20× más lento, pero la ingesta es asíncrona (Celery) y puede tolerarlo |
-| **Descarga por inactividad** | Liberar el modelo tras N minutos sin uso | Hay que programarlo |
-| **Levantar el HTR solo cuando se necesita** | `docker compose up servidor-htr` a demanda | Manual, sirve para demos |
+| `servidor-htr` | `HTR_IDLE_TIMEOUT` — mueve el modelo a CPU y libera la VRAM | 120 s |
+| `ollama` | `OLLAMA_KEEP_ALIVE` — descarga el modelo | 2 m |
 
-**Para las demos**, lo más simple y seguro: dejar el HTR **apagado** por
-defecto y levantarlo únicamente cuando se vaya a mostrar la ingesta de
-manuscrito.
+Descartada la alternativa de repartir **un** modelo entre GPU y CPU
+(*offloading* por capas): obligaría a mover pesos en medio de cada
+inferencia y sería mucho más lento que el traslado completo.
 
-Esta restricción hay que resolverla **antes** de dejar el HTR en el
-`docker-compose.yml` principal con `restart: unless-stopped`.
+### Medición del intercambio
 
-## Prueba de la integración
+| Momento | VRAM ocupada | Dispositivo |
+|---|---:|---|
+| Modelo cargado | 2,602 MiB | `cuda` |
+| Tras el timeout de inactividad | **440 MiB** | `cpu` |
+| Al llegar una petición | 2,634 MiB | `cuda` |
+
+Costo del traslado: **~0.02 s**. La primera petición tras un período
+inactivo tardó 0.15 s contra 0.133 s de la siguiente — es decir, el
+intercambio es prácticamente gratis, porque mover 558M parámetros de RAM
+a VRAM por PCIe es rápido.
+
+El estado se puede consultar en vivo:
 
 ```bash
-# 1. Servidor arriba y modelo cargado
+curl http://localhost:9100/salud
+# {"listo":true,"dispositivo":"cuda","idle_timeout_s":120,
+#  "segundos_sin_uso":2.4,"vram_libre_GB":4.79,...}
+```
+
+---
+
+## Verificación realizada
+
+```bash
+# 1. Los 8 contenedores arriba
+docker compose ps
+
+# 2. El servidor cargó el modelo
 curl http://localhost:9100/salud
 
-# 2. Reconocimiento directo
-curl -X POST --data-binary @foto.jpg http://localhost:9100/htr
+# 3. El backend ve la configuración
+docker compose exec backend python -c "
+from app.config.config import HTR_SERVER_URL
+from app.config.file_config import ALLOWED_EXTENSIONS, FILE_TYPE_CODES
+print(HTR_SERVER_URL, '.jpg' in ALLOWED_EXTENSIONS, FILE_TYPE_CODES['.jpg'])"
 
-# 3. Por el flujo real: subir una imagen desde el frontend y revisar
-#    que el texto llegue a Qdrant y aparezca en el chat RAG.
+# 4. El cliente alcanza el servidor por la red de Docker
+docker compose exec backend python -c "
+from app.services.ingesta.htr_service import htr_service
+print(htr_service.is_available())"
+
+# 5. El flujo real: extract_text_from_file() con una imagen
+docker compose exec backend python -c "
+import asyncio
+from app.services.ingesta.file_management.document_processor import extract_text_from_file
+async def m():
+    with open('/app/uploads/foto.jpg','rb') as f: c=f.read()
+    print(await extract_text_from_file(c, 'foto.jpg', 'image/jpeg'))
+asyncio.run(m())"
 ```
+
+**Resultado:** los cinco pasos pasaron. El paso 5 con una línea ya
+recortada devolvió exactamente el mismo texto que la evaluación aislada
+(`" American Eltering impiscurable vence` para
+`¡Atención! El término improrrogable vence`), lo que confirma que la
+cadena es **fiel**: mismo modelo, mismo resultado, ahora accesible desde
+el backend.
+
+---
+
+## ⚠️ Limitación conocida: la segmentación
+
+Con una **foto de página completa**, el servidor devolvió 11 líneas de las
+cuales varias son basura (`1934`, `1961 62m.`). La segmentación integrada
+en `servidor_htr.py` es deliberadamente simple y tropieza con:
+
+* fondo brillante o cargado (en la prueba, un teclado retroiluminado),
+* la espiral del cuaderno,
+* los renglones impresos del papel,
+* oraciones que ocupan dos renglones.
+
+**Esto es alcance del Ciclo 2** ("Investigar preprocesamiento: deskew,
+denoise, segmentación"). Con la línea ya recortada el resultado es
+correcto, así que **el problema está en la segmentación, no en la
+integración ni en el modelo**.
+
+Mientras tanto, `htr/partir_bandas.py` y `htr/recortar_lineas.py` hacen un
+trabajo mucho mejor que la versión embebida; consolidar esa lógica dentro
+del servidor es la tarea natural del Ciclo 2.
+
+---
+
+## Cómo revertir
+
+```bash
+git diff HEAD~1 -- backend/ docker-compose.yml   # ver qué cambió
+git checkout HEAD~1 -- backend/app/config/config.py \
+    backend/app/config/file_config.py \
+    backend/app/services/ingesta/file_management/document_processor.py \
+    docker-compose.yml
+rm backend/app/services/ingesta/htr_service.py
+```
+
+Y quitar las dos líneas de `HTR_*` de `backend/.env`.

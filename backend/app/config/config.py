@@ -18,6 +18,12 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 # Configuración Tika para procesamiento de documentos
 TIKA_SERVER_URL = os.getenv("TIKA_SERVER_URL", "http://localhost:9998")
 
+# Configuración HTR (reconocimiento de escritura a mano) para imágenes
+# manuscritas. Corre en su propio contenedor, igual que Tika, porque es el
+# único servicio que necesita GPU. Ver doc 22.
+HTR_SERVER_URL = os.getenv("HTR_SERVER_URL", "http://localhost:9100")
+HTR_TIMEOUT = int(os.getenv("HTR_TIMEOUT", "300"))
+
 # Configuración SQL Server
 SQL_SERVER_HOST = os.getenv("SQL_SERVER_HOST", "")
 SQL_SERVER_PORT = os.getenv("SQL_SERVER_PORT", "1433")

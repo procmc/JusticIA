@@ -75,6 +75,7 @@ Version:
 """
 import os
 import uuid
+import asyncio
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -595,20 +596,30 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     """
     Extrae texto de diferentes tipos de archivos:
     - Audio (MP3, WAV, OGG, M4A): Transcripción con Whisper
+    - Imágenes (JPG, PNG, TIF, BMP): Reconocimiento de manuscrito con HTR
     - Otros formatos (PDF, DOC, DOCX, RTF, TXT, HTML, etc.): Apache Tika Server con Tesseract OCR integrado
-    
+
     Nota: Tika Server tiene Tesseract OCR configurado para extraer texto de PDFs escaneados automáticamente.
     """
     file_extension = Path(filename).suffix.lower()
-    
+
     # Verificar cancelación antes de procesar
     if cancel_check:
         cancel_check()
-    
+
     # Archivos de audio se procesan con Whisper
     if file_extension in ['.mp3', '.wav', '.ogg', '.m4a']:
         return await extract_text_from_audio_whisper(content, filename, cancel_check)
-    
+
+    # Imágenes: reconocimiento de escritura a mano (HTR) en su propio servicio.
+    #
+    # IMPORTANTE: esta rama va ANTES de la de Tika. Tika también acepta
+    # imágenes y las procesaría con Tesseract, que lee texto impreso pero
+    # NO manuscrito. Si esta rama quedara después, nunca se ejecutaría.
+    if file_extension in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']:
+        from app.services.ingesta.htr_service import htr_service
+        return await asyncio.to_thread(htr_service.extract_text, content, filename)
+
     # Los demás formatos con Tika Server (con OCR integrado)
     try:
         import chardet

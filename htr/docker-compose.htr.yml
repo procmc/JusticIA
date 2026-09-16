@@ -40,7 +40,10 @@ services:
     environment:
       - HF_HOME=/cache/huggingface
       - PYTHONUNBUFFERED=1
-      - HTR_MODELO=${HTR_MODELO:-qantev/trocr-large-spanish}
+      # Modelo elegido en el Ciclo 1 (doc 22): CER 0.2771 sobre letra real
+      - HTR_MODELO=${HTR_MODELO:-microsoft/trocr-large-handwritten}
+      # Segundos sin uso antes de devolver la GPU (0 = nunca devolverla)
+      - HTR_IDLE_TIMEOUT=${HTR_IDLE_TIMEOUT:-120}
     deploy:
       resources:
         reservations:
