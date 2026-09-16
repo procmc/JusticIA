@@ -1,0 +1,28 @@
+# SET DE PRUEBA — texto para escribir a mano alzada
+#
+# Estas 16 oraciones NO están en el corpus de entrenamiento: el set de
+# prueba tiene que ser independiente, o la medición del CER no vale.
+#
+# Cobertura deliberada de caracteres que el modelo base en inglés no
+# conoce: ñ, á, é, í, ó, ú, ü, ¿, ¡, más dígitos y puntuación.
+#
+# Formato: <estilo>|<numero>|<texto exacto>
+# El estilo importa: la mitad en imprenta y la mitad en cursiva es lo que
+# decide la elección del modelo (ver doc 22, seccion 6).
+
+imprenta|01|El señor juez ordenó la práctica de la diligencia el próximo martes.
+imprenta|02|La antigüedad del trabajador se computa desde el año 2019.
+imprenta|03|¿Cuál es el régimen jurídico aplicable a esta gestión?
+imprenta|04|Se acreditó la personería mediante certificación número 4872.
+imprenta|05|El daño ocasionado a la compañía fue valorado por el perito.
+imprenta|06|La enseñanza del procedimiento exige estudiar la jurisprudencia.
+imprenta|07|¡Atención! El término improrrogable vence el viernes 30 de octubre.
+imprenta|08|El título inscrito consta al folio 315 del Registro Nacional.
+cursiva|09|La notificación se practicó en el domicilio señalado por la parte.
+cursiva|10|El plazo vence el 28 de noviembre, según el cómputo del despacho.
+cursiva|11|Se previene al recurrente subsanar los defectos advertidos.
+cursiva|12|La mañana del lunes se recibió la declaración del testigo.
+cursiva|13|¿Se cumplió el trámite de agotamiento de la vía administrativa?
+cursiva|14|El diseño de la plataforma garantiza la confidencialidad.
+cursiva|15|Los intereses se calcularán a la tasa legal vigente en el país.
+cursiva|16|Se ordena el archivo por falta de interés actual de la parte.

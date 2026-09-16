@@ -1,0 +1,53 @@
+# Compose aparte del docker-compose.yml de la aplicación: esto es
+# herramienta de investigación (Fase 4), no un servicio del sistema.
+#
+# Uso:
+#   docker compose -f docker-compose.htr.yml build
+#   docker compose -f docker-compose.htr.yml run --rm htr python evaluar_modelos.py --muestras dataset/muestras_propias --modelos large_en
+#
+# ANTES de correr algo en GPU:  docker compose stop ollama
+# Ollama retiene ~5.5 GB de los 8 GB de VRAM.
+
+services:
+  htr:
+    build: .
+    image: justicia-htr
+    volumes:
+      - .:/htr                        # scripts, corpus y dataset
+      - hf_cache:/cache/huggingface   # pesos descargados, persistentes
+    environment:
+      - HF_HOME=/cache/huggingface
+      - PYTHONUNBUFFERED=1            # que el progreso se vea en vivo
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Servidor HTTP de HTR: mismo patron que Tika. El backend lo consume
+  # por HTTP y el modelo queda cargado una sola vez.
+  servidor-htr:
+    build: .
+    image: justicia-htr
+    command: uvicorn servidor_htr:app --host 0.0.0.0 --port 9100
+    ports:
+      - "9100:9100"
+    volumes:
+      - .:/htr
+      - hf_cache:/cache/huggingface
+    environment:
+      - HF_HOME=/cache/huggingface
+      - PYTHONUNBUFFERED=1
+      - HTR_MODELO=${HTR_MODELO:-qantev/trocr-large-spanish}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  hf_cache:

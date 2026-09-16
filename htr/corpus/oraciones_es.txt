@@ -1,0 +1,163 @@
+# Corpus semilla para generación de manuscrito sintético en español.
+#
+# Contenido INVENTADO. No contiene datos de personas reales, números de
+# expediente reales ni información de casos. Vocabulario jurídico y
+# administrativo costarricense, con carga deliberada de ñ, acentos,
+# diéresis y signos de apertura (¿ ¡) — los caracteres que el modelo
+# base en inglés no conoce.
+#
+# Las líneas que empiezan con # se ignoran.
+
+El señor juez ordenó la notificación de la resolución en el plazo de tres días.
+La demanda fue presentada ante el Juzgado Civil del Primer Circuito Judicial.
+Se declara sin lugar el recurso de apelación interpuesto por la parte actora.
+El expediente consta de doscientos cuarenta folios debidamente numerados.
+La audiencia se celebrará el próximo martes a las nueve horas.
+Téngase por notificada a la parte demandada en el medio señalado.
+El plazo para interponer el recurso venció el día veintiocho de setiembre.
+Se ordena el archivo de las diligencias por falta de interés actual.
+La prescripción de la acción penal opera a los diez años del hecho.
+El perito rindió su informe técnico dentro del término conferido.
+Consta en el acta la manifestación expresa de la testigo.
+Se acoge parcialmente la excepción de falta de derecho.
+La certificación fue extendida por la Dirección General de Tributación.
+El oficio número mil doscientos treinta y cuatro fue recibido ayer.
+Se previene a la parte que aporte la documentación en ocho días hábiles.
+La señora apoderada acreditó su representación mediante poder especial.
+El Tribunal confirma la sentencia apelada en todos sus extremos.
+Los daños y perjuicios se liquidarán en ejecución de sentencia.
+La compañía demandada tiene su domicilio social en San José.
+El pequeño monto reclamado no altera la competencia del despacho.
+Se señalan las diez horas del veinte de octubre para la comparecencia.
+La resolución quedó firme al no haberse interpuesto recurso alguno.
+El escrito fue presentado fuera del plazo legalmente establecido.
+Se tiene por acreditada la personería del representante legal.
+La diligencia de embargo se practicó en presencia del deudor.
+El año dos mil veintiséis marcó un cambio en la tramitación digital.
+Se ordena remitir el expediente al superior en grado.
+La enseñanza del derecho procesal exige el estudio de la jurisprudencia.
+El acta de la asamblea general fue protocolizada ante notario público.
+La solicitud de trámite fue trasladada al departamento correspondiente.
+¿Cuál es el fundamento jurídico de la pretensión formulada?
+¿Se cumplió con el requisito de agotamiento de la vía administrativa?
+¡Se declara con lugar la demanda en todos sus extremos!
+El diseño del sistema debe garantizar la confidencialidad de los datos.
+La institución solicitó la certificación de personería jurídica vigente.
+Se adjunta copia fiel del documento original para su cotejo.
+El funcionario público actuó en el ejercicio de sus competencias.
+La notificación se practicó en el domicilio contractual señalado.
+Los intereses moratorios se calcularán a la tasa legal vigente.
+La mañana del lunes se recibió la declaración de los testigos.
+El niño fue representado por su curador procesal en la audiencia.
+Se rechaza de plano la gestión por resultar manifiestamente improcedente.
+La cédula de identidad debe presentarse en original y copia.
+El juzgador valoró la prueba conforme a las reglas de la sana crítica.
+La parte actora desistió expresamente de la acción interpuesta.
+Se ordena la inscripción del gravamen en el Registro Nacional.
+El contrato de arrendamiento venció sin que mediara prórroga alguna.
+La resolución administrativa carece de motivación suficiente.
+Se confiere audiencia por el plazo de tres días a la contraparte.
+El documento fue aportado en formato digital mediante el sistema.
+La señorita secretaria dio fe de lo actuado en la diligencia.
+Los honorarios profesionales se fijan prudencialmente en esta vía.
+El acuerdo fue tomado por unanimidad de los miembros presentes.
+La sociedad anónima fue constituida conforme al Código de Comercio.
+Se declara la nulidad absoluta del acto administrativo impugnado.
+El informe pericial concluyó que no existió daño estructural.
+La prueba documental resultó suficiente para acreditar el hecho.
+Se tiene por desistida tácitamente la gestión presentada.
+El plazo de caducidad no admite interrupción ni suspensión.
+La autoridad recurrida rindió su informe dentro del término.
+Se ordena la devolución del documento original a la parte interesada.
+El señor perito deberá ampliar su dictamen sobre el punto señalado.
+La cuantía de la demanda se estima en la suma indicada en el escrito.
+Se acoge la solicitud de medida cautelar por existir peligro en la demora.
+El expediente administrativo fue remitido en su totalidad.
+La declaración jurada fue rendida ante funcionario competente.
+Los antecedentes constan en el legajo separado que se acompaña.
+Se dispone la acumulación de los procesos por conexidad de la materia.
+El recurso de revocatoria fue interpuesto de manera oportuna.
+La institución requiere la actualización de los datos personales.
+El trámite de inscripción quedó concluido satisfactoriamente.
+Se ordena practicar la inspección judicial en el sitio indicado.
+La sentencia fue notificada a ambas partes el mismo día.
+El apoderado especial judicial aportó el documento habilitante.
+La certificación registral acredita la titularidad del inmueble.
+Se previene subsanar los defectos advertidos en la gestión.
+El órgano director del procedimiento dictó el acto final.
+La resolución de traslado de cargos fue debidamente notificada.
+Se tiene por cumplida la prevención efectuada en autos.
+El interés superior del menor rige la decisión adoptada.
+La conciliación entre las partes puso fin al proceso.
+Se declara la incompetencia territorial del despacho requerido.
+El escrito de contestación fue presentado en tiempo y forma.
+La prueba testimonial fue evacuada en la audiencia señalada.
+Los folios del expediente deberán foliarse en orden consecutivo.
+Se ordena el desglose del documento previa razón en autos.
+La representación del Estado corresponde a la Procuraduría General.
+El acta de notificación consigna la hora exacta de la diligencia.
+La solicitud de exoneración fue denegada por falta de requisitos.
+Se dispone la suspensión del procedimiento hasta nuevo aviso.
+El señor apoderado manifestó su conformidad con lo resuelto.
+La certificación de estudios fue aportada en original.
+El daño moral fue acreditado mediante la prueba pericial.
+Se rechaza la recusación planteada contra el juzgador.
+La institución pública debe garantizar el acceso a la información.
+El plazo para cumplir la sentencia corre desde su firmeza.
+Se ordena liquidar las costas personales y procesales causadas.
+La demanda cumple con los requisitos de admisibilidad exigidos.
+El testigo compareció puntualmente a la hora señalada.
+La resolución impugnada fue dictada por autoridad competente.
+Se confiere plazo improrrogable de cinco días para el cumplimiento.
+El acuerdo municipal fue publicado en el diario oficial.
+La compañía aseguradora asumió la responsabilidad contractual.
+Se tiene por acreditado el vínculo laboral entre las partes.
+El trabajador reclamó el pago de las prestaciones legales.
+La jornada laboral excedió el límite máximo permitido.
+Se ordena el reintegro del servidor a su puesto de trabajo.
+El expediente digital sustituye al expediente físico tradicional.
+La firma digital certificada tiene plena validez jurídica.
+Se autoriza la consulta del expediente a las partes acreditadas.
+El sistema informático registró la presentación del escrito.
+La notificación electrónica surte efectos al día siguiente hábil.
+Los documentos escaneados deberán conservar su legibilidad.
+Se dispone la digitalización integral del legajo principal.
+El diseño de la plataforma responde a criterios de accesibilidad.
+La institución adquirió el equipo mediante licitación pública.
+Se cumplió con el principio de publicidad del procedimiento.
+El oferente presentó su propuesta dentro del plazo del cartel.
+La adjudicación fue notificada a todos los participantes.
+Se declara infructuoso el concurso por ausencia de ofertas elegibles.
+El contrato administrativo fue refrendado por la Contraloría.
+La garantía de participación fue rendida mediante depósito.
+Se ordena devolver la garantía al oferente no adjudicado.
+El pequeño productor solicitó la exoneración del tributo.
+La enseñanza técnica recibió una asignación presupuestaria mayor.
+Se aprobó el reglamento interno de la institución.
+El señor ministro suscribió el convenio de cooperación.
+La compañía extranjera acreditó su inscripción en el país.
+Se otorgó el permiso de funcionamiento por un año.
+El establecimiento cumplió con los requisitos sanitarios.
+La inspección detectó incumplimientos de menor cuantía.
+Se concedió un plazo de treinta días para la corrección.
+El informe anual fue presentado ante la junta directiva.
+La auditoría interna emitió recomendaciones vinculantes.
+Se ejecutó el presupuesto conforme a la programación aprobada.
+El área de tecnología requiere personal especializado.
+La capacitación del personal se realizará en línea.
+Se implementó el sistema de gestión documental institucional.
+El acuerdo entró en vigencia a partir de su publicación.
+La modificación presupuestaria fue aprobada por el órgano competente.
+Se remite el informe para su conocimiento y aprobación.
+El diagnóstico institucional identificó áreas de mejora.
+La estrategia digital contempla la interoperabilidad de los sistemas.
+Se suscribió el convenio marco de colaboración interinstitucional.
+El proyecto será ejecutado en tres etapas sucesivas.
+La evaluación de resultados se efectuará al finalizar el período.
+Se designó al responsable del seguimiento de los acuerdos.
+El acta de la sesión ordinaria fue aprobada sin modificaciones.
+La solicitud de información fue atendida dentro del plazo legal.
+Se garantizó el derecho de petición y pronta respuesta.
+El expediente quedó a disposición del interesado en la oficina.
+La documentación deberá conservarse por el plazo reglamentario.
+Se ordenó el traslado del archivo a las nuevas instalaciones.

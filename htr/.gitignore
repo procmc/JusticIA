@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+
+# ---------------------------------------------------------------------------
+# dataset/ completo queda FUERA de git, por dos razones distintas:
+#
+#   * Lo generado es reproducible: `generar_sintetico.py` con la misma
+#     semilla produce las mismas imágenes. Versionar 100 MB de algo que se
+#     reconstruye en segundos no tiene sentido. Igual el corpus Rodrigo,
+#     que se baja de Zenodo (CC-BY 4.0).
+#
+#   * Ley 8968 (protección de datos personales): las fotos de manuscrito
+#     pueden contener nombres, cédulas o datos de terceros.
+#
+# Lo que SÍ se versiona es el texto de referencia (corpus/), que es
+# inventado y sin datos de ninguna persona.
+# ---------------------------------------------------------------------------
+dataset/
+
+# Los JSON de evaluación guardan la transcripción completa de lo medido.
+resultados/
+
+# Salida de inspección visual, se regenera con hoja_contacto.py
+hoja_contacto.jpg
+muestra_rodrigo.jpg

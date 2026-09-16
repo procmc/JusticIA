@@ -1,0 +1,2510 @@
+# Corpus generado por combinación de plantillas y vocabulario.
+#
+# Contenido INVENTADO. Sin nombres de personas, sin cédulas y sin
+# números de expediente: los sujetos son roles procesales y órganos
+# genéricos. No se extrajo de ninguna fuente externa, precisamente
+# para no incurrir en problemas de datos personales (Ley 8968),
+# derechos de autor ni términos de uso de sitios institucionales.
+#
+# Generado por ampliar_corpus.py --cantidad 2500 --semilla 11
+
+El Juzgado autoriza el cumplimiento en tres días.
+El Juzgado autoriza el traslado solicitada por la apoderada.
+El Juzgado autoriza la comparecencia para dentro de cinco días.
+El Juzgado autoriza la comparecencia para dentro de quince días.
+El Juzgado autoriza la comparecencia para dentro de sesenta días.
+El Juzgado autoriza la comparecencia para dentro de tres días hábiles.
+El Juzgado autoriza la comparecencia para dentro de veinte días naturales.
+El Juzgado autoriza la devolución solicitada por la solicitante.
+El Juzgado autoriza remitir el expediente al superior en grado.
+El Juzgado autoriza remitir el recurso al superior en grado.
+El Juzgado confirma el desglose solicitada por la parte actora.
+El Juzgado confirma la certificación solicitada por la parte actora.
+El Juzgado confirma la devolución solicitada por la recurrente.
+El Juzgado deniega la inscripción solicitada por la contraparte.
+El Juzgado dispone el cumplimiento en cinco días.
+El Juzgado dispone el cumplimiento en cinco meses.
+El Juzgado dispone el cumplimiento en ocho meses.
+El Juzgado dispone el cumplimiento en sesenta días.
+El Juzgado dispone el cumplimiento en veinte días hábiles.
+El Juzgado dispone la certificación solicitada por la perita.
+El Juzgado dispone la comparecencia para dentro de cinco meses.
+El Juzgado dispone la comparecencia para dentro de diez días naturales.
+El Juzgado dispone la comparecencia para dentro de sesenta días hábiles.
+El Juzgado dispone que se practique el acta en la oficina correspondiente.
+El Juzgado dispone que se practique la comparecencia en el sistema de gestión documental.
+El Juzgado dispone que se practique la resolución en el domicilio contractual.
+El Juzgado dispone que se practique la solicitud en el medio señalado.
+El Juzgado dispone remitir el certificado al superior en grado.
+El Juzgado dispone remitir el dictamen al superior en grado.
+El Juzgado ordena el cumplimiento en diez meses.
+El Juzgado ordena el cumplimiento en treinta meses.
+El Juzgado ordena el cumplimiento en tres meses.
+El Juzgado ordena la comparecencia para dentro de sesenta días.
+El Juzgado ordena la comparecencia para dentro de treinta días.
+El Juzgado ordena la comparecencia para dentro de tres días hábiles.
+El Juzgado ordena la comparecencia para dentro de tres días naturales.
+El Juzgado ordena la comparecencia para dentro de tres meses.
+El Juzgado ordena que se practique la certificación en el sistema de gestión documental.
+El Juzgado ordena que se practique la diligencia en la oficina correspondiente.
+El Juzgado ordena que se practique la notificación en el medio señalado.
+El Juzgado ordena remitir el expediente al superior en grado.
+El Juzgado ordena remitir el memorial al superior en grado.
+El Juzgado requiere el desglose solicitada por la contraparte.
+El Juzgado requiere la actualización de los datos del trámite.
+El Juzgado requiere la certificación solicitada por la parte actora.
+El Juzgado resuelve el archivo solicitada por la solicitante.
+El Juzgado resuelve el cumplimiento en treinta días.
+El Juzgado resuelve el desglose solicitada por la parte actora.
+El Juzgado resuelve la comparecencia para dentro de diez días hábiles.
+El Juzgado resuelve la comparecencia para dentro de diez días naturales.
+El Juzgado resuelve la comparecencia para dentro de sesenta días naturales.
+El Juzgado resuelve la comparecencia para dentro de treinta días hábiles.
+El Juzgado resuelve la comparecencia para dentro de tres días naturales.
+El Juzgado resuelve la comparecencia para dentro de veinte días hábiles.
+El Juzgado resuelve la devolución solicitada por la solicitante.
+El Juzgado resuelve la suspensión solicitada por la testigo.
+El Juzgado resuelve que se practique el acta en la plataforma institucional.
+El Juzgado resuelve que se practique la certificación en la sede del despacho.
+El Juzgado resuelve que se practique la demanda en el sistema de gestión documental.
+El Juzgado resuelve que se practique la demanda en la plataforma institucional.
+El Juzgado resuelve que se practique la diligencia en el domicilio contractual.
+El Juzgado resuelve que se practique la notificación en el sistema de gestión documental.
+El Juzgado resuelve que se practique la resolución en la plataforma institucional.
+El Juzgado resuelve remitir el certificado al superior en grado.
+El Juzgado resuelve remitir el dictamen al superior en grado.
+El Juzgado resuelve remitir el escrito al superior en grado.
+El Juzgado solicita el cumplimiento en sesenta días hábiles.
+El Juzgado solicita el cumplimiento en treinta días naturales.
+El Juzgado solicita el cumplimiento en veinte días.
+El Juzgado solicita la comparecencia para dentro de cinco meses.
+El Juzgado solicita la comparecencia para dentro de quince días.
+El Juzgado solicita la comparecencia para dentro de treinta días.
+El Juzgado solicita que se practique el acta en la plataforma institucional.
+El Juzgado solicita que se practique la gestión en el sistema de gestión documental.
+El Juzgado solicita remitir el dictamen al superior en grado.
+El Juzgado solicita remitir el documento al superior en grado.
+El Juzgado solicita remitir el escrito al superior en grado.
+El Juzgado solicita remitir el informe al superior en grado.
+El Juzgado valoró el acta conforme a las reglas de la sana crítica.
+El Juzgado valoró la certificación conforme a las reglas de la sana crítica.
+El Juzgado valoró la declaración conforme a las reglas de la sana crítica.
+El Juzgado valoró la demanda conforme a las reglas de la sana crítica.
+El Juzgado valoró la diligencia conforme a las reglas de la sana crítica.
+El Juzgado valoró la gestión conforme a las reglas de la sana crítica.
+El Juzgado valoró la prueba conforme a las reglas de la sana crítica.
+El Juzgado valoró la resolución conforme a las reglas de la sana crítica.
+El Tribunal autoriza el archivo solicitada por la contraparte.
+El Tribunal autoriza el cumplimiento en diez meses.
+El Tribunal autoriza el cumplimiento en ocho días hábiles.
+El Tribunal autoriza la comparecencia para dentro de sesenta días hábiles.
+El Tribunal autoriza la comparecencia para dentro de tres días naturales.
+El Tribunal autoriza que se practique el acta en la sede del despacho.
+El Tribunal autoriza que se practique la comparecencia en el domicilio contractual.
+El Tribunal autoriza que se practique la resolución en la plataforma institucional.
+El Tribunal autoriza remitir el certificado al superior en grado.
+El Tribunal autoriza remitir el informe al superior en grado.
+El Tribunal confirma el traslado solicitada por la parte actora.
+El Tribunal dispone el cumplimiento en ocho meses.
+El Tribunal dispone el cumplimiento en tres días.
+El Tribunal dispone la comparecencia para dentro de cinco meses.
+El Tribunal dispone la comparecencia para dentro de tres días.
+El Tribunal dispone la comparecencia para dentro de veinte días hábiles.
+El Tribunal dispone la suspensión solicitada por la solicitante.
+El Tribunal dispone que se practique la comparecencia en la plataforma institucional.
+El Tribunal dispone que se practique la demanda en la plataforma institucional.
+El Tribunal dispone que se practique la prueba en la oficina correspondiente.
+El Tribunal dispone que se practique la resolución en el sistema de gestión documental.
+El Tribunal dispone que se practique la solicitud en el domicilio contractual.
+El Tribunal dispone remitir el certificado al superior en grado.
+El Tribunal dispone remitir el expediente al superior en grado.
+El Tribunal dispone remitir el oficio al superior en grado.
+El Tribunal dispone remitir el recurso al superior en grado.
+El Tribunal ordena el cumplimiento en veinte días naturales.
+El Tribunal ordena la certificación solicitada por la perita.
+El Tribunal ordena la comparecencia para dentro de cinco días hábiles.
+El Tribunal ordena la comparecencia para dentro de ocho días naturales.
+El Tribunal ordena la devolución solicitada por la recurrente.
+El Tribunal ordena la foliatura solicitada por la parte actora.
+El Tribunal ordena la inscripción solicitada por la solicitante.
+El Tribunal ordena que se practique la declaración en la oficina correspondiente.
+El Tribunal ordena que se practique la resolución en el domicilio contractual.
+El Tribunal ordena remitir el certificado al superior en grado.
+El Tribunal requiere la actualización de los datos del trámite.
+El Tribunal resuelve el cumplimiento en veinte días naturales.
+El Tribunal resuelve la comparecencia para dentro de cinco meses.
+El Tribunal resuelve la comparecencia para dentro de diez días hábiles.
+El Tribunal resuelve la comparecencia para dentro de tres días hábiles.
+El Tribunal resuelve la foliatura solicitada por la solicitante.
+El Tribunal resuelve que se practique el acta en el domicilio contractual.
+El Tribunal resuelve que se practique el acta en el medio señalado.
+El Tribunal resuelve que se practique la certificación en la plataforma institucional.
+El Tribunal resuelve que se practique la demanda en la plataforma institucional.
+El Tribunal resuelve que se practique la gestión en la sede del despacho.
+El Tribunal resuelve remitir el oficio al superior en grado.
+El Tribunal solicita el cumplimiento en quince días.
+El Tribunal solicita el cumplimiento en quince meses.
+El Tribunal solicita el cumplimiento en veinte días hábiles.
+El Tribunal solicita la comparecencia para dentro de quince días hábiles.
+El Tribunal solicita la comparecencia para dentro de sesenta días naturales.
+El Tribunal solicita la comparecencia para dentro de treinta días.
+El Tribunal solicita la comparecencia para dentro de tres días naturales.
+El Tribunal solicita la comparecencia para dentro de tres días.
+El Tribunal solicita remitir el documento al superior en grado.
+El Tribunal solicita remitir el informe al superior en grado.
+El Tribunal solicita remitir el memorial al superior en grado.
+El Tribunal valoró la declaración conforme a las reglas de la sana crítica.
+El Tribunal valoró la demanda conforme a las reglas de la sana crítica.
+El Tribunal valoró la diligencia conforme a las reglas de la sana crítica.
+El Tribunal valoró la notificación conforme a las reglas de la sana crítica.
+El Tribunal valoró la prueba conforme a las reglas de la sana crítica.
+El Tribunal valoró la resolución conforme a las reglas de la sana crítica.
+El Tribunal valoró la solicitud conforme a las reglas de la sana crítica.
+El acta en materia administrativa fue aportada sin observaciones.
+El acta en materia agraria fue presentada sin observaciones.
+El acta en materia civil fue aportada sin observaciones.
+El acta en materia civil fue rechazada sin observaciones.
+El acta en materia de familia fue aportada sin observaciones.
+El acta en materia laboral fue admitida sin observaciones.
+El acta en materia laboral fue archivada sin observaciones.
+El acta en materia laboral fue rechazada sin observaciones.
+El acta en materia laboral fue trasladada sin observaciones.
+El acta en materia notarial fue aprobada sin observaciones.
+El acta en materia notarial fue recibida sin observaciones.
+El acta fue aportada formalmente dentro del término conferido.
+El acta fue aportada oportunamente dentro del término conferido.
+El acta fue aportada parcialmente dentro del término conferido.
+El acta fue aprobada expresamente dentro del término conferido.
+El acta fue archivada formalmente dentro del término conferido.
+El acta fue notificada válidamente dentro del término conferido.
+El acta fue rechazada expresamente dentro del término conferido.
+El acta fue recibida expresamente dentro del término conferido.
+El acta fue recibida formalmente dentro del término conferido.
+El acta fue remitida oportunamente dentro del término conferido.
+El acta quedó firme al no haberse interpuesto recurso alguno.
+El acta se practicó en presencia de el apoderado.
+El acta se practicó en presencia de el perito.
+El acta se practicó en presencia de el representante legal.
+El acta se practicó en presencia de el servidor.
+El acta se practicó en presencia de el solicitante.
+El acta se practicó en presencia de el testigo.
+El apoderado acreditó su representación mediante el certificado habilitante.
+El apoderado acreditó su representación mediante el dictamen habilitante.
+El apoderado acreditó su representación mediante el documento habilitante.
+El apoderado acreditó su representación mediante el expediente habilitante.
+El apoderado acreditó su representación mediante el informe habilitante.
+El apoderado acreditó su representación mediante el memorial habilitante.
+El apoderado acreditó su representación mediante el oficio habilitante.
+El apoderado acreditó su representación mediante el recurso habilitante.
+El apoderado compareció debidamente a la hora y fecha señaladas.
+El apoderado compareció expresamente a la hora y fecha señaladas.
+El apoderado compareció formalmente a la hora y fecha señaladas.
+El apoderado compareció oportunamente a la hora y fecha señaladas.
+El apoderado compareció parcialmente a la hora y fecha señaladas.
+El apoderado compareció válidamente a la hora y fecha señaladas.
+El apoderado rindió el certificado dentro del plazo de cinco días hábiles.
+El apoderado rindió el certificado dentro del plazo de cinco meses.
+El apoderado rindió el dictamen dentro del plazo de treinta días naturales.
+El apoderado rindió el dictamen dentro del plazo de tres días naturales.
+El apoderado rindió el documento dentro del plazo de tres meses.
+El apoderado rindió el expediente dentro del plazo de diez meses.
+El apoderado rindió el expediente dentro del plazo de sesenta días naturales.
+El apoderado rindió el expediente dentro del plazo de tres días.
+El apoderado rindió el oficio dentro del plazo de cinco meses.
+El apoderado rindió el oficio dentro del plazo de sesenta días naturales.
+El apoderado rindió el recurso dentro del plazo de diez meses.
+El apoderado rindió el recurso dentro del plazo de treinta meses.
+El apoderado señaló que el año anterior no se recibió la notificación.
+El certificado consta agregado al expediente en materia administrativa.
+El certificado consta agregado al expediente en materia agraria.
+El certificado consta agregado al expediente en materia civil.
+El certificado consta agregado al expediente en materia contenciosa.
+El certificado consta agregado al expediente en materia de familia.
+El certificado consta agregado al expediente en materia laboral.
+El certificado consta agregado al expediente en materia notarial.
+El certificado fue admitido debidamente por el interesado.
+El certificado fue admitido en la plataforma de gestión documental.
+El certificado fue admitido expresamente por el testigo.
+El certificado fue aportado en la plataforma de gestión documental.
+El certificado fue aprobado debidamente por el recurrente.
+El certificado fue aprobado en la plataforma de gestión documental.
+El certificado fue archivado en la plataforma de gestión documental.
+El certificado fue notificado en la plataforma de gestión documental.
+El certificado fue notificado parcialmente por el recurrente.
+El certificado fue presentado en la plataforma de gestión documental.
+El certificado fue rechazado en la plataforma de gestión documental.
+El certificado fue rechazado expresamente por el funcionario.
+El certificado fue rechazado parcialmente por el apoderado.
+El certificado fue recibido en la plataforma de gestión documental.
+El certificado fue recibido expresamente por el solicitante.
+El certificado fue recibido expresamente por el testigo.
+El certificado fue recibido oportunamente por el solicitante.
+El certificado fue remitido en la plataforma de gestión documental.
+El certificado fue remitido formalmente por el funcionario.
+El certificado fue remitido válidamente por el servidor.
+El certificado fue trasladado en la plataforma de gestión documental.
+El despacho acoge la acumulación solicitada por la recurrente.
+El despacho autoriza el cumplimiento en cinco meses.
+El despacho autoriza el cumplimiento en diez días.
+El despacho autoriza el cumplimiento en ocho días hábiles.
+El despacho autoriza el cumplimiento en sesenta días hábiles.
+El despacho autoriza la comparecencia para dentro de cinco meses.
+El despacho autoriza la comparecencia para dentro de diez meses.
+El despacho autoriza la comparecencia para dentro de sesenta días naturales.
+El despacho autoriza la comparecencia para dentro de sesenta días.
+El despacho autoriza la comparecencia para dentro de tres meses.
+El despacho autoriza que se practique el acta en el medio señalado.
+El despacho autoriza que se practique la comparecencia en el sistema de gestión documental.
+El despacho autoriza que se practique la comparecencia en la plataforma institucional.
+El despacho autoriza que se practique la comparecencia en la sede del despacho.
+El despacho autoriza que se practique la diligencia en el medio señalado.
+El despacho autoriza que se practique la gestión en el domicilio contractual.
+El despacho autoriza que se practique la solicitud en la sede del despacho.
+El despacho autoriza remitir el dictamen al superior en grado.
+El despacho autoriza remitir el expediente al superior en grado.
+El despacho autoriza remitir el oficio al superior en grado.
+El despacho confirma el desglose solicitada por la parte actora.
+El despacho confirma la devolución solicitada por la solicitante.
+El despacho deniega el traslado solicitada por la apoderada.
+El despacho dispone el cumplimiento en ocho días.
+El despacho dispone el cumplimiento en quince meses.
+El despacho dispone el cumplimiento en sesenta meses.
+El despacho dispone el cumplimiento en tres días.
+El despacho dispone el cumplimiento en veinte días.
+El despacho dispone el desglose solicitada por la testigo.
+El despacho dispone la acumulación solicitada por la contraparte.
+El despacho dispone la comparecencia para dentro de sesenta días hábiles.
+El despacho dispone que se practique la demanda en el sistema de gestión documental.
+El despacho ordena el cumplimiento en ocho días hábiles.
+El despacho ordena el cumplimiento en quince días naturales.
+El despacho ordena el traslado solicitada por la perita.
+El despacho ordena la certificación solicitada por la parte actora.
+El despacho ordena la comparecencia para dentro de ocho días naturales.
+El despacho ordena la comparecencia para dentro de tres días.
+El despacho ordena la suspensión solicitada por la solicitante.
+El despacho ordena que se practique el acta en la plataforma institucional.
+El despacho ordena que se practique la certificación en el domicilio contractual.
+El despacho ordena que se practique la demanda en la sede del despacho.
+El despacho ordena que se practique la notificación en el domicilio contractual.
+El despacho ordena que se practique la prueba en el medio señalado.
+El despacho ordena que se practique la resolución en la oficina correspondiente.
+El despacho ordena remitir el escrito al superior en grado.
+El despacho ordena remitir el memorial al superior en grado.
+El despacho ordena remitir el oficio al superior en grado.
+El despacho ordena remitir el recurso al superior en grado.
+El despacho requiere el traslado solicitada por la contraparte.
+El despacho requiere la actualización de los datos del trámite.
+El despacho requiere la inscripción solicitada por la apoderada.
+El despacho resuelve el cumplimiento en diez días hábiles.
+El despacho resuelve el cumplimiento en diez días naturales.
+El despacho resuelve el cumplimiento en diez meses.
+El despacho resuelve el cumplimiento en ocho meses.
+El despacho resuelve el traslado solicitada por la parte actora.
+El despacho resuelve la comparecencia para dentro de diez días hábiles.
+El despacho resuelve la comparecencia para dentro de quince meses.
+El despacho resuelve la comparecencia para dentro de treinta meses.
+El despacho resuelve que se practique la comparecencia en el medio señalado.
+El despacho resuelve remitir el documento al superior en grado.
+El despacho resuelve remitir el escrito al superior en grado.
+El despacho resuelve remitir el informe al superior en grado.
+El despacho resuelve remitir el oficio al superior en grado.
+El despacho señala la certificación solicitada por la parte demandada.
+El despacho solicita el cumplimiento en cinco días hábiles.
+El despacho solicita el cumplimiento en quince días naturales.
+El despacho solicita el cumplimiento en sesenta días.
+El despacho solicita el cumplimiento en treinta días.
+El despacho solicita la comparecencia para dentro de diez días.
+El despacho solicita la comparecencia para dentro de quince meses.
+El despacho solicita la comparecencia para dentro de treinta días.
+El despacho solicita que se practique la declaración en el sistema de gestión documental.
+El despacho solicita que se practique la demanda en el domicilio contractual.
+El despacho solicita que se practique la notificación en la plataforma institucional.
+El despacho solicita que se practique la resolución en la plataforma institucional.
+El despacho solicita remitir el escrito al superior en grado.
+El despacho solicita remitir el memorial al superior en grado.
+El despacho solicita remitir el recurso al superior en grado.
+El despacho valoró el acta conforme a las reglas de la sana crítica.
+El despacho valoró la certificación conforme a las reglas de la sana crítica.
+El despacho valoró la comparecencia conforme a las reglas de la sana crítica.
+El despacho valoró la declaración conforme a las reglas de la sana crítica.
+El despacho valoró la diligencia conforme a las reglas de la sana crítica.
+El despacho valoró la gestión conforme a las reglas de la sana crítica.
+El despacho valoró la prueba conforme a las reglas de la sana crítica.
+El dictamen consta agregado al expediente en materia administrativa.
+El dictamen consta agregado al expediente en materia agraria.
+El dictamen consta agregado al expediente en materia civil.
+El dictamen consta agregado al expediente en materia contenciosa.
+El dictamen consta agregado al expediente en materia de familia.
+El dictamen consta agregado al expediente en materia laboral.
+El dictamen consta agregado al expediente en materia notarial.
+El dictamen fue admitido en la plataforma de gestión documental.
+El dictamen fue admitido expresamente por el representante legal.
+El dictamen fue aportado formalmente por el servidor.
+El dictamen fue aportado oportunamente por el servidor.
+El dictamen fue aprobado en la plataforma de gestión documental.
+El dictamen fue aprobado válidamente por el representante legal.
+El dictamen fue archivado debidamente por el servidor.
+El dictamen fue archivado en la plataforma de gestión documental.
+El dictamen fue presentado formalmente por el apoderado.
+El dictamen fue presentado parcialmente por el testigo.
+El dictamen fue rechazado en la plataforma de gestión documental.
+El dictamen fue rechazado expresamente por el apoderado.
+El dictamen fue rechazado oportunamente por el servidor.
+El dictamen fue recibido expresamente por el funcionario.
+El dictamen fue recibido expresamente por el solicitante.
+El dictamen fue recibido formalmente por el funcionario.
+El dictamen fue recibido parcialmente por el solicitante.
+El dictamen fue recibido válidamente por el representante legal.
+El dictamen fue remitido en la plataforma de gestión documental.
+El dictamen fue remitido parcialmente por el perito.
+El dictamen fue trasladado válidamente por el interesado.
+El diseño del trámite debe garantizar la confidencialidad de los datos.
+El documento consta agregado al expediente en materia administrativa.
+El documento consta agregado al expediente en materia agraria.
+El documento consta agregado al expediente en materia civil.
+El documento consta agregado al expediente en materia contenciosa.
+El documento consta agregado al expediente en materia laboral.
+El documento consta agregado al expediente en materia notarial.
+El documento fue admitido en la plataforma de gestión documental.
+El documento fue admitido parcialmente por el servidor.
+El documento fue aportado debidamente por el servidor.
+El documento fue aportado válidamente por el representante legal.
+El documento fue aprobado en la plataforma de gestión documental.
+El documento fue aprobado válidamente por el representante legal.
+El documento fue archivado en la plataforma de gestión documental.
+El documento fue archivado expresamente por el solicitante.
+El documento fue notificado en la plataforma de gestión documental.
+El documento fue notificado expresamente por el interesado.
+El documento fue presentado en la plataforma de gestión documental.
+El documento fue presentado formalmente por el recurrente.
+El documento fue rechazado en la plataforma de gestión documental.
+El documento fue rechazado oportunamente por el servidor.
+El documento fue recibido en la plataforma de gestión documental.
+El documento fue recibido formalmente por el representante legal.
+El documento fue remitido en la plataforma de gestión documental.
+El documento fue remitido expresamente por el funcionario.
+El documento fue remitido oportunamente por el apoderado.
+El documento fue trasladado en la plataforma de gestión documental.
+El escrito consta agregado al expediente en materia administrativa.
+El escrito consta agregado al expediente en materia agraria.
+El escrito consta agregado al expediente en materia civil.
+El escrito consta agregado al expediente en materia contenciosa.
+El escrito consta agregado al expediente en materia de familia.
+El escrito consta agregado al expediente en materia notarial.
+El escrito fue admitido debidamente por el interesado.
+El escrito fue admitido oportunamente por el testigo.
+El escrito fue admitido válidamente por el interesado.
+El escrito fue aportado en la plataforma de gestión documental.
+El escrito fue aportado formalmente por el funcionario.
+El escrito fue aportado formalmente por el representante legal.
+El escrito fue aprobado en la plataforma de gestión documental.
+El escrito fue aprobado oportunamente por el solicitante.
+El escrito fue archivado debidamente por el servidor.
+El escrito fue archivado formalmente por el funcionario.
+El escrito fue notificado en la plataforma de gestión documental.
+El escrito fue presentado parcialmente por el interesado.
+El escrito fue rechazado debidamente por el perito.
+El escrito fue rechazado en la plataforma de gestión documental.
+El escrito fue recibido en la plataforma de gestión documental.
+El escrito fue remitido debidamente por el perito.
+El escrito fue remitido debidamente por el representante legal.
+El escrito fue remitido en la plataforma de gestión documental.
+El escrito fue remitido expresamente por el representante legal.
+El escrito fue trasladado en la plataforma de gestión documental.
+El expediente consta agregado al expediente en materia administrativa.
+El expediente consta agregado al expediente en materia agraria.
+El expediente consta agregado al expediente en materia civil.
+El expediente consta agregado al expediente en materia contenciosa.
+El expediente consta agregado al expediente en materia laboral.
+El expediente fue admitido en la plataforma de gestión documental.
+El expediente fue admitido parcialmente por el recurrente.
+El expediente fue aprobado expresamente por el apoderado.
+El expediente fue aprobado válidamente por el servidor.
+El expediente fue notificado en la plataforma de gestión documental.
+El expediente fue notificado formalmente por el interesado.
+El expediente fue presentado en la plataforma de gestión documental.
+El expediente fue presentado formalmente por el servidor.
+El expediente fue presentado parcialmente por el recurrente.
+El expediente fue rechazado en la plataforma de gestión documental.
+El expediente fue rechazado formalmente por el testigo.
+El expediente fue rechazado oportunamente por el representante legal.
+El expediente fue rechazado válidamente por el solicitante.
+El expediente fue recibido en la plataforma de gestión documental.
+El expediente fue remitido debidamente por el apoderado.
+El expediente fue remitido en la plataforma de gestión documental.
+El expediente fue trasladado en la plataforma de gestión documental.
+El funcionario acreditó su representación mediante el certificado habilitante.
+El funcionario acreditó su representación mediante el dictamen habilitante.
+El funcionario acreditó su representación mediante el escrito habilitante.
+El funcionario acreditó su representación mediante el informe habilitante.
+El funcionario acreditó su representación mediante el memorial habilitante.
+El funcionario acreditó su representación mediante el oficio habilitante.
+El funcionario acreditó su representación mediante el recurso habilitante.
+El funcionario compareció debidamente a la hora y fecha señaladas.
+El funcionario compareció expresamente a la hora y fecha señaladas.
+El funcionario compareció formalmente a la hora y fecha señaladas.
+El funcionario compareció oportunamente a la hora y fecha señaladas.
+El funcionario compareció parcialmente a la hora y fecha señaladas.
+El funcionario compareció válidamente a la hora y fecha señaladas.
+El funcionario rindió el certificado dentro del plazo de ocho días hábiles.
+El funcionario rindió el certificado dentro del plazo de quince días.
+El funcionario rindió el certificado dentro del plazo de tres días.
+El funcionario rindió el dictamen dentro del plazo de treinta meses.
+El funcionario rindió el dictamen dentro del plazo de veinte días hábiles.
+El funcionario rindió el documento dentro del plazo de sesenta meses.
+El funcionario rindió el escrito dentro del plazo de cinco días naturales.
+El funcionario rindió el escrito dentro del plazo de treinta días hábiles.
+El funcionario rindió el escrito dentro del plazo de tres días hábiles.
+El funcionario rindió el escrito dentro del plazo de tres días naturales.
+El funcionario rindió el expediente dentro del plazo de cinco meses.
+El funcionario rindió el expediente dentro del plazo de treinta días hábiles.
+El funcionario rindió el oficio dentro del plazo de ocho días naturales.
+El funcionario rindió el oficio dentro del plazo de ocho días.
+El funcionario rindió el oficio dentro del plazo de treinta días naturales.
+El funcionario rindió el recurso dentro del plazo de tres meses.
+El funcionario señaló que el año anterior no se recibió la notificación.
+El informe consta agregado al expediente en materia administrativa.
+El informe consta agregado al expediente en materia civil.
+El informe consta agregado al expediente en materia contenciosa.
+El informe consta agregado al expediente en materia de familia.
+El informe consta agregado al expediente en materia laboral.
+El informe consta agregado al expediente en materia notarial.
+El informe fue admitido debidamente por el funcionario.
+El informe fue admitido en la plataforma de gestión documental.
+El informe fue admitido parcialmente por el servidor.
+El informe fue aportado en la plataforma de gestión documental.
+El informe fue aprobado en la plataforma de gestión documental.
+El informe fue aprobado parcialmente por el interesado.
+El informe fue aprobado parcialmente por el solicitante.
+El informe fue archivado en la plataforma de gestión documental.
+El informe fue archivado expresamente por el apoderado.
+El informe fue archivado oportunamente por el testigo.
+El informe fue archivado válidamente por el interesado.
+El informe fue archivado válidamente por el representante legal.
+El informe fue notificado parcialmente por el representante legal.
+El informe fue notificado parcialmente por el servidor.
+El informe fue presentado expresamente por el perito.
+El informe fue presentado parcialmente por el interesado.
+El informe fue rechazado válidamente por el testigo.
+El informe fue recibido en la plataforma de gestión documental.
+El informe fue recibido formalmente por el servidor.
+El informe fue recibido oportunamente por el testigo.
+El informe fue recibido parcialmente por el testigo.
+El informe fue remitido en la plataforma de gestión documental.
+El informe fue remitido formalmente por el representante legal.
+El informe fue remitido oportunamente por el interesado.
+El informe fue trasladado expresamente por el funcionario.
+El informe fue trasladado formalmente por el apoderado.
+El informe fue trasladado parcialmente por el representante legal.
+El interesado acreditó su representación mediante el certificado habilitante.
+El interesado acreditó su representación mediante el dictamen habilitante.
+El interesado acreditó su representación mediante el documento habilitante.
+El interesado acreditó su representación mediante el escrito habilitante.
+El interesado acreditó su representación mediante el expediente habilitante.
+El interesado acreditó su representación mediante el informe habilitante.
+El interesado acreditó su representación mediante el memorial habilitante.
+El interesado acreditó su representación mediante el oficio habilitante.
+El interesado compareció debidamente a la hora y fecha señaladas.
+El interesado compareció expresamente a la hora y fecha señaladas.
+El interesado compareció formalmente a la hora y fecha señaladas.
+El interesado compareció oportunamente a la hora y fecha señaladas.
+El interesado compareció parcialmente a la hora y fecha señaladas.
+El interesado compareció válidamente a la hora y fecha señaladas.
+El interesado rindió el certificado dentro del plazo de cinco días.
+El interesado rindió el certificado dentro del plazo de sesenta meses.
+El interesado rindió el documento dentro del plazo de cinco meses.
+El interesado rindió el documento dentro del plazo de ocho días naturales.
+El interesado rindió el documento dentro del plazo de sesenta días.
+El interesado rindió el informe dentro del plazo de tres meses.
+El interesado rindió el memorial dentro del plazo de tres días naturales.
+El interesado rindió el memorial dentro del plazo de veinte días naturales.
+El interesado rindió el oficio dentro del plazo de quince días hábiles.
+El interesado señaló que el año anterior no se recibió la notificación.
+El juzgador acoge el traslado solicitada por la parte actora.
+El juzgador autoriza el cumplimiento en cinco días naturales.
+El juzgador autoriza el cumplimiento en veinte días hábiles.
+El juzgador autoriza la comparecencia para dentro de diez días hábiles.
+El juzgador autoriza la comparecencia para dentro de sesenta días hábiles.
+El juzgador autoriza la foliatura solicitada por la testigo.
+El juzgador autoriza que se practique la declaración en el medio señalado.
+El juzgador autoriza remitir el recurso al superior en grado.
+El juzgador deniega la devolución solicitada por la solicitante.
+El juzgador dispone el desglose solicitada por la parte actora.
+El juzgador dispone la comparecencia para dentro de sesenta días.
+El juzgador dispone la comparecencia para dentro de tres días naturales.
+El juzgador dispone la devolución solicitada por la testigo.
+El juzgador dispone remitir el certificado al superior en grado.
+El juzgador dispone remitir el dictamen al superior en grado.
+El juzgador dispone remitir el escrito al superior en grado.
+El juzgador dispone remitir el informe al superior en grado.
+El juzgador dispone remitir el memorial al superior en grado.
+El juzgador ordena el cumplimiento en treinta días hábiles.
+El juzgador ordena el cumplimiento en veinte días hábiles.
+El juzgador ordena la comparecencia para dentro de ocho días.
+El juzgador ordena la comparecencia para dentro de ocho meses.
+El juzgador ordena la comparecencia para dentro de sesenta días.
+El juzgador ordena la devolución solicitada por la testigo.
+El juzgador ordena que se practique la demanda en la oficina correspondiente.
+El juzgador ordena que se practique la gestión en la plataforma institucional.
+El juzgador ordena que se practique la resolución en la sede del despacho.
+El juzgador ordena que se practique la solicitud en el medio señalado.
+El juzgador ordena remitir el expediente al superior en grado.
+El juzgador requiere el archivo solicitada por la apoderada.
+El juzgador requiere el archivo solicitada por la testigo.
+El juzgador requiere la actualización de los datos del trámite.
+El juzgador resuelve el cumplimiento en diez días.
+El juzgador resuelve el cumplimiento en ocho días.
+El juzgador resuelve el desglose solicitada por la parte demandada.
+El juzgador resuelve la comparecencia para dentro de cinco días.
+El juzgador resuelve la comparecencia para dentro de quince días.
+El juzgador resuelve la comparecencia para dentro de sesenta días naturales.
+El juzgador resuelve la comparecencia para dentro de sesenta días.
+El juzgador resuelve la foliatura solicitada por la parte demandada.
+El juzgador resuelve que se practique el acta en el sistema de gestión documental.
+El juzgador resuelve que se practique la comparecencia en la oficina correspondiente.
+El juzgador resuelve que se practique la gestión en el domicilio contractual.
+El juzgador resuelve que se practique la solicitud en el domicilio contractual.
+El juzgador resuelve remitir el certificado al superior en grado.
+El juzgador resuelve remitir el memorial al superior en grado.
+El juzgador señala la acumulación solicitada por la parte demandada.
+El juzgador señala la devolución solicitada por la testigo.
+El juzgador señala la foliatura solicitada por la perita.
+El juzgador señala la foliatura solicitada por la solicitante.
+El juzgador señala la inscripción solicitada por la perita.
+El juzgador solicita el cumplimiento en treinta meses.
+El juzgador solicita la comparecencia para dentro de cinco días hábiles.
+El juzgador solicita la comparecencia para dentro de cinco meses.
+El juzgador solicita la comparecencia para dentro de ocho días naturales.
+El juzgador solicita remitir el certificado al superior en grado.
+El juzgador solicita remitir el dictamen al superior en grado.
+El juzgador solicita remitir el documento al superior en grado.
+El juzgador solicita remitir el escrito al superior en grado.
+El juzgador solicita remitir el expediente al superior en grado.
+El juzgador solicita remitir el recurso al superior en grado.
+El juzgador valoró el acta conforme a las reglas de la sana crítica.
+El juzgador valoró la certificación conforme a las reglas de la sana crítica.
+El juzgador valoró la declaración conforme a las reglas de la sana crítica.
+El juzgador valoró la demanda conforme a las reglas de la sana crítica.
+El juzgador valoró la diligencia conforme a las reglas de la sana crítica.
+El juzgador valoró la gestión conforme a las reglas de la sana crítica.
+El juzgador valoró la notificación conforme a las reglas de la sana crítica.
+El juzgador valoró la solicitud conforme a las reglas de la sana crítica.
+El memorial consta agregado al expediente en materia administrativa.
+El memorial consta agregado al expediente en materia agraria.
+El memorial consta agregado al expediente en materia contenciosa.
+El memorial consta agregado al expediente en materia de familia.
+El memorial consta agregado al expediente en materia notarial.
+El memorial fue admitido parcialmente por el apoderado.
+El memorial fue aportado en la plataforma de gestión documental.
+El memorial fue aprobado formalmente por el perito.
+El memorial fue archivado en la plataforma de gestión documental.
+El memorial fue archivado expresamente por el representante legal.
+El memorial fue notificado debidamente por el testigo.
+El memorial fue notificado en la plataforma de gestión documental.
+El memorial fue presentado en la plataforma de gestión documental.
+El memorial fue presentado oportunamente por el solicitante.
+El memorial fue rechazado en la plataforma de gestión documental.
+El memorial fue rechazado expresamente por el interesado.
+El memorial fue remitido en la plataforma de gestión documental.
+El memorial fue remitido oportunamente por el testigo.
+El memorial fue trasladado en la plataforma de gestión documental.
+El memorial fue trasladado oportunamente por el perito.
+El memorial fue trasladado válidamente por el funcionario.
+El oficio consta agregado al expediente en materia administrativa.
+El oficio consta agregado al expediente en materia agraria.
+El oficio consta agregado al expediente en materia civil.
+El oficio consta agregado al expediente en materia de familia.
+El oficio consta agregado al expediente en materia notarial.
+El oficio fue admitido en la plataforma de gestión documental.
+El oficio fue admitido válidamente por el interesado.
+El oficio fue admitido válidamente por el servidor.
+El oficio fue aportado en la plataforma de gestión documental.
+El oficio fue aportado parcialmente por el apoderado.
+El oficio fue aportado parcialmente por el funcionario.
+El oficio fue aprobado en la plataforma de gestión documental.
+El oficio fue aprobado formalmente por el solicitante.
+El oficio fue aprobado válidamente por el recurrente.
+El oficio fue aprobado válidamente por el servidor.
+El oficio fue archivado en la plataforma de gestión documental.
+El oficio fue archivado válidamente por el solicitante.
+El oficio fue notificado debidamente por el funcionario.
+El oficio fue notificado en la plataforma de gestión documental.
+El oficio fue presentado debidamente por el funcionario.
+El oficio fue presentado en la plataforma de gestión documental.
+El oficio fue presentado expresamente por el recurrente.
+El oficio fue presentado parcialmente por el testigo.
+El oficio fue rechazado debidamente por el representante legal.
+El oficio fue rechazado debidamente por el testigo.
+El oficio fue rechazado en la plataforma de gestión documental.
+El oficio fue rechazado expresamente por el testigo.
+El oficio fue rechazado formalmente por el perito.
+El oficio fue recibido en la plataforma de gestión documental.
+El oficio fue recibido formalmente por el apoderado.
+El oficio fue recibido oportunamente por el representante legal.
+El oficio fue recibido válidamente por el interesado.
+El oficio fue recibido válidamente por el servidor.
+El oficio fue remitido en la plataforma de gestión documental.
+El oficio fue remitido oportunamente por el representante legal.
+El oficio fue remitido válidamente por el representante legal.
+El oficio fue trasladado en la plataforma de gestión documental.
+El oficio fue trasladado oportunamente por el representante legal.
+El oficio fue trasladado válidamente por el servidor.
+El perito acreditó su representación mediante el dictamen habilitante.
+El perito acreditó su representación mediante el documento habilitante.
+El perito acreditó su representación mediante el escrito habilitante.
+El perito acreditó su representación mediante el expediente habilitante.
+El perito acreditó su representación mediante el memorial habilitante.
+El perito acreditó su representación mediante el oficio habilitante.
+El perito compareció debidamente a la hora y fecha señaladas.
+El perito compareció expresamente a la hora y fecha señaladas.
+El perito compareció formalmente a la hora y fecha señaladas.
+El perito compareció oportunamente a la hora y fecha señaladas.
+El perito compareció parcialmente a la hora y fecha señaladas.
+El perito compareció válidamente a la hora y fecha señaladas.
+El perito rindió el certificado dentro del plazo de diez días hábiles.
+El perito rindió el certificado dentro del plazo de sesenta días naturales.
+El perito rindió el certificado dentro del plazo de veinte días hábiles.
+El perito rindió el dictamen dentro del plazo de ocho días naturales.
+El perito rindió el dictamen dentro del plazo de ocho meses.
+El perito rindió el dictamen dentro del plazo de veinte días.
+El perito rindió el documento dentro del plazo de ocho días hábiles.
+El perito rindió el documento dentro del plazo de ocho meses.
+El perito rindió el documento dentro del plazo de quince meses.
+El perito rindió el escrito dentro del plazo de sesenta días naturales.
+El perito rindió el expediente dentro del plazo de ocho días.
+El perito rindió el expediente dentro del plazo de veinte días hábiles.
+El perito rindió el informe dentro del plazo de sesenta días naturales.
+El perito rindió el memorial dentro del plazo de veinte días hábiles.
+El perito rindió el oficio dentro del plazo de veinte meses.
+El perito rindió el recurso dentro del plazo de diez días hábiles.
+El perito señaló que el año anterior no se recibió la notificación.
+El plazo para interponer el certificado venció hace cinco días hábiles.
+El plazo para interponer el certificado venció hace cinco días naturales.
+El plazo para interponer el certificado venció hace cinco días.
+El plazo para interponer el certificado venció hace cinco meses.
+El plazo para interponer el certificado venció hace diez meses.
+El plazo para interponer el certificado venció hace ocho días hábiles.
+El plazo para interponer el certificado venció hace ocho meses.
+El plazo para interponer el certificado venció hace sesenta días naturales.
+El plazo para interponer el certificado venció hace tres días naturales.
+El plazo para interponer el certificado venció hace tres meses.
+El plazo para interponer el certificado venció hace veinte días naturales.
+El plazo para interponer el certificado venció hace veinte días.
+El plazo para interponer el dictamen venció hace cinco días hábiles.
+El plazo para interponer el dictamen venció hace ocho días naturales.
+El plazo para interponer el dictamen venció hace ocho días.
+El plazo para interponer el dictamen venció hace ocho meses.
+El plazo para interponer el dictamen venció hace quince días.
+El plazo para interponer el dictamen venció hace quince meses.
+El plazo para interponer el dictamen venció hace sesenta días naturales.
+El plazo para interponer el dictamen venció hace treinta días.
+El plazo para interponer el dictamen venció hace treinta meses.
+El plazo para interponer el dictamen venció hace tres días naturales.
+El plazo para interponer el dictamen venció hace tres meses.
+El plazo para interponer el dictamen venció hace veinte días naturales.
+El plazo para interponer el documento venció hace cinco días hábiles.
+El plazo para interponer el documento venció hace cinco días naturales.
+El plazo para interponer el documento venció hace diez días.
+El plazo para interponer el documento venció hace quince meses.
+El plazo para interponer el documento venció hace sesenta días naturales.
+El plazo para interponer el documento venció hace sesenta días.
+El plazo para interponer el documento venció hace treinta días hábiles.
+El plazo para interponer el documento venció hace treinta días naturales.
+El plazo para interponer el documento venció hace treinta meses.
+El plazo para interponer el documento venció hace tres días.
+El plazo para interponer el documento venció hace veinte días.
+El plazo para interponer el documento venció hace veinte meses.
+El plazo para interponer el escrito venció hace diez meses.
+El plazo para interponer el escrito venció hace ocho meses.
+El plazo para interponer el escrito venció hace quince días naturales.
+El plazo para interponer el escrito venció hace quince días.
+El plazo para interponer el escrito venció hace sesenta días hábiles.
+El plazo para interponer el escrito venció hace sesenta días naturales.
+El plazo para interponer el escrito venció hace treinta días hábiles.
+El plazo para interponer el escrito venció hace treinta días naturales.
+El plazo para interponer el escrito venció hace treinta días.
+El plazo para interponer el escrito venció hace tres días naturales.
+El plazo para interponer el escrito venció hace tres meses.
+El plazo para interponer el expediente venció hace cinco días naturales.
+El plazo para interponer el expediente venció hace diez días hábiles.
+El plazo para interponer el expediente venció hace ocho días hábiles.
+El plazo para interponer el expediente venció hace quince días naturales.
+El plazo para interponer el expediente venció hace quince días.
+El plazo para interponer el expediente venció hace treinta días naturales.
+El plazo para interponer el expediente venció hace tres días naturales.
+El plazo para interponer el expediente venció hace veinte días naturales.
+El plazo para interponer el expediente venció hace veinte días.
+El plazo para interponer el informe venció hace cinco días.
+El plazo para interponer el informe venció hace diez días naturales.
+El plazo para interponer el informe venció hace diez días.
+El plazo para interponer el informe venció hace ocho días.
+El plazo para interponer el informe venció hace quince días.
+El plazo para interponer el informe venció hace sesenta meses.
+El plazo para interponer el informe venció hace treinta días.
+El plazo para interponer el informe venció hace tres días hábiles.
+El plazo para interponer el informe venció hace tres días naturales.
+El plazo para interponer el informe venció hace tres días.
+El plazo para interponer el memorial venció hace cinco días.
+El plazo para interponer el memorial venció hace diez días hábiles.
+El plazo para interponer el memorial venció hace ocho días hábiles.
+El plazo para interponer el memorial venció hace ocho meses.
+El plazo para interponer el memorial venció hace quince días hábiles.
+El plazo para interponer el memorial venció hace quince días.
+El plazo para interponer el memorial venció hace quince meses.
+El plazo para interponer el memorial venció hace treinta días.
+El plazo para interponer el memorial venció hace treinta meses.
+El plazo para interponer el memorial venció hace tres días hábiles.
+El plazo para interponer el memorial venció hace tres meses.
+El plazo para interponer el memorial venció hace veinte días hábiles.
+El plazo para interponer el memorial venció hace veinte días naturales.
+El plazo para interponer el oficio venció hace cinco días hábiles.
+El plazo para interponer el oficio venció hace cinco días naturales.
+El plazo para interponer el oficio venció hace cinco días.
+El plazo para interponer el oficio venció hace diez días naturales.
+El plazo para interponer el oficio venció hace quince días hábiles.
+El plazo para interponer el oficio venció hace quince días naturales.
+El plazo para interponer el oficio venció hace quince meses.
+El plazo para interponer el oficio venció hace sesenta días hábiles.
+El plazo para interponer el oficio venció hace sesenta días naturales.
+El plazo para interponer el oficio venció hace treinta días hábiles.
+El plazo para interponer el oficio venció hace treinta meses.
+El plazo para interponer el oficio venció hace tres días naturales.
+El plazo para interponer el oficio venció hace veinte días.
+El plazo para interponer el recurso venció hace ocho días naturales.
+El plazo para interponer el recurso venció hace ocho días.
+El plazo para interponer el recurso venció hace ocho meses.
+El plazo para interponer el recurso venció hace quince días naturales.
+El plazo para interponer el recurso venció hace quince días.
+El plazo para interponer el recurso venció hace sesenta meses.
+El plazo para interponer el recurso venció hace treinta días.
+El plazo para interponer el recurso venció hace tres días hábiles.
+El plazo para interponer el recurso venció hace tres días.
+El plazo para interponer el recurso venció hace veinte días hábiles.
+El plazo para interponer el recurso venció hace veinte días.
+El plazo para interponer el recurso venció hace veinte meses.
+El recurrente acreditó su representación mediante el certificado habilitante.
+El recurrente acreditó su representación mediante el dictamen habilitante.
+El recurrente acreditó su representación mediante el documento habilitante.
+El recurrente acreditó su representación mediante el escrito habilitante.
+El recurrente acreditó su representación mediante el informe habilitante.
+El recurrente acreditó su representación mediante el memorial habilitante.
+El recurrente acreditó su representación mediante el recurso habilitante.
+El recurrente compareció expresamente a la hora y fecha señaladas.
+El recurrente compareció formalmente a la hora y fecha señaladas.
+El recurrente compareció oportunamente a la hora y fecha señaladas.
+El recurrente compareció parcialmente a la hora y fecha señaladas.
+El recurrente compareció válidamente a la hora y fecha señaladas.
+El recurrente rindió el certificado dentro del plazo de diez días hábiles.
+El recurrente rindió el certificado dentro del plazo de treinta días naturales.
+El recurrente rindió el dictamen dentro del plazo de cinco meses.
+El recurrente rindió el dictamen dentro del plazo de sesenta meses.
+El recurrente rindió el dictamen dentro del plazo de veinte días naturales.
+El recurrente rindió el escrito dentro del plazo de cinco días hábiles.
+El recurrente rindió el escrito dentro del plazo de veinte meses.
+El recurrente rindió el expediente dentro del plazo de ocho meses.
+El recurrente rindió el expediente dentro del plazo de tres días.
+El recurrente rindió el expediente dentro del plazo de veinte días naturales.
+El recurrente rindió el informe dentro del plazo de treinta días naturales.
+El recurrente rindió el memorial dentro del plazo de veinte días.
+El recurrente rindió el oficio dentro del plazo de cinco días hábiles.
+El recurrente rindió el oficio dentro del plazo de treinta días naturales.
+El recurrente rindió el oficio dentro del plazo de tres días naturales.
+El recurrente rindió el recurso dentro del plazo de cinco días.
+El recurrente rindió el recurso dentro del plazo de sesenta días naturales.
+El recurrente señaló que el año anterior no se recibió la notificación.
+El recurso consta agregado al expediente en materia administrativa.
+El recurso consta agregado al expediente en materia agraria.
+El recurso consta agregado al expediente en materia civil.
+El recurso consta agregado al expediente en materia contenciosa.
+El recurso consta agregado al expediente en materia de familia.
+El recurso consta agregado al expediente en materia laboral.
+El recurso consta agregado al expediente en materia notarial.
+El recurso fue admitido en la plataforma de gestión documental.
+El recurso fue admitido oportunamente por el perito.
+El recurso fue aportado en la plataforma de gestión documental.
+El recurso fue aportado oportunamente por el apoderado.
+El recurso fue aportado oportunamente por el representante legal.
+El recurso fue aprobado oportunamente por el apoderado.
+El recurso fue archivado en la plataforma de gestión documental.
+El recurso fue archivado oportunamente por el testigo.
+El recurso fue rechazado debidamente por el apoderado.
+El recurso fue rechazado en la plataforma de gestión documental.
+El recurso fue rechazado válidamente por el interesado.
+El recurso fue remitido debidamente por el representante legal.
+El recurso fue trasladado en la plataforma de gestión documental.
+El representante legal acreditó su representación mediante el certificado habilitante.
+El representante legal acreditó su representación mediante el dictamen habilitante.
+El representante legal acreditó su representación mediante el documento habilitante.
+El representante legal acreditó su representación mediante el expediente habilitante.
+El representante legal acreditó su representación mediante el informe habilitante.
+El representante legal acreditó su representación mediante el memorial habilitante.
+El representante legal acreditó su representación mediante el recurso habilitante.
+El representante legal compareció debidamente a la hora y fecha señaladas.
+El representante legal compareció expresamente a la hora y fecha señaladas.
+El representante legal compareció formalmente a la hora y fecha señaladas.
+El representante legal compareció oportunamente a la hora y fecha señaladas.
+El representante legal compareció parcialmente a la hora y fecha señaladas.
+El representante legal compareció válidamente a la hora y fecha señaladas.
+El representante legal rindió el certificado dentro del plazo de sesenta días.
+El representante legal rindió el documento dentro del plazo de veinte días naturales.
+El representante legal rindió el escrito dentro del plazo de cinco días naturales.
+El representante legal rindió el expediente dentro del plazo de cinco días hábiles.
+El representante legal rindió el expediente dentro del plazo de sesenta días hábiles.
+El representante legal rindió el informe dentro del plazo de cinco días hábiles.
+El representante legal rindió el informe dentro del plazo de sesenta días naturales.
+El representante legal rindió el memorial dentro del plazo de veinte meses.
+El representante legal rindió el oficio dentro del plazo de diez días.
+El representante legal rindió el oficio dentro del plazo de ocho días hábiles.
+El representante legal rindió el recurso dentro del plazo de cinco días naturales.
+El representante legal rindió el recurso dentro del plazo de treinta meses.
+El representante legal señaló que el año anterior no se recibió la notificación.
+El servidor acreditó su representación mediante el dictamen habilitante.
+El servidor acreditó su representación mediante el documento habilitante.
+El servidor acreditó su representación mediante el expediente habilitante.
+El servidor acreditó su representación mediante el memorial habilitante.
+El servidor acreditó su representación mediante el oficio habilitante.
+El servidor acreditó su representación mediante el recurso habilitante.
+El servidor compareció debidamente a la hora y fecha señaladas.
+El servidor compareció expresamente a la hora y fecha señaladas.
+El servidor compareció oportunamente a la hora y fecha señaladas.
+El servidor compareció parcialmente a la hora y fecha señaladas.
+El servidor compareció válidamente a la hora y fecha señaladas.
+El servidor rindió el certificado dentro del plazo de quince días naturales.
+El servidor rindió el certificado dentro del plazo de tres días.
+El servidor rindió el certificado dentro del plazo de tres meses.
+El servidor rindió el escrito dentro del plazo de ocho días hábiles.
+El servidor rindió el escrito dentro del plazo de quince días hábiles.
+El servidor rindió el memorial dentro del plazo de tres días.
+El servidor rindió el memorial dentro del plazo de veinte días hábiles.
+El servidor rindió el oficio dentro del plazo de cinco días naturales.
+El servidor rindió el oficio dentro del plazo de ocho meses.
+El servidor rindió el recurso dentro del plazo de treinta días naturales.
+El servidor señaló que el año anterior no se recibió la notificación.
+El solicitante acreditó su representación mediante el dictamen habilitante.
+El solicitante acreditó su representación mediante el documento habilitante.
+El solicitante acreditó su representación mediante el escrito habilitante.
+El solicitante acreditó su representación mediante el expediente habilitante.
+El solicitante acreditó su representación mediante el informe habilitante.
+El solicitante acreditó su representación mediante el memorial habilitante.
+El solicitante acreditó su representación mediante el oficio habilitante.
+El solicitante acreditó su representación mediante el recurso habilitante.
+El solicitante compareció debidamente a la hora y fecha señaladas.
+El solicitante compareció expresamente a la hora y fecha señaladas.
+El solicitante compareció formalmente a la hora y fecha señaladas.
+El solicitante compareció parcialmente a la hora y fecha señaladas.
+El solicitante compareció válidamente a la hora y fecha señaladas.
+El solicitante rindió el certificado dentro del plazo de veinte días.
+El solicitante rindió el documento dentro del plazo de treinta días.
+El solicitante rindió el escrito dentro del plazo de diez días.
+El solicitante rindió el escrito dentro del plazo de quince días.
+El solicitante rindió el escrito dentro del plazo de sesenta días hábiles.
+El solicitante rindió el informe dentro del plazo de veinte meses.
+El solicitante rindió el memorial dentro del plazo de diez días naturales.
+El solicitante rindió el memorial dentro del plazo de ocho meses.
+El solicitante rindió el memorial dentro del plazo de quince días naturales.
+El solicitante rindió el oficio dentro del plazo de ocho días hábiles.
+El solicitante rindió el oficio dentro del plazo de treinta días.
+El solicitante rindió el recurso dentro del plazo de treinta días hábiles.
+El solicitante señaló que el año anterior no se recibió la notificación.
+El testigo acreditó su representación mediante el certificado habilitante.
+El testigo acreditó su representación mediante el dictamen habilitante.
+El testigo acreditó su representación mediante el documento habilitante.
+El testigo acreditó su representación mediante el expediente habilitante.
+El testigo acreditó su representación mediante el informe habilitante.
+El testigo acreditó su representación mediante el memorial habilitante.
+El testigo acreditó su representación mediante el oficio habilitante.
+El testigo acreditó su representación mediante el recurso habilitante.
+El testigo compareció debidamente a la hora y fecha señaladas.
+El testigo compareció expresamente a la hora y fecha señaladas.
+El testigo compareció oportunamente a la hora y fecha señaladas.
+El testigo compareció parcialmente a la hora y fecha señaladas.
+El testigo compareció válidamente a la hora y fecha señaladas.
+El testigo rindió el certificado dentro del plazo de cinco días.
+El testigo rindió el certificado dentro del plazo de diez meses.
+El testigo rindió el certificado dentro del plazo de sesenta días hábiles.
+El testigo rindió el certificado dentro del plazo de sesenta días.
+El testigo rindió el dictamen dentro del plazo de tres días.
+El testigo rindió el documento dentro del plazo de veinte meses.
+El testigo rindió el escrito dentro del plazo de sesenta días naturales.
+El testigo rindió el expediente dentro del plazo de diez días hábiles.
+El testigo rindió el expediente dentro del plazo de tres días hábiles.
+El testigo rindió el informe dentro del plazo de diez días naturales.
+El testigo rindió el informe dentro del plazo de ocho meses.
+El testigo rindió el memorial dentro del plazo de diez días naturales.
+El testigo señaló que el año anterior no se recibió la notificación.
+El órgano director acoge la acumulación solicitada por la apoderada.
+El órgano director autoriza el archivo solicitada por la parte actora.
+El órgano director autoriza el archivo solicitada por la parte demandada.
+El órgano director autoriza el archivo solicitada por la solicitante.
+El órgano director autoriza el cumplimiento en tres días hábiles.
+El órgano director autoriza la certificación solicitada por la contraparte.
+El órgano director autoriza la comparecencia para dentro de cinco días.
+El órgano director autoriza la comparecencia para dentro de ocho días hábiles.
+El órgano director autoriza la comparecencia para dentro de quince días hábiles.
+El órgano director autoriza la comparecencia para dentro de quince días naturales.
+El órgano director autoriza la comparecencia para dentro de sesenta días.
+El órgano director autoriza la comparecencia para dentro de tres días.
+El órgano director autoriza que se practique la comparecencia en el medio señalado.
+El órgano director autoriza remitir el expediente al superior en grado.
+El órgano director autoriza remitir el memorial al superior en grado.
+El órgano director confirma el desglose solicitada por la perita.
+El órgano director dispone el cumplimiento en diez meses.
+El órgano director dispone el cumplimiento en treinta días hábiles.
+El órgano director dispone el cumplimiento en treinta días.
+El órgano director dispone el cumplimiento en tres días.
+El órgano director dispone el cumplimiento en veinte días naturales.
+El órgano director dispone el desglose solicitada por la testigo.
+El órgano director dispone la comparecencia para dentro de cinco días naturales.
+El órgano director dispone la comparecencia para dentro de cinco días.
+El órgano director dispone la comparecencia para dentro de diez días hábiles.
+El órgano director dispone la comparecencia para dentro de sesenta días.
+El órgano director dispone la comparecencia para dentro de tres días hábiles.
+El órgano director dispone la inscripción solicitada por la solicitante.
+El órgano director dispone que se practique el acta en el domicilio contractual.
+El órgano director dispone que se practique la comparecencia en el domicilio contractual.
+El órgano director dispone que se practique la resolución en el domicilio contractual.
+El órgano director dispone que se practique la solicitud en la oficina correspondiente.
+El órgano director dispone remitir el documento al superior en grado.
+El órgano director dispone remitir el informe al superior en grado.
+El órgano director dispone remitir el recurso al superior en grado.
+El órgano director ordena el cumplimiento en cinco días hábiles.
+El órgano director ordena el cumplimiento en cinco meses.
+El órgano director ordena el cumplimiento en ocho días hábiles.
+El órgano director ordena el cumplimiento en tres días hábiles.
+El órgano director ordena el cumplimiento en veinte días hábiles.
+El órgano director ordena que se practique el acta en el medio señalado.
+El órgano director ordena que se practique la gestión en el medio señalado.
+El órgano director ordena que se practique la notificación en la sede del despacho.
+El órgano director ordena que se practique la resolución en la sede del despacho.
+El órgano director ordena remitir el certificado al superior en grado.
+El órgano director ordena remitir el dictamen al superior en grado.
+El órgano director ordena remitir el escrito al superior en grado.
+El órgano director ordena remitir el expediente al superior en grado.
+El órgano director ordena remitir el memorial al superior en grado.
+El órgano director requiere el desglose solicitada por la apoderada.
+El órgano director requiere el desglose solicitada por la parte actora.
+El órgano director requiere la actualización de los datos del trámite.
+El órgano director resuelve el cumplimiento en cinco días hábiles.
+El órgano director resuelve el cumplimiento en cinco días.
+El órgano director resuelve el cumplimiento en cinco meses.
+El órgano director resuelve el cumplimiento en diez días naturales.
+El órgano director resuelve el cumplimiento en sesenta días naturales.
+El órgano director resuelve el cumplimiento en treinta días.
+El órgano director resuelve la comparecencia para dentro de ocho días hábiles.
+El órgano director resuelve la inscripción solicitada por la solicitante.
+El órgano director resuelve que se practique la demanda en el domicilio contractual.
+El órgano director resuelve que se practique la gestión en la oficina correspondiente.
+El órgano director resuelve que se practique la gestión en la plataforma institucional.
+El órgano director resuelve que se practique la prueba en la sede del despacho.
+El órgano director resuelve remitir el escrito al superior en grado.
+El órgano director resuelve remitir el expediente al superior en grado.
+El órgano director resuelve remitir el memorial al superior en grado.
+El órgano director solicita el cumplimiento en diez días naturales.
+El órgano director solicita el cumplimiento en sesenta días hábiles.
+El órgano director solicita el cumplimiento en tres días.
+El órgano director solicita la comparecencia para dentro de quince días.
+El órgano director solicita la comparecencia para dentro de tres días.
+El órgano director solicita la comparecencia para dentro de veinte días hábiles.
+El órgano director solicita que se practique la diligencia en el sistema de gestión documental.
+El órgano director solicita que se practique la solicitud en el domicilio contractual.
+El órgano director solicita que se practique la solicitud en el sistema de gestión documental.
+El órgano director solicita remitir el certificado al superior en grado.
+El órgano director solicita remitir el escrito al superior en grado.
+El órgano director solicita remitir el recurso al superior en grado.
+El órgano director valoró el acta conforme a las reglas de la sana crítica.
+El órgano director valoró la certificación conforme a las reglas de la sana crítica.
+El órgano director valoró la comparecencia conforme a las reglas de la sana crítica.
+El órgano director valoró la declaración conforme a las reglas de la sana crítica.
+El órgano director valoró la demanda conforme a las reglas de la sana crítica.
+El órgano director valoró la diligencia conforme a las reglas de la sana crítica.
+El órgano director valoró la resolución conforme a las reglas de la sana crítica.
+La Sala acoge la acumulación solicitada por la parte demandada.
+La Sala autoriza el cumplimiento en ocho días naturales.
+La Sala autoriza el cumplimiento en treinta meses.
+La Sala autoriza el cumplimiento en tres días.
+La Sala autoriza el cumplimiento en tres meses.
+La Sala autoriza el desglose solicitada por la recurrente.
+La Sala autoriza el traslado solicitada por la testigo.
+La Sala autoriza la comparecencia para dentro de quince días hábiles.
+La Sala autoriza la comparecencia para dentro de quince días.
+La Sala autoriza la foliatura solicitada por la contraparte.
+La Sala autoriza que se practique la diligencia en el sistema de gestión documental.
+La Sala autoriza que se practique la gestión en el domicilio contractual.
+La Sala autoriza que se practique la notificación en la oficina correspondiente.
+La Sala autoriza remitir el documento al superior en grado.
+La Sala autoriza remitir el informe al superior en grado.
+La Sala confirma la suspensión solicitada por la perita.
+La Sala deniega la devolución solicitada por la recurrente.
+La Sala dispone el cumplimiento en diez días.
+La Sala dispone el cumplimiento en quince días naturales.
+La Sala dispone el cumplimiento en tres días.
+La Sala dispone el cumplimiento en veinte días.
+La Sala dispone la certificación solicitada por la solicitante.
+La Sala dispone la comparecencia para dentro de quince días.
+La Sala dispone la comparecencia para dentro de treinta meses.
+La Sala dispone la comparecencia para dentro de veinte días hábiles.
+La Sala dispone la comparecencia para dentro de veinte días naturales.
+La Sala dispone la comparecencia para dentro de veinte meses.
+La Sala dispone que se practique el acta en la sede del despacho.
+La Sala dispone que se practique la certificación en la plataforma institucional.
+La Sala dispone que se practique la comparecencia en el sistema de gestión documental.
+La Sala dispone que se practique la resolución en el domicilio contractual.
+La Sala dispone que se practique la solicitud en el domicilio contractual.
+La Sala dispone remitir el certificado al superior en grado.
+La Sala ordena el cumplimiento en cinco meses.
+La Sala ordena el cumplimiento en ocho meses.
+La Sala ordena el cumplimiento en quince días hábiles.
+La Sala ordena el cumplimiento en sesenta días hábiles.
+La Sala ordena el cumplimiento en sesenta días naturales.
+La Sala ordena el cumplimiento en treinta días naturales.
+La Sala ordena el cumplimiento en tres días hábiles.
+La Sala ordena el cumplimiento en veinte meses.
+La Sala ordena el traslado solicitada por la perita.
+La Sala ordena la certificación solicitada por la apoderada.
+La Sala ordena la comparecencia para dentro de cinco meses.
+La Sala ordena la comparecencia para dentro de sesenta días hábiles.
+La Sala ordena la comparecencia para dentro de treinta días hábiles.
+La Sala ordena la comparecencia para dentro de treinta meses.
+La Sala ordena la suspensión solicitada por la solicitante.
+La Sala ordena que se practique la gestión en el medio señalado.
+La Sala ordena que se practique la solicitud en el medio señalado.
+La Sala requiere la actualización de los datos del trámite.
+La Sala requiere la acumulación solicitada por la parte demandada.
+La Sala requiere la devolución solicitada por la apoderada.
+La Sala requiere la devolución solicitada por la parte actora.
+La Sala resuelve el archivo solicitada por la perita.
+La Sala resuelve el cumplimiento en cinco días.
+La Sala resuelve el cumplimiento en tres días.
+La Sala resuelve el desglose solicitada por la parte demandada.
+La Sala resuelve el traslado solicitada por la parte demandada.
+La Sala resuelve la certificación solicitada por la perita.
+La Sala resuelve la comparecencia para dentro de veinte días naturales.
+La Sala resuelve que se practique la declaración en el sistema de gestión documental.
+La Sala resuelve que se practique la demanda en la sede del despacho.
+La Sala resuelve que se practique la gestión en la sede del despacho.
+La Sala resuelve remitir el documento al superior en grado.
+La Sala resuelve remitir el recurso al superior en grado.
+La Sala señala el traslado solicitada por la solicitante.
+La Sala señala la devolución solicitada por la testigo.
+La Sala señala la foliatura solicitada por la parte actora.
+La Sala solicita el cumplimiento en ocho días.
+La Sala solicita el cumplimiento en quince meses.
+La Sala solicita el cumplimiento en treinta días naturales.
+La Sala solicita el cumplimiento en tres meses.
+La Sala solicita el cumplimiento en veinte días.
+La Sala solicita la comparecencia para dentro de ocho días hábiles.
+La Sala solicita la comparecencia para dentro de sesenta meses.
+La Sala solicita que se practique la declaración en la oficina correspondiente.
+La Sala solicita que se practique la demanda en el sistema de gestión documental.
+La Sala solicita que se practique la gestión en el medio señalado.
+La Sala solicita que se practique la prueba en la oficina correspondiente.
+La Sala solicita remitir el recurso al superior en grado.
+La Sala valoró el acta conforme a las reglas de la sana crítica.
+La Sala valoró la certificación conforme a las reglas de la sana crítica.
+La Sala valoró la declaración conforme a las reglas de la sana crítica.
+La Sala valoró la demanda conforme a las reglas de la sana crítica.
+La Sala valoró la diligencia conforme a las reglas de la sana crítica.
+La Sala valoró la gestión conforme a las reglas de la sana crítica.
+La Sala valoró la notificación conforme a las reglas de la sana crítica.
+La Sala valoró la prueba conforme a las reglas de la sana crítica.
+La Sala valoró la resolución conforme a las reglas de la sana crítica.
+La Sala valoró la solicitud conforme a las reglas de la sana crítica.
+La apoderada desistió debidamente de la acción interpuesta.
+La apoderada desistió expresamente de la acción interpuesta.
+La apoderada desistió formalmente de la acción interpuesta.
+La apoderada desistió oportunamente de la acción interpuesta.
+La apoderada desistió parcialmente de la acción interpuesta.
+La apoderada desistió válidamente de la acción interpuesta.
+La apoderada manifestó su conformidad con lo resuelto por el Juzgado.
+La apoderada manifestó su conformidad con lo resuelto por el despacho.
+La apoderada manifestó su conformidad con lo resuelto por el órgano director.
+La apoderada manifestó su conformidad con lo resuelto por la Sala.
+La apoderada manifestó su conformidad con lo resuelto por la autoridad administrativa.
+La apoderada manifestó su conformidad con lo resuelto por la institución.
+La autoridad administrativa acoge el desglose solicitada por la contraparte.
+La autoridad administrativa acoge el traslado solicitada por la parte actora.
+La autoridad administrativa acoge la acumulación solicitada por la recurrente.
+La autoridad administrativa acoge la inscripción solicitada por la perita.
+La autoridad administrativa autoriza el cumplimiento en cinco días hábiles.
+La autoridad administrativa autoriza el cumplimiento en tres días naturales.
+La autoridad administrativa autoriza el desglose solicitada por la recurrente.
+La autoridad administrativa autoriza la comparecencia para dentro de cinco meses.
+La autoridad administrativa autoriza la comparecencia para dentro de ocho días.
+La autoridad administrativa autoriza la comparecencia para dentro de tres días naturales.
+La autoridad administrativa autoriza la suspensión solicitada por la testigo.
+La autoridad administrativa autoriza que se practique la certificación en la sede del despacho.
+La autoridad administrativa autoriza remitir el informe al superior en grado.
+La autoridad administrativa autoriza remitir el memorial al superior en grado.
+La autoridad administrativa confirma la acumulación solicitada por la solicitante.
+La autoridad administrativa deniega el desglose solicitada por la parte demandada.
+La autoridad administrativa deniega el desglose solicitada por la testigo.
+La autoridad administrativa deniega la suspensión solicitada por la parte demandada.
+La autoridad administrativa dispone el cumplimiento en ocho días naturales.
+La autoridad administrativa dispone el desglose solicitada por la testigo.
+La autoridad administrativa dispone la acumulación solicitada por la contraparte.
+La autoridad administrativa dispone la comparecencia para dentro de cinco días hábiles.
+La autoridad administrativa dispone la comparecencia para dentro de sesenta días.
+La autoridad administrativa dispone la comparecencia para dentro de treinta días hábiles.
+La autoridad administrativa dispone la comparecencia para dentro de veinte días hábiles.
+La autoridad administrativa dispone la comparecencia para dentro de veinte días naturales.
+La autoridad administrativa dispone la devolución solicitada por la perita.
+La autoridad administrativa dispone que se practique la resolución en la sede del despacho.
+La autoridad administrativa dispone remitir el certificado al superior en grado.
+La autoridad administrativa dispone remitir el escrito al superior en grado.
+La autoridad administrativa dispone remitir el memorial al superior en grado.
+La autoridad administrativa dispone remitir el oficio al superior en grado.
+La autoridad administrativa ordena el cumplimiento en cinco días naturales.
+La autoridad administrativa ordena el cumplimiento en quince meses.
+La autoridad administrativa ordena el cumplimiento en sesenta días hábiles.
+La autoridad administrativa ordena el cumplimiento en treinta meses.
+La autoridad administrativa ordena el cumplimiento en tres días.
+La autoridad administrativa ordena el cumplimiento en veinte días.
+La autoridad administrativa ordena la devolución solicitada por la recurrente.
+La autoridad administrativa ordena la inscripción solicitada por la perita.
+La autoridad administrativa ordena la suspensión solicitada por la perita.
+La autoridad administrativa ordena la suspensión solicitada por la solicitante.
+La autoridad administrativa ordena que se practique el acta en el domicilio contractual.
+La autoridad administrativa ordena que se practique la prueba en la plataforma institucional.
+La autoridad administrativa ordena que se practique la resolución en el domicilio contractual.
+La autoridad administrativa ordena remitir el certificado al superior en grado.
+La autoridad administrativa ordena remitir el dictamen al superior en grado.
+La autoridad administrativa ordena remitir el expediente al superior en grado.
+La autoridad administrativa requiere el desglose solicitada por la apoderada.
+La autoridad administrativa requiere la actualización de los datos del trámite.
+La autoridad administrativa requiere la suspensión solicitada por la parte actora.
+La autoridad administrativa requiere la suspensión solicitada por la solicitante.
+La autoridad administrativa resuelve la acumulación solicitada por la contraparte.
+La autoridad administrativa resuelve la comparecencia para dentro de quince días naturales.
+La autoridad administrativa resuelve la comparecencia para dentro de treinta días hábiles.
+La autoridad administrativa resuelve la comparecencia para dentro de treinta meses.
+La autoridad administrativa resuelve remitir el memorial al superior en grado.
+La autoridad administrativa solicita el cumplimiento en tres días naturales.
+La autoridad administrativa solicita la comparecencia para dentro de quince días hábiles.
+La autoridad administrativa solicita la comparecencia para dentro de sesenta meses.
+La autoridad administrativa solicita la comparecencia para dentro de veinte días hábiles.
+La autoridad administrativa solicita que se practique la gestión en el medio señalado.
+La autoridad administrativa solicita remitir el oficio al superior en grado.
+La autoridad administrativa solicita remitir el recurso al superior en grado.
+La autoridad administrativa valoró la certificación conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la comparecencia conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la declaración conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la demanda conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la gestión conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la notificación conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la prueba conforme a las reglas de la sana crítica.
+La autoridad administrativa valoró la resolución conforme a las reglas de la sana crítica.
+La certificación en materia agraria fue presentada sin observaciones.
+La certificación en materia agraria fue recibida sin observaciones.
+La certificación en materia contenciosa fue admitida sin observaciones.
+La certificación en materia de familia fue remitida sin observaciones.
+La certificación en materia notarial fue admitida sin observaciones.
+La certificación en materia notarial fue aportada sin observaciones.
+La certificación en materia notarial fue archivada sin observaciones.
+La certificación fue admitida debidamente dentro del término conferido.
+La certificación fue admitida válidamente dentro del término conferido.
+La certificación fue aportada expresamente dentro del término conferido.
+La certificación fue aportada oportunamente dentro del término conferido.
+La certificación fue archivada válidamente dentro del término conferido.
+La certificación fue notificada expresamente dentro del término conferido.
+La certificación fue presentada debidamente dentro del término conferido.
+La certificación fue presentada oportunamente dentro del término conferido.
+La certificación fue recibida expresamente dentro del término conferido.
+La certificación fue recibida formalmente dentro del término conferido.
+La certificación fue remitida expresamente dentro del término conferido.
+La certificación fue remitida oportunamente dentro del término conferido.
+La certificación fue remitida válidamente dentro del término conferido.
+La certificación quedó firme al no haberse interpuesto recurso alguno.
+La certificación se practicó en presencia de el apoderado.
+La certificación se practicó en presencia de el funcionario.
+La certificación se practicó en presencia de el interesado.
+La certificación se practicó en presencia de el perito.
+La certificación se practicó en presencia de el recurrente.
+La certificación se practicó en presencia de el representante legal.
+La certificación se practicó en presencia de el servidor.
+La certificación se practicó en presencia de el testigo.
+La comparecencia en materia administrativa fue presentada sin observaciones.
+La comparecencia en materia agraria fue admitida sin observaciones.
+La comparecencia en materia civil fue aportada sin observaciones.
+La comparecencia en materia civil fue remitida sin observaciones.
+La comparecencia en materia contenciosa fue admitida sin observaciones.
+La comparecencia en materia contenciosa fue recibida sin observaciones.
+La comparecencia en materia de familia fue trasladada sin observaciones.
+La comparecencia en materia notarial fue aportada sin observaciones.
+La comparecencia fue admitida formalmente dentro del término conferido.
+La comparecencia fue aportada expresamente dentro del término conferido.
+La comparecencia fue aprobada debidamente dentro del término conferido.
+La comparecencia fue aprobada formalmente dentro del término conferido.
+La comparecencia fue aprobada parcialmente dentro del término conferido.
+La comparecencia fue notificada formalmente dentro del término conferido.
+La comparecencia fue notificada parcialmente dentro del término conferido.
+La comparecencia fue presentada oportunamente dentro del término conferido.
+La comparecencia fue presentada parcialmente dentro del término conferido.
+La comparecencia fue recibida expresamente dentro del término conferido.
+La comparecencia fue recibida parcialmente dentro del término conferido.
+La comparecencia fue remitida expresamente dentro del término conferido.
+La comparecencia fue trasladada debidamente dentro del término conferido.
+La comparecencia fue trasladada expresamente dentro del término conferido.
+La comparecencia fue trasladada válidamente dentro del término conferido.
+La comparecencia quedó firme al no haberse interpuesto recurso alguno.
+La comparecencia se practicó en presencia de el apoderado.
+La comparecencia se practicó en presencia de el perito.
+La comparecencia se practicó en presencia de el recurrente.
+La comparecencia se practicó en presencia de el servidor.
+La comparecencia se practicó en presencia de el solicitante.
+La comparecencia se practicó en presencia de el testigo.
+La contraparte desistió debidamente de la acción interpuesta.
+La contraparte desistió expresamente de la acción interpuesta.
+La contraparte desistió formalmente de la acción interpuesta.
+La contraparte desistió oportunamente de la acción interpuesta.
+La contraparte desistió parcialmente de la acción interpuesta.
+La contraparte desistió válidamente de la acción interpuesta.
+La contraparte manifestó su conformidad con lo resuelto por el Juzgado.
+La contraparte manifestó su conformidad con lo resuelto por el Tribunal.
+La contraparte manifestó su conformidad con lo resuelto por el despacho.
+La contraparte manifestó su conformidad con lo resuelto por el juzgador.
+La contraparte manifestó su conformidad con lo resuelto por la Sala.
+La contraparte manifestó su conformidad con lo resuelto por la institución.
+La declaración en materia administrativa fue presentada sin observaciones.
+La declaración en materia administrativa fue recibida sin observaciones.
+La declaración en materia agraria fue presentada sin observaciones.
+La declaración en materia contenciosa fue aportada sin observaciones.
+La declaración en materia contenciosa fue trasladada sin observaciones.
+La declaración en materia de familia fue aprobada sin observaciones.
+La declaración en materia de familia fue archivada sin observaciones.
+La declaración en materia de familia fue rechazada sin observaciones.
+La declaración en materia laboral fue presentada sin observaciones.
+La declaración en materia notarial fue presentada sin observaciones.
+La declaración en materia notarial fue recibida sin observaciones.
+La declaración fue admitida parcialmente dentro del término conferido.
+La declaración fue aprobada expresamente dentro del término conferido.
+La declaración fue aprobada parcialmente dentro del término conferido.
+La declaración fue archivada expresamente dentro del término conferido.
+La declaración fue notificada debidamente dentro del término conferido.
+La declaración fue notificada parcialmente dentro del término conferido.
+La declaración fue presentada formalmente dentro del término conferido.
+La declaración fue rechazada debidamente dentro del término conferido.
+La declaración fue rechazada parcialmente dentro del término conferido.
+La declaración fue remitida oportunamente dentro del término conferido.
+La declaración fue trasladada expresamente dentro del término conferido.
+La declaración fue trasladada parcialmente dentro del término conferido.
+La declaración fue trasladada válidamente dentro del término conferido.
+La declaración quedó firme al no haberse interpuesto recurso alguno.
+La declaración se practicó en presencia de el apoderado.
+La declaración se practicó en presencia de el interesado.
+La declaración se practicó en presencia de el perito.
+La declaración se practicó en presencia de el servidor.
+La declaración se practicó en presencia de el solicitante.
+La declaración se practicó en presencia de el testigo.
+La demanda en materia administrativa fue notificada sin observaciones.
+La demanda en materia agraria fue rechazada sin observaciones.
+La demanda en materia civil fue notificada sin observaciones.
+La demanda en materia civil fue presentada sin observaciones.
+La demanda en materia contenciosa fue rechazada sin observaciones.
+La demanda en materia de familia fue aportada sin observaciones.
+La demanda en materia laboral fue aportada sin observaciones.
+La demanda en materia laboral fue rechazada sin observaciones.
+La demanda en materia notarial fue aprobada sin observaciones.
+La demanda en materia notarial fue archivada sin observaciones.
+La demanda en materia notarial fue trasladada sin observaciones.
+La demanda fue aprobada válidamente dentro del término conferido.
+La demanda fue notificada debidamente dentro del término conferido.
+La demanda fue notificada oportunamente dentro del término conferido.
+La demanda fue presentada expresamente dentro del término conferido.
+La demanda fue presentada válidamente dentro del término conferido.
+La demanda fue rechazada expresamente dentro del término conferido.
+La demanda fue rechazada formalmente dentro del término conferido.
+La demanda fue rechazada oportunamente dentro del término conferido.
+La demanda fue recibida debidamente dentro del término conferido.
+La demanda fue recibida expresamente dentro del término conferido.
+La demanda fue trasladada expresamente dentro del término conferido.
+La demanda fue trasladada formalmente dentro del término conferido.
+La demanda fue trasladada válidamente dentro del término conferido.
+La demanda quedó firme al no haberse interpuesto recurso alguno.
+La demanda se practicó en presencia de el funcionario.
+La demanda se practicó en presencia de el perito.
+La demanda se practicó en presencia de el recurrente.
+La demanda se practicó en presencia de el servidor.
+La diligencia en materia administrativa fue archivada sin observaciones.
+La diligencia en materia administrativa fue remitida sin observaciones.
+La diligencia en materia civil fue aprobada sin observaciones.
+La diligencia en materia contenciosa fue rechazada sin observaciones.
+La diligencia en materia de familia fue aportada sin observaciones.
+La diligencia en materia de familia fue recibida sin observaciones.
+La diligencia en materia notarial fue aportada sin observaciones.
+La diligencia en materia notarial fue notificada sin observaciones.
+La diligencia fue admitida parcialmente dentro del término conferido.
+La diligencia fue aportada formalmente dentro del término conferido.
+La diligencia fue aportada oportunamente dentro del término conferido.
+La diligencia fue archivada válidamente dentro del término conferido.
+La diligencia fue notificada debidamente dentro del término conferido.
+La diligencia fue notificada parcialmente dentro del término conferido.
+La diligencia fue notificada válidamente dentro del término conferido.
+La diligencia fue rechazada debidamente dentro del término conferido.
+La diligencia fue remitida expresamente dentro del término conferido.
+La diligencia fue trasladada válidamente dentro del término conferido.
+La diligencia quedó firme al no haberse interpuesto recurso alguno.
+La diligencia se practicó en presencia de el interesado.
+La diligencia se practicó en presencia de el perito.
+La diligencia se practicó en presencia de el recurrente.
+La diligencia se practicó en presencia de el representante legal.
+La diligencia se practicó en presencia de el servidor.
+La diligencia se practicó en presencia de el solicitante.
+La diligencia se practicó en presencia de el testigo.
+La enseñanza del procedimiento exige el estudio de la jurisprudencia.
+La gestión en materia administrativa fue aprobada sin observaciones.
+La gestión en materia administrativa fue notificada sin observaciones.
+La gestión en materia administrativa fue presentada sin observaciones.
+La gestión en materia agraria fue admitida sin observaciones.
+La gestión en materia agraria fue rechazada sin observaciones.
+La gestión en materia agraria fue recibida sin observaciones.
+La gestión en materia civil fue notificada sin observaciones.
+La gestión en materia civil fue remitida sin observaciones.
+La gestión en materia contenciosa fue aprobada sin observaciones.
+La gestión en materia contenciosa fue remitida sin observaciones.
+La gestión en materia de familia fue trasladada sin observaciones.
+La gestión en materia notarial fue aportada sin observaciones.
+La gestión fue aprobada expresamente dentro del término conferido.
+La gestión fue aprobada formalmente dentro del término conferido.
+La gestión fue trasladada oportunamente dentro del término conferido.
+La gestión quedó firme al no haberse interpuesto recurso alguno.
+La gestión se practicó en presencia de el interesado.
+La gestión se practicó en presencia de el perito.
+La gestión se practicó en presencia de el recurrente.
+La gestión se practicó en presencia de el representante legal.
+La gestión se practicó en presencia de el servidor.
+La gestión se practicó en presencia de el solicitante.
+La gestión se practicó en presencia de el testigo.
+La institución acoge el archivo solicitada por la parte actora.
+La institución autoriza el archivo solicitada por la parte demandada.
+La institución autoriza el desglose solicitada por la contraparte.
+La institución autoriza el desglose solicitada por la solicitante.
+La institución autoriza la comparecencia para dentro de sesenta meses.
+La institución autoriza que se practique la prueba en la sede del despacho.
+La institución autoriza remitir el certificado al superior en grado.
+La institución autoriza remitir el dictamen al superior en grado.
+La institución autoriza remitir el recurso al superior en grado.
+La institución confirma la inscripción solicitada por la apoderada.
+La institución deniega el traslado solicitada por la solicitante.
+La institución deniega la foliatura solicitada por la contraparte.
+La institución dispone el cumplimiento en cinco días naturales.
+La institución dispone el cumplimiento en diez días hábiles.
+La institución dispone el cumplimiento en sesenta días hábiles.
+La institución dispone el cumplimiento en tres días hábiles.
+La institución dispone el cumplimiento en tres días naturales.
+La institución dispone el cumplimiento en veinte días.
+La institución dispone la acumulación solicitada por la contraparte.
+La institución dispone la comparecencia para dentro de cinco meses.
+La institución dispone la comparecencia para dentro de diez días naturales.
+La institución dispone la comparecencia para dentro de ocho días.
+La institución dispone la suspensión solicitada por la parte demandada.
+La institución dispone que se practique el acta en el domicilio contractual.
+La institución dispone que se practique el acta en la plataforma institucional.
+La institución dispone que se practique la certificación en el sistema de gestión documental.
+La institución dispone que se practique la gestión en el domicilio contractual.
+La institución dispone que se practique la resolución en la oficina correspondiente.
+La institución dispone remitir el dictamen al superior en grado.
+La institución dispone remitir el escrito al superior en grado.
+La institución dispone remitir el expediente al superior en grado.
+La institución dispone remitir el memorial al superior en grado.
+La institución ordena el cumplimiento en cinco días hábiles.
+La institución ordena el cumplimiento en cinco días naturales.
+La institución ordena el cumplimiento en quince días hábiles.
+La institución ordena el cumplimiento en treinta días hábiles.
+La institución ordena la comparecencia para dentro de quince días naturales.
+La institución ordena la comparecencia para dentro de quince días.
+La institución ordena la comparecencia para dentro de veinte días.
+La institución ordena que se practique el acta en la oficina correspondiente.
+La institución ordena que se practique la resolución en el sistema de gestión documental.
+La institución ordena remitir el dictamen al superior en grado.
+La institución ordena remitir el escrito al superior en grado.
+La institución ordena remitir el expediente al superior en grado.
+La institución ordena remitir el recurso al superior en grado.
+La institución requiere la actualización de los datos del trámite.
+La institución requiere la acumulación solicitada por la apoderada.
+La institución requiere la inscripción solicitada por la contraparte.
+La institución resuelve el cumplimiento en diez días naturales.
+La institución resuelve el cumplimiento en ocho días hábiles.
+La institución resuelve el cumplimiento en ocho días naturales.
+La institución resuelve el cumplimiento en sesenta días hábiles.
+La institución resuelve el cumplimiento en sesenta meses.
+La institución resuelve la comparecencia para dentro de ocho días naturales.
+La institución resuelve la comparecencia para dentro de quince días hábiles.
+La institución resuelve la comparecencia para dentro de tres días hábiles.
+La institución resuelve la comparecencia para dentro de tres meses.
+La institución resuelve la inscripción solicitada por la apoderada.
+La institución resuelve que se practique la certificación en la oficina correspondiente.
+La institución resuelve que se practique la comparecencia en el medio señalado.
+La institución resuelve que se practique la diligencia en el sistema de gestión documental.
+La institución resuelve remitir el certificado al superior en grado.
+La institución resuelve remitir el documento al superior en grado.
+La institución resuelve remitir el expediente al superior en grado.
+La institución señala el traslado solicitada por la recurrente.
+La institución señala la inscripción solicitada por la parte demandada.
+La institución señala la suspensión solicitada por la parte demandada.
+La institución solicita el cumplimiento en diez días naturales.
+La institución solicita el cumplimiento en ocho días naturales.
+La institución solicita la comparecencia para dentro de diez meses.
+La institución solicita la comparecencia para dentro de treinta meses.
+La institución solicita la comparecencia para dentro de tres días naturales.
+La institución solicita que se practique la certificación en el sistema de gestión documental.
+La institución solicita que se practique la demanda en la plataforma institucional.
+La institución solicita que se practique la notificación en el medio señalado.
+La institución solicita que se practique la solicitud en la plataforma institucional.
+La institución solicita remitir el documento al superior en grado.
+La institución solicita remitir el memorial al superior en grado.
+La institución solicita remitir el oficio al superior en grado.
+La institución valoró el acta conforme a las reglas de la sana crítica.
+La institución valoró la certificación conforme a las reglas de la sana crítica.
+La institución valoró la comparecencia conforme a las reglas de la sana crítica.
+La institución valoró la declaración conforme a las reglas de la sana crítica.
+La institución valoró la demanda conforme a las reglas de la sana crítica.
+La institución valoró la gestión conforme a las reglas de la sana crítica.
+La institución valoró la notificación conforme a las reglas de la sana crítica.
+La institución valoró la prueba conforme a las reglas de la sana crítica.
+La institución valoró la resolución conforme a las reglas de la sana crítica.
+La institución valoró la solicitud conforme a las reglas de la sana crítica.
+La notificación en materia administrativa fue admitida sin observaciones.
+La notificación en materia administrativa fue aportada sin observaciones.
+La notificación en materia administrativa fue notificada sin observaciones.
+La notificación en materia administrativa fue rechazada sin observaciones.
+La notificación en materia administrativa fue recibida sin observaciones.
+La notificación en materia agraria fue archivada sin observaciones.
+La notificación en materia agraria fue notificada sin observaciones.
+La notificación en materia agraria fue presentada sin observaciones.
+La notificación en materia civil fue aprobada sin observaciones.
+La notificación en materia civil fue trasladada sin observaciones.
+La notificación en materia contenciosa fue aportada sin observaciones.
+La notificación en materia contenciosa fue notificada sin observaciones.
+La notificación en materia contenciosa fue presentada sin observaciones.
+La notificación en materia de familia fue aportada sin observaciones.
+La notificación en materia de familia fue notificada sin observaciones.
+La notificación en materia laboral fue archivada sin observaciones.
+La notificación fue admitida formalmente dentro del término conferido.
+La notificación fue notificada parcialmente dentro del término conferido.
+La notificación fue presentada válidamente dentro del término conferido.
+La notificación fue rechazada oportunamente dentro del término conferido.
+La notificación fue remitida parcialmente dentro del término conferido.
+La notificación fue trasladada debidamente dentro del término conferido.
+La notificación fue trasladada válidamente dentro del término conferido.
+La notificación quedó firme al no haberse interpuesto recurso alguno.
+La notificación se practicó en presencia de el apoderado.
+La notificación se practicó en presencia de el funcionario.
+La notificación se practicó en presencia de el perito.
+La notificación se practicó en presencia de el representante legal.
+La notificación se practicó en presencia de el servidor.
+La notificación se practicó en presencia de el solicitante.
+La notificación se practicó en presencia de el testigo.
+La parte actora desistió debidamente de la acción interpuesta.
+La parte actora desistió expresamente de la acción interpuesta.
+La parte actora desistió formalmente de la acción interpuesta.
+La parte actora desistió oportunamente de la acción interpuesta.
+La parte actora desistió parcialmente de la acción interpuesta.
+La parte actora desistió válidamente de la acción interpuesta.
+La parte actora manifestó su conformidad con lo resuelto por el Tribunal.
+La parte actora manifestó su conformidad con lo resuelto por el despacho.
+La parte actora manifestó su conformidad con lo resuelto por el juzgador.
+La parte actora manifestó su conformidad con lo resuelto por el órgano director.
+La parte actora manifestó su conformidad con lo resuelto por la autoridad administrativa.
+La parte actora manifestó su conformidad con lo resuelto por la institución.
+La parte demandada desistió debidamente de la acción interpuesta.
+La parte demandada desistió expresamente de la acción interpuesta.
+La parte demandada desistió formalmente de la acción interpuesta.
+La parte demandada desistió oportunamente de la acción interpuesta.
+La parte demandada desistió parcialmente de la acción interpuesta.
+La parte demandada desistió válidamente de la acción interpuesta.
+La parte demandada manifestó su conformidad con lo resuelto por el Juzgado.
+La parte demandada manifestó su conformidad con lo resuelto por el Tribunal.
+La parte demandada manifestó su conformidad con lo resuelto por el despacho.
+La parte demandada manifestó su conformidad con lo resuelto por el juzgador.
+La parte demandada manifestó su conformidad con lo resuelto por el órgano director.
+La parte demandada manifestó su conformidad con lo resuelto por la institución.
+La perita desistió debidamente de la acción interpuesta.
+La perita desistió expresamente de la acción interpuesta.
+La perita desistió formalmente de la acción interpuesta.
+La perita desistió oportunamente de la acción interpuesta.
+La perita desistió parcialmente de la acción interpuesta.
+La perita desistió válidamente de la acción interpuesta.
+La perita manifestó su conformidad con lo resuelto por el Juzgado.
+La perita manifestó su conformidad con lo resuelto por el Tribunal.
+La perita manifestó su conformidad con lo resuelto por el juzgador.
+La perita manifestó su conformidad con lo resuelto por el órgano director.
+La perita manifestó su conformidad con lo resuelto por la Sala.
+La perita manifestó su conformidad con lo resuelto por la autoridad administrativa.
+La prueba en materia administrativa fue remitida sin observaciones.
+La prueba en materia administrativa fue trasladada sin observaciones.
+La prueba en materia agraria fue admitida sin observaciones.
+La prueba en materia agraria fue remitida sin observaciones.
+La prueba en materia civil fue presentada sin observaciones.
+La prueba en materia civil fue rechazada sin observaciones.
+La prueba en materia civil fue recibida sin observaciones.
+La prueba en materia contenciosa fue archivada sin observaciones.
+La prueba en materia de familia fue aportada sin observaciones.
+La prueba en materia de familia fue aprobada sin observaciones.
+La prueba en materia de familia fue trasladada sin observaciones.
+La prueba fue aportada formalmente dentro del término conferido.
+La prueba fue aportada oportunamente dentro del término conferido.
+La prueba fue aprobada expresamente dentro del término conferido.
+La prueba fue presentada válidamente dentro del término conferido.
+La prueba fue rechazada debidamente dentro del término conferido.
+La prueba fue rechazada formalmente dentro del término conferido.
+La prueba fue rechazada oportunamente dentro del término conferido.
+La prueba fue remitida formalmente dentro del término conferido.
+La prueba fue trasladada debidamente dentro del término conferido.
+La prueba quedó firme al no haberse interpuesto recurso alguno.
+La prueba se practicó en presencia de el apoderado.
+La prueba se practicó en presencia de el funcionario.
+La prueba se practicó en presencia de el interesado.
+La prueba se practicó en presencia de el perito.
+La prueba se practicó en presencia de el recurrente.
+La prueba se practicó en presencia de el representante legal.
+La prueba se practicó en presencia de el solicitante.
+La prueba se practicó en presencia de el testigo.
+La recurrente desistió debidamente de la acción interpuesta.
+La recurrente desistió expresamente de la acción interpuesta.
+La recurrente desistió formalmente de la acción interpuesta.
+La recurrente desistió oportunamente de la acción interpuesta.
+La recurrente desistió parcialmente de la acción interpuesta.
+La recurrente manifestó su conformidad con lo resuelto por el Juzgado.
+La recurrente manifestó su conformidad con lo resuelto por el despacho.
+La recurrente manifestó su conformidad con lo resuelto por el juzgador.
+La recurrente manifestó su conformidad con lo resuelto por el órgano director.
+La recurrente manifestó su conformidad con lo resuelto por la Sala.
+La recurrente manifestó su conformidad con lo resuelto por la autoridad administrativa.
+La recurrente manifestó su conformidad con lo resuelto por la institución.
+La resolución en materia administrativa fue aportada sin observaciones.
+La resolución en materia agraria fue aportada sin observaciones.
+La resolución en materia agraria fue archivada sin observaciones.
+La resolución en materia agraria fue presentada sin observaciones.
+La resolución en materia agraria fue remitida sin observaciones.
+La resolución en materia de familia fue aportada sin observaciones.
+La resolución en materia laboral fue aprobada sin observaciones.
+La resolución en materia notarial fue aprobada sin observaciones.
+La resolución fue admitida a ambas partes en el domicilio contractual.
+La resolución fue admitida a ambas partes en el sistema de gestión documental.
+La resolución fue admitida a ambas partes en la plataforma institucional.
+La resolución fue admitida a ambas partes en la sede del despacho.
+La resolución fue admitida expresamente dentro del término conferido.
+La resolución fue admitida válidamente dentro del término conferido.
+La resolución fue aportada a ambas partes en el domicilio contractual.
+La resolución fue aportada a ambas partes en el medio señalado.
+La resolución fue aportada a ambas partes en el sistema de gestión documental.
+La resolución fue aportada a ambas partes en la oficina correspondiente.
+La resolución fue aportada a ambas partes en la plataforma institucional.
+La resolución fue aportada a ambas partes en la sede del despacho.
+La resolución fue aportada debidamente dentro del término conferido.
+La resolución fue aprobada a ambas partes en el domicilio contractual.
+La resolución fue aprobada a ambas partes en el medio señalado.
+La resolución fue aprobada a ambas partes en el sistema de gestión documental.
+La resolución fue aprobada a ambas partes en la oficina correspondiente.
+La resolución fue aprobada a ambas partes en la plataforma institucional.
+La resolución fue aprobada a ambas partes en la sede del despacho.
+La resolución fue archivada a ambas partes en el domicilio contractual.
+La resolución fue archivada a ambas partes en el medio señalado.
+La resolución fue archivada a ambas partes en el sistema de gestión documental.
+La resolución fue archivada a ambas partes en la oficina correspondiente.
+La resolución fue archivada a ambas partes en la sede del despacho.
+La resolución fue archivada parcialmente dentro del término conferido.
+La resolución fue notificada a ambas partes en el domicilio contractual.
+La resolución fue notificada a ambas partes en el medio señalado.
+La resolución fue notificada a ambas partes en el sistema de gestión documental.
+La resolución fue notificada a ambas partes en la oficina correspondiente.
+La resolución fue notificada a ambas partes en la sede del despacho.
+La resolución fue notificada formalmente dentro del término conferido.
+La resolución fue presentada a ambas partes en el domicilio contractual.
+La resolución fue presentada a ambas partes en el medio señalado.
+La resolución fue presentada a ambas partes en el sistema de gestión documental.
+La resolución fue presentada a ambas partes en la oficina correspondiente.
+La resolución fue presentada a ambas partes en la plataforma institucional.
+La resolución fue presentada a ambas partes en la sede del despacho.
+La resolución fue presentada debidamente dentro del término conferido.
+La resolución fue presentada válidamente dentro del término conferido.
+La resolución fue rechazada a ambas partes en el domicilio contractual.
+La resolución fue rechazada a ambas partes en el medio señalado.
+La resolución fue rechazada a ambas partes en el sistema de gestión documental.
+La resolución fue rechazada a ambas partes en la oficina correspondiente.
+La resolución fue rechazada a ambas partes en la plataforma institucional.
+La resolución fue rechazada a ambas partes en la sede del despacho.
+La resolución fue rechazada parcialmente dentro del término conferido.
+La resolución fue recibida a ambas partes en el domicilio contractual.
+La resolución fue recibida a ambas partes en el medio señalado.
+La resolución fue recibida a ambas partes en el sistema de gestión documental.
+La resolución fue recibida a ambas partes en la oficina correspondiente.
+La resolución fue recibida a ambas partes en la sede del despacho.
+La resolución fue recibida formalmente dentro del término conferido.
+La resolución fue recibida parcialmente dentro del término conferido.
+La resolución fue remitida a ambas partes en el domicilio contractual.
+La resolución fue remitida a ambas partes en el medio señalado.
+La resolución fue remitida a ambas partes en el sistema de gestión documental.
+La resolución fue remitida a ambas partes en la oficina correspondiente.
+La resolución fue remitida a ambas partes en la plataforma institucional.
+La resolución fue remitida a ambas partes en la sede del despacho.
+La resolución fue trasladada a ambas partes en el domicilio contractual.
+La resolución fue trasladada a ambas partes en el medio señalado.
+La resolución fue trasladada a ambas partes en el sistema de gestión documental.
+La resolución fue trasladada a ambas partes en la oficina correspondiente.
+La resolución fue trasladada a ambas partes en la plataforma institucional.
+La resolución fue trasladada debidamente dentro del término conferido.
+La resolución fue trasladada oportunamente dentro del término conferido.
+La resolución quedó firme al no haberse interpuesto recurso alguno.
+La resolución se practicó en presencia de el apoderado.
+La resolución se practicó en presencia de el interesado.
+La resolución se practicó en presencia de el perito.
+La resolución se practicó en presencia de el recurrente.
+La resolución se practicó en presencia de el representante legal.
+La resolución se practicó en presencia de el servidor.
+La resolución se practicó en presencia de el solicitante.
+La solicitante desistió debidamente de la acción interpuesta.
+La solicitante desistió expresamente de la acción interpuesta.
+La solicitante desistió formalmente de la acción interpuesta.
+La solicitante desistió oportunamente de la acción interpuesta.
+La solicitante desistió parcialmente de la acción interpuesta.
+La solicitante desistió válidamente de la acción interpuesta.
+La solicitante manifestó su conformidad con lo resuelto por el Juzgado.
+La solicitante manifestó su conformidad con lo resuelto por el Tribunal.
+La solicitante manifestó su conformidad con lo resuelto por el despacho.
+La solicitante manifestó su conformidad con lo resuelto por el órgano director.
+La solicitante manifestó su conformidad con lo resuelto por la Sala.
+La solicitante manifestó su conformidad con lo resuelto por la autoridad administrativa.
+La solicitante manifestó su conformidad con lo resuelto por la institución.
+La solicitud en materia administrativa fue admitida sin observaciones.
+La solicitud en materia agraria fue aprobada sin observaciones.
+La solicitud en materia agraria fue rechazada sin observaciones.
+La solicitud en materia civil fue aprobada sin observaciones.
+La solicitud en materia civil fue remitida sin observaciones.
+La solicitud en materia contenciosa fue admitida sin observaciones.
+La solicitud en materia contenciosa fue presentada sin observaciones.
+La solicitud en materia contenciosa fue rechazada sin observaciones.
+La solicitud en materia contenciosa fue recibida sin observaciones.
+La solicitud en materia de familia fue notificada sin observaciones.
+La solicitud en materia de familia fue presentada sin observaciones.
+La solicitud en materia de familia fue rechazada sin observaciones.
+La solicitud en materia de familia fue remitida sin observaciones.
+La solicitud en materia laboral fue trasladada sin observaciones.
+La solicitud en materia notarial fue recibida sin observaciones.
+La solicitud fue admitida oportunamente dentro del término conferido.
+La solicitud fue aprobada expresamente dentro del término conferido.
+La solicitud fue aprobada oportunamente dentro del término conferido.
+La solicitud fue aprobada válidamente dentro del término conferido.
+La solicitud fue notificada formalmente dentro del término conferido.
+La solicitud fue presentada parcialmente dentro del término conferido.
+La solicitud fue presentada válidamente dentro del término conferido.
+La solicitud fue rechazada oportunamente dentro del término conferido.
+La solicitud fue recibida debidamente dentro del término conferido.
+La solicitud fue recibida válidamente dentro del término conferido.
+La solicitud fue remitida parcialmente dentro del término conferido.
+La solicitud fue trasladada parcialmente dentro del término conferido.
+La solicitud quedó firme al no haberse interpuesto recurso alguno.
+La solicitud se practicó en presencia de el funcionario.
+La solicitud se practicó en presencia de el interesado.
+La solicitud se practicó en presencia de el recurrente.
+La solicitud se practicó en presencia de el representante legal.
+La solicitud se practicó en presencia de el servidor.
+La solicitud se practicó en presencia de el solicitante.
+La testigo desistió debidamente de la acción interpuesta.
+La testigo desistió expresamente de la acción interpuesta.
+La testigo desistió formalmente de la acción interpuesta.
+La testigo desistió oportunamente de la acción interpuesta.
+La testigo desistió parcialmente de la acción interpuesta.
+La testigo desistió válidamente de la acción interpuesta.
+La testigo manifestó su conformidad con lo resuelto por el Juzgado.
+La testigo manifestó su conformidad con lo resuelto por el Tribunal.
+La testigo manifestó su conformidad con lo resuelto por el despacho.
+La testigo manifestó su conformidad con lo resuelto por el juzgador.
+La testigo manifestó su conformidad con lo resuelto por el órgano director.
+La testigo manifestó su conformidad con lo resuelto por la Sala.
+La testigo manifestó su conformidad con lo resuelto por la autoridad administrativa.
+Los daños alegados se liquidarán en ejecución de sentencia.
+Se acoge el acta por existir peligro en la demora.
+Se acoge la certificación por existir peligro en la demora.
+Se acoge la comparecencia por existir peligro en la demora.
+Se acoge la declaración por existir peligro en la demora.
+Se acoge la demanda por existir peligro en la demora.
+Se acoge la diligencia por existir peligro en la demora.
+Se acoge la gestión por existir peligro en la demora.
+Se acoge la notificación por existir peligro en la demora.
+Se acoge la prueba por existir peligro en la demora.
+Se acoge la resolución por existir peligro en la demora.
+Se acoge la solicitud por existir peligro en la demora.
+Se acompaña copia fiel de el certificado para su cotejo.
+Se acompaña copia fiel de el dictamen para su cotejo.
+Se acompaña copia fiel de el documento para su cotejo.
+Se acompaña copia fiel de el escrito para su cotejo.
+Se acompaña copia fiel de el expediente para su cotejo.
+Se acompaña copia fiel de el informe para su cotejo.
+Se acompaña copia fiel de el memorial para su cotejo.
+Se acompaña copia fiel de el oficio para su cotejo.
+Se acompaña copia fiel de el recurso para su cotejo.
+Se autoriza la consulta del expediente a la apoderada acreditada.
+Se autoriza la consulta del expediente a la contraparte acreditada.
+Se autoriza la consulta del expediente a la parte actora acreditada.
+Se autoriza la consulta del expediente a la parte demandada acreditada.
+Se autoriza la consulta del expediente a la perita acreditada.
+Se autoriza la consulta del expediente a la recurrente acreditada.
+Se autoriza la consulta del expediente a la solicitante acreditada.
+Se autoriza la consulta del expediente a la testigo acreditada.
+Se confiere audiencia por el plazo de cinco días a la solicitante.
+Se confiere audiencia por el plazo de cinco días hábiles a la apoderada.
+Se confiere audiencia por el plazo de cinco días hábiles a la parte demandada.
+Se confiere audiencia por el plazo de cinco días hábiles a la perita.
+Se confiere audiencia por el plazo de cinco días hábiles a la recurrente.
+Se confiere audiencia por el plazo de cinco días naturales a la parte actora.
+Se confiere audiencia por el plazo de cinco días naturales a la solicitante.
+Se confiere audiencia por el plazo de cinco meses a la parte demandada.
+Se confiere audiencia por el plazo de cinco meses a la perita.
+Se confiere audiencia por el plazo de diez días a la parte actora.
+Se confiere audiencia por el plazo de diez días hábiles a la contraparte.
+Se confiere audiencia por el plazo de diez días hábiles a la parte actora.
+Se confiere audiencia por el plazo de diez días hábiles a la perita.
+Se confiere audiencia por el plazo de diez días hábiles a la recurrente.
+Se confiere audiencia por el plazo de diez días hábiles a la testigo.
+Se confiere audiencia por el plazo de diez días naturales a la solicitante.
+Se confiere audiencia por el plazo de diez días naturales a la testigo.
+Se confiere audiencia por el plazo de diez meses a la parte actora.
+Se confiere audiencia por el plazo de ocho días a la apoderada.
+Se confiere audiencia por el plazo de ocho días a la solicitante.
+Se confiere audiencia por el plazo de ocho días hábiles a la contraparte.
+Se confiere audiencia por el plazo de ocho días hábiles a la parte demandada.
+Se confiere audiencia por el plazo de ocho días hábiles a la perita.
+Se confiere audiencia por el plazo de ocho días hábiles a la testigo.
+Se confiere audiencia por el plazo de ocho días naturales a la apoderada.
+Se confiere audiencia por el plazo de ocho días naturales a la contraparte.
+Se confiere audiencia por el plazo de ocho días naturales a la testigo.
+Se confiere audiencia por el plazo de ocho meses a la apoderada.
+Se confiere audiencia por el plazo de ocho meses a la contraparte.
+Se confiere audiencia por el plazo de ocho meses a la perita.
+Se confiere audiencia por el plazo de ocho meses a la recurrente.
+Se confiere audiencia por el plazo de ocho meses a la solicitante.
+Se confiere audiencia por el plazo de quince días a la parte actora.
+Se confiere audiencia por el plazo de quince días a la parte demandada.
+Se confiere audiencia por el plazo de quince días hábiles a la contraparte.
+Se confiere audiencia por el plazo de quince días hábiles a la perita.
+Se confiere audiencia por el plazo de quince días hábiles a la testigo.
+Se confiere audiencia por el plazo de quince días naturales a la contraparte.
+Se confiere audiencia por el plazo de quince días naturales a la perita.
+Se confiere audiencia por el plazo de quince meses a la apoderada.
+Se confiere audiencia por el plazo de quince meses a la recurrente.
+Se confiere audiencia por el plazo de sesenta días a la parte actora.
+Se confiere audiencia por el plazo de sesenta días a la parte demandada.
+Se confiere audiencia por el plazo de sesenta días a la perita.
+Se confiere audiencia por el plazo de sesenta días a la recurrente.
+Se confiere audiencia por el plazo de sesenta días hábiles a la contraparte.
+Se confiere audiencia por el plazo de sesenta días hábiles a la parte demandada.
+Se confiere audiencia por el plazo de sesenta días hábiles a la perita.
+Se confiere audiencia por el plazo de sesenta días hábiles a la testigo.
+Se confiere audiencia por el plazo de sesenta días naturales a la apoderada.
+Se confiere audiencia por el plazo de sesenta días naturales a la parte actora.
+Se confiere audiencia por el plazo de sesenta días naturales a la parte demandada.
+Se confiere audiencia por el plazo de sesenta días naturales a la recurrente.
+Se confiere audiencia por el plazo de sesenta días naturales a la solicitante.
+Se confiere audiencia por el plazo de treinta días a la parte demandada.
+Se confiere audiencia por el plazo de treinta días a la perita.
+Se confiere audiencia por el plazo de treinta días hábiles a la contraparte.
+Se confiere audiencia por el plazo de treinta días hábiles a la perita.
+Se confiere audiencia por el plazo de treinta días hábiles a la testigo.
+Se confiere audiencia por el plazo de treinta días naturales a la apoderada.
+Se confiere audiencia por el plazo de treinta días naturales a la recurrente.
+Se confiere audiencia por el plazo de treinta días naturales a la solicitante.
+Se confiere audiencia por el plazo de treinta días naturales a la testigo.
+Se confiere audiencia por el plazo de treinta meses a la apoderada.
+Se confiere audiencia por el plazo de treinta meses a la contraparte.
+Se confiere audiencia por el plazo de treinta meses a la parte actora.
+Se confiere audiencia por el plazo de tres días a la apoderada.
+Se confiere audiencia por el plazo de tres días a la recurrente.
+Se confiere audiencia por el plazo de tres días hábiles a la parte demandada.
+Se confiere audiencia por el plazo de tres días hábiles a la perita.
+Se confiere audiencia por el plazo de tres días hábiles a la solicitante.
+Se confiere audiencia por el plazo de tres días hábiles a la testigo.
+Se confiere audiencia por el plazo de tres días naturales a la testigo.
+Se confiere audiencia por el plazo de tres meses a la parte actora.
+Se confiere audiencia por el plazo de tres meses a la solicitante.
+Se confiere audiencia por el plazo de tres meses a la testigo.
+Se confiere audiencia por el plazo de veinte días a la apoderada.
+Se confiere audiencia por el plazo de veinte días a la recurrente.
+Se confiere audiencia por el plazo de veinte días hábiles a la apoderada.
+Se confiere audiencia por el plazo de veinte días hábiles a la contraparte.
+Se confiere audiencia por el plazo de veinte días hábiles a la parte actora.
+Se confiere audiencia por el plazo de veinte días hábiles a la solicitante.
+Se confiere audiencia por el plazo de veinte días hábiles a la testigo.
+Se confiere audiencia por el plazo de veinte meses a la parte actora.
+Se declara admisible la certificación por falta de legitimación.
+Se declara admisible la comparecencia por caducidad del plazo.
+Se declara admisible la declaración por defectos de forma.
+Se declara admisible la demanda por cosa juzgada.
+Se declara admisible la demanda por falta de interés actual.
+Se declara admisible la diligencia por cosa juzgada.
+Se declara admisible la diligencia por falta de fundamentación.
+Se declara admisible la diligencia por falta de legitimación.
+Se declara admisible la gestión por caducidad del plazo.
+Se declara admisible la gestión por falta de legitimación.
+Se declara admisible la notificación por incompetencia territorial.
+Se declara admisible la prueba por falta de fundamentación.
+Se declara admisible la prueba por falta de interés actual.
+Se declara admisible la resolución por incompetencia territorial.
+Se declara admisible la resolución por prescripción de la acción.
+Se declara admisible la solicitud por falta de fundamentación.
+Se declara extemporánea el acta por cosa juzgada.
+Se declara extemporánea el acta por falta de legitimación.
+Se declara extemporánea el acta por prescripción de la acción.
+Se declara extemporánea la certificación por caducidad del plazo.
+Se declara extemporánea la certificación por falta de interés actual.
+Se declara extemporánea la certificación por prescripción de la acción.
+Se declara extemporánea la comparecencia por cosa juzgada.
+Se declara extemporánea la declaración por cosa juzgada.
+Se declara extemporánea la demanda por prescripción de la acción.
+Se declara extemporánea la diligencia por caducidad del plazo.
+Se declara extemporánea la gestión por cosa juzgada.
+Se declara extemporánea la gestión por falta de legitimación.
+Se declara extemporánea la notificación por incompetencia territorial.
+Se declara extemporánea la prueba por defectos de forma.
+Se declara extemporánea la prueba por incompetencia territorial.
+Se declara extemporánea la prueba por prescripción de la acción.
+Se declara extemporánea la resolución por caducidad del plazo.
+Se declara extemporánea la resolución por cosa juzgada.
+Se declara extemporánea la solicitud por falta de interés actual.
+Se declara improcedente el acta por caducidad del plazo.
+Se declara improcedente el acta por defectos de forma.
+Se declara improcedente el acta por prescripción de la acción.
+Se declara improcedente la certificación por caducidad del plazo.
+Se declara improcedente la certificación por falta de interés actual.
+Se declara improcedente la certificación por falta de legitimación.
+Se declara improcedente la certificación por incompetencia territorial.
+Se declara improcedente la certificación por prescripción de la acción.
+Se declara improcedente la declaración por falta de fundamentación.
+Se declara improcedente la demanda por defectos de forma.
+Se declara improcedente la diligencia por falta de fundamentación.
+Se declara improcedente la diligencia por incompetencia territorial.
+Se declara improcedente la diligencia por prescripción de la acción.
+Se declara improcedente la gestión por falta de interés actual.
+Se declara improcedente la gestión por prescripción de la acción.
+Se declara improcedente la notificación por caducidad del plazo.
+Se declara improcedente la notificación por incompetencia territorial.
+Se declara improcedente la prueba por falta de legitimación.
+Se declara improcedente la resolución por caducidad del plazo.
+Se declara improcedente la resolución por falta de interés actual.
+Se declara improcedente la solicitud por defectos de forma.
+Se declara inadmisible el acta por defectos de forma.
+Se declara inadmisible la comparecencia por caducidad del plazo.
+Se declara inadmisible la comparecencia por falta de interés actual.
+Se declara inadmisible la comparecencia por falta de legitimación.
+Se declara inadmisible la comparecencia por prescripción de la acción.
+Se declara inadmisible la declaración por prescripción de la acción.
+Se declara inadmisible la demanda por incompetencia territorial.
+Se declara inadmisible la notificación por caducidad del plazo.
+Se declara inadmisible la notificación por falta de fundamentación.
+Se declara inadmisible la notificación por falta de legitimación.
+Se declara inadmisible la notificación por prescripción de la acción.
+Se declara inadmisible la prueba por caducidad del plazo.
+Se declara inadmisible la resolución por cosa juzgada.
+Se declara inadmisible la resolución por incompetencia territorial.
+Se declara inadmisible la solicitud por falta de legitimación.
+Se declara insuficiente la certificación por falta de legitimación.
+Se declara insuficiente la comparecencia por defectos de forma.
+Se declara insuficiente la comparecencia por falta de legitimación.
+Se declara insuficiente la comparecencia por prescripción de la acción.
+Se declara insuficiente la declaración por caducidad del plazo.
+Se declara insuficiente la declaración por falta de interés actual.
+Se declara insuficiente la declaración por incompetencia territorial.
+Se declara insuficiente la demanda por falta de interés actual.
+Se declara insuficiente la diligencia por falta de interés actual.
+Se declara insuficiente la diligencia por falta de legitimación.
+Se declara insuficiente la gestión por cosa juzgada.
+Se declara insuficiente la gestión por falta de fundamentación.
+Se declara insuficiente la notificación por falta de interés actual.
+Se declara insuficiente la prueba por falta de interés actual.
+Se declara insuficiente la resolución por caducidad del plazo.
+Se declara insuficiente la resolución por falta de interés actual.
+Se declara insuficiente la solicitud por falta de fundamentación.
+Se declara procedente el acta por caducidad del plazo.
+Se declara procedente el acta por cosa juzgada.
+Se declara procedente el acta por falta de fundamentación.
+Se declara procedente el acta por falta de interés actual.
+Se declara procedente el acta por falta de legitimación.
+Se declara procedente la certificación por cosa juzgada.
+Se declara procedente la certificación por falta de interés actual.
+Se declara procedente la comparecencia por defectos de forma.
+Se declara procedente la comparecencia por falta de fundamentación.
+Se declara procedente la comparecencia por falta de interés actual.
+Se declara procedente la declaración por cosa juzgada.
+Se declara procedente la demanda por caducidad del plazo.
+Se declara procedente la demanda por cosa juzgada.
+Se declara procedente la demanda por falta de interés actual.
+Se declara procedente la demanda por falta de legitimación.
+Se declara procedente la demanda por incompetencia territorial.
+Se declara procedente la diligencia por caducidad del plazo.
+Se declara procedente la diligencia por falta de legitimación.
+Se declara procedente la diligencia por incompetencia territorial.
+Se declara procedente la gestión por incompetencia territorial.
+Se declara procedente la notificación por falta de fundamentación.
+Se declara procedente la notificación por falta de legitimación.
+Se declara procedente la notificación por incompetencia territorial.
+Se declara procedente la prueba por cosa juzgada.
+Se declara procedente la prueba por falta de interés actual.
+Se declara procedente la resolución por falta de interés actual.
+Se declara procedente la resolución por prescripción de la acción.
+Se declara procedente la solicitud por cosa juzgada.
+Se declara procedente la solicitud por incompetencia territorial.
+Se declara sin lugar el certificado por caducidad del plazo.
+Se declara sin lugar el certificado por cosa juzgada.
+Se declara sin lugar el certificado por defectos de forma.
+Se declara sin lugar el certificado por falta de fundamentación.
+Se declara sin lugar el certificado por falta de legitimación.
+Se declara sin lugar el certificado por incompetencia territorial.
+Se declara sin lugar el certificado por prescripción de la acción.
+Se declara sin lugar el dictamen por caducidad del plazo.
+Se declara sin lugar el dictamen por cosa juzgada.
+Se declara sin lugar el dictamen por defectos de forma.
+Se declara sin lugar el dictamen por falta de fundamentación.
+Se declara sin lugar el dictamen por falta de interés actual.
+Se declara sin lugar el dictamen por falta de legitimación.
+Se declara sin lugar el dictamen por incompetencia territorial.
+Se declara sin lugar el dictamen por prescripción de la acción.
+Se declara sin lugar el documento por caducidad del plazo.
+Se declara sin lugar el documento por cosa juzgada.
+Se declara sin lugar el documento por defectos de forma.
+Se declara sin lugar el documento por falta de fundamentación.
+Se declara sin lugar el documento por falta de interés actual.
+Se declara sin lugar el documento por falta de legitimación.
+Se declara sin lugar el documento por prescripción de la acción.
+Se declara sin lugar el escrito por caducidad del plazo.
+Se declara sin lugar el escrito por cosa juzgada.
+Se declara sin lugar el escrito por defectos de forma.
+Se declara sin lugar el escrito por falta de fundamentación.
+Se declara sin lugar el escrito por falta de interés actual.
+Se declara sin lugar el escrito por falta de legitimación.
+Se declara sin lugar el escrito por incompetencia territorial.
+Se declara sin lugar el escrito por prescripción de la acción.
+Se declara sin lugar el expediente por cosa juzgada.
+Se declara sin lugar el expediente por falta de fundamentación.
+Se declara sin lugar el expediente por falta de interés actual.
+Se declara sin lugar el expediente por falta de legitimación.
+Se declara sin lugar el expediente por incompetencia territorial.
+Se declara sin lugar el informe por caducidad del plazo.
+Se declara sin lugar el informe por cosa juzgada.
+Se declara sin lugar el informe por defectos de forma.
+Se declara sin lugar el informe por falta de fundamentación.
+Se declara sin lugar el informe por falta de interés actual.
+Se declara sin lugar el informe por incompetencia territorial.
+Se declara sin lugar el informe por prescripción de la acción.
+Se declara sin lugar el memorial por caducidad del plazo.
+Se declara sin lugar el memorial por cosa juzgada.
+Se declara sin lugar el memorial por defectos de forma.
+Se declara sin lugar el memorial por falta de interés actual.
+Se declara sin lugar el memorial por falta de legitimación.
+Se declara sin lugar el memorial por incompetencia territorial.
+Se declara sin lugar el memorial por prescripción de la acción.
+Se declara sin lugar el oficio por caducidad del plazo.
+Se declara sin lugar el oficio por cosa juzgada.
+Se declara sin lugar el oficio por defectos de forma.
+Se declara sin lugar el oficio por falta de fundamentación.
+Se declara sin lugar el oficio por falta de legitimación.
+Se declara sin lugar el oficio por incompetencia territorial.
+Se declara sin lugar el oficio por prescripción de la acción.
+Se declara sin lugar el recurso por cosa juzgada.
+Se declara sin lugar el recurso por falta de fundamentación.
+Se declara sin lugar el recurso por falta de interés actual.
+Se declara sin lugar el recurso por falta de legitimación.
+Se declara sin lugar el recurso por incompetencia territorial.
+Se declara sin lugar el recurso por prescripción de la acción.
+Se dispone el archivo por resultar admisible la gestión anterior.
+Se dispone el archivo por resultar extemporánea la gestión anterior.
+Se dispone el archivo por resultar improcedente la gestión anterior.
+Se dispone el archivo por resultar inadmisible la gestión anterior.
+Se dispone el archivo por resultar procedente la gestión anterior.
+Se dispone el desglose por resultar admisible la gestión anterior.
+Se dispone el desglose por resultar extemporánea la gestión anterior.
+Se dispone el desglose por resultar improcedente la gestión anterior.
+Se dispone el desglose por resultar inadmisible la gestión anterior.
+Se dispone el desglose por resultar insuficiente la gestión anterior.
+Se dispone el desglose por resultar procedente la gestión anterior.
+Se dispone el traslado por resultar admisible la gestión anterior.
+Se dispone el traslado por resultar extemporánea la gestión anterior.
+Se dispone el traslado por resultar improcedente la gestión anterior.
+Se dispone el traslado por resultar inadmisible la gestión anterior.
+Se dispone el traslado por resultar insuficiente la gestión anterior.
+Se dispone el traslado por resultar procedente la gestión anterior.
+Se dispone la acumulación por resultar admisible la gestión anterior.
+Se dispone la acumulación por resultar extemporánea la gestión anterior.
+Se dispone la acumulación por resultar improcedente la gestión anterior.
+Se dispone la acumulación por resultar inadmisible la gestión anterior.
+Se dispone la acumulación por resultar insuficiente la gestión anterior.
+Se dispone la certificación por resultar extemporánea la gestión anterior.
+Se dispone la certificación por resultar improcedente la gestión anterior.
+Se dispone la certificación por resultar inadmisible la gestión anterior.
+Se dispone la certificación por resultar insuficiente la gestión anterior.
+Se dispone la certificación por resultar procedente la gestión anterior.
+Se dispone la devolución por resultar admisible la gestión anterior.
+Se dispone la devolución por resultar extemporánea la gestión anterior.
+Se dispone la devolución por resultar improcedente la gestión anterior.
+Se dispone la devolución por resultar inadmisible la gestión anterior.
+Se dispone la devolución por resultar insuficiente la gestión anterior.
+Se dispone la devolución por resultar procedente la gestión anterior.
+Se dispone la foliatura por resultar admisible la gestión anterior.
+Se dispone la foliatura por resultar extemporánea la gestión anterior.
+Se dispone la foliatura por resultar improcedente la gestión anterior.
+Se dispone la foliatura por resultar inadmisible la gestión anterior.
+Se dispone la foliatura por resultar insuficiente la gestión anterior.
+Se dispone la inscripción por resultar admisible la gestión anterior.
+Se dispone la inscripción por resultar extemporánea la gestión anterior.
+Se dispone la inscripción por resultar improcedente la gestión anterior.
+Se dispone la inscripción por resultar inadmisible la gestión anterior.
+Se dispone la inscripción por resultar insuficiente la gestión anterior.
+Se dispone la inscripción por resultar procedente la gestión anterior.
+Se dispone la suspensión por resultar admisible la gestión anterior.
+Se dispone la suspensión por resultar extemporánea la gestión anterior.
+Se dispone la suspensión por resultar improcedente la gestión anterior.
+Se dispone la suspensión por resultar inadmisible la gestión anterior.
+Se dispone la suspensión por resultar insuficiente la gestión anterior.
+Se dispone la suspensión por resultar procedente la gestión anterior.
+Se ordena el archivo conforme al reglamento vigente.
+Se ordena el archivo previa razón consignada en el expediente.
+Se ordena el desglose conforme al reglamento vigente.
+Se ordena el desglose previa razón consignada en el expediente.
+Se ordena el traslado conforme al reglamento vigente.
+Se ordena el traslado previa razón consignada en el expediente.
+Se ordena la acumulación conforme al reglamento vigente.
+Se ordena la acumulación previa razón consignada en el expediente.
+Se ordena la certificación conforme al reglamento vigente.
+Se ordena la certificación previa razón consignada en el expediente.
+Se ordena la devolución conforme al reglamento vigente.
+Se ordena la devolución previa razón consignada en el expediente.
+Se ordena la foliatura conforme al reglamento vigente.
+Se ordena la foliatura previa razón consignada en el expediente.
+Se ordena la inscripción conforme al reglamento vigente.
+Se ordena la inscripción previa razón consignada en el expediente.
+Se ordena la suspensión conforme al reglamento vigente.
+Se ordena la suspensión previa razón consignada en el expediente.
+Se previene a la apoderada aportar el dictamen en quince meses.
+Se previene a la apoderada aportar el dictamen en tres días hábiles.
+Se previene a la apoderada aportar el dictamen en tres días naturales.
+Se previene a la apoderada aportar el escrito en quince días.
+Se previene a la apoderada aportar el escrito en sesenta días hábiles.
+Se previene a la apoderada aportar el escrito en veinte días naturales.
+Se previene a la apoderada aportar el informe en ocho meses.
+Se previene a la apoderada aportar el informe en sesenta días.
+Se previene a la apoderada aportar el memorial en quince días naturales.
+Se previene a la apoderada aportar el oficio en diez días hábiles.
+Se previene a la apoderada aportar el recurso en sesenta días.
+Se previene a la apoderada aportar el recurso en treinta meses.
+Se previene a la contraparte aportar el certificado en cinco días naturales.
+Se previene a la contraparte aportar el certificado en cinco meses.
+Se previene a la contraparte aportar el certificado en treinta meses.
+Se previene a la contraparte aportar el documento en ocho días naturales.
+Se previene a la contraparte aportar el documento en quince días.
+Se previene a la contraparte aportar el escrito en ocho días naturales.
+Se previene a la contraparte aportar el expediente en diez días.
+Se previene a la contraparte aportar el expediente en quince días.
+Se previene a la contraparte aportar el memorial en ocho días hábiles.
+Se previene a la contraparte aportar el memorial en treinta días naturales.
+Se previene a la contraparte aportar el oficio en ocho meses.
+Se previene a la contraparte aportar el oficio en tres meses.
+Se previene a la contraparte aportar el recurso en cinco días.
+Se previene a la parte actora aportar el dictamen en diez días.
+Se previene a la parte actora aportar el dictamen en treinta días.
+Se previene a la parte actora aportar el documento en sesenta días naturales.
+Se previene a la parte actora aportar el documento en sesenta meses.
+Se previene a la parte actora aportar el documento en treinta días hábiles.
+Se previene a la parte actora aportar el documento en tres días.
+Se previene a la parte actora aportar el informe en diez días naturales.
+Se previene a la parte actora aportar el informe en ocho días hábiles.
+Se previene a la parte actora aportar el informe en quince días naturales.
+Se previene a la parte actora aportar el informe en treinta días hábiles.
+Se previene a la parte actora aportar el memorial en cinco días.
+Se previene a la parte actora aportar el memorial en cinco meses.
+Se previene a la parte actora aportar el oficio en diez días hábiles.
+Se previene a la parte actora aportar el oficio en quince meses.
+Se previene a la parte actora aportar el recurso en sesenta días.
+Se previene a la parte demandada aportar el certificado en veinte días.
+Se previene a la parte demandada aportar el dictamen en ocho días hábiles.
+Se previene a la parte demandada aportar el documento en veinte días.
+Se previene a la parte demandada aportar el escrito en veinte días naturales.
+Se previene a la parte demandada aportar el expediente en cinco días hábiles.
+Se previene a la parte demandada aportar el expediente en cinco días.
+Se previene a la parte demandada aportar el expediente en tres días hábiles.
+Se previene a la parte demandada aportar el informe en quince días hábiles.
+Se previene a la parte demandada aportar el memorial en cinco días naturales.
+Se previene a la parte demandada aportar el memorial en ocho días hábiles.
+Se previene a la parte demandada aportar el oficio en cinco días.
+Se previene a la parte demandada aportar el oficio en quince días.
+Se previene a la parte demandada aportar el recurso en ocho días hábiles.
+Se previene a la parte demandada aportar el recurso en ocho meses.
+Se previene a la parte demandada aportar el recurso en quince días naturales.
+Se previene a la parte demandada aportar el recurso en sesenta días.
+Se previene a la perita aportar el certificado en cinco días hábiles.
+Se previene a la perita aportar el certificado en quince días hábiles.
+Se previene a la perita aportar el certificado en sesenta días.
+Se previene a la perita aportar el dictamen en quince días naturales.
+Se previene a la perita aportar el dictamen en sesenta días hábiles.
+Se previene a la perita aportar el dictamen en treinta días naturales.
+Se previene a la perita aportar el dictamen en tres días.
+Se previene a la perita aportar el dictamen en veinte meses.
+Se previene a la perita aportar el documento en treinta meses.
+Se previene a la perita aportar el expediente en tres días hábiles.
+Se previene a la perita aportar el informe en treinta días hábiles.
+Se previene a la perita aportar el memorial en cinco meses.
+Se previene a la perita aportar el memorial en diez días hábiles.
+Se previene a la perita aportar el memorial en sesenta días.
+Se previene a la perita aportar el oficio en ocho días hábiles.
+Se previene a la perita aportar el recurso en diez días naturales.
+Se previene a la perita aportar el recurso en diez días.
+Se previene a la recurrente aportar el certificado en tres días.
+Se previene a la recurrente aportar el documento en cinco días.
+Se previene a la recurrente aportar el documento en quince días naturales.
+Se previene a la recurrente aportar el escrito en diez días naturales.
+Se previene a la recurrente aportar el escrito en quince días.
+Se previene a la recurrente aportar el escrito en veinte días.
+Se previene a la recurrente aportar el expediente en quince días hábiles.
+Se previene a la recurrente aportar el informe en diez días.
+Se previene a la recurrente aportar el informe en tres días.
+Se previene a la recurrente aportar el memorial en cinco meses.
+Se previene a la recurrente aportar el memorial en tres meses.
+Se previene a la recurrente aportar el oficio en quince días naturales.
+Se previene a la recurrente aportar el oficio en treinta meses.
+Se previene a la recurrente aportar el recurso en diez días naturales.
+Se previene a la solicitante aportar el certificado en cinco días hábiles.
+Se previene a la solicitante aportar el certificado en diez meses.
+Se previene a la solicitante aportar el certificado en quince días naturales.
+Se previene a la solicitante aportar el certificado en treinta días.
+Se previene a la solicitante aportar el certificado en tres meses.
+Se previene a la solicitante aportar el dictamen en diez días.
+Se previene a la solicitante aportar el dictamen en treinta días naturales.
+Se previene a la solicitante aportar el dictamen en veinte meses.
+Se previene a la solicitante aportar el documento en diez días naturales.
+Se previene a la solicitante aportar el documento en ocho días.
+Se previene a la solicitante aportar el expediente en cinco meses.
+Se previene a la solicitante aportar el expediente en tres días naturales.
+Se previene a la solicitante aportar el informe en treinta días naturales.
+Se previene a la solicitante aportar el memorial en quince meses.
+Se previene a la solicitante aportar el oficio en diez días.
+Se previene a la solicitante aportar el oficio en diez meses.
+Se previene a la solicitante aportar el oficio en quince días.
+Se previene a la solicitante aportar el recurso en treinta meses.
+Se previene a la testigo aportar el certificado en treinta días hábiles.
+Se previene a la testigo aportar el dictamen en cinco días.
+Se previene a la testigo aportar el dictamen en tres meses.
+Se previene a la testigo aportar el escrito en quince meses.
+Se previene a la testigo aportar el escrito en veinte días naturales.
+Se previene a la testigo aportar el informe en diez días hábiles.
+Se previene a la testigo aportar el informe en diez meses.
+Se previene a la testigo aportar el memorial en sesenta días.
+Se previene a la testigo aportar el memorial en sesenta meses.
+Se previene a la testigo aportar el oficio en treinta días.
+Se previene a la testigo aportar el recurso en ocho días hábiles.
+Se previene a la testigo aportar el recurso en veinte días hábiles.
+Se rechaza el acta presentada por la apoderada por defectos de forma.
+Se rechaza el acta presentada por la apoderada por incompetencia territorial.
+Se rechaza el acta presentada por la parte actora por caducidad del plazo.
+Se rechaza el acta presentada por la parte actora por falta de fundamentación.
+Se rechaza el acta presentada por la parte actora por prescripción de la acción.
+Se rechaza el acta presentada por la parte demandada por incompetencia territorial.
+Se rechaza el acta presentada por la perita por cosa juzgada.
+Se rechaza el acta presentada por la perita por falta de legitimación.
+Se rechaza el acta presentada por la perita por prescripción de la acción.
+Se rechaza el acta presentada por la recurrente por cosa juzgada.
+Se rechaza el acta presentada por la recurrente por falta de legitimación.
+Se rechaza el acta presentada por la solicitante por falta de fundamentación.
+Se rechaza el acta presentada por la solicitante por falta de interés actual.
+Se rechaza el acta presentada por la testigo por falta de fundamentación.
+Se rechaza la certificación presentada por la apoderada por defectos de forma.
+Se rechaza la certificación presentada por la contraparte por defectos de forma.
+Se rechaza la certificación presentada por la parte actora por falta de interés actual.
+Se rechaza la certificación presentada por la parte demandada por cosa juzgada.
+Se rechaza la certificación presentada por la perita por falta de legitimación.
+Se rechaza la certificación presentada por la solicitante por defectos de forma.
+Se rechaza la certificación presentada por la testigo por cosa juzgada.
+Se rechaza la certificación presentada por la testigo por falta de interés actual.
+Se rechaza la comparecencia presentada por la contraparte por defectos de forma.
+Se rechaza la comparecencia presentada por la parte actora por defectos de forma.
+Se rechaza la comparecencia presentada por la parte actora por falta de fundamentación.
+Se rechaza la comparecencia presentada por la parte demandada por cosa juzgada.
+Se rechaza la comparecencia presentada por la perita por defectos de forma.
+Se rechaza la comparecencia presentada por la perita por falta de fundamentación.
+Se rechaza la comparecencia presentada por la perita por prescripción de la acción.
+Se rechaza la comparecencia presentada por la recurrente por defectos de forma.
+Se rechaza la comparecencia presentada por la solicitante por cosa juzgada.
+Se rechaza la comparecencia presentada por la solicitante por falta de fundamentación.
+Se rechaza la comparecencia presentada por la solicitante por falta de interés actual.
+Se rechaza la comparecencia presentada por la testigo por falta de legitimación.
+Se rechaza la declaración presentada por la apoderada por caducidad del plazo.
+Se rechaza la declaración presentada por la apoderada por falta de interés actual.
+Se rechaza la declaración presentada por la apoderada por prescripción de la acción.
+Se rechaza la declaración presentada por la contraparte por falta de fundamentación.
+Se rechaza la declaración presentada por la parte actora por cosa juzgada.
+Se rechaza la declaración presentada por la parte actora por falta de legitimación.
+Se rechaza la declaración presentada por la parte demandada por incompetencia territorial.
+Se rechaza la declaración presentada por la perita por defectos de forma.
+Se rechaza la declaración presentada por la recurrente por falta de fundamentación.
+Se rechaza la declaración presentada por la testigo por defectos de forma.
+Se rechaza la demanda presentada por la contraparte por falta de fundamentación.
+Se rechaza la demanda presentada por la contraparte por incompetencia territorial.
+Se rechaza la demanda presentada por la contraparte por prescripción de la acción.
+Se rechaza la demanda presentada por la parte demandada por incompetencia territorial.
+Se rechaza la demanda presentada por la perita por falta de fundamentación.
+Se rechaza la demanda presentada por la recurrente por cosa juzgada.
+Se rechaza la demanda presentada por la recurrente por prescripción de la acción.
+Se rechaza la demanda presentada por la solicitante por falta de fundamentación.
+Se rechaza la demanda presentada por la solicitante por incompetencia territorial.
+Se rechaza la demanda presentada por la testigo por caducidad del plazo.
+Se rechaza la demanda presentada por la testigo por defectos de forma.
+Se rechaza la demanda presentada por la testigo por incompetencia territorial.
+Se rechaza la diligencia presentada por la apoderada por cosa juzgada.
+Se rechaza la diligencia presentada por la apoderada por falta de fundamentación.
+Se rechaza la diligencia presentada por la apoderada por falta de interés actual.
+Se rechaza la diligencia presentada por la contraparte por defectos de forma.
+Se rechaza la diligencia presentada por la contraparte por falta de legitimación.
+Se rechaza la diligencia presentada por la parte actora por caducidad del plazo.
+Se rechaza la diligencia presentada por la parte actora por defectos de forma.
+Se rechaza la diligencia presentada por la parte demandada por cosa juzgada.
+Se rechaza la diligencia presentada por la parte demandada por falta de fundamentación.
+Se rechaza la diligencia presentada por la perita por caducidad del plazo.
+Se rechaza la diligencia presentada por la perita por defectos de forma.
+Se rechaza la diligencia presentada por la recurrente por falta de interés actual.
+Se rechaza la diligencia presentada por la recurrente por incompetencia territorial.
+Se rechaza la diligencia presentada por la recurrente por prescripción de la acción.
+Se rechaza la gestión presentada por la apoderada por defectos de forma.
+Se rechaza la gestión presentada por la apoderada por incompetencia territorial.
+Se rechaza la gestión presentada por la apoderada por prescripción de la acción.
+Se rechaza la gestión presentada por la contraparte por falta de interés actual.
+Se rechaza la gestión presentada por la parte actora por defectos de forma.
+Se rechaza la gestión presentada por la perita por caducidad del plazo.
+Se rechaza la gestión presentada por la perita por falta de fundamentación.
+Se rechaza la gestión presentada por la perita por prescripción de la acción.
+Se rechaza la gestión presentada por la recurrente por cosa juzgada.
+Se rechaza la gestión presentada por la recurrente por incompetencia territorial.
+Se rechaza la gestión presentada por la solicitante por caducidad del plazo.
+Se rechaza la gestión presentada por la solicitante por cosa juzgada.
+Se rechaza la gestión presentada por la solicitante por defectos de forma.
+Se rechaza la gestión presentada por la solicitante por falta de fundamentación.
+Se rechaza la notificación presentada por la contraparte por cosa juzgada.
+Se rechaza la notificación presentada por la contraparte por falta de interés actual.
+Se rechaza la notificación presentada por la parte demandada por defectos de forma.
+Se rechaza la notificación presentada por la parte demandada por falta de fundamentación.
+Se rechaza la notificación presentada por la perita por caducidad del plazo.
+Se rechaza la notificación presentada por la recurrente por cosa juzgada.
+Se rechaza la notificación presentada por la solicitante por falta de interés actual.
+Se rechaza la notificación presentada por la testigo por falta de legitimación.
+Se rechaza la notificación presentada por la testigo por prescripción de la acción.
+Se rechaza la prueba presentada por la apoderada por defectos de forma.
+Se rechaza la prueba presentada por la apoderada por incompetencia territorial.
+Se rechaza la prueba presentada por la parte actora por falta de fundamentación.
+Se rechaza la prueba presentada por la parte demandada por incompetencia territorial.
+Se rechaza la prueba presentada por la perita por incompetencia territorial.
+Se rechaza la prueba presentada por la recurrente por falta de fundamentación.
+Se rechaza la prueba presentada por la recurrente por prescripción de la acción.
+Se rechaza la prueba presentada por la solicitante por caducidad del plazo.
+Se rechaza la prueba presentada por la solicitante por incompetencia territorial.
+Se rechaza la resolución presentada por la apoderada por cosa juzgada.
+Se rechaza la resolución presentada por la apoderada por falta de interés actual.
+Se rechaza la resolución presentada por la apoderada por incompetencia territorial.
+Se rechaza la resolución presentada por la contraparte por falta de fundamentación.
+Se rechaza la resolución presentada por la parte actora por falta de interés actual.
+Se rechaza la resolución presentada por la parte actora por prescripción de la acción.
+Se rechaza la resolución presentada por la parte demandada por caducidad del plazo.
+Se rechaza la resolución presentada por la parte demandada por falta de fundamentación.
+Se rechaza la resolución presentada por la parte demandada por prescripción de la acción.
+Se rechaza la resolución presentada por la recurrente por incompetencia territorial.
+Se rechaza la resolución presentada por la solicitante por prescripción de la acción.
+Se rechaza la resolución presentada por la testigo por falta de interés actual.
+Se rechaza la solicitud presentada por la apoderada por cosa juzgada.
+Se rechaza la solicitud presentada por la apoderada por defectos de forma.
+Se rechaza la solicitud presentada por la apoderada por falta de interés actual.
+Se rechaza la solicitud presentada por la apoderada por falta de legitimación.
+Se rechaza la solicitud presentada por la contraparte por prescripción de la acción.
+Se rechaza la solicitud presentada por la parte actora por caducidad del plazo.
+Se rechaza la solicitud presentada por la parte actora por defectos de forma.
+Se rechaza la solicitud presentada por la recurrente por defectos de forma.
+Se rechaza la solicitud presentada por la recurrente por falta de fundamentación.
+Se rechaza la solicitud presentada por la recurrente por incompetencia territorial.
+Se rechaza la solicitud presentada por la solicitante por caducidad del plazo.
+Se rechaza la solicitud presentada por la solicitante por falta de interés actual.
+Se rechaza la solicitud presentada por la testigo por incompetencia territorial.
+Se tiene por admitida el acta en materia civil.
+Se tiene por admitida el acta en materia laboral.
+Se tiene por admitida el acta en materia notarial.
+Se tiene por admitida la declaración en materia civil.
+Se tiene por admitida la demanda en materia laboral.
+Se tiene por admitida la diligencia en materia de familia.
+Se tiene por admitida la diligencia en materia notarial.
+Se tiene por admitida la notificación en materia administrativa.
+Se tiene por admitida la resolución en materia agraria.
+Se tiene por admitida la resolución en materia civil.
+Se tiene por admitida la solicitud en materia administrativa.
+Se tiene por admitida la solicitud en materia agraria.
+Se tiene por aportada el acta en materia administrativa.
+Se tiene por aportada la certificación en materia notarial.
+Se tiene por aportada la comparecencia en materia de familia.
+Se tiene por aportada la demanda en materia notarial.
+Se tiene por aportada la diligencia en materia notarial.
+Se tiene por aportada la gestión en materia contenciosa.
+Se tiene por aportada la prueba en materia contenciosa.
+Se tiene por aportada la prueba en materia de familia.
+Se tiene por aportada la prueba en materia laboral.
+Se tiene por aportada la solicitud en materia civil.
+Se tiene por aportada la solicitud en materia de familia.
+Se tiene por aprobada la certificación en materia agraria.
+Se tiene por aprobada la comparecencia en materia laboral.
+Se tiene por aprobada la notificación en materia administrativa.
+Se tiene por aprobada la prueba en materia laboral.
+Se tiene por aprobada la resolución en materia agraria.
+Se tiene por aprobada la solicitud en materia contenciosa.
+Se tiene por archivada el acta en materia civil.
+Se tiene por archivada el acta en materia de familia.
+Se tiene por archivada el acta en materia notarial.
+Se tiene por archivada la certificación en materia agraria.
+Se tiene por archivada la comparecencia en materia administrativa.
+Se tiene por archivada la declaración en materia agraria.
+Se tiene por archivada la declaración en materia notarial.
+Se tiene por archivada la demanda en materia de familia.
+Se tiene por archivada la diligencia en materia civil.
+Se tiene por archivada la diligencia en materia contenciosa.
+Se tiene por archivada la gestión en materia administrativa.
+Se tiene por archivada la gestión en materia agraria.
+Se tiene por archivada la gestión en materia laboral.
+Se tiene por archivada la prueba en materia civil.
+Se tiene por archivada la resolución en materia administrativa.
+Se tiene por cumplida la prevención efectuada a la apoderada.
+Se tiene por cumplida la prevención efectuada a la contraparte.
+Se tiene por cumplida la prevención efectuada a la parte actora.
+Se tiene por cumplida la prevención efectuada a la parte demandada.
+Se tiene por cumplida la prevención efectuada a la perita.
+Se tiene por cumplida la prevención efectuada a la recurrente.
+Se tiene por cumplida la prevención efectuada a la solicitante.
+Se tiene por cumplida la prevención efectuada a la testigo.
+Se tiene por notificada el acta en materia agraria.
+Se tiene por notificada el acta en materia civil.
+Se tiene por notificada la certificación en materia de familia.
+Se tiene por notificada la comparecencia en materia de familia.
+Se tiene por notificada la comparecencia en materia laboral.
+Se tiene por notificada la demanda en materia agraria.
+Se tiene por notificada la demanda en materia civil.
+Se tiene por notificada la demanda en materia contenciosa.
+Se tiene por notificada la diligencia en materia civil.
+Se tiene por notificada la diligencia en materia laboral.
+Se tiene por notificada la gestión en materia agraria.
+Se tiene por notificada la prueba en materia laboral.
+Se tiene por notificada la prueba en materia notarial.
+Se tiene por notificada la resolución en materia notarial.
+Se tiene por presentada el acta en materia administrativa.
+Se tiene por presentada la certificación en materia laboral.
+Se tiene por presentada la comparecencia en materia laboral.
+Se tiene por presentada la diligencia en materia administrativa.
+Se tiene por presentada la diligencia en materia laboral.
+Se tiene por presentada la diligencia en materia notarial.
+Se tiene por presentada la gestión en materia laboral.
+Se tiene por presentada la notificación en materia laboral.
+Se tiene por presentada la solicitud en materia contenciosa.
+Se tiene por presentada la solicitud en materia laboral.
+Se tiene por rechazada la certificación en materia de familia.
+Se tiene por rechazada la declaración en materia de familia.
+Se tiene por rechazada la demanda en materia agraria.
+Se tiene por rechazada la demanda en materia civil.
+Se tiene por rechazada la diligencia en materia agraria.
+Se tiene por rechazada la diligencia en materia notarial.
+Se tiene por rechazada la gestión en materia laboral.
+Se tiene por rechazada la notificación en materia administrativa.
+Se tiene por rechazada la notificación en materia civil.
+Se tiene por rechazada la notificación en materia contenciosa.
+Se tiene por rechazada la prueba en materia administrativa.
+Se tiene por rechazada la resolución en materia administrativa.
+Se tiene por rechazada la resolución en materia de familia.
+Se tiene por rechazada la solicitud en materia de familia.
+Se tiene por recibida el acta en materia contenciosa.
+Se tiene por recibida el acta en materia notarial.
+Se tiene por recibida la certificación en materia administrativa.
+Se tiene por recibida la comparecencia en materia notarial.
+Se tiene por recibida la declaración en materia civil.
+Se tiene por recibida la declaración en materia de familia.
+Se tiene por recibida la diligencia en materia contenciosa.
+Se tiene por recibida la gestión en materia administrativa.
+Se tiene por recibida la gestión en materia agraria.
+Se tiene por recibida la notificación en materia notarial.
+Se tiene por recibida la prueba en materia notarial.
+Se tiene por recibida la solicitud en materia civil.
+Se tiene por remitida la certificación en materia administrativa.
+Se tiene por remitida la certificación en materia de familia.
+Se tiene por remitida la comparecencia en materia administrativa.
+Se tiene por remitida la declaración en materia contenciosa.
+Se tiene por remitida la demanda en materia administrativa.
+Se tiene por remitida la demanda en materia contenciosa.
+Se tiene por remitida la demanda en materia laboral.
+Se tiene por remitida la diligencia en materia agraria.
+Se tiene por remitida la notificación en materia agraria.
+Se tiene por remitida la prueba en materia notarial.
+Se tiene por remitida la solicitud en materia agraria.
+Se tiene por remitida la solicitud en materia contenciosa.
+Se tiene por trasladada el acta en materia de familia.
+Se tiene por trasladada la certificación en materia civil.
+Se tiene por trasladada la certificación en materia de familia.
+Se tiene por trasladada la comparecencia en materia administrativa.
+Se tiene por trasladada la comparecencia en materia laboral.
+Se tiene por trasladada la declaración en materia contenciosa.
+Se tiene por trasladada la declaración en materia laboral.
+Se tiene por trasladada la gestión en materia civil.
+Se tiene por trasladada la notificación en materia agraria.
+Se tiene por trasladada la notificación en materia de familia.
+Se tiene por trasladada la solicitud en materia de familia.
+Se tiene por trasladada la solicitud en materia notarial.
+¿Cuál es el fundamento de el acta presentada por la contraparte?
+¿Cuál es el fundamento de el acta presentada por la recurrente?
+¿Cuál es el fundamento de el acta presentada por la solicitante?
+¿Cuál es el fundamento de el acta presentada por la testigo?
+¿Cuál es el fundamento de la certificación presentada por la contraparte?
+¿Cuál es el fundamento de la certificación presentada por la parte actora?
+¿Cuál es el fundamento de la certificación presentada por la parte demandada?
+¿Cuál es el fundamento de la certificación presentada por la perita?
+¿Cuál es el fundamento de la certificación presentada por la recurrente?
+¿Cuál es el fundamento de la certificación presentada por la solicitante?
+¿Cuál es el fundamento de la comparecencia presentada por la contraparte?
+¿Cuál es el fundamento de la comparecencia presentada por la parte actora?
+¿Cuál es el fundamento de la comparecencia presentada por la parte demandada?
+¿Cuál es el fundamento de la comparecencia presentada por la perita?
+¿Cuál es el fundamento de la comparecencia presentada por la recurrente?
+¿Cuál es el fundamento de la comparecencia presentada por la solicitante?
+¿Cuál es el fundamento de la comparecencia presentada por la testigo?
+¿Cuál es el fundamento de la declaración presentada por la apoderada?
+¿Cuál es el fundamento de la declaración presentada por la parte actora?
+¿Cuál es el fundamento de la declaración presentada por la parte demandada?
+¿Cuál es el fundamento de la declaración presentada por la solicitante?
+¿Cuál es el fundamento de la declaración presentada por la testigo?
+¿Cuál es el fundamento de la demanda presentada por la contraparte?
+¿Cuál es el fundamento de la demanda presentada por la parte actora?
+¿Cuál es el fundamento de la demanda presentada por la parte demandada?
+¿Cuál es el fundamento de la demanda presentada por la perita?
+¿Cuál es el fundamento de la demanda presentada por la recurrente?
+¿Cuál es el fundamento de la demanda presentada por la solicitante?
+¿Cuál es el fundamento de la demanda presentada por la testigo?
+¿Cuál es el fundamento de la diligencia presentada por la apoderada?
+¿Cuál es el fundamento de la diligencia presentada por la parte actora?
+¿Cuál es el fundamento de la diligencia presentada por la parte demandada?
+¿Cuál es el fundamento de la diligencia presentada por la perita?
+¿Cuál es el fundamento de la diligencia presentada por la recurrente?
+¿Cuál es el fundamento de la gestión presentada por la apoderada?
+¿Cuál es el fundamento de la gestión presentada por la contraparte?
+¿Cuál es el fundamento de la gestión presentada por la parte actora?
+¿Cuál es el fundamento de la gestión presentada por la parte demandada?
+¿Cuál es el fundamento de la gestión presentada por la perita?
+¿Cuál es el fundamento de la gestión presentada por la recurrente?
+¿Cuál es el fundamento de la gestión presentada por la solicitante?
+¿Cuál es el fundamento de la gestión presentada por la testigo?
+¿Cuál es el fundamento de la notificación presentada por la apoderada?
+¿Cuál es el fundamento de la notificación presentada por la parte demandada?
+¿Cuál es el fundamento de la notificación presentada por la perita?
+¿Cuál es el fundamento de la notificación presentada por la testigo?
+¿Cuál es el fundamento de la prueba presentada por la contraparte?
+¿Cuál es el fundamento de la prueba presentada por la parte demandada?
+¿Cuál es el fundamento de la prueba presentada por la perita?
+¿Cuál es el fundamento de la prueba presentada por la recurrente?
+¿Cuál es el fundamento de la prueba presentada por la solicitante?
+¿Cuál es el fundamento de la resolución presentada por la apoderada?
+¿Cuál es el fundamento de la resolución presentada por la contraparte?
+¿Cuál es el fundamento de la resolución presentada por la parte actora?
+¿Cuál es el fundamento de la resolución presentada por la parte demandada?
+¿Cuál es el fundamento de la resolución presentada por la recurrente?
+¿Cuál es el fundamento de la resolución presentada por la testigo?
+¿Cuál es el fundamento de la solicitud presentada por la apoderada?
+¿Cuál es el fundamento de la solicitud presentada por la contraparte?
+¿Cuál es el fundamento de la solicitud presentada por la parte actora?
+¿Cuál es el fundamento de la solicitud presentada por la parte demandada?
+¿Cuál es el fundamento de la solicitud presentada por la perita?
+¿Cuál es el fundamento de la solicitud presentada por la solicitante?
+¿Cuál es el fundamento de la solicitud presentada por la testigo?
+¿Se cumplió el requisito de agotamiento de la vía administrativa?
