@@ -326,22 +326,58 @@ def detectar_papel(gris: np.ndarray, margen: float = 0.02
 # 3. Encuadernado (espiral, agujeros)
 # --------------------------------------------------------------------------
 
+def _corrida_vertical_maxima(tinta: np.ndarray) -> np.ndarray:
+    """Por cada columna, la corrida CONTINUA de tinta más larga."""
+    alto, ancho = tinta.shape
+    actual = np.zeros(ancho, dtype=np.int32)
+    mejor = np.zeros(ancho, dtype=np.int32)
+    for y in range(alto):
+        actual = np.where(tinta[y], actual + 1, 0)
+        mejor = np.maximum(mejor, actual)
+    return mejor
+
+
 def quitar_encuadernado(gris: np.ndarray) -> tuple[int, int]:
     """
     Devuelve (x0, x1) sin la espiral ni los agujeros del margen.
 
-    La espiral se distingue del texto por la forma de su distribución: su
-    tinta se reparte a lo largo de TODA la altura de la página, mientras el
-    texto se concentra en bandas. Solo se inspecciona el 20 % de cada borde,
-    porque el encuadernado nunca está en el medio.
+    Una espiral es una línea vertical CONTINUA. Eso es lo que la distingue
+    del texto, y es lo que se mide: la corrida de tinta más larga de cada
+    columna. Solo se inspecciona el 20 % de cada borde, porque el
+    encuadernado nunca está en el medio.
+
+    POR QUÉ LA CORRIDA Y NO LA SUMA
+    -------------------------------
+    Antes se sumaba la tinta de la columna. En una hoja de cuaderno
+    **rayado** eso falla por completo: cada columna cruza los ~17 renglones
+    impresos, así que acumula tinta de sobra sin que haya ninguna espiral.
+
+    Medido el 17/09/2026 sobre la foto de la hoja de imprenta:
+
+        suma por columna ..... el 93 % de las columnas pasaba el umbral
+        corrida máxima ....... el  0 %
+
+    Con la suma, TODAS las columnas quedaban marcadas y el resultado no era
+    una detección sino el borde de la zona de inspección: devolvía un
+    recorte de 1037 px sobre un papel de 1797. Eso cortaba el 42 % de cada
+    renglón por los dos lados —`¡Atenci` y `ble vence` desaparecían— y era
+    la causa principal de la brecha entre recortar a mano (CER 0.2480) y
+    recortar automático (CER 0.5780).
     """
     alto, ancho = gris.shape
     tinta = mascara_tinta(gris)
-    por_columna = tinta.sum(axis=0)
-    estructural = por_columna > alto * 0.16
+    estructural = _corrida_vertical_maxima(tinta) > alto * 0.16
 
     borde = max(int(ancho * 0.20), 1)
     margen = max(int(ancho * 0.012), 4)
+
+    # Si casi todo el borde está marcado, la señal no distingue nada y
+    # recortar sería inventar. Mejor devolver el ancho completo: una
+    # espiral sin quitar mete una banda de basura, pero un recorte mal
+    # puesto se come texto de todos los renglones.
+    zona = np.concatenate([estructural[:borde], estructural[ancho - borde:]])
+    if zona.mean() > 0.40:
+        return 0, ancho
 
     x0 = 0
     for x in range(borde):
