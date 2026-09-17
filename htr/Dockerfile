@@ -36,8 +36,41 @@ RUN pip install --no-cache-dir --break-system-packages \
         "fastapi>=0.115" \
         "uvicorn[standard]>=0.30"
 
+# docTR (Mindee, Apache 2.0): detector de texto ENTRENADO, para ubicar los
+# renglones. Reemplaza el umbral global de Otsu, que sobre estas fotos
+# clasificaba como tinta el 22 % de la pagina y arruinaba la ubicacion de
+# las lineas. Ver deteccion_aprendida.py. Solo se usa la deteccion: el
+# reconocedor de docTR es para texto impreso y el manuscrito lo sigue
+# haciendo TrOCR.
+#
+# --no-deps es deliberado: la dependencia por omision de docTR es
+# opencv-python, que arrastra bibliotecas de interfaz grafica (falla con
+# "libxcb.so.1: cannot open shared object file" en una imagen sin X). Se
+# instalan las dependencias a mano con la variante headless.
+# La lista sale de `importlib.metadata.requires('python-doctr')`, no de
+# adivinar: son sus dependencias obligatorias menos torch, torchvision,
+# numpy y Pillow, que ya vienen de la imagen base o de arriba, y con
+# opencv-python cambiado por su variante headless.
+RUN pip install --no-cache-dir --break-system-packages \
+        "opencv-python-headless>=4.10" \
+        "onnx>=1.12,<3" \
+        "scipy>=1.11" \
+        "h5py>=3.10" \
+        "pypdfium2>=4.11,<6" \
+        "pyclipper>=1.3,<2" \
+        "shapely>=2.0,<3" \
+        "langdetect>=1.0.9,<2" \
+        "rapidfuzz>=3.0,<4" \
+        "anyascii>=0.3.2" \
+        "validators>=0.18" \
+        "tqdm>=4.30" \
+    && pip install --no-cache-dir --break-system-packages --no-deps \
+        "python-doctr>=1.0"
+
 # Los pesos descargados de Hugging Face se cachean en un volumen para no
-# re-bajar 1.4 GB en cada corrida.
+# re-bajar 1.4 GB en cada corrida. Los de docTR van a su propia cache, que
+# tambien conviene montar como volumen (son ~100 MB por arquitectura).
 ENV HF_HOME=/cache/huggingface
+ENV DOCTR_CACHE_DIR=/cache/doctr
 
 CMD ["python", "-c", "import torch; print('torch', torch.__version__, '| CUDA', torch.cuda.is_available())"]

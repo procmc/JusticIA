@@ -89,10 +89,15 @@ htr/
 ├── ver_rodrigo.py            Inspección del corpus Rodrigo (evidencia
 │                             del descarte)
 ├── evaluar_modelos.py        CER / WER / tiempo / VRAM -> tabla + JSON
-├── segmentacion.py           ÚNICA fuente de verdad de la segmentación:
-│                             Otsu, papel, encuadernado, deskew, franjas
+├── segmentacion.py           Ubicación de renglones por UMBRAL (Otsu):
+│                             papel, encuadernado, deskew, franjas
+├── deteccion_aprendida.py    Ubicación de renglones con un detector
+│                             ENTRENADO (docTR). Reemplaza el umbral; ver §8
+├── evaluar_hoja.py           Mide el pipeline COMPLETO sobre una foto de
+│                             página, no el modelo sobre líneas recortadas
 ├── unir_lineas.py            Une los renglones reconocidos en párrafos
-│                             con 8 reglas de puntuación española
+│                             con 8 reglas de puntuación española, más los
+│                             cortes que vienen de la disposición de página
 ├── servidor_htr.py           Servicio HTTP de inferencia con GPU
 ├── Dockerfile                PyTorch + CUDA en contenedor
 ├── docker-compose.htr.yml    Servicios `htr` (one-shot) y `servidor-htr`
@@ -205,6 +210,7 @@ docker compose start ollama
 | 4 tipografías | **Apache 2.0** | Uso comercial permitido |
 | Los 3 corpus | Propios | Contenido **inventado**, sin datos de ninguna persona |
 | UJIpenchars2 | **CC BY 4.0** | Uso comercial y adaptación permitidos. Exige **atribución** → abajo |
+| docTR (Mindee) y sus pesos | **Apache 2.0** | Uso comercial permitido, sin atribución obligatoria. Corre local: ningún documento sale de la institución |
 | `microsoft/trocr-*` y los demás modelos | MIT | Sin restricciones |
 
 Las imágenes generadas con tipografías **no heredan restricción**: OFL y
@@ -302,7 +308,77 @@ cuesta ~0.02 s. Detalle en `integracion_backend/PASOS_INTEGRACION.md`.
 
 ---
 
-## 8. Estado
+## 8. Los dos localizadores de renglones, y por qué se cambió
+
+TrOCR reconoce **una línea por vez**. Todo el trabajo de partir la página
+en renglones existe únicamente por eso. Y medido de punta a punta, ese
+paso llegó a aportar más error que el propio reconocedor.
+
+Importante para no confundirse: **nunca se binariza lo que ve el modelo.**
+La máscara y las cajas sirven solo para saber dónde cortar; a TrOCR se le
+entregan los píxeles RGB originales. No existe una "imagen limpia"
+intermedia en ningún punto.
+
+### El problema del umbral
+
+`segmentacion.py` decide qué es tinta con un umbral global de Otsu. En una
+foto de cuaderno **rayado**, de bajo contraste, eso se rompe:
+
+| | Fracción de la imagen que Otsu llama tinta |
+|---|---|
+| Recortes hechos a mano (los del CER 0.2480) | 0.111 |
+| Líneas compuestas de UJIpenchars2 | 0.062 |
+| **Foto de página completa** | **0.217 y 0.350** |
+
+Con una quinta parte de la página marcada como tinta, todo lo que se apoya
+en esa máscara queda contaminado. Aclarar la foto **no** lo arregla: Otsu
+escala junto con el histograma (probado, el CER empeora a 0.6440).
+
+### La medición de punta a punta
+
+Sobre la hoja de 8 oraciones en letra de imprenta, con `evaluar_hoja.py`:
+
+| Localizador | CER | Párrafos armados (de 9) |
+|---|---|---|
+| Otsu, versión original | 0.5780 | 3 |
+| Otsu, con `quitar_encuadernado` corregido | 0.5560 | 1 |
+| **docTR + cortes por disposición** | **0.3248** | **9** ✓ |
+| Recortes hechos por una persona (meta) | 0.2480 | — |
+
+Las dos últimas filas del cuadro se miden distinto (la última no pasa por
+ninguna ubicación automática), así que la comparación justa entre
+localizadores es 0.4507 contra 0.3248: **−28 % relativo**.
+
+### Las dos ideas que lo movieron
+
+1. **Detector entrenado en vez de umbral.** docTR con DBNet aprendió qué
+   trazo es escritura; sobre la misma foto no pone ni una caja sobre las
+   rayas del cuaderno, y sí detecta `¡Atención!`, `vence` y `folio 315`,
+   que eran justo las palabras que el recorte por umbral perdía.
+
+2. **La numeración manual como estructura, no como basura.** Los `01`,
+   `02`... que la persona escribió al margen se detectan como columna, se
+   quitan del texto y se usan como **corte de párrafo**. Eso importa
+   porque las 8 reglas de `unir_lineas` leen el texto, así que se caen
+   cuando el CER es alto: sin esta señal las 8 oraciones se fusionaban en
+   un solo párrafo. La geometría de la página no se degrada con el CER.
+
+Se elige con `HTR_LOCALIZADOR=doctr|otsu`. Los dos se conservan: son
+enfoques distintos para el mismo paso, y cuál gana se decide midiendo.
+
+### Lo que queda
+
+La brecha es ahora 0.3248 contra 0.2480. Lo que falta es de dos tipos:
+
+- **Ubicación:** en 2 de los 8 ítems las dos filas del ítem se fusionan en
+  una sola banda, y TrOCR recibe dos líneas apiladas.
+- **Reconocimiento:** el resto ya no es ubicación. Es el decodificador
+  inglés jalando el español (`juez` → `jazz`, `ordenó` → `orders`), que es
+  lo que va al Ciclo 4 con LoRA.
+
+---
+
+## 9. Estado
 
 - [x] Entorno aislado del backend, PyTorch en contenedor
 - [x] 21 tipografías con cobertura del español verificada + licencias

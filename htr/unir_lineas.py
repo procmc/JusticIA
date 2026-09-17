@@ -157,21 +157,43 @@ def normalizar(texto: str) -> str:
     return t
 
 
-def unir(lineas: list[str]) -> list[str]:
+def unir(lineas: list[str], cortes: set[int] | list[int] | None = None
+         ) -> list[str]:
     """
     Une una lista de renglones reconocidos en una lista de párrafos.
 
     Cada elemento del resultado es una oración o párrafo completo, listo
     para dividir en *chunks* y vectorizar.
+
+    `cortes` son índices de renglón donde el párrafo **tiene que** empezar,
+    sepa lo que diga el texto. Vienen de la disposición de la página, no
+    del contenido: por ejemplo, los renglones que traían número de ítem al
+    margen (ver `deteccion_aprendida.quitar_columna_numeracion`).
+
+    POR QUÉ HACEN FALTA. Las ocho señales de más arriba leen el **texto**,
+    así que dependen de que el reconocedor haya acertado el punto final y
+    la mayúscula inicial. Cuando el CER es alto eso no se cumple: medido
+    el 17/09/2026 sobre esta hoja, las 8 oraciones se unieron en **un solo
+    párrafo** porque casi ningún renglón terminaba en un punto legible. La
+    geometría de la página no se degrada con el CER, así que es una señal
+    independiente y más robusta.
+
+    Los índices son sobre la lista `lineas` que se recibe, contando también
+    las vacías: si no, un renglón que el reconocedor dejó en blanco
+    correría todos los cortes.
     """
-    limpias = [normalizar(l) for l in lineas if l and l.strip()]
+    marcas = set(cortes or ())
+    limpias: list[tuple[str, bool]] = []
+    for i, l in enumerate(lineas):
+        if l and l.strip():
+            limpias.append((normalizar(l), i in marcas))
     if not limpias:
         return []
 
-    parrafos: list[str] = [limpias[0]]
-    for linea in limpias[1:]:
+    parrafos: list[str] = [limpias[0][0]]
+    for linea, forzar in limpias[1:]:
         sigue, sin_espacio = continua(parrafos[-1], linea)
-        if not sigue:
+        if forzar or not sigue:
             parrafos.append(linea)
         elif sin_espacio:
             # Se quita el guion de corte antes de pegar.

@@ -77,6 +77,12 @@ MAX_LINEAS = int(os.getenv("HTR_MAX_LINEAS", "60"))
 # sobre las fotos con conteo conocido (ver doc 25).
 FRANJAS = int(os.getenv("HTR_FRANJAS", "4"))
 
+# Localizador de renglones: "otsu" (segmentacion.py, umbral global) o
+# "doctr" (deteccion_aprendida.py, detector entrenado). Se deja
+# configurable porque son dos enfoques distintos y la elección se decide
+# con la medición de punta a punta, no con una preferencia.
+LOCALIZADOR = os.getenv("HTR_LOCALIZADOR", "otsu").lower()
+
 # Segundos sin peticiones antes de devolver la GPU. 0 = no devolverla.
 IDLE_TIMEOUT = int(os.getenv("HTR_IDLE_TIMEOUT", "120"))
 
@@ -176,7 +182,8 @@ def salud() -> dict:
     return info
 
 
-def separar_lineas(imagen: Image.Image) -> list[Image.Image]:
+def separar_lineas(imagen: Image.Image,
+                   detalle: dict | None = None) -> list[Image.Image]:
     """
     Parte la imagen en líneas, delegando al módulo `segmentacion`.
 
@@ -189,8 +196,26 @@ def separar_lineas(imagen: Image.Image) -> list[Image.Image]:
     Ahora las dos importan `segmentacion.py`, que es la única fuente de
     verdad y trae los cuatro arreglos del Ciclo 2: umbral Otsu, detección
     de papel, remoción del encuadernado y proyección por franjas.
+
+    Con `HTR_LOCALIZADOR=doctr` se usa en su lugar un detector de texto
+    ENTRENADO (ver `deteccion_aprendida.py`). No son dos versiones de lo
+    mismo: son dos enfoques distintos para el mismo paso, y cuál gana se
+    decide midiendo.
     """
-    detalle: dict = {}
+    if detalle is None:
+        detalle = {}
+    if LOCALIZADOR == "doctr":
+        from deteccion_aprendida import segmentar as segmentar_aprendido
+        lineas = segmentar_aprendido(imagen, max_lineas=MAX_LINEAS,
+                                     detalle=detalle)
+        logger.info(
+            "localizacion aprendida: papel=%s cajas=%s numeracion=%s"
+            " -> %d renglon(es)",
+            detalle.get("papel"), detalle.get("cajas_palabra"),
+            detalle.get("numeracion_limpiada"), detalle.get("bandas", 0),
+        )
+        return lineas
+
     lineas = segmentar(imagen, franjas=FRANJAS, max_lineas=MAX_LINEAS,
                        detalle=detalle)
     if detalle:
@@ -210,7 +235,8 @@ def _reconocer_sincrono(imagen: Image.Image) -> dict:
         if _hay_gpu:
             _mover("cuda")          # puede haber estado en CPU por inactividad
 
-        lineas = separar_lineas(imagen)
+        info: dict = {}
+        lineas = separar_lineas(imagen, detalle=info)
         t0 = time.perf_counter()
         textos: list[str] = []
         for linea in lineas:
@@ -230,12 +256,17 @@ def _reconocer_sincrono(imagen: Image.Image) -> dict:
     #   solo líneas ............ CER 0.2742
     #   + normalización ........ CER 0.2557  (-6.8 %)
     #   + unión en párrafos .... CER 0.2480  (-9.6 %)
-    parrafos = unir([t for t in textos if t])
+    # Los cortes vienen de la DISPOSICION de la pagina (los renglones que
+    # traian numero de item al margen), no del texto. Son independientes
+    # del CER: cuando el reconocimiento sale danado, las senales de
+    # puntuacion y mayuscula fallan y todo se une en un solo parrafo.
+    parrafos = unir(textos, cortes=info.get("inicios_bloque"))
 
     return {
         "texto": "\n".join(parrafos),
         "lineas": len(lineas),
         "parrafos": len(parrafos),
+        "cortes_por_disposicion": len(info.get("inicios_bloque") or ()),
         "modelo": MODELO,
         "dispositivo": _dispositivo,
         "segundos": round(segundos, 3),

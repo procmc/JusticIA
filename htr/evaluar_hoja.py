@@ -45,7 +45,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).parent
 SET_PRUEBA = RAIZ / "corpus" / "set_prueba_manuscrito.txt"
-SERVIDOR = "http://localhost:9100/htr"
+PUERTO_POR_OMISION = 9100
 
 
 def esperado(estilo: str | None, numeros: set[str] | None) -> list[str]:
@@ -76,9 +76,9 @@ def rango(spec: str) -> set[str]:
     return salida
 
 
-def pedir(ruta: Path) -> dict:
+def pedir(ruta: Path, puerto: int) -> dict:
     peticion = urllib.request.Request(
-        SERVIDOR, data=ruta.read_bytes(),
+        f"http://localhost:{puerto}/htr", data=ruta.read_bytes(),
         headers={"Content-Type": "application/octet-stream"})
     import json
     with urllib.request.urlopen(peticion, timeout=600) as r:
@@ -91,6 +91,13 @@ def main() -> None:
     ap.add_argument("--estilo", choices=["imprenta", "cursiva"], default=None)
     ap.add_argument("--numeros", type=str, default=None,
                     help="qué oraciones trae la hoja, p. ej. 01-08")
+    ap.add_argument("--puerto", type=int, default=PUERTO_POR_OMISION,
+                    help="puerto del servidor HTR a consultar")
+    ap.add_argument("--encabezado", type=str, default=None,
+                    help="texto del encabezado manuscrito de la hoja, si "
+                         "tiene uno. Sin esto se penaliza como inserción "
+                         "texto que el pipeline leyó bien, solo porque no "
+                         "está en el set de prueba")
     args = ap.parse_args()
 
     if not args.imagen.exists():
@@ -101,12 +108,14 @@ def main() -> None:
     referencias = esperado(args.estilo, rango(args.numeros) if args.numeros else None)
     if not referencias:
         raise SystemExit("El filtro de estilo/números no dejó ninguna oración.")
+    if args.encabezado:
+        referencias.insert(0, args.encabezado)
 
     print(f"Imagen   : {args.imagen.name}")
     print(f"Esperado : {len(referencias)} oraciones del set de prueba"
           f"{f' ({args.estilo})' if args.estilo else ''}\n")
 
-    r = pedir(args.imagen)
+    r = pedir(args.imagen, args.puerto)
     obtenido = r["texto"]
     parrafos = obtenido.split("\n")
     ref = "\n".join(referencias)

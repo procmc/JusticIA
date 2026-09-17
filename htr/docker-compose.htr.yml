@@ -15,8 +15,10 @@ services:
     volumes:
       - .:/htr                        # scripts, corpus y dataset
       - hf_cache:/cache/huggingface   # pesos descargados, persistentes
+      - doctr_cache:/cache/doctr      # pesos del detector de texto
     environment:
       - HF_HOME=/cache/huggingface
+      - DOCTR_CACHE_DIR=/cache/doctr
       - PYTHONUNBUFFERED=1            # que el progreso se vea en vivo
     deploy:
       resources:
@@ -37,13 +39,18 @@ services:
     volumes:
       - .:/htr
       - hf_cache:/cache/huggingface
+      - doctr_cache:/cache/doctr
     environment:
       - HF_HOME=/cache/huggingface
+      - DOCTR_CACHE_DIR=/cache/doctr
       - PYTHONUNBUFFERED=1
       # Modelo elegido en el Ciclo 1 (doc 22): CER 0.2771 sobre letra real
       - HTR_MODELO=${HTR_MODELO:-microsoft/trocr-large-handwritten}
       # Segundos sin uso antes de devolver la GPU (0 = nunca devolverla)
       - HTR_IDLE_TIMEOUT=${HTR_IDLE_TIMEOUT:-120}
+      # Localizador de renglones: "doctr" (entrenado) u "otsu" (umbral).
+      # Medido de punta a punta: otsu 0.4507, doctr 0.3248.
+      - HTR_LOCALIZADOR=${HTR_LOCALIZADOR:-doctr}
     deploy:
       resources:
         reservations:
@@ -54,3 +61,4 @@ services:
 
 volumes:
   hf_cache:
+  doctr_cache:

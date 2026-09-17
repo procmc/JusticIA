@@ -156,11 +156,17 @@ services:
     volumes:
       - ./htr:/htr
       - htr_hf_cache:/cache/huggingface
+      - htr_doctr_cache:/cache/doctr
     environment:
       - PYTHONUNBUFFERED=1
       - HF_HOME=/cache/huggingface
+      - DOCTR_CACHE_DIR=/cache/doctr
       - HTR_MODELO=microsoft/trocr-large-handwritten
       - HTR_IDLE_TIMEOUT=120
+      # Localizador de renglones: "doctr" (detector entrenado) u "otsu"
+      # (umbral global). Medido de punta a punta sobre la hoja de prueba:
+      # otsu CER 0.4507 y 1 parrafo de 9; doctr CER 0.3248 y 9 de 9.
+      - HTR_LOCALIZADOR=doctr
     restart: unless-stopped
     deploy:
       resources:
@@ -176,3 +182,4 @@ volumes:
   ollama_data:
   qdrant_data:
   htr_hf_cache:
+  htr_doctr_cache:
