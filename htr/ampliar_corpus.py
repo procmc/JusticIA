@@ -98,9 +98,16 @@ MOTIVO = ["falta de interés actual", "falta de legitimación",
           "falta de fundamentación", "prescripción de la acción",
           "incompetencia territorial", "cosa juzgada"]
 
-TRAMITE = ["la inscripción", "la certificación", "el traslado",
-           "la devolución", "el archivo", "la acumulación",
-           "la suspensión", "el desglose", "la foliatura"]
+# Separados por género porque hay plantillas donde un participio tiene que
+# concordar con el trámite. Antes estaban en una sola lista y salía
+# "el traslado solicitada", que es incorrecto.
+TRAMITE_M = ["el traslado", "el archivo", "el desglose"]
+
+TRAMITE_F = ["la inscripción", "la certificación", "la devolución",
+             "la acumulación", "la suspensión", "la foliatura"]
+
+# Unión, para las plantillas donde el trámite no rige ningún adjetivo.
+TRAMITE = TRAMITE_M + TRAMITE_F
 
 LUGAR = ["la oficina correspondiente", "el medio señalado",
          "el domicilio contractual", "la sede del despacho",
@@ -112,7 +119,8 @@ ADVERBIO = ["oportunamente", "debidamente", "válidamente",
 # --- Plantillas: cada hueco se llena con una lista compatible ---------------
 
 PLANTILLAS = [
-    "{ORGANO} {VERBO_ORGANO} {TRAMITE} solicitada por {ROL_F}.",
+    "{ORGANO} {VERBO_ORGANO} {TRAMITE_F} solicitada por {ROL_F}.",
+    "{ORGANO} {VERBO_ORGANO} {TRAMITE_M} solicitado por {ROL_F}.",
     "{ORGANO} {VERBO_MANDATO} que se practique {DOCUMENTO_F} en {LUGAR}.",
     "{DOCUMENTO} fue {ACCION_M} {ADVERBIO} por {ROL_M}.",
     "{DOCUMENTO_F} fue {ACCION_F} {ADVERBIO} dentro del término conferido.",
@@ -160,16 +168,37 @@ LISTAS = {
     "ACCION_M": ACCION_M, "ACCION_F": ACCION_F,
     "VERBO_ORGANO": VERBO_ORGANO, "VERBO_MANDATO": VERBO_MANDATO, "PLAZO_NUM": PLAZO_NUM,
     "PLAZO_TIPO": PLAZO_TIPO, "MATERIA": MATERIA, "CUALIDAD": CUALIDAD,
-    "MOTIVO": MOTIVO, "TRAMITE": TRAMITE, "LUGAR": LUGAR,
+    "MOTIVO": MOTIVO, "TRAMITE": TRAMITE, "TRAMITE_M": TRAMITE_M,
+    "TRAMITE_F": TRAMITE_F, "LUGAR": LUGAR,
     "ADVERBIO": ADVERBIO,
 }
 
 HUECO = re.compile(r"\{([A-Z_]+)\}")
 
+# Todo el vocabulario trae su artículo incorporado ("el perito", "la
+# demanda"), así que al caer detrás de "de" o "a" sale "de el perito". En
+# español esas dos combinaciones son obligatoriamente "del" y "al": no es
+# una preferencia de estilo, la contracción es forzosa. Y como el texto es
+# la ETIQUETA con la que se entrena, dejarlo así le enseñaría al modelo a
+# escribir mal justo el español que se le quiere enseñar.
+#
+# El límite de palabra es necesario: sin él, "autoriz(a el) cumplimiento"
+# también se contraería.
+CONTRACCION = [(re.compile(r"\bde el\b"), "del"),
+               (re.compile(r"\ba el\b"), "al")]
+
+
+def contraer(texto: str) -> str:
+    """Aplica las contracciones obligatorias del español."""
+    for patron, reemplazo in CONTRACCION:
+        texto = patron.sub(reemplazo, texto)
+    return texto
+
 
 def generar_una(rng: random.Random) -> str:
     plantilla = rng.choice(PLANTILLAS)
-    oracion = HUECO.sub(lambda m: rng.choice(LISTAS[m.group(1)]), plantilla)
+    oracion = contraer(
+        HUECO.sub(lambda m: rng.choice(LISTAS[m.group(1)]), plantilla))
     # Mayúscula inicial, respetando el signo de apertura de pregunta.
     if oracion[0] == "¿":
         return oracion[0] + oracion[1].upper() + oracion[2:]

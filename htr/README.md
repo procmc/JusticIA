@@ -70,6 +70,13 @@ htr/
 │                             plantillas y vocabulario del dominio
 ├── generar_sintetico.py      Imágenes de línea + etiquetas, reproducible
 │                             por semilla y ponderado por estilo de letra
+├── ujipenchars.py            Lee UJIpenchars2 (11,640 caracteres de 60
+│                             personas reales) y compone líneas con los
+│                             trazos de UN escritor por línea
+├── generar_uji.py            Corpus de líneas manuscritas reales, con
+│                             partición por escritor reservado
+├── evaluar_uji.py            Mide el modelo sobre ese corpus: CER y
+│                             recuperación por carácter del español
 ├── hoja_contacto.py          Mosaico del sintético, inspección visual
 ├── recortar_lineas.py        Recorta líneas de una foto: detecta papel,
 │                             quita espiral. Con --manual para forzar
@@ -82,6 +89,10 @@ htr/
 ├── ver_rodrigo.py            Inspección del corpus Rodrigo (evidencia
 │                             del descarte)
 ├── evaluar_modelos.py        CER / WER / tiempo / VRAM -> tabla + JSON
+├── segmentacion.py           ÚNICA fuente de verdad de la segmentación:
+│                             Otsu, papel, encuadernado, deskew, franjas
+├── unir_lineas.py            Une los renglones reconocidos en párrafos
+│                             con 8 reglas de puntuación española
 ├── servidor_htr.py           Servicio HTTP de inferencia con GPU
 ├── Dockerfile                PyTorch + CUDA en contenedor
 ├── docker-compose.htr.yml    Servicios `htr` (one-shot) y `servidor-htr`
@@ -193,20 +204,41 @@ docker compose start ollama
 | 17 tipografías | **SIL OFL 1.1** | Uso comercial permitido. Exige que el aviso y la licencia acompañen los archivos → están en `fuentes/licencias/` |
 | 4 tipografías | **Apache 2.0** | Uso comercial permitido |
 | Los 3 corpus | Propios | Contenido **inventado**, sin datos de ninguna persona |
+| UJIpenchars2 | **CC BY 4.0** | Uso comercial y adaptación permitidos. Exige **atribución** → abajo |
 | `microsoft/trocr-*` y los demás modelos | MIT | Sin restricciones |
 
-Las imágenes generadas **no heredan restricción**: ambas licencias
-restringen la redistribución de los *archivos de fuente*, no de lo que se
-renderiza con ellos. Detalle en `fuentes/ATRIBUCION.md`.
+Las imágenes generadas con tipografías **no heredan restricción**: OFL y
+Apache restringen la redistribución de los *archivos de fuente*, no de lo
+que se renderiza con ellos. Detalle en `fuentes/ATRIBUCION.md`.
+
+### Atribución de UJIpenchars2 (obligatoria)
+
+La CC BY 4.0 permite usar, modificar y redistribuir el dataset, incluso
+comercialmente, a cambio de una sola condición: **dar crédito**. Es la
+licencia más cómoda que se encontró para este caso, porque no exige que lo
+derivado se publique con la misma licencia (eso lo pediría una
+*share-alike*) ni prohíbe el uso institucional.
+
+> Prat, F., Castro, M., Llorens, D., Marzal, A., & Vilar, J. (2008).
+> *UJI Pen Characters* (Version 2). UCI Machine Learning Repository.
+> https://doi.org/10.24432/C5FG8S
+
+El crédito tiene que viajar con el material: si algún día se publica el
+corpus de líneas generado por `generar_uji.py`, o un modelo afinado con
+él, esta cita va incluida. Por eso está acá y en el encabezado de
+`ujipenchars.py`, no en un documento aparte.
 
 ---
 
 ## 6. Qué se versiona y qué no
 
 **No se versiona `dataset/`** — ni el sintético, ni Rodrigo (382 MB de
-Zenodo), ni las muestras propias. Dos razones distintas:
+Zenodo), ni las muestras propias, ni `uji_lineas/` (53 MB) ni
+`ujipenchars/` (9 MB). Dos razones distintas:
 
-* Lo generado es **reproducible**: misma semilla, mismas imágenes.
+* Lo generado es **reproducible**: misma semilla, mismas imágenes. Y lo
+  descargado se vuelve a bajar: UJIpenchars2 sale del UCI Machine Learning
+  Repository y Rodrigo de Zenodo.
 * **Ley 8968:** las fotos de manuscrito pueden contener nombres, cédulas o
   datos de terceros.
 

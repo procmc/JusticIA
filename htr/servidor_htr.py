@@ -54,12 +54,14 @@ import os
 import threading
 import time
 
-import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException, Request
 from PIL import Image, ImageOps
 from starlette.concurrency import run_in_threadpool
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+
+from segmentacion import segmentar
+from unir_lineas import unir
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -71,6 +73,9 @@ logger = logging.getLogger("htr")
 MODELO = os.getenv("HTR_MODELO", "microsoft/trocr-large-handwritten")
 MAX_TOKENS = int(os.getenv("HTR_MAX_TOKENS", "96"))
 MAX_LINEAS = int(os.getenv("HTR_MAX_LINEAS", "60"))
+# Franjas verticales para la proyeccion. 4 fue el valor con menor error
+# sobre las fotos con conteo conocido (ver doc 25).
+FRANJAS = int(os.getenv("HTR_FRANJAS", "4"))
 
 # Segundos sin peticiones antes de devolver la GPU. 0 = no devolverla.
 IDLE_TIMEOUT = int(os.getenv("HTR_IDLE_TIMEOUT", "120"))
@@ -173,54 +178,28 @@ def salud() -> dict:
 
 def separar_lineas(imagen: Image.Image) -> list[Image.Image]:
     """
-    Separa una imagen en líneas de texto por proyección horizontal de tinta.
+    Parte la imagen en líneas, delegando al módulo `segmentacion`.
 
-    TrOCR reconoce UNA línea por vez: pasarle una página completa devuelve
-    basura por bueno que sea el modelo. Si no detecta más de una banda,
-    devuelve la imagen tal cual (ya venía recortada).
+    Antes había acá una versión simplificada y propia de la segmentación,
+    mientras `recortar_lineas.py` tenía otra mejor. Resultado medido el
+    16/09/2026 sobre una foto de 22 líneas reales: la de este servidor
+    detectaba 5 bandas (y eran basura), la otra 17.
 
-    Nota: esta segmentación es deliberadamente simple. Los casos difíciles
-    (espiral del cuaderno, fondo oscuro, rasgos que unen renglones) son
-    alcance del Ciclo 2.
+    Tener dos implementaciones de lo mismo garantiza que una quede atrás.
+    Ahora las dos importan `segmentacion.py`, que es la única fuente de
+    verdad y trae los cuatro arreglos del Ciclo 2: umbral Otsu, detección
+    de papel, remoción del encuadernado y proyección por franjas.
     """
-    gris = np.array(imagen.convert("L"), dtype=np.float32)
-    if gris.size == 0:
-        return [imagen]
-
-    nivel_papel = float(np.percentile(gris, 75))
-    tinta = gris < (nivel_papel - max(28.0, float(gris.std()) * 0.9))
-    por_fila = tinta.sum(axis=1)
-    if por_fila.max() == 0:
-        return [imagen]
-
-    activa = por_fila > max(por_fila.max() * 0.06, 3)
-    hueco_max = max(int(gris.shape[0] / 70), 6)
-
-    bandas: list[tuple[int, int]] = []
-    inicio, hueco = None, 0
-    for y, hay in enumerate(activa):
-        if hay:
-            if inicio is None:
-                inicio = y
-            hueco = 0
-        elif inicio is not None:
-            hueco += 1
-            if hueco > hueco_max:
-                bandas.append((inicio, y - hueco))
-                inicio, hueco = None, 0
-    if inicio is not None:
-        bandas.append((inicio, len(activa) - 1))
-
-    bandas = [(a, b) for a, b in bandas if (b - a) >= 12][:MAX_LINEAS]
-    if len(bandas) <= 1:
-        return [imagen]
-
-    relleno = 10
-    return [
-        imagen.crop((0, max(a - relleno, 0), imagen.width,
-                     min(b + relleno, imagen.height)))
-        for a, b in bandas
-    ]
+    detalle: dict = {}
+    lineas = segmentar(imagen, franjas=FRANJAS, max_lineas=MAX_LINEAS,
+                       detalle=detalle)
+    if detalle:
+        logger.info(
+            "segmentacion: papel=%s encuadernado=%s otsu=%s -> %d banda(s)",
+            detalle.get("papel"), detalle.get("encuadernado_x"),
+            detalle.get("umbral_otsu"), detalle.get("bandas", 0),
+        )
+    return lineas
 
 
 def _reconocer_sincrono(imagen: Image.Image) -> dict:
@@ -242,9 +221,21 @@ def _reconocer_sincrono(imagen: Image.Image) -> dict:
         segundos = time.perf_counter() - t0
         _ultimo_uso = time.time()
 
+    # Unir los renglones en párrafos. Sin esto el texto sale fragmentado, y
+    # un chunk que empieza en "el próximo martes." pierde el sujeto y
+    # recupera mal en el RAG. La unión además normaliza los artefactos de
+    # espaciado del dataset IAM (el ` .` y las comillas sueltas del final).
+    #
+    # Medido el 17/09/2026 sobre las 16 líneas de la hoja de prueba:
+    #   solo líneas ............ CER 0.2742
+    #   + normalización ........ CER 0.2557  (-6.8 %)
+    #   + unión en párrafos .... CER 0.2480  (-9.6 %)
+    parrafos = unir([t for t in textos if t])
+
     return {
-        "texto": "\n".join(t for t in textos if t),
+        "texto": "\n".join(parrafos),
         "lineas": len(lineas),
+        "parrafos": len(parrafos),
         "modelo": MODELO,
         "dispositivo": _dispositivo,
         "segundos": round(segundos, 3),
