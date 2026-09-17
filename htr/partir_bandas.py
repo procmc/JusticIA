@@ -23,7 +23,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 RAIZ = Path(__file__).parent
 
@@ -153,7 +153,7 @@ def main() -> None:
     ruta = Path(args.foto)
     if not ruta.is_absolute():
         ruta = RAIZ / ruta
-    original = Image.open(ruta).convert("RGB")
+    original = ImageOps.exif_transpose(Image.open(ruta)).convert("RGB")
 
     y1 = args.y1 or original.height
     x1 = args.x1 or original.width

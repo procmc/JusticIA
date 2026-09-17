@@ -23,7 +23,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 
 def detectar_papel(gris: np.ndarray, margen: float = 0.04) -> tuple[int, int, int, int]:
@@ -144,7 +144,7 @@ def recortar_manual(
     Las coordenadas se obtienen del perfil de tinta por fila; ver el bloque
     de diagnóstico del README.
     """
-    original = Image.open(ruta).convert("RGB")
+    original = ImageOps.exif_transpose(Image.open(ruta)).convert("RGB")
     destino.mkdir(parents=True, exist_ok=True)
     der = x1 if x1 is not None else original.width
     base = ruta.stem
@@ -165,7 +165,7 @@ def recortar_manual(
 def recortar(
     ruta: Path, destino: Path, debug: bool = False, relleno: int = 14,
 ) -> list[Path]:
-    original = Image.open(ruta).convert("RGB")
+    original = ImageOps.exif_transpose(Image.open(ruta)).convert("RGB")
     gris_completo = np.array(original.convert("L"), dtype=np.float32)
 
     x0, y0, x1, y1 = detectar_papel(gris_completo)

@@ -36,4 +36,7 @@ prompt-inicial-antigravity.md
 # El material de prueba de la ingesta debe ser sintetico o anonimizado, o
 # normativa publica (leyes, decretos) que no contenga datos de personas.
 # ---------------------------------------------------------------------------
+# La aplicacion crea la carpeta sola cuando la necesita
+# (avatar_service.py:157 y file_management_service.py:48 usan
+# mkdir(parents=True, exist_ok=True)), asi que no hace falta un .gitkeep.
 /backend/uploads/
