@@ -47,7 +47,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, FilterSelector
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
 
@@ -147,20 +147,27 @@ async def _get_langchain_vectorstore() -> QdrantVectorStore:
 
 
 def _payload_to_result(payload: Dict[str, Any], score: float, point_id) -> Dict[str, Any]:
-    """Formatea un payload de Qdrant al mismo formato que usa el resto del sistema."""
+    """Formatea un payload de Qdrant al mismo formato que usa el resto del sistema.
+
+    LangChain (QdrantVectorStore) guarda la metadata del Document anidada
+    bajo payload["metadata"], y el texto en payload["page_content"] — no
+    como campos de primer nivel. Este payload viene de QdrantClient crudo
+    (query_points/scroll), así que hay que leerlo con esa forma real.
+    """
+    metadata = payload.get("metadata", {}) or {}
     return {
-        "id": payload.get("id_chunk", str(point_id)),
-        "expedient_id": payload.get("numero_expediente", ""),
-        "document_name": payload.get("nombre_archivo", ""),
-        "content_preview": (payload.get("texto", "") or "")[:500],
+        "id": metadata.get("id_chunk", str(point_id)),
+        "expedient_id": metadata.get("numero_expediente", ""),
+        "document_name": metadata.get("nombre_archivo", ""),
+        "content_preview": (payload.get("page_content", "") or "")[:500],
         "similarity_score": score,
-        "documento_id": payload.get("id_documento"),
+        "documento_id": metadata.get("id_documento"),
         "metadata": {
-            "indice_chunk": payload.get("indice_chunk", 0),
-            "pagina_inicio": payload.get("pagina_inicio", 1),
-            "pagina_fin": payload.get("pagina_fin", 1),
-            "tipo_documento": payload.get("tipo_documento", ""),
-            "ruta_archivo": (payload.get("meta") or {}).get("ruta_archivo", ""),
+            "indice_chunk": metadata.get("indice_chunk", 0),
+            "pagina_inicio": metadata.get("pagina_inicio", 1),
+            "pagina_fin": metadata.get("pagina_fin", 1),
+            "tipo_documento": metadata.get("tipo_documento", ""),
+            "ruta_archivo": (metadata.get("meta") or {}).get("ruta_archivo", ""),
         },
     }
 
@@ -210,8 +217,10 @@ class QdrantBackend(VectorStoreBackend):
 
         qdrant_filter = None
         if expediente_filter:
+            # La key va con el prefijo "metadata." porque LangChain guarda
+            # los campos del Document anidados bajo payload["metadata"].
             qdrant_filter = Filter(
-                must=[FieldCondition(key="numero_expediente", match=MatchValue(value=expediente_filter))]
+                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expediente_filter))]
             )
 
         results_with_scores = vectorstore.similarity_search_with_score(
@@ -239,12 +248,12 @@ class QdrantBackend(VectorStoreBackend):
         points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
             scroll_filter=Filter(
-                must=[FieldCondition(key="id_documento", match=MatchValue(value=document_id))]
+                must=[FieldCondition(key="metadata.id_documento", match=MatchValue(value=document_id))]
             ),
             limit=1000,
             with_payload=True,
         )
-        chunks = [p.payload for p in points]
+        chunks = [p.payload.get("metadata", {}) for p in points]
         return sorted(chunks, key=lambda x: x.get("indice_chunk", 0))
 
     async def get_expedient_summary(self, expedient_id: str) -> str:
@@ -252,7 +261,7 @@ class QdrantBackend(VectorStoreBackend):
         points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
             scroll_filter=Filter(
-                must=[FieldCondition(key="numero_expediente", match=MatchValue(value=expedient_id))]
+                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
             ),
             limit=1000,
             with_payload=True,
@@ -263,7 +272,7 @@ class QdrantBackend(VectorStoreBackend):
 
         texto_parts = [expedient_id]
         for p in points:
-            texto = (p.payload.get("texto", "") or "").strip()
+            texto = (p.payload.get("page_content", "") or "").strip()
             if texto:
                 texto_parts.append(texto[:300])
 
@@ -277,7 +286,7 @@ class QdrantBackend(VectorStoreBackend):
         ref_points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
             scroll_filter=Filter(
-                must=[FieldCondition(key="numero_expediente", match=MatchValue(value=expedient_id))]
+                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
             ),
             limit=100,
             with_payload=True,
@@ -302,13 +311,13 @@ class QdrantBackend(VectorStoreBackend):
             ).points
 
             for hit in hits:
-                result_expedient_id = hit.payload.get("numero_expediente", "")
+                result_expedient_id = hit.payload.get("metadata", {}).get("numero_expediente", "")
                 if result_expedient_id == expedient_id or not result_expedient_id:
                     continue
                 if hit.score < score_threshold:
                     continue
 
-                doc_name = hit.payload.get("nombre_archivo", "")
+                doc_name = hit.payload.get("metadata", {}).get("nombre_archivo", "")
                 bucket = all_results.setdefault(result_expedient_id, {"docs": []})
                 if not any(d.get("document_name") == doc_name for d in bucket["docs"]):
                     bucket["docs"].append(_payload_to_result(hit.payload, hit.score, hit.id))
@@ -323,27 +332,45 @@ class QdrantBackend(VectorStoreBackend):
         points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
             scroll_filter=Filter(
-                must=[FieldCondition(key="numero_expediente", match=MatchValue(value=expedient_id))]
+                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
             ),
             limit=1000,
             with_payload=True,
         )
 
-        sorted_points = sorted(points, key=lambda p: p.payload.get("indice_chunk", 0))
+        sorted_points = sorted(points, key=lambda p: p.payload.get("metadata", {}).get("indice_chunk", 0))
 
         langchain_docs = []
         for p in sorted_points:
-            content = p.payload.get("texto", "")
+            meta = p.payload.get("metadata", {}) or {}
+            content = p.payload.get("page_content", "")
             if content and content.strip():
                 metadata = {
-                    "numero_expediente": p.payload.get("numero_expediente", expedient_id),
-                    "id_expediente": p.payload.get("numero_expediente", expedient_id),
-                    "archivo": p.payload.get("nombre_archivo", ""),
-                    "chunk_id": p.payload.get("id_chunk", ""),
-                    "indice_chunk": p.payload.get("indice_chunk", 0),
-                    "tipo_documento": p.payload.get("tipo_documento", ""),
-                    "ruta_archivo": (p.payload.get("meta") or {}).get("ruta_archivo", ""),
+                    # "expediente_numero" es la key que espera FormattedRetriever/
+                    # document_formatter.py para armar el header y el contexto del
+                    # LLM — sin esta key el header sale "EXPEDIENTE: N/A" aunque
+                    # haya documentos reales, y confunde al modelo.
+                    "expediente_numero": meta.get("numero_expediente", expedient_id),
+                    "numero_expediente": meta.get("numero_expediente", expedient_id),
+                    "id_expediente": meta.get("numero_expediente", expedient_id),
+                    "archivo": meta.get("nombre_archivo", ""),
+                    "chunk_id": meta.get("id_chunk", ""),
+                    "indice_chunk": meta.get("indice_chunk", 0),
+                    "tipo_documento": meta.get("tipo_documento", ""),
+                    "ruta_archivo": (meta.get("meta") or {}).get("ruta_archivo", ""),
                 }
                 langchain_docs.append(Document(page_content=content, metadata=metadata))
 
         return langchain_docs
+
+    async def delete_document_chunks(self, document_id: int) -> None:
+        """Elimina todos los puntos de Qdrant de un documento (permite 'quitar' un archivo ya subido)."""
+        client = _get_client()
+        client.delete(
+            collection_name=QDRANT_COLLECTION_NAME,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[FieldCondition(key="metadata.id_documento", match=MatchValue(value=document_id))]
+                )
+            ),
+        )

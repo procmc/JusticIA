@@ -6,14 +6,14 @@ Implementa LangChain BaseRetriever con dos modos de operación:
 2. Recuperación de expediente: Obtiene todos los documentos de un expediente
 
 Características:
-    * Integración con Qdrant para búsqueda vectorial (BGE-M3 embeddings)
+    * Integración con Qdrant para búsqueda vectorial (multilingual-e5-large embeddings)
     * Fallback automático si no hay resultados (search_strategies)
     * Limpieza de encoding en documentos recuperados
     * Metadata enriquecida para el LLM (expediente, páginas, tipo, ruta)
     * Configuración flexible de top_k y threshold
 
 Flujo de búsqueda general:
-    1. Query → Embedding (BGE-M3)
+    1. Query → Embedding (multilingual-e5-large)
     2. Búsqueda vectorial en Qdrant
     3. Fallback si pocos resultados (threshold relajado)
     4. Limpieza de encoding
@@ -35,17 +35,17 @@ Metadata enriquecida:
     * similarity_score: Score de similitud vectorial
 
 Example:
-    >>> from app.services.rag.retriever import DynamicJusticIARetriever
+    >>> from app.services.rag.retriever import DynamicServIARetriever
     >>> 
     >>> # Búsqueda general
-    >>> retriever_general = DynamicJusticIARetriever(
+    >>> retriever_general = DynamicServIARetriever(
     ...     top_k=15,
     ...     similarity_threshold=0.30
     ... )
     >>> docs = await retriever_general.ainvoke("¿Qué es la prescripción?")
     >>> 
     >>> # Expediente específico
-    >>> retriever_expediente = DynamicJusticIARetriever(
+    >>> retriever_expediente = DynamicServIARetriever(
     ...     top_k=50,
     ...     expediente_filter="24-000123-0001-PE"
     ... )
@@ -63,7 +63,7 @@ Ver también:
     * app.services.ingesta.text_cleaner: Limpieza de encoding
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - LangChain retriever con fallback
@@ -85,10 +85,13 @@ from app.services.RAG.search_strategies import search_manager
 # Importar limpieza de encoding para post-procesamiento
 from app.services.ingesta.file_management.text_cleaner import fix_encoding_issues
 
+# Detección de número de expediente embebido en una pregunta libre (Ciclo 3)
+from app.utils.expediente_validator import extraer_expediente_de_texto
+
 logger = logging.getLogger(__name__)
 
 
-class DynamicJusticIARetriever(BaseRetriever):
+class DynamicServIARetriever(BaseRetriever):
     """
     Retriever dinámico para búsqueda vectorial.
     
@@ -105,12 +108,14 @@ class DynamicJusticIARetriever(BaseRetriever):
     top_k: int = Field(default=rag_config.TOP_K_GENERAL, description="Número de documentos a recuperar")
     similarity_threshold: float = Field(default=rag_config.SIMILARITY_THRESHOLD_GENERAL, description="Umbral de similitud mínimo")
     expediente_filter: Optional[str] = Field(default=None, description="Filtro por expediente específico")
-    
+    nombre_visible: Optional[str] = Field(default=None, description="Nombre a mostrar en el header/contexto del LLM en vez de expediente_filter (ej. el nombre real de un notebook)")
+
     def __init__(
-        self, 
+        self,
         top_k: int = None,  # None = usar valor del config
         similarity_threshold: float = None,  # None = usar valor del config
         expediente_filter: Optional[str] = None,
+        nombre_visible: Optional[str] = None,
         **kwargs
     ):
         # Usar valores del config si no se especifican
@@ -118,14 +123,15 @@ class DynamicJusticIARetriever(BaseRetriever):
             top_k = rag_config.TOP_K_GENERAL
         if similarity_threshold is None:
             similarity_threshold = rag_config.SIMILARITY_THRESHOLD_GENERAL
-        
+
         super().__init__(**kwargs)
         object.__setattr__(self, 'top_k', top_k)
         object.__setattr__(self, 'similarity_threshold', similarity_threshold)
         object.__setattr__(self, 'expediente_filter', expediente_filter)
+        object.__setattr__(self, 'nombre_visible', nombre_visible)
         
         logger.info(
-            f"DynamicJusticIARetriever inicializado - "
+            f"DynamicServIARetriever inicializado - "
             f"top_k={top_k}, threshold={similarity_threshold}, "
             f"expediente={expediente_filter or 'None'}"
         )
@@ -169,6 +175,12 @@ class DynamicJusticIARetriever(BaseRetriever):
             for doc in docs:
                 if hasattr(doc, 'page_content'):
                     doc.page_content = fix_encoding_issues(doc.page_content)
+                # Si hay un nombre visible (ej. nombre real de un notebook), lo
+                # usamos en el header/contexto en vez de la clave interna cruda
+                # (ej. "NB-2"), para que coincida con lo que el prompt le dice
+                # al modelo que está consultando.
+                if self.nombre_visible and hasattr(doc, 'metadata'):
+                    doc.metadata['expediente_numero'] = self.nombre_visible
             
             # Limitar al top_k configurado
             result = docs[:self.top_k]
@@ -180,16 +192,38 @@ class DynamicJusticIARetriever(BaseRetriever):
             return []
     
     async def _get_general_documents(self, query: str) -> List[Document]:
-        """Búsqueda semántica general con fallback automático."""
+        """Búsqueda semántica general con fallback automático.
+
+        Búsqueda híbrida (Ciclo 3): si la pregunta menciona un número de
+        expediente exacto, se combina con un filtro por payload en Qdrant
+        además de la búsqueda semántica — los embeddings por sí solos no
+        distinguen identificadores parecidos (ver doc 25/bitácora 16/09).
+        """
         try:
-            # Búsqueda con fallback
+            expediente_detectado = extraer_expediente_de_texto(query)
+            if expediente_detectado:
+                logger.info(f"Expediente detectado en la pregunta general: {expediente_detectado} — aplicando filtro híbrido")
+
+            # Búsqueda con fallback (semántica + filtro exacto si aplica)
             logger.info(f"Búsqueda general con fallback habilitado")
             results = await search_manager.search_with_fallback(
                 query_text=query,
                 top_k=self.top_k,
-                threshold=self.similarity_threshold
+                threshold=self.similarity_threshold,
+                expediente_filter=expediente_detectado
             )
-            
+
+            # Red de seguridad: si el expediente detectado no tiene chunks
+            # (typo o expediente no ingerido), no devolver vacío de una vez —
+            # reintentar sin el filtro, como búsqueda general pura.
+            if not results and expediente_detectado:
+                logger.info(f"Sin resultados para expediente detectado {expediente_detectado}; reintentando sin filtro")
+                results = await search_manager.search_with_fallback(
+                    query_text=query,
+                    top_k=self.top_k,
+                    threshold=self.similarity_threshold
+                )
+
             if not results:
                 logger.warning(f"No se encontraron resultados para: '{query[:100]}'")
                 return []

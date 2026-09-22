@@ -87,3 +87,7 @@ class VectorStoreBackend(ABC):
     @abstractmethod
     async def get_expedient_documents(self, expedient_id: str) -> List[Document]:
         """Todos los documentos LangChain de un expediente."""
+
+    @abstractmethod
+    async def delete_document_chunks(self, document_id: int) -> None:
+        """Elimina todos los chunks de un documento (por id_documento)."""

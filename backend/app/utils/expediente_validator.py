@@ -138,5 +138,32 @@ def formatear_expediente(numero_expediente: str) -> Optional[str]:
     """
     if not validar_expediente(numero_expediente):
         return None
-    
+
     return numero_expediente.strip().upper()
+
+
+# Mismo patrón que valida `validar_expediente`, pero pensado para
+# buscar (no exigir match completo) dentro de un texto libre más largo.
+PATRON_EXPEDIENTE_EN_TEXTO = r'\b\d{2,4}-\d{6}-\d{4}-[A-Za-z]{2}\b'
+
+
+def extraer_expediente_de_texto(texto: str) -> Optional[str]:
+    """
+    Busca un número de expediente válido dentro de un texto libre
+    (por ejemplo, una pregunta del chat que lo menciona de pasada).
+
+    Args:
+        texto: Texto libre donde buscar (no tiene que ser solo el número).
+
+    Returns:
+        El número de expediente normalizado (mayúsculas) si se encontró
+        uno con formato válido, o None si no hay ninguno.
+    """
+    if not texto:
+        return None
+
+    match = re.search(PATRON_EXPEDIENTE_EN_TEXTO, texto)
+    if not match:
+        return None
+
+    return formatear_expediente(match.group(0))
