@@ -79,6 +79,7 @@ def main():
         ("integracion_htr_ciclo1.py", "Fase 4 Ciclo 1 - Integracion del servicio HTR (doc 22)"),
         ("localizadores_ciclo2.py", "Fase 4 Ciclo 2 - Dos localizadores de renglones (doc 25)"),
         ("busqueda_hibrida_ciclo3.py", "Fase 4 Ciclo 3 - Busqueda hibrida en el chat general (doc 28)"),
+        ("pipeline_end_to_end_ciclo4.py", "Fase 4 Ciclo 4 - Pipeline de punta a punta (doc 29)"),
     ]
     
     start_total = time.time()
