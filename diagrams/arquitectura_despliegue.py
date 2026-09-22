@@ -1,5 +1,5 @@
 """
-Arquitectura de Despliegue - JusticIA
+Arquitectura de Despliegue - ServIA
 Vista de infraestructura, contenedores Docker y servicios cloud.
 
 Ejecutar: python arquitectura_despliegue.py
@@ -12,6 +12,7 @@ from diagrams.onprem.container import Docker
 from diagrams.programming.framework import React, Fastapi
 from diagrams.programming.language import Python
 from diagrams.onprem.database import Mssql
+from diagrams.generic.database import SQL
 from diagrams.onprem.inmemory import Redis
 from diagrams.onprem.compute import Server
 from diagrams.custom import Custom
@@ -19,7 +20,7 @@ from diagrams.custom import Custom
 print("Generando diagrama: Arquitectura de Despliegue...")
 
 with Diagram(
-    "JusticIA - Arquitectura de Despliegue\nInfraestructura Docker y Servicios Cloud",
+    "ServIA - Arquitectura de Despliegue\nInfraestructura Docker y Servicios Cloud",
     show=False,
     direction="LR",
     filename="output/arquitectura_despliegue",
@@ -44,29 +45,34 @@ with Diagram(
         
         # Backend API
         with Cluster("API Layer", graph_attr={"bgcolor": "#CE93D8", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            backend = Fastapi("fastapi-backend\n\nPython 3.11\nFastAPI + Uvicorn\nLangChain\nSQLAlchemy\nBGE-M3 (embeddings)")
-        
+            backend = Fastapi("fastapi-backend\n\nPython 3.11\nFastAPI + Uvicorn\nLangChain\nSQLAlchemy\nmultilingual-e5-large (embeddings)")
+
         # Workers
         with Cluster("Processing Layer", graph_attr={"bgcolor": "#F8BBD0", "style": "rounded", "margin": "30", "pad": "0.8"}):
             celery = Python("celery-worker\n\nPython 3.11\nCelery 5.3\nFaster-Whisper\nSentence-Transformers")
-        
+
         # Cache
         with Cluster("Cache Layer", graph_attr={"bgcolor": "#FFCCBC", "style": "rounded", "margin": "30", "pad": "0.8"}):
             redis = Redis("redis\n\nRedis 7 Alpine")
-        
+
         # Document Processing
         with Cluster("Document Processing", graph_attr={"bgcolor": "#C5E1A5", "style": "rounded", "margin": "30", "pad": "0.8"}):
             tika = Custom("apache-tika\n\nJava 17\nTika 2.8.0\nTesseract OCR", "/diagrams/icons/tika.svg.png")
-    
-    # ========== CAPA 3: SERVICIOS CLOUD ==========
-    with Cluster("Azure Cloud", graph_attr={"bgcolor": "#BBDEFB", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        azure_sql = Custom("Azure SQL Server", "/diagrams/icons/azure.png")
-    
+
+        # SQL Server (local, no Azure desde la migracion de Fase 2)
+        with Cluster("Base de Datos", graph_attr={"bgcolor": "#B3E5FC", "style": "rounded", "margin": "30", "pad": "0.8"}):
+            sql_server = Mssql("sqlserver\n\nSQL Server\n(contenedor local)")
+
+        # Ollama (local, no cloud - confirmado por doc 22/26)
+        with Cluster("LLM", graph_attr={"bgcolor": "#E1BEE7", "style": "rounded", "margin": "30", "pad": "0.8"}):
+            ollama = Custom("ollama\n\nllama3.1:8b\n(contenedor local)", "/diagrams/icons/ollama.png")
+
+        # Servidor HTR (con GPU, Ciclo 1)
+        with Cluster("Reconocimiento de Manuscrito", graph_attr={"bgcolor": "#F5D0FE", "style": "rounded", "margin": "30", "pad": "0.8"}):
+            htr = Server("servidor-htr\n\ntrocr-large-handwritten\n+ docTR (GPU)")
+
     with Cluster("Qdrant (Local/Docker)", graph_attr={"bgcolor": "#B2DFDB", "penwidth": "3", "style": "rounded", "margin": "50", "pad": "1.0"}):
-        qdrant = Custom("Qdrant\n\nVector Database", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    
-    with Cluster("Ollama Cloud", graph_attr={"bgcolor": "#E1BEE7", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        ollama = Custom("Ollama API\n\nLLM: gpt-oss-120B", "/diagrams/icons/ollama.png")
+        qdrant = SQL("Qdrant\n\nVector Database")
     
     # ===== FLUJO DE CONEXIONES =====
     
@@ -79,27 +85,30 @@ with Diagram(
     # Backend → Redis (cache/session)
     backend >> Edge(label="Redis :6379\nCache + Sessions", color="#F57C00", style="dashed") >> redis
     
-    # Backend → Azure SQL
-    backend >> Edge(label="TDS :1433\nMetadata", color="#0078D4") >> azure_sql
-    
+    # Backend → SQL Server (local)
+    backend >> Edge(label="TDS :1433\nMetadata", color="#0078D4") >> sql_server
+
     # Backend → Qdrant
     backend >> Edge(label="REST :6333\nVector Search", color="#00C7B7") >> qdrant
-    
-    # Backend → Ollama
-    backend >> Edge(label="HTTPS\nLLM Inference", color="#7C3AED") >> ollama
-    
+
+    # Backend → Ollama (local)
+    backend >> Edge(label="HTTP\nLLM Inference", color="#7C3AED") >> ollama
+
     # Backend → Celery (via Redis)
     backend >> Edge(label="Celery Tasks", color="#E91E63", style="bold") >> celery
-    
+
     # Celery → Redis (queue)
     celery >> Edge(label="Redis :6379\nTask Queue", color="#F57C00", style="dashed") >> redis
-    
+
     # Celery → Tika
     celery >> Edge(label="HTTP :9998\nDocument OCR", color="#388E3C") >> tika
-    
-    # Celery → Azure SQL (store metadata)
-    celery >> Edge(label="TDS :1433\nStore Metadata", color="#0078D4") >> azure_sql
-    
+
+    # Celery → Servidor HTR (imagenes)
+    celery >> Edge(label="HTTP :9100\nHTR (manuscrito)", color="#A21CAF") >> htr
+
+    # Celery → SQL Server (store metadata)
+    celery >> Edge(label="TDS :1433\nStore Metadata", color="#0078D4") >> sql_server
+
     # Celery → Qdrant (store vectors)
     celery >> Edge(label="REST :6333\nStore Embeddings", color="#00C7B7") >> qdrant
 

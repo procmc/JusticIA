@@ -10,13 +10,14 @@ from diagrams import Diagram, Edge
 from diagrams.onprem.client import User
 from diagrams.programming.framework import React, Fastapi
 from diagrams.programming.language import Python
+from diagrams.generic.database import SQL
 from diagrams.custom import Custom
 
 
 print("Generando diagrama: Consultas con IA RAG (Simple)...")
 
 with Diagram(
-    "JusticIA - Consultas con IA (RAG)\nFlujo General",
+    "ServIA - Consultas con IA (RAG)\nFlujo General",
     show=False,
     direction="LR",
     filename="output/rag_simple",
@@ -35,8 +36,8 @@ with Diagram(
     api = Fastapi("API\n\nRAG Router")
     rag_service = Python("RAG Service\n\nLangChain")
     retriever = Python("Retriever\n\nVector Search")
-    qdrant = Custom("Qdrant\n\nDocumentos", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    llm = Custom("LLM\n\ngpt-oss-120B", "/diagrams/icons/ollama.png")
+    qdrant = SQL("Qdrant\n\nDocumentos\n(local)")
+    llm = Custom("LLM (local)\n\nllama3.1:8b", "/diagrams/icons/ollama.png")
     
     # Flujo simplificado
     usuario >> Edge(label=" 1. Pregunta ", color="#1976d2", style="bold", fontsize="10") >> chat_ui

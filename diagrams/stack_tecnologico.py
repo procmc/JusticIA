@@ -1,5 +1,5 @@
 """
-Stack Tecnológico - JusticIA
+Stack Tecnológico - ServIA
 Vista detallada de componentes y dependencias por contenedor.
 
 Ejecutar: python stack_tecnologico.py
@@ -19,7 +19,7 @@ from diagrams.custom import Custom
 print("Generando diagrama: Stack Tecnológico...")
 
 with Diagram(
-    "JusticIA - Stack Tecnológico\nComponentes y Dependencias por Contenedor",
+    "ServIA - Stack Tecnológico\nComponentes y Dependencias por Contenedor",
     show=False,
     direction="TB",
     filename="output/stack_tecnologico",
@@ -73,7 +73,7 @@ with Diagram(
             backend_framework = Fastapi("FastAPI 0.116\n\nUvicorn\nPydantic\nPython-Jose (JWT)\nbcrypt")
         
         with Cluster("AI/ML Stack", graph_attr={"bgcolor": "#AB47BC", "style": "rounded", "margin": "25", "pad": "0.8"}):
-            backend_ai = Custom("Embeddings Model\n\nBGE-M3-ES-Legal\nSentence Transformers\nPyTorch\n~3GB modelo", "/diagrams/icons/bge.jpeg")
+            backend_ai = Python("Embeddings Model\n\nmultilingual-e5-large\nSentence Transformers\nPyTorch\n~2GB modelo")
         
         backend_runtime >> Edge(color="#7B1FA2", style="solid") >> backend_framework
         backend_runtime >> Edge(color="#7B1FA2", style="solid") >> backend_system
@@ -99,7 +99,7 @@ with Diagram(
             celery_processing = Custom("Faster-Whisper\n\nCTranslate2\nPydub (audio)\nTika client\nLangChain", "/diagrams/icons/langchain.png")
         
         with Cluster("AI/ML Stack", graph_attr={"bgcolor": "#EC407A", "style": "rounded", "margin": "25", "pad": "0.8"}):
-            celery_ai = Custom("Embeddings Model\n\nBGE-M3-ES-Legal\nSentence Transformers\nPyTorch\n~3GB modelo", "/diagrams/icons/bge.jpeg")
+            celery_ai = Python("Embeddings Model\n\nmultilingual-e5-large\nSentence Transformers\nPyTorch\n~2GB modelo")
         
         celery_runtime >> Edge(color="#C2185B", style="solid") >> celery_framework
         celery_runtime >> Edge(color="#C2185B", style="solid") >> celery_system
@@ -126,6 +126,26 @@ with Diagram(
         tika_runtime >> Edge(color="#388E3C", style="solid") >> tika_framework
         tika_framework >> Edge(color="#388E3C", style="dashed") >> tika_ocr
     
+    # ========== SERVIDOR HTR ==========
+    with Cluster("Servidor HTR Container", graph_attr={
+        "bgcolor": "#FDF4FF",
+        "penwidth": "3",
+        "style": "rounded",
+        "margin": "40",
+        "pad": "0.8"
+    }):
+        with Cluster("Runtime (GPU)", graph_attr={"bgcolor": "#F5D0FE", "style": "rounded", "margin": "25", "pad": "0.8"}):
+            htr_runtime = Python("Python 3.12\n\nCUDA\nPyTorch + transformers\n~3GB deps")
+
+        with Cluster("Framework", graph_attr={"bgcolor": "#F0ABFC", "style": "rounded", "margin": "25", "pad": "0.8"}):
+            htr_framework = Fastapi("FastAPI\n\nUvicorn\nGET /salud\nPOST /htr")
+
+        with Cluster("AI/ML Stack", graph_attr={"bgcolor": "#E879F9", "style": "rounded", "margin": "25", "pad": "0.8"}):
+            htr_ai = Python("trocr-large-handwritten\n\n+ docTR (DBNet)\nintercambio de GPU\npor inactividad")
+
+        htr_runtime >> Edge(color="#A21CAF", style="solid") >> htr_framework
+        htr_framework >> Edge(color="#A21CAF", style="dashed") >> htr_ai
+
     # ========== REDIS ==========
     with Cluster("Redis Container", graph_attr={
         "bgcolor": "#FFF3E0",

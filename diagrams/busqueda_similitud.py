@@ -1,5 +1,5 @@
 """
-Búsqueda de Similitud de Casos - JusticIA
+Búsqueda de Similitud de Casos - ServIA
 Vista detallada del sistema de búsqueda semántica de casos judiciales.
 
 Ejecutar: python busqueda_similitud.py
@@ -11,6 +11,7 @@ from diagrams.onprem.client import User
 from diagrams.programming.framework import React, Fastapi
 from diagrams.programming.language import Python
 from diagrams.onprem.database import Mssql
+from diagrams.generic.database import SQL
 from diagrams.onprem.compute import Server
 from diagrams.custom import Custom
 
@@ -18,7 +19,7 @@ from diagrams.custom import Custom
 print("Generando diagrama: Búsqueda de Similitud de Casos...")
 
 with Diagram(
-    "JusticIA - Búsqueda Semántica\nAnálisis de Similitud de Casos Judiciales",
+    "ServIA - Búsqueda Semántica\nAnálisis de Similitud de Casos Judiciales",
     show=False,
     direction="LR",
     filename="output/busqueda_similitud",
@@ -44,7 +45,7 @@ with Diagram(
     
     # Capa 3: Almacenamiento (arriba)
     with Cluster("Persistencia", graph_attr={"bgcolor": "#e8f5e9", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
-        sql_audit = Mssql("Azure SQL\n\nAuditoría")
+        sql_audit = Mssql("SQL Server\n\n(local)\nAuditoría")
     
     # Capa 4: Orquestador
     with Cluster("Orquestador", graph_attr={"bgcolor": "#ede7f6", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
@@ -60,16 +61,16 @@ with Diagram(
     # Capa 6: Retrieval
     with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
         retriever = Python("Retriever\n\ntop_k configurable")
-        embedder = Custom("Embeddings\n\nBGE-M3", "/diagrams/icons/bge.jpeg")
-        vector_store = Custom("VectorStore\n\nQdrant Client", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    
+        embedder = Python("Embeddings\n\nmultilingual-e5-large")
+        vector_store = Python("VectorStore\n\nQdrant Client")
+
     # Capa 7: Base de datos vectorial
     with Cluster("Vector Database", graph_attr={"bgcolor": "#e0f2f1", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
-        qdrant_db = Custom("Qdrant\n\nVector DB", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    
+        qdrant_db = SQL("Qdrant\n\nVector DB")
+
     # Capa 8: Base de datos relacional
     with Cluster("Relational Database", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "20", "pad": "0.6"}):
-        sql_db = Custom("Azure SQL\n\nMetadata", "/diagrams/icons/azure.png")
+        sql_db = Mssql("SQL Server\n\n(local)\nMetadata")
     
     # ===== FLUJO PRINCIPAL =====
     # 1. Usuario → Frontend

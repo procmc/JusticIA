@@ -1,5 +1,5 @@
 """
-Consultas con IA (RAG) - JusticIA
+Consultas con IA (RAG) - ServIA
 Vista detallada del sistema de recuperación y generación aumentada.
 
 Ejecutar: python consultas_ia_rag.py
@@ -11,6 +11,7 @@ from diagrams.onprem.client import User
 from diagrams.programming.framework import React, Fastapi
 from diagrams.programming.language import Python
 from diagrams.onprem.database import Mssql
+from diagrams.generic.database import SQL
 from diagrams.onprem.inmemory import Redis
 from diagrams.onprem.compute import Server
 from diagrams.custom import Custom
@@ -19,7 +20,7 @@ from diagrams.custom import Custom
 print("Generando diagrama: Consultas con IA (RAG)...")
 
 with Diagram(
-    "JusticIA - Consultas con IA\nRAG: Recuperación y Generación Aumentada",
+    "ServIA - Consultas con IA\nRAG: Recuperación y Generación Aumentada",
     show=False,
     direction="LR",
     filename="output/consultas_ia_rag",
@@ -46,7 +47,7 @@ with Diagram(
     # Capa 3: Almacenamiento (arriba)
     with Cluster("Persistencia", graph_attr={"bgcolor": "#e8f5e9", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
         redis_store = Redis("Redis\n\nSession Store\nConversaciones")
-        sql_audit = Mssql("Azure SQL Server\n\nAuditoría RAG\nAnalítica")
+        sql_audit = Mssql("SQL Server\n\n(local)\nAuditoría RAG\nAnalítica")
     
     # Capa 4: Orquestador RAG
     with Cluster("Orquestador RAG", graph_attr={"bgcolor": "#ede7f6", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
@@ -58,16 +59,16 @@ with Diagram(
     
     # Capa 5: Servicios
     with Cluster("Retrieval", graph_attr={"bgcolor": "#e1f5fe", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        retriever = Python("DynamicJusticIARetriever\n\ntop_k=15 general\ntop_k=10 expediente")
-        embedder = Python("Embedding Service\n\nBGE-M3-ES-Legal\n1024 dimensiones")
+        retriever = Python("DynamicServIARetriever\n\ntop_k=15 general\ntop_k=10 expediente")
+        embedder = Python("Embedding Service\n\nmultilingual-e5-large\n1024 dimensiones")
         vector_store = Python("VectorStore Service\n\nCliente Qdrant\nBúsqueda similitud")
-    
+
     with Cluster("LLM", graph_attr={"bgcolor": "#fff3e0", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        llm = Custom("Ollama LLM\n\ngpt-oss:120b\nTemp: 0.3 | Stream", "/diagrams/icons/ollama.png")
-    
+        llm = Custom("Ollama LLM (local)\n\nllama3.1:8b\nTemp: 0.3 | Stream", "/diagrams/icons/ollama.png")
+
     # Capa 6: Bases de datos (abajo)
     with Cluster("Base de Datos", graph_attr={"bgcolor": "#fce4ec", "penwidth": "2", "style": "rounded", "margin": "25", "pad": "0.8"}):
-        qdrant_db = Custom("Qdrant\n\nVector Database\njusticia_docs\n", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
+        qdrant_db = SQL("Qdrant\n\nVector Database\n(local, Docker)")
     
     # ===== FLUJO PRINCIPAL =====
     # 1. Usuario → Frontend

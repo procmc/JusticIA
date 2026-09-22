@@ -1,5 +1,5 @@
 """
-Procesamiento de Documentos Legales - JusticIA
+Procesamiento de Documentos Legales - ServIA
 Vista detallada del módulo de ingesta y procesamiento.
 
 Ejecutar: python procesamiento_documentos.py
@@ -11,6 +11,7 @@ from diagrams.onprem.client import User
 from diagrams.programming.framework import Fastapi, React
 from diagrams.programming.language import Python, Javascript
 from diagrams.onprem.database import Mssql
+from diagrams.generic.database import SQL
 from diagrams.onprem.compute import Server
 from diagrams.onprem.queue import Celery
 from diagrams.custom import Custom
@@ -19,7 +20,7 @@ from diagrams.custom import Custom
 print("Generando diagrama: Procesamiento de Documentos Legales...")
 
 with Diagram(
-    "JusticIA - Procesamiento de Documentos Legales\nMódulo de Ingesta y Embeddings",
+    "ServIA - Procesamiento de Documentos Legales\nMódulo de Ingesta y Embeddings",
     show=False,
     direction="LR",
     filename="output/procesamiento_documentos",
@@ -79,16 +80,19 @@ with Diagram(
             # Audio -> Faster-Whisper (dos estrategias)
             whisper_direct = Custom("Faster-Whisper Directo\n\nArchivos < 50MB\nTranscripcion completa", "/diagrams/icons/openai.png")
             whisper_chunks = Custom("Faster-Whisper Chunks\n\nArchivos >= 50MB\nDivision en segmentos", "/diagrams/icons/openai.png")
-        
+
+            # Imagenes -> Servidor HTR (Ciclo 1, GPU aparte)
+            htr_srv = Server("Servidor HTR\n\ntrocr-large-handwritten\n+ docTR (GPU)")
+
         with Cluster("Limpieza", graph_attr={"bgcolor": "#e1f5fe", "margin": "20", "pad": "0.4", "style": "rounded"}):
             cleaner = Python("Limpieza Texto\n\nNormaliza espacios\nDetecta encoding")
-        
+
         with Cluster("Generacion de Embeddings", graph_attr={"bgcolor": "#e8f5e9", "penwidth": "2", "style": "rounded", "margin": "30", "pad": "0.8"}):
             chunker = Python("Chunking\n\n512 tokens\n50 overlap")
-        
+
         with Cluster("Vectorizacion", graph_attr={"bgcolor": "#ede7f6", "margin": "20", "pad": "0.4", "style": "rounded"}):
-            embedder = Custom("Embeddings\n\nBGE-M3\n1024D", "/diagrams/icons/bge.jpeg")
-    
+            embedder = Python("Embeddings\n\nmultilingual-e5-large\n1024D")
+
     with Cluster("Vector Database", graph_attr={
         "bgcolor": "#e0f2f1",
         "penwidth": "2",
@@ -96,8 +100,8 @@ with Diagram(
         "margin": "20",
         "pad": "0.6"
     }):
-        qdrant = Custom("Qdrant\n\nVectores chunks", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    
+        qdrant = SQL("Qdrant\n\nVectores chunks")
+
     with Cluster("Relational Database", graph_attr={
         "bgcolor": "#fce4ec",
         "penwidth": "2",
@@ -105,7 +109,7 @@ with Diagram(
         "margin": "20",
         "pad": "0.6"
     }):
-        sql = Custom("Azure SQL Server\n\nMetadata documentos", "/diagrams/icons/azure.png")
+        sql = Mssql("SQL Server\n\n(local)\nMetadata documentos")
     
     # Flujo principal de ingesta
     usuario >> Edge(label=" 1. Carga archivo ", color="#2563eb", fontsize="10") >> upload
@@ -122,10 +126,12 @@ with Diagram(
     celery_task >> Edge(label=" 6a. Documentos:\nPDF, Word (DOC/DOCX)\nRTF, HTML, TXT ", color="#f59e0b", fontsize="9") >> tika_srv
     celery_task >> Edge(label=" 6b1. Audio pequeño\n(< 50MB) ", color="#10b981", fontsize="9") >> whisper_direct
     celery_task >> Edge(label=" 6b2. Audio grande\n(>= 50MB) ", color="#059669", fontsize="9") >> whisper_chunks
-    
+    celery_task >> Edge(label=" 6c. Imagenes:\nJPG, PNG, TIF, BMP ", color="#a21caf", fontsize="9") >> htr_srv
+
     tika_srv >> Edge(label=" 7a. Limpia texto ", color="#0891b2", fontsize="10") >> cleaner
     whisper_direct >> Edge(label=" 7b. Limpia transcripción ", color="#0891b2", fontsize="10") >> cleaner
     whisper_chunks >> Edge(label=" 7c. Une y limpia chunks ", color="#0891b2", fontsize="10") >> cleaner
+    htr_srv >> Edge(label=" 7d. Limpia texto reconocido ", color="#0891b2", fontsize="10") >> cleaner
     
     cleaner >> Edge(label=" 8. Fragmenta ", color="#9333ea", fontsize="10") >> chunker
     chunker >> Edge(label=" 9. Vectoriza ", color="#9333ea", fontsize="10") >> embedder

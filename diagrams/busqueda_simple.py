@@ -10,13 +10,15 @@ from diagrams import Diagram, Edge
 from diagrams.onprem.client import User
 from diagrams.programming.framework import React, Fastapi
 from diagrams.programming.language import Python
+from diagrams.onprem.database import Mssql
+from diagrams.generic.database import SQL
 from diagrams.custom import Custom
 
 
 print("Generando diagrama: Búsqueda de Similitud (Simple)...")
 
 with Diagram(
-    "JusticIA - Búsqueda de Similitud\nFlujo General",
+    "ServIA - Búsqueda de Similitud\nFlujo General",
     show=False,
     direction="LR",
     filename="output/busqueda_simple",
@@ -34,9 +36,9 @@ with Diagram(
     search_ui = React("Frontend\n\nBúsqueda Interface")
     api = Fastapi("API\n\nSimilarity Router")
     service = Python("Service\n\n2 modos")
-    embedder = Custom("Embeddings\n\nBGE-M3\n(solo descripción)", "/diagrams/icons/bge.jpeg")
-    qdrant = Custom("Qdrant\n\nVector Search", "/diagrams/icons/milvus.png")  # TODO: sin ícono propio de Qdrant todavía
-    sql = Custom("Azure SQL\n\nMetadata", "/diagrams/icons/azure.png")
+    embedder = Python("Embeddings\n\nmultilingual-e5-large\n(solo descripción)")
+    qdrant = SQL("Qdrant\n\nVector Search\n(local)")
+    sql = Mssql("SQL Server\n\n(local)\nMetadata")
     
     # Flujo simplificado
     usuario >> Edge(label=" 1. Query ", color="#2563eb", style="bold", fontsize="10") >> search_ui

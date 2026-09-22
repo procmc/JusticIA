@@ -50,8 +50,8 @@ def main():
     
     print("""
 ===============================================================================
-                GENERADOR DE DIAGRAMAS DE ARQUITECTURA - JusticIA
-                     Sistema de Asistencia Judicial con IA
+                GENERADOR DE DIAGRAMAS DE ARQUITECTURA - ServIA
+                   Asistente de IA Gubernamental
 ===============================================================================
     """)
     
@@ -72,6 +72,13 @@ def main():
         ("ingesta_simple.py", "Ingesta de Documentos (Flujo General)"),
         ("rag_simple.py", "Consultas con IA RAG (Flujo General)"),
         ("busqueda_simple.py", "Búsqueda de Similitud (Flujo General)"),
+        ("backend_conmutable.py", "Backend Conmutable (Fase 2)"),
+        ("migracion_fase2_antes_despues.py", "Migración Fase 2 - Antes/Después"),
+        ("seleccion_htr_fase3.py", "Fase 3 - Selección preliminar de HTR"),
+        ("arquitectura_monolito_vs_microservicios.py", "Fase 3 - Monolito vs Microservicios (doc 21)"),
+        ("integracion_htr_ciclo1.py", "Fase 4 Ciclo 1 - Integracion del servicio HTR (doc 22)"),
+        ("localizadores_ciclo2.py", "Fase 4 Ciclo 2 - Dos localizadores de renglones (doc 25)"),
+        ("busqueda_hibrida_ciclo3.py", "Fase 4 Ciclo 3 - Busqueda hibrida en el chat general (doc 28)"),
     ]
     
     start_total = time.time()
