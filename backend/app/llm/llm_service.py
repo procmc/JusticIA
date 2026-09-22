@@ -91,13 +91,17 @@ async def get_llm():
                 request_timeout=LLM_REQUEST_TIMEOUT,
                 reasoning=False,
                 client_kwargs=client_kwargs,
-                model_kwargs={
-                    "num_ctx": LLM_NUM_CTX,
-                    "num_predict": LLM_NUM_PREDICT,
-                    "top_k": LLM_TOP_K,
-                    "top_p": LLM_TOP_P,
-                    "repeat_penalty": LLM_REPEAT_PENALTY,
-                },
+                # IMPORTANTE: num_ctx/num_predict/top_k/top_p/repeat_penalty son
+                # campos directos de ChatOllama, no se leen desde model_kwargs.
+                # Pasarlos anidados en model_kwargs hace que se ignoren en
+                # silencio y el modelo corra con la ventana de contexto por
+                # defecto de Ollama (mucho menor a LLM_NUM_CTX), truncando
+                # el prompt en conversaciones con contexto largo.
+                num_ctx=LLM_NUM_CTX,
+                num_predict=LLM_NUM_PREDICT,
+                top_k=LLM_TOP_K,
+                top_p=LLM_TOP_P,
+                repeat_penalty=LLM_REPEAT_PENALTY,
             )
         return _llm
 
