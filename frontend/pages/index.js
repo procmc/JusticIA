@@ -82,6 +82,13 @@ export default function Home() {
       icon: IoCloudUpload,
       gradient: 'from-orange-500 to-orange-600',
       onClick: () => navigateTo('/ingesta-datos')
+    },
+    {
+      title: 'NotebookServIA',
+      description: 'Cree colecciones de documentos y converse solo con ellas',
+      icon: IoFolderOpen,
+      gradient: 'from-teal-500 to-teal-600',
+      onClick: () => navigateTo('/notebooks')
     }
   ];
 
@@ -165,14 +172,14 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           {/* Main Title */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-3 leading-tight mt-4 md:mt-0">
-            <span className="text-secondary-900">JusticIA</span>
+            <span className="text-secondary-900">ServIA</span>
           </h1>
 
           {/* Saludo personalizado */}
           {isAuthenticated && (
             <div className="mb-8">
               <p className="text-lg text-gray-700">
-                Bienvenid@ <span className="font-semibold">{user.name}</span> a JusticIA, donde puedes realizar las siguientes funcionalidades:
+                Bienvenid@ <span className="font-semibold">{user.name}</span> a ServIA, donde puedes realizar las siguientes funcionalidades:
               </p>
             </div>
           )}
@@ -186,10 +193,9 @@ export default function Home() {
                   <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-6">
                     {userJudicialCards.slice(0, 3).map((card, index) => renderCard(card, index))}
                   </div>
-                  {/* Segunda fila: 2 tarjetas del mismo tamaño */}
-                  <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                    {renderCard(userJudicialCards[3], 3)}
-                    {renderCard(userJudicialCards[4], 4)}
+                  {/* Segunda fila: 3 tarjetas del mismo tamaño */}
+                  <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                    {userJudicialCards.slice(3, 6).map((card, index) => renderCard(card, index + 3))}
                   </div>
                 </>
               )}
@@ -281,7 +287,7 @@ export default function Home() {
               {/* Información del Sistema */}
               <div className="md:col-span-2 text-center">
                 <h2 className="text-sm font-bold text-gray-800">
-                  JusticIA
+                  ServIA
                 </h2>
                 <p className="text-xs text-gray-600">
                   Sistema de Información Jurídica

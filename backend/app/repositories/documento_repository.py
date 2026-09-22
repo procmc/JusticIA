@@ -75,9 +75,10 @@ See Also:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from app.db.models.documento import T_Documento
 from app.db.models.expediente import T_Expediente
+from app.db.models.expediente_documento import T_Expediente_Documento
 from app.db.models.estado_procesamiento import T_Estado_procesamiento
 from datetime import datetime
 
@@ -324,6 +325,36 @@ class DocumentoRepository:
             print(f"Error listando archivos por expediente: {e}")
             return []
     
+    def eliminar(self, db: Session, documento: T_Documento, auto_commit: bool = True) -> None:
+        """
+        Elimina un documento (y su fila en la tabla de unión con expediente).
+        No borra los chunks de Qdrant ni el archivo físico — eso lo maneja
+        la capa de servicio, que también conoce el vectorstore y el disco.
+
+        Args:
+            db: Sesión de base de datos
+            documento: Documento a eliminar
+            auto_commit: Si hacer commit automáticamente
+        """
+        try:
+            # Primero la fila de la tabla de unión (FK), si no se rompe el delete
+            db.execute(
+                delete(T_Expediente_Documento).where(
+                    T_Expediente_Documento.c.CN_Id_documento == documento.CN_Id_documento
+                )
+            )
+            db.delete(documento)
+
+            if auto_commit:
+                db.commit()
+            else:
+                db.flush()
+
+        except Exception as e:
+            if auto_commit:
+                db.rollback()
+            raise Exception(f"Error eliminando documento: {str(e)}")
+
     def verificar_esta_procesado(
         self, 
         db: Session, 

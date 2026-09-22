@@ -120,7 +120,7 @@ class ConsultaService {
    * 
    * @note El backend maneja reformulación automática de preguntas ambiguas usando el historial
    */
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null) {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null, notebookId = null) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
       this.abortController.abort();
@@ -156,6 +156,11 @@ class ConsultaService {
       // Agregar número de expediente si está disponible
       if (expedienteNumber) {
         payload.expediente_number = expedienteNumber;
+      }
+
+      // Agregar notebook si está disponible (NotebookServIA)
+      if (notebookId) {
+        payload.notebook_id = notebookId;
       }
 
       console.log('📤 Enviando consulta con historial:', {

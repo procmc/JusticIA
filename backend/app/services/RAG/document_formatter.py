@@ -50,7 +50,7 @@ Ver también:
     * app.services.rag.formatted_retriever: Usa estas funciones
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Formateo de metadata en Markdown
@@ -95,12 +95,21 @@ def format_document_with_metadata(doc: Document) -> str:
         archivo_mostrar = nombre_real_archivo
     else:
         archivo_mostrar = metadata.get('archivo', 'N/A')
-    
+
+    # Si el archivo de origen es una imagen, marcarlo explícitamente: el LLM
+    # nunca ve la imagen, solo el texto ya reconocido por el servicio de HTR.
+    # Sin esta nota, el modelo tiende a negar poder "leer" el contenido aunque
+    # lo tenga delante, por su entrenamiento como modelo de solo texto.
+    extensiones_imagen = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
+    es_imagen = archivo_mostrar.lower().endswith(extensiones_imagen)
+    origen_str = "**Origen:** texto reconocido por HTR a partir de una imagen manuscrita\n" if es_imagen else ""
+
     # Construir header con metadata
     header = (
         f"\n**Expediente:** {metadata.get('expediente_numero', 'N/A')} | "
         f"**Archivo:** {archivo_mostrar}{paginas_str}\n"
         f"{tipo_doc_str}"
+        f"{origen_str}"
         f"{ruta_str}"
         f"---\n"
     )

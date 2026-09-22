@@ -1,7 +1,7 @@
 ﻿/**
  * @fileoverview Configuración del menú de navegación con control de acceso por roles.
  * 
- * Este módulo define la estructura completa del menú de navegación de JusticIA,
+ * Este módulo define la estructura completa del menú de navegación de ServIA,
  * incluyendo items principales, subitems anidados, iconos de React Icons,
  * y permisos basados en roles (RBAC).
  * 
@@ -56,10 +56,10 @@
  * @see {@link ../components/Sidebar.jsx} Componente que renderiza el menú
  * @see {@link ../common/roles.js} Definición de roles del sistema
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
-import { 
+import {
   IoHomeOutline,
   IoSearchOutline,
   IoCloudUploadOutline,
@@ -67,7 +67,8 @@ import {
   IoPeopleOutline,
   IoTimeOutline,
   IoChatbubbleOutline,
-  IoDocumentsOutline
+  IoDocumentsOutline,
+  IoFolderOpenOutline
 } from "react-icons/io5";
 import { ROLES } from "../common/roles";
 
@@ -137,6 +138,13 @@ export const menuItems = [
     label: "Ingesta de Datos",
     icon: IoCloudUploadOutline,
     link: "/ingesta-datos",
+    roles: [ROLES.USER],
+  },
+  {
+    id: 4,
+    label: "NotebookServIA",
+    icon: IoFolderOpenOutline,
+    link: "/notebooks",
     roles: [ROLES.USER],
   },
 ];

@@ -1,5 +1,5 @@
 """
-Punto de entrada principal de la API de JusticIA.
+Punto de entrada principal de la API de ServIA.
 
 Este módulo inicializa la aplicación FastAPI con todos sus componentes:
 - Routers de endpoints REST
@@ -80,7 +80,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.vectorstore import get_vectorstore_backend
-from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora
+from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora, notebooks
 from app.db import database
 import asyncio
 import logging
@@ -92,7 +92,7 @@ logger = logging.getLogger(__name__)
 
 # Crear instancia de FastAPI
 app = FastAPI(
-    title="JusticIA API",
+    title="ServIA API",
     description="API REST para asistente legal inteligente con RAG",
     version="1.0.0"
 )
@@ -180,6 +180,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 app.include_router(rag.router, tags=["rag"])
 app.include_router(bitacora.router, prefix="/bitacora", tags=["bitacora"])
+app.include_router(notebooks.router, prefix="/notebooks", tags=["notebooks"])
 
 # Servir archivos estáticos para avatares
 uploads_path = Path("uploads")
@@ -200,6 +201,6 @@ async def root():
     Example:
         >>> response = requests.get('http://localhost:8000/')
         >>> response.json()
-        {'message': 'JusticIA API está funcionando', 'version': '1.0.0'}
+        {'message': 'ServIA API está funcionando', 'version': '1.0.0'}
     """
-    return {"message": "JusticIA API está funcionando", "version": "1.0.0"}
+    return {"message": "ServIA API está funcionando", "version": "1.0.0"}

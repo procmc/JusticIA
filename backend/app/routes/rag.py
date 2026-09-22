@@ -72,6 +72,7 @@ class ConsultaConHistorialRequest(BaseModel):
     session_id: str
     top_k: int = 15
     expediente_number: Optional[str] = None  # Opcional, para consultas de expediente específico
+    notebook_id: Optional[str] = None  # Opcional, para consultas acotadas a un notebook (NotebookServIA)
 
 
 class UpdateExpedienteContextRequest(BaseModel):
@@ -111,23 +112,31 @@ async def consulta_con_historial_stream(
         logger.info(f"Consulta con historial - Session: {request.session_id}")
         logger.info(f"Query: {query_to_use[:100]}...")
         logger.info(f"Expediente: {request.expediente_number or 'None'}")
+        logger.info(f"Notebook: {request.notebook_id or 'None'}")
         logger.info(f"Usuario: {current_user.get('user_id', 'Unknown')} ({current_user.get('username', 'No email')})")
-        
+
         # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
         response = await rag_service.consulta_con_historial_streaming(
             pregunta=query_to_use,
             session_id=request.session_id,
             top_k=min(request.top_k, 30),
             expediente_filter=request.expediente_number,
+            notebook_filter=request.notebook_id,
+            usuario_id=current_user["user_id"],
             http_request=http_request
         )
-        
+
         # 🔥 AUDITORÍA: Registrar la consulta RAG exitosa
         end_time = time.time()
         tiempo_procesamiento = round(end_time - start_time, 2)
-        
+
         # Determinar tipo de consulta
-        tipo_consulta = "expediente" if request.expediente_number else "general"
+        if request.expediente_number:
+            tipo_consulta = "expediente"
+        elif request.notebook_id:
+            tipo_consulta = "notebook"
+        else:
+            tipo_consulta = "general"
         
         # Registrar en bitácora (async pero sin esperar para no afectar performance)
         try:

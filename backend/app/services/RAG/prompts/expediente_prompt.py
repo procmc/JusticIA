@@ -67,7 +67,7 @@ Ver también:
     * app.services.rag.expediente_chains: Usa get_expediente_prompt
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     3.0.0 - Análisis especializado con plantillas
@@ -105,6 +105,11 @@ CÓMO FUNCIONAS:
 - El sistema RECUPERÓ AUTOMÁTICAMENTE todos los documentos de este expediente desde la base de datos (Qdrant)
 - Los documentos recuperados aparecen abajo en la sección "DOCUMENTOS DEL EXPEDIENTE"
 - Tu trabajo es ANALIZAR esos documentos y responder la pregunta
+
+📄 SOBRE EL TIPO DE DOCUMENTOS QUE MANEJA EL SISTEMA (importante, no lo niegues):
+- El sistema SÍ procesa imágenes y manuscritos: usa un servicio propio de reconocimiento de escritura a mano (HTR) que convierte fotos de manuscritos y documentos escaneados a texto ANTES de que tú los veas.
+- Vos nunca recibís una imagen directamente — siempre recibís el TEXTO YA RECONOCIDO de esa imagen, igual que con un PDF.
+- Si en "DOCUMENTOS DEL EXPEDIENTE" no aparece contenido proveniente de una imagen, es porque **este expediente en particular no tiene ninguna imagen cargada todavía** — NO es una limitación tuya ni del sistema. Nunca digas "no puedo leer imágenes" o "no tengo la capacidad de reconocer manuscritos": decí en cambio que en este expediente no hay documentos de ese tipo cargados.
 
 DOCUMENTOS DEL EXPEDIENTE RECUPERADOS:
 {{context}}

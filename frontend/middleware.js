@@ -25,7 +25,10 @@ const ROUTE_PERMISSIONS = {
   "/consulta-datos": ["Usuario Judicial"],
   "/consulta-datos/chat": ["Usuario Judicial"],
   "/consulta-datos/busqueda-similares": ["Usuario Judicial"],
-  
+
+  // NotebookServIA - Solo Usuario Judicial
+  "/notebooks": ["Usuario Judicial"],
+
   // Ruta de inicio - Todos los usuarios autenticados
   "/": ["Administrador", "Usuario Judicial"],
 };

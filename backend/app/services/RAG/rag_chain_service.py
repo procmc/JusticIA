@@ -6,7 +6,7 @@ Coordina consultas generales y específicas de expedientes, gestiona el flujo de
 streaming de respuestas y mantiene el contexto conversacional.
 
 Arquitectura RAG:
-    * Retriever: DynamicJusticIARetriever busca documentos relevantes en Qdrant
+    * Retriever: DynamicServIARetriever busca documentos relevantes en Qdrant
     * Chains: LangChain chains procesan contexto + historial + pregunta
     * LLM: Modelo de lenguaje genera respuestas basadas en documentos
     * Streaming: Server-Sent Events (SSE) para respuestas en tiempo real
@@ -67,10 +67,13 @@ import re
 import logging
 import json
 
-from .retriever import DynamicJusticIARetriever
+from .retriever import DynamicServIARetriever
 from .general_chains import create_conversational_rag_chain, stream_chain_response
 from .expediente_chains import create_expediente_specific_chain
+from .notebook_chains import create_notebook_specific_chain
 from .session_store import conversation_store
+from app.services.notebook_service import NotebookService
+from app.db.database import get_db
 
 # Importar configuración centralizada
 from app.config.rag_config import rag_config
@@ -90,24 +93,26 @@ class RAGChainService:
         update_expediente_context: Actualiza contexto de expediente en sesión
     """
     def __init__(self):
-        pass
+        self.notebook_service = NotebookService()
 
     # =====================================================================
     # LANGCHAIN ARCHITECTURE (Modern)
     # =====================================================================
-    
-    # Consulta principal 
+
+    # Consulta principal
     async def consulta_con_historial_streaming(
         self,
         pregunta: str,
         session_id: str,
         top_k: int = 15,
         expediente_filter: Optional[str] = None,
+        notebook_filter: Optional[str] = None,
+        usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None
     ):
         # 1. Actualizar la información de la conversación
         conversation_store.update_metadata(session_id)
-        
+
         # 2. AQUÍ COORDINA: Decide qué flujo seguir
         if expediente_filter and expediente_filter.strip():
             # → VA AL FLUJO DE EXPEDIENTE ESPECÍFICO
@@ -116,6 +121,16 @@ class RAGChainService:
                 pregunta=pregunta,
                 session_id=session_id,
                 expediente_numero=expediente_filter.strip(),
+                http_request=http_request
+            )
+        elif notebook_filter and notebook_filter.strip():
+            # → VA AL FLUJO DE NOTEBOOK ESPECÍFICO (NotebookServIA)
+            logger.info(f"FLUJO: NOTEBOOK ESPECÍFICO: {notebook_filter}")
+            return await self._consulta_notebook_con_historial(
+                pregunta=pregunta,
+                session_id=session_id,
+                notebook_id=notebook_filter.strip(),
+                usuario_id=usuario_id,
                 http_request=http_request
             )
         else:
@@ -148,7 +163,7 @@ class RAGChainService:
             top_k = MAX_TOP_K
         
         # Crear buscador con configuración centralizada
-        retriever = DynamicJusticIARetriever(
+        retriever = DynamicServIARetriever(
             top_k=top_k,
             similarity_threshold=rag_config.SIMILARITY_THRESHOLD_GENERAL
         )
@@ -231,14 +246,14 @@ class RAGChainService:
         )
         
         # Crear retriever configurado para expediente específico con config centralizado
-        retriever = DynamicJusticIARetriever(
+        retriever = DynamicServIARetriever(
             top_k=rag_config.TOP_K_EXPEDIENTE,
             similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
             expediente_filter=expediente_numero
         )
         
         logger.info(
-            f"DynamicJusticIARetriever creado para expediente {expediente_numero} "
+            f"DynamicServIARetriever creado para expediente {expediente_numero} "
             f"(top_k: {rag_config.TOP_K_EXPEDIENTE}, "
             f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
         )
@@ -296,6 +311,106 @@ class RAGChainService:
             }
         )
     
+    # Consulta de notebook específico con historial (NotebookServIA)
+    async def _consulta_notebook_con_historial(
+        self,
+        pregunta: str,
+        session_id: str,
+        notebook_id: str,
+        usuario_id: Optional[str] = None,
+        http_request: Optional[Request] = None
+    ):
+        logger.info(f"Notebook con historial - ID: {notebook_id}")
+
+        db = next(get_db())
+        try:
+            notebook = await self.notebook_service.obtener_notebook_de_usuario(
+                db=db, notebook_id=int(notebook_id), usuario_id=usuario_id
+            )
+        except (ValueError, TypeError):
+            notebook = None
+        finally:
+            db.close()
+
+        if not notebook:
+            logger.error(f"Notebook {notebook_id} no encontrado o no pertenece al usuario {usuario_id}")
+            # Fallback a general (mismo criterio que expediente con formato inválido)
+            return await self._consulta_general_con_historial(
+                pregunta=pregunta,
+                session_id=session_id,
+                top_k=15,
+                http_request=http_request
+            )
+
+        clave_interna = notebook.clave_interna  # ej. "NB-7" — clave de agrupación en Qdrant
+        nombre_notebook = notebook.CT_Nombre
+
+        # Actualizar la información de la conversación
+        conversation_store.update_metadata(session_id=session_id)
+
+        # Reutiliza el mismo retriever/filtro híbrido de Qdrant que expediente
+        # (expediente_filter es agnóstico al significado del string — Ciclo 3)
+        retriever = DynamicServIARetriever(
+            top_k=rag_config.TOP_K_EXPEDIENTE,
+            similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
+            expediente_filter=clave_interna,
+            nombre_visible=nombre_notebook
+        )
+
+        logger.info(
+            f"DynamicServIARetriever creado para notebook '{nombre_notebook}' ({clave_interna}) "
+            f"(top_k: {rag_config.TOP_K_EXPEDIENTE}, "
+            f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
+        )
+
+        # Crear chain especializada para notebooks (prompt genérico, no judicial)
+        chain = await create_notebook_specific_chain(
+            retriever=retriever,
+            nombre_notebook=nombre_notebook,
+            with_history=True
+        )
+
+        logger.info(f"Chain notebook creada")
+
+        config = {
+            "configurable": {
+                "session_id": session_id
+            }
+        }
+
+        input_dict = {
+            "input": pregunta
+        }
+
+        async def event_generator():
+            try:
+                logger.info(f"🚀 Iniciando streaming para notebook: {nombre_notebook}, session: {session_id}")
+                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
+                    yield chunk
+
+                logger.info(f"✅ Streaming finalizado para notebook: {nombre_notebook}, session: {session_id}")
+                conversation_store.auto_generate_title(session_id)
+
+            except Exception as e:
+                logger.error(f"Error en streaming notebook con historial: {e}", exc_info=True)
+                error_data = {
+                    "type": "error",
+                    "content": f"Error al procesar la consulta del notebook: {str(e)}",
+                    "done": True
+                }
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
     # Actualizar contexto de expediente en la sesión
     async def update_expediente_context(
         self,
