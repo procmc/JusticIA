@@ -54,7 +54,7 @@
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat} Intl.DateTimeFormat
  * @see {@link https://en.wikipedia.org/wiki/Time_in_Costa_Rica} Zona horaria de Costa Rica
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 import { format } from 'date-fns';

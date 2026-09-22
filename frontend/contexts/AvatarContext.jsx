@@ -2,7 +2,7 @@
  * @fileoverview Context de React para gestión global del avatar de usuario.
  * 
  * Este módulo implementa el state management centralizado para el avatar del usuario
- * en JusticIA. Gestiona tres tipos de avatares: personalizados (uploads), predefinidos
+ * en ServIA. Gestiona tres tipos de avatares: personalizados (uploads), predefinidos
  * (iconos del sistema) e iniciales (generadas automáticamente).
  * 
  * Responsabilidades:
@@ -76,7 +76,7 @@
  * @see {@link ../constants/avatarConstants.js} Constantes de tipos y paths
  * @see {@link ../components/UserButton.jsx} Componente que usa el avatar
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';

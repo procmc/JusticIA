@@ -1,5 +1,5 @@
 """
-Módulo de correo electrónico de JusticIA
+Módulo de correo electrónico de ServIA
 Estructura organizada: core (lógica) + templates (HTML/CSS) + types (modelos)
 """
 

@@ -2,7 +2,7 @@
 Servicio Especializado de Auditoría para el Módulo de Gestión de Archivos.
 
 Este módulo registra todas las operaciones relacionadas con acceso, visualización
-y descarga de archivos y documentos judiciales en el sistema JusticIA, proporcionando
+y descarga de archivos y documentos judiciales en el sistema ServIA, proporcionando
 trazabilidad completa para seguridad, cumplimiento normativo y control de acceso
 a información sensible.
 

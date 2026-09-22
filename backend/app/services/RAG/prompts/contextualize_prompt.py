@@ -57,7 +57,7 @@ Ver también:
     * app.services.rag.general_chains: Usa CONTEXTUALIZE_Q_PROMPT
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     3.0.0 - Expansión semántica + análisis dinámico

@@ -5,7 +5,7 @@
  * almacenado en localStorage y sessionStorage. Implementa limpieza automática,
  * detección de contexto almacenado y limpieza selectiva por usuario.
  * 
- * El sistema de chat de JusticIA almacena contexto conversacional en el navegador
+ * El sistema de chat de ServIA almacena contexto conversacional en el navegador
  * para mantener continuidad entre sesiones. Este módulo asegura que el almacenamiento
  * no crezca indefinidamente y proporciona herramientas de mantenimiento.
  * 
@@ -48,7 +48,7 @@
  * @see {@link ../hooks/useBackendConversations.js} Hook que usa este contexto
  * @see {@link ../components/Layout/Layout.jsx} Layout que limpia contexto al desloguear
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 

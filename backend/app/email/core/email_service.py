@@ -26,7 +26,7 @@ class EmailConfig:
     username: str
     password: str
     use_tls: bool = True
-    from_name: str = "JusticIA Sistema"
+    from_name: str = "ServIA Sistema"
 
 class EmailService:
     """
@@ -84,7 +84,7 @@ class EmailService:
         Envía correo con contraseña usando plantilla separada
         Mantiene compatibilidad con código existente
         """
-        subject = "Tu contraseña de acceso - JusticIA"
+        subject = "Tu contraseña de acceso - ServIA"
         
         # Usar plantilla separada para generar HTML
         html_content = self.template.generar_correo_credenciales(
@@ -128,7 +128,7 @@ class EmailService:
     async def send_recovery_code_email(self, to_email: str, user_name: str, recovery_code: str) -> bool:
         """Envía email con código de recuperación de contraseña"""
         try:
-            subject = "Código de Recuperación de Contraseña - JusticIA"
+            subject = "Código de Recuperación de Contraseña - ServIA"
             
             html_content = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -151,13 +151,13 @@ class EmailService:
                     </p>
                 </div>
                 <div style="text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px;">
-                    Sistema JusticIA - Gestión de Documentos Jurídicos
+                    Sistema ServIA - Gestión de Documentos Jurídicos
                 </div>
             </div>
             """
             
             text_content = f"""
-            Recuperación de Contraseña - JusticIA
+            Recuperación de Contraseña - ServIA
             
             Hola {user_name},
             
@@ -168,7 +168,7 @@ class EmailService:
             
             Si no solicitaste este código, ignora este mensaje.
             
-            Sistema JusticIA
+            Sistema ServIA
             """
             
             return await self.send_email(to_email, subject, html_content, text_content)
@@ -180,7 +180,7 @@ class EmailService:
     async def send_password_reset_email(self, to_email: str, user_name: str, new_password: str) -> bool:
         """Envía email con nueva contraseña restablecida por el administrador"""
         try:
-            subject = "Contraseña Restablecida por Administrador - JusticIA"
+            subject = "Contraseña Restablecida por Administrador - ServIA"
             
             html_content = f"""
             <!DOCTYPE html>
@@ -191,11 +191,11 @@ class EmailService:
             <body style="font-family: Arial, sans-serif; margin: 40px;">
                 <div style="max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 8px;">
                     <div style="background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="margin: 0;">JusticIA</h1>
+                        <h1 style="margin: 0;">ServIA</h1>
                     </div>
                     <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px;">
                         <h2>Hola {user_name},</h2>
-                        <p>Un administrador ha restablecido tu contraseña en el sistema JusticIA. Tu nueva contraseña temporal es:</p>
+                        <p>Un administrador ha restablecido tu contraseña en el sistema ServIA. Tu nueva contraseña temporal es:</p>
                         
                         <div style="background: #f3f4f6; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 18px; font-weight: bold; text-align: center; margin: 20px 0;">
                             {new_password}
@@ -223,11 +223,11 @@ class EmailService:
             """
             
             text_content = f"""
-            Contraseña Restablecida por Administrador - JusticIA
+            Contraseña Restablecida por Administrador - ServIA
             
             Hola {user_name},
             
-            Un administrador ha restablecido tu contraseña en el sistema JusticIA.
+            Un administrador ha restablecido tu contraseña en el sistema ServIA.
             Tu nueva contraseña temporal es: {new_password}
             
             IMPORTANTE: Esta es una contraseña temporal. Debes cambiarla obligatoriamente al iniciar sesión.
@@ -239,7 +239,7 @@ class EmailService:
             
             Si no esperabas este cambio o tienes dudas, contacta al administrador del sistema.
             
-            Sistema JusticIA
+            Sistema ServIA
             """
             
             return await self.send_email(to_email, subject, html_content, text_content)

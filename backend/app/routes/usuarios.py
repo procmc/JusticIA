@@ -1,5 +1,5 @@
 """
-Rutas de Gestión de Usuarios del Sistema JusticIA.
+Rutas de Gestión de Usuarios del Sistema ServIA.
 
 Este módulo define endpoints REST para CRUD completo de usuarios del sistema,
 incluyendo gestión de avatares y permisos basados en roles (RBAC).

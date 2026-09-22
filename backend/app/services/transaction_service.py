@@ -1,5 +1,5 @@
 """
-Servicio simple de transacciones para JusticIA.
+Servicio simple de transacciones para ServIA.
 """
 
 from contextlib import asynccontextmanager

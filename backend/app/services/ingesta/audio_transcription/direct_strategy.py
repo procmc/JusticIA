@@ -70,7 +70,7 @@ Ver también:
     * app.config.audio_config: Configuración
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Progress tracking granular

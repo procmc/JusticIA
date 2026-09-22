@@ -14,7 +14,7 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
           Bienvenido a
         </h2>
         <h1 className="text-white text-xl md:text-3xl lg:text-4xl font-bold tracking-wider">
-          JusticIA
+          ServIA
         </h1>
         <div className="w-12 md:w-16 h-0.5 bg-white/40 mx-auto mt-2 rounded-full"></div>
       </div>

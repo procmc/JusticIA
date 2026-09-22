@@ -1,5 +1,5 @@
 """
-Configuración de Celery para tareas asíncronas de JusticIA.
+Configuración de Celery para tareas asíncronas de ServIA.
 
 Este módulo configura la instancia de Celery para procesar tareas en
 segundo plano, especialmente tareas largas de procesamiento de documentos

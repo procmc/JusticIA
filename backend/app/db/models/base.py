@@ -31,7 +31,7 @@ Ver también:
     * alembic/: Sistema de migraciones
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - SQLAlchemy 2.0+

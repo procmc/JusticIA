@@ -1,5 +1,5 @@
 """
-Tareas Asíncronas con Celery para JusticIA.
+Tareas Asíncronas con Celery para ServIA.
 
 Este módulo define las tareas de procesamiento en segundo plano ejecutadas
 por workers de Celery. Incluye ingesta de documentos, procesamiento de audio,

@@ -56,7 +56,7 @@ Ver también:
     * app.constants.tipos_accion: Catálogo de tipos de acción
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

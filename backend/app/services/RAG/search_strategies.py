@@ -50,7 +50,7 @@ Ver también:
     * app.services.rag.retriever: Usa search_manager
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Sistema de fallback de 3 niveles

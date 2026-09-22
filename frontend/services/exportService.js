@@ -33,7 +33,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(32);
   doc.setFont(undefined, 'bold');
-  doc.text('JusticIA', pageWidth / 2, 25, { align: 'center' });
+  doc.text('ServIA', pageWidth / 2, 25, { align: 'center' });
   
   doc.setFontSize(18);
   doc.setFont(undefined, 'normal');
@@ -292,7 +292,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
       
       // Información central
       doc.text(
-        'Reporte Confidencial - JusticIA',
+        'Reporte Confidencial - ServIA',
         pageWidth / 2,
         pageHeight - 8,
         { align: 'center' }
@@ -359,7 +359,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
   doc.setTextColor(150, 150, 150);
   doc.setFont(undefined, 'italic');
   doc.text(
-    'Este reporte ha sido generado automáticamente por el Sistema JusticIA.',
+    'Este reporte ha sido generado automáticamente por el Sistema ServIA.',
     14,
     yPos
   );

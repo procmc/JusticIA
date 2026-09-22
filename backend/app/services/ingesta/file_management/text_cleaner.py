@@ -59,7 +59,7 @@ Ver también:
     * app.services.rag.retriever: Usa fix_encoding_issues
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Corrección de encoding optimizada

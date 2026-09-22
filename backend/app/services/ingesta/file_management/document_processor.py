@@ -68,7 +68,7 @@ Ver también:
     * app.vectorstore.storage: Almacenamiento vectorial
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Transacciones atómicas con commit temprano

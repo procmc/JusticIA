@@ -1,7 +1,7 @@
 """
 Catálogo de Tipos de Acción para Sistema de Auditoría (Bitácora).
 
-Este módulo define constantes para los tipos de acciones auditables del sistema JusticIA.
+Este módulo define constantes para los tipos de acciones auditables del sistema ServIA.
 Los IDs corresponden exactamente a los valores definidos en la tabla T_Tipo_accion de la BD.
 
 Propósito:

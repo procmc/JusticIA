@@ -1,7 +1,7 @@
 /**
  * @fileoverview Context de React para gestión de tema claro/oscuro.
  * 
- * Este módulo implementa el sistema de temas de JusticIA, permitiendo
+ * Este módulo implementa el sistema de temas de ServIA, permitiendo
  * alternar entre modo claro y oscuro. Persiste la preferencia del usuario
  * en localStorage y detecta automáticamente la preferencia del sistema.
  * 
@@ -48,7 +48,7 @@
  * @see {@link https://tailwindcss.com/docs/dark-mode} Tailwind Dark Mode
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme} prefers-color-scheme
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';

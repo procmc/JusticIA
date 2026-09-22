@@ -20,7 +20,7 @@ Modos de búsqueda soportados:
     1. **Búsqueda por descripción** (modo="descripcion"):
        └─> Usuario escribe consulta en lenguaje natural
            └─> Embedding de consulta → Búsqueda vectorial en Qdrant
-               └─> DynamicJusticIARetriever con top_k y threshold
+               └─> DynamicServIARetriever con top_k y threshold
                    └─> Retorna documentos más similares semánticamente
 
     2. **Búsqueda por expediente** (modo="expediente"):
@@ -117,7 +117,7 @@ Separación de responsabilidades:
 Integración con RAG:
 
     La búsqueda por descripción usa arquitectura RAG completa:
-    1. Retrieval: DynamicJusticIARetriever obtiene contexto relevante
+    1. Retrieval: DynamicServIARetriever obtiene contexto relevante
     2. Augmentation: Contexto se agrega al prompt del LLM
     3. Generation: LLM genera respuesta informada por contexto
 
@@ -175,7 +175,7 @@ Ver también:
     - app.services.busqueda_similares.document_retriever: Recuperación de documentos
     - app.services.busqueda_similares.summary_generator: Generación con LLM
     - app.services.busqueda_similares.response_parser: Parseo de respuestas
-    - app.services.RAG.retriever: DynamicJusticIARetriever
+    - app.services.RAG.retriever: DynamicServIARetriever
     - app.vectorstore: get_vectorstore_backend().search_similar_expedients
 
 Authors:
@@ -204,7 +204,7 @@ from app.embeddings.embeddings import get_embeddings
 from app.llm.llm_service import get_llm
 
 # Importar módulos RAG para consistencia
-from app.services.RAG.retriever import DynamicJusticIARetriever
+from app.services.RAG.retriever import DynamicServIARetriever
 
 # Importar constructor de prompts específico para similarity
 from .similarity_prompt_builder import (
@@ -286,7 +286,7 @@ class SimilarityService:
         if not request.texto_consulta:
             raise ValueError("texto_consulta es requerido")
 
-        retriever = DynamicJusticIARetriever(
+        retriever = DynamicServIARetriever(
             top_k=request.limite or 30,
             similarity_threshold=request.umbral_similitud if request.umbral_similitud > 0 else 0.3
         )

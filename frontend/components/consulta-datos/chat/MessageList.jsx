@@ -53,7 +53,7 @@ const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
                 <div className="mb-6 flex justify-center">
                   <Image
                     src="/botInicio.png"
-                    alt="JusticIA Bot"
+                    alt="ServIA Bot"
                     width={192}
                     height={192}
                     className="w-32 h-32 sm:w-48 sm:h-48 object-contain"

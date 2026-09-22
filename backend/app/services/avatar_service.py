@@ -2,7 +2,7 @@
 Servicio de Gestión de Avatares de Usuarios.
 
 Este módulo proporciona funcionalidades completas para la gestión de avatares
-de usuarios en el sistema JusticIA, incluyendo subida, actualización, eliminación
+de usuarios en el sistema ServIA, incluyendo subida, actualización, eliminación
 y validación de imágenes de perfil.
 
 Arquitectura:

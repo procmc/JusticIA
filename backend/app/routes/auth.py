@@ -1,7 +1,7 @@
 """
 Rutas de Autenticación y Gestión de Contraseñas.
 
-Este módulo define endpoints REST para el sistema de autenticación JWT del sistema JusticIA.
+Este módulo define endpoints REST para el sistema de autenticación JWT del sistema ServIA.
 Maneja login, logout, renovación de tokens (sliding sessions), cambio de contraseñas,
 y recuperación de contraseñas mediante códigos de verificación por correo electrónico.
 

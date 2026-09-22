@@ -76,7 +76,7 @@ const Header = ({ toggleCollapse, setToggleCollapse }) => {
                     fontWeight: 900,
                     letterSpacing: '1px',
                   }}
-                >JusticIA</span>
+                >ServIA</span>
                
               </span>
             </span>

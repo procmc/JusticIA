@@ -86,7 +86,7 @@ LOCALIZADOR = os.getenv("HTR_LOCALIZADOR", "otsu").lower()
 # Segundos sin peticiones antes de devolver la GPU. 0 = no devolverla.
 IDLE_TIMEOUT = int(os.getenv("HTR_IDLE_TIMEOUT", "120"))
 
-app = FastAPI(title="JusticIA · Servidor HTR", version="0.2.0")
+app = FastAPI(title="ServIA · Servidor HTR", version="0.2.0")
 
 _procesador: TrOCRProcessor | None = None
 _modelo: VisionEncoderDecoderModel | None = None

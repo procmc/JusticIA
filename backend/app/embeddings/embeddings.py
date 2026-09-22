@@ -66,7 +66,7 @@ Ver también:
     * utils/hf_model.py: Pre-descarga del modelo
 
 Authors:
-    JusticIA Team
+    ServIA Team
     Andrés Araya Agüero
 Version:
     2.0.0 - Modelo configurable + soporte de prefijos E5

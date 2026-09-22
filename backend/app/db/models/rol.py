@@ -44,7 +44,7 @@ Ver también:
     * app.services.usuario_service: Asignación de roles
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

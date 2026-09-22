@@ -15,7 +15,7 @@ Variables de entorno requeridas (.env):
     MAIL_USERNAME=tu-email@gmail.com
     MAIL_PASSWORD=tu-app-password-aqui
     MAIL_FROM=tu-email@gmail.com
-    MAIL_FROM_NAME=JusticIA Sistema
+    MAIL_FROM_NAME=ServIA Sistema
     MAIL_SERVER=smtp.gmail.com
     MAIL_PORT=587
     MAIL_STARTTLS=True
@@ -105,7 +105,7 @@ class EmailSettings(BaseSettings):
     MAIL_FROM: str = ""
     MAIL_PORT: int = 587
     MAIL_SERVER: str = ""
-    MAIL_FROM_NAME: str = "JusticIA Sistema"
+    MAIL_FROM_NAME: str = "ServIA Sistema"
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
     USE_CREDENTIALS: bool = True

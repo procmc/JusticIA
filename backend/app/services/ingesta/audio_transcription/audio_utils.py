@@ -63,7 +63,7 @@ Ver también:
     * app.services.ingesta.audio_transcription.chunking_strategy: Usa split/cleanup
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Utilidades básicas de audio

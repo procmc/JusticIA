@@ -46,7 +46,7 @@ Ver también:
     * app.utils.expediente_validator: Validación de formato
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

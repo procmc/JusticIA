@@ -1,5 +1,5 @@
 """
-Módulo de embeddings para JusticIA.
+Módulo de embeddings para ServIA.
 
 Proporciona generación de vectores usando BGE-M3 (sentence-transformers)
 con adaptador para LangChain.
@@ -51,7 +51,7 @@ Ver también:
     * utils/hf_model.py: Pre-descarga del modelo
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - BGE-M3 con LangChain adapter

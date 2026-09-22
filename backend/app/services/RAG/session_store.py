@@ -56,7 +56,7 @@ Ver también:
     * app.services.rag.rag_chain_service: Usa conversation_store
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Redis persistencia con lazy loading

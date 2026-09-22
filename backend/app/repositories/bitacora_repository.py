@@ -1,5 +1,5 @@
 """
-Repositorio de Acceso a Datos para la Bitácora del Sistema JusticIA.
+Repositorio de Acceso a Datos para la Bitácora del Sistema ServIA.
 
 Este módulo gestiona todas las operaciones de persistencia, consulta y análisis
 sobre la tabla T_Bitacora, que constituye el registro de auditoría centralizado

@@ -37,7 +37,7 @@ Ver también:
     * app.services.usuario_service: Gestión de estados
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

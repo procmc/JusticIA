@@ -1,5 +1,5 @@
 """
-Modelos de base de datos del sistema JusticIA.
+Modelos de base de datos del sistema ServIA.
 
 Este paquete contiene todos los modelos SQLAlchemy 2.0 que definen el esquema
 de la base de datos SQL Server del sistema.
@@ -62,7 +62,7 @@ Ver también:
     * app.repositories: Capa de acceso a datos
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - SQLAlchemy 2.0+ with type hints
@@ -77,6 +77,7 @@ from .documento import T_Documento
 from .tipo_accion import T_Tipo_accion
 from .bitacora import T_Bitacora
 from .expediente_documento import T_Expediente_Documento
+from .notebook import T_Notebook
 
 __all__ = [
     "Base",
@@ -89,4 +90,5 @@ __all__ = [
     "T_Tipo_accion",
     "T_Bitacora",
     "T_Expediente_Documento",
+    "T_Notebook",
 ]

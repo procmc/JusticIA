@@ -80,7 +80,7 @@ Ver también:
     * app.routes.expedientes: Endpoints de progreso
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Sistema de tracking en Redis

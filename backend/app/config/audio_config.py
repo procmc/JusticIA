@@ -59,7 +59,7 @@ Ver también:
     * app.services.audio_service: Servicio de transcripción de audio
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Migrado de Whisper original a Faster-Whisper

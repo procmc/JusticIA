@@ -51,7 +51,7 @@ Ver también:
     * tasks.procesar_ingesta: Tarea Celery de procesamiento
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

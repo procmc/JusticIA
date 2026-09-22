@@ -1,5 +1,5 @@
 /**
- * Componente de Layout Principal del Sistema JusticIA.
+ * Componente de Layout Principal del Sistema ServIA.
  * 
  * @module components/Layout
  * @component

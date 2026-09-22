@@ -1,5 +1,5 @@
 """
-Sistema de autenticación simple para JusticIA
+Sistema de autenticación simple para ServIA
 """
 
 import jwt

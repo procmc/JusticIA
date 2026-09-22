@@ -4,7 +4,7 @@
 FROM python:3.11-slim
 
 # Metadata
-LABEL maintainer="JusticIA Team"
+LABEL maintainer="ServIA Team"
 LABEL description="Servicio de generación de diagramas de arquitectura"
 
 # Instalar Graphviz (requerido por Python Diagrams)

@@ -8,7 +8,7 @@ DIAGRAM=$1
 
 echo ""
 echo "==============================================================================="
-echo "              GENERADOR DE DIAGRAMAS - JusticIA (Docker)"
+echo "              GENERADOR DE DIAGRAMAS - ServIA (Docker)"
 echo "==============================================================================="
 echo ""
 

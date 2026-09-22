@@ -78,7 +78,7 @@ Ver también:
     * app.celery_app: Configuración de Celery
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Idempotencia y cancelación robusta

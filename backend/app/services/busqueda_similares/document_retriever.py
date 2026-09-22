@@ -8,7 +8,7 @@ incluso cuando el vectorstore presenta problemas.
 Arquitectura de recuperación:
 
     Estrategia Principal: Qdrant Vectorstore
-    └─> DynamicJusticIARetriever con filtro por expediente
+    └─> DynamicServIARetriever con filtro por expediente
         └─> Búsqueda vectorial de hasta 50 documentos
             └─> Threshold: 0.2 (permisivo para recuperar todo el expediente)
 
@@ -49,7 +49,7 @@ Parámetros de configuración:
     - expediente_filter: Número de expediente exacto
 
 Integración con otros servicios:
-    - DynamicJusticIARetriever: Búsqueda vectorial en Qdrant
+    - DynamicServIARetriever: Búsqueda vectorial en Qdrant
     - DocumentoService: Consultas directas a BD (fallback)
     - SimilarityService: Consumidor principal para búsquedas por expediente
 
@@ -77,7 +77,7 @@ Note:
     - Se preserva la estructura de metadata para compatibilidad con RAG
 
 Ver también:
-    - app.services.RAG.retriever: DynamicJusticIARetriever
+    - app.services.RAG.retriever: DynamicServIARetriever
     - app.services.busqueda_similares.documentos.documento_service: Acceso a BD
     - app.services.busqueda_similares.similarity_service: Consumidor principal
 
@@ -93,7 +93,7 @@ import logging
 from typing import List
 from langchain_core.documents import Document
 
-from app.services.RAG.retriever import DynamicJusticIARetriever
+from app.services.RAG.retriever import DynamicServIARetriever
 from .documentos.documento_service import DocumentoService
 
 logger = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ class DocumentRetriever:
         """
         try:
             # Estrategia principal: usar retriever con filtro directo
-            retriever = DynamicJusticIARetriever(
+            retriever = DynamicServIARetriever(
                 top_k=50,
                 similarity_threshold=0.2,
                 expediente_filter=numero_expediente

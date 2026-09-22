@@ -1,5 +1,5 @@
 """
-Adaptador LangChain para embeddings de JusticIA.
+Adaptador LangChain para embeddings de ServIA.
 
 Implementa interfaz Embeddings de LangChain sobre nuestro servicio
 de embeddings basado en sentence-transformers.
@@ -66,7 +66,7 @@ Ver también:
     * app.services.rag.retriever: Usa para retrieval
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0 - Adaptador con manejo robusto de event loops

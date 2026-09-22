@@ -1,5 +1,5 @@
 """
-Constantes de roles del sistema JusticIA
+Constantes de roles del sistema ServIA
 Estos roles deben coincidir exactamente con los valores en la tabla T_Rol de la BD
 """
 

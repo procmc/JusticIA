@@ -2,7 +2,7 @@
 Servicio Especializado de Auditoría para el Módulo de Autenticación.
 
 Este módulo registra todas las acciones relacionadas con autenticación,
-autorización y gestión de credenciales en la bitácora del sistema JusticIA,
+autorización y gestión de credenciales en la bitácora del sistema ServIA,
 proporcionando trazabilidad completa para seguridad y cumplimiento normativo.
 
 Eventos auditados:

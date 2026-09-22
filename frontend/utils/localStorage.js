@@ -41,7 +41,7 @@
  * @see {@link https://nextjs.org/docs/messages/react-hydration-error} Errores de hidratación en Next.js
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage} API localStorage
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 import { useState, useCallback } from 'react';

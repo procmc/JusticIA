@@ -61,7 +61,7 @@ Ver también:
     * app.services.rag.general_chains: Usa ANSWER_PROMPT
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     3.0.0 - Capacidades de plantillas + sistema de fuentes

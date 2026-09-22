@@ -1,5 +1,5 @@
 """
-Modelo SQLAlchemy para usuarios del sistema JusticIA.
+Modelo SQLAlchemy para usuarios del sistema ServIA.
 
 Define la tabla T_Usuario que almacena información de usuarios con autenticación,
 perfiles, roles y estados. Utiliza cédula costarricense como primary key.
@@ -45,7 +45,7 @@ Ver también:
     * app.routes.usuarios: Endpoints REST
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

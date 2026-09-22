@@ -1,5 +1,5 @@
 /**
- * Roles del sistema JusticIA
+ * Roles del sistema ServIA
  * Archivo centralizado para mantener consistencia entre frontend y backend
  */
 

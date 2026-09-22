@@ -39,7 +39,7 @@ Ver también:
     * app.repositories.bitacora_repository: Consultas por tipo
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

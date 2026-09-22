@@ -2,7 +2,7 @@
 Servicio Especializado de Auditoría para el Módulo de Gestión de Usuarios.
 
 Este módulo registra todas las operaciones administrativas sobre usuarios
-del sistema JusticIA, proporcionando trazabilidad completa de acciones CRUD
+del sistema ServIA, proporcionando trazabilidad completa de acciones CRUD
 y cambios de configuración para auditoría, seguridad y cumplimiento normativo.
 
 Eventos auditados:

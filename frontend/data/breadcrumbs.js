@@ -47,7 +47,7 @@
  * 
  * @see {@link ../components/DynamicBreadcrumbs.jsx} Componente que usa esta config
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 

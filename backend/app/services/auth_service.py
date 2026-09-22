@@ -1,8 +1,8 @@
 """
-Servicio de Autenticación y Gestión de Contraseñas para JusticIA.
+Servicio de Autenticación y Gestión de Contraseñas para ServIA.
 
 Este módulo implementa el sistema completo de autenticación, autorización y
-gestión de credenciales para usuarios del sistema JusticIA. Provee funcionalidades
+gestión de credenciales para usuarios del sistema ServIA. Provee funcionalidades
 de login, recuperación de contraseña, cambio de contraseña y restablecimiento
 administrativo.
 

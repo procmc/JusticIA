@@ -1,7 +1,7 @@
 """Repositorio de Acceso a Datos de Usuarios del Sistema.
 
 Este módulo implementa el patrón Repository para abstraer el acceso a datos
-de usuarios del sistema JusticIA. Maneja operaciones CRUD, autenticación,
+de usuarios del sistema ServIA. Maneja operaciones CRUD, autenticación,
 gestión de contraseñas con bcrypt, y avatares de usuario.
 
 Arquitectura de usuarios:

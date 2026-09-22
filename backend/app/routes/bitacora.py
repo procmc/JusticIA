@@ -2,7 +2,7 @@
 Rutas de Consulta y Estadísticas de la Bitácora de Auditoría.
 
 Este módulo define endpoints REST para consultar y analizar los registros de bitácora
-del sistema JusticIA. Todos los eventos críticos del sistema (login, logout, consultas RAG,
+del sistema ServIA. Todos los eventos críticos del sistema (login, logout, consultas RAG,
 modificaciones de usuarios, acceso a archivos, etc.) se registran en la bitácora.
 
 Arquitectura de bitácora:

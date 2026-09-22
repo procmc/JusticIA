@@ -29,7 +29,7 @@ const HeaderGestionUsuarios = ({
                   Gestión de Usuarios
                 </h1>
                 <p className="text-white/80 text-sm">
-                  Administra usuarios del sistema JusticIA
+                  Administra usuarios del sistema ServIA
                 </p>
               </div>
             </div>

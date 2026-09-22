@@ -70,7 +70,7 @@ Ver también:
     * app.services.ingesta.audio_transcription.audio_utils: Utilidades audio
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     2.0.0 - Arquitectura modular con estrategias

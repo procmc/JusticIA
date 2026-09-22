@@ -61,7 +61,7 @@ class EmailTemplate:
         self,
         usuario_nombre: str,
         password: str,
-        titulo_sistema: str = "JusticIA"
+        titulo_sistema: str = "ServIA"
     ) -> str:
         """
         Genera el HTML completo para correos de credenciales
@@ -71,7 +71,7 @@ class EmailTemplate:
         
         contenido = f"""
         <h2>Hola {usuario_nombre},</h2>
-        <p>Se ha creado tu cuenta en el sistema JusticIA. Tu contraseña de acceso es:</p>
+        <p>Se ha creado tu cuenta en el sistema ServIA. Tu contraseña de acceso es:</p>
         
         <div class="password">{password}</div>
         
@@ -101,7 +101,7 @@ class EmailTemplate:
         datos_adicionales: Optional[Dict[str, Any]] = None,
         mostrar_credenciales: bool = False,
         credenciales: Optional[Dict[str, str]] = None,
-        titulo_sistema: str = "JusticIA"
+        titulo_sistema: str = "ServIA"
     ) -> str:
         """
         Genera HTML para cualquier tipo de correo usando la misma plantilla base
@@ -160,7 +160,7 @@ class EmailTemplate:
         return f"""
         Hola {usuario_nombre},
 
-        Se ha creado tu cuenta en el sistema JusticIA.
+        Se ha creado tu cuenta en el sistema ServIA.
         Tu contraseña de acceso es: {password}
 
         Importante:
@@ -171,5 +171,5 @@ class EmailTemplate:
         Puedes acceder al sistema usando tu email y esta contraseña.
 
         --
-        Sistema JusticIA
+        Sistema ServIA
         """

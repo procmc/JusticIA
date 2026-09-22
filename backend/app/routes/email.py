@@ -2,7 +2,7 @@
 Rutas de Testing y Diagnóstico del Servicio de Correo Electrónico.
 
 Este módulo define endpoints auxiliares para probar y verificar la configuración
-del servicio de envío de correos electrónicos del sistema JusticIA.
+del servicio de envío de correos electrónicos del sistema ServIA.
 
 Endpoints de utilidad:
     - POST /email/test-email: Envía correo de prueba para validar configuración

@@ -2,7 +2,7 @@
  * @fileoverview Configuración de RAG (Retrieval-Augmented Generation) para frontend.
  * 
  * Este módulo define los parámetros de configuración para las búsquedas vectoriales
- * y generación aumentada por recuperación (RAG) en el frontend de JusticIA.
+ * y generación aumentada por recuperación (RAG) en el frontend de ServIA.
  * 
  * IMPORTANTE: Estos valores DEBEN coincidir con backend/app/config/rag_config.py
  * para mantener consistencia en consultas y resultados entre cliente y servidor.
@@ -59,7 +59,7 @@
  * @see {@link ../services/consultaService.js} Servicio que usa esta configuración
  * @see {@link ../services/similarityService.js} Servicio de búsqueda de similares
  * 
- * @author JusticIA Team
+ * @author ServIA Team
  * @version 1.0.0
  */
 

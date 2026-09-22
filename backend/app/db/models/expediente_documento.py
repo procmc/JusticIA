@@ -34,7 +34,7 @@ Ver también:
     * app.services.expediente_service: Gestión de asociaciones
 
 Authors:
-    JusticIA Team
+    ServIA Team
 
 Version:
     1.0.0

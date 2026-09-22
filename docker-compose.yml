@@ -1,3 +1,5 @@
+name: servia
+
 services:
   backend:
     build:
@@ -177,9 +179,18 @@ services:
               capabilities: [gpu]
 
 volumes:
+  # 'name:' fija cada volumen al que ya existe con el prefijo 'justicia_'
+  # (creado antes del rebranding) para que el proyecto 'servia' reutilice
+  # los datos reales en vez de crear volumenes nuevos vacios.
   redis_data:
+    name: justicia_redis_data
   sqlserver_data:
+    name: justicia_sqlserver_data
   ollama_data:
+    name: justicia_ollama_data
   qdrant_data:
+    name: justicia_qdrant_data
   htr_hf_cache:
+    name: justicia_htr_hf_cache
   htr_doctr_cache:
+    name: justicia_htr_doctr_cache

@@ -4,7 +4,7 @@
  * @module components/Layout/Sidebar
  * @component
  * 
- * Sidebar colapsable que muestra el menú de navegación principal del sistema JusticIA.
+ * Sidebar colapsable que muestra el menú de navegación principal del sistema ServIA.
  * El menú se filtra dinámicamente según el rol del usuario (Administrador/Usuario Judicial).
  * 
  * Características:
@@ -211,7 +211,7 @@ const Sidebar = ({ toggleCollapse, setToggleCollapse }) => {
                         fontWeight: 900,
                         letterSpacing: '1px',
                       }}
-                    >JusticIA</span>
+                    >ServIA</span>
                     <span
                       className="block h-1 w-full rounded-full transition-all duration-300 origin-left mt-1 group-hover:shadow-lg group-hover:shadow-cyan-400/50"
                       style={{background: 'linear-gradient(90deg, #ffffff 0%, #e5e7eb 40%, #ffffffff 100%)', transform: 'scaleX(1)'}}
