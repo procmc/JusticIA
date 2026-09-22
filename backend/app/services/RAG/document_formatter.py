@@ -102,7 +102,7 @@ def format_document_with_metadata(doc: Document) -> str:
     # lo tenga delante, por su entrenamiento como modelo de solo texto.
     extensiones_imagen = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
     es_imagen = archivo_mostrar.lower().endswith(extensiones_imagen)
-    origen_str = "**Origen:** texto reconocido por HTR a partir de una imagen manuscrita\n" if es_imagen else ""
+    origen_str = "**Origen:** documento escaneado, ya transcrito automáticamente a texto\n" if es_imagen else ""
 
     # Construir header con metadata
     header = (
