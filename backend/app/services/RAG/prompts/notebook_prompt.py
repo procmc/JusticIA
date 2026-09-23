@@ -18,11 +18,83 @@ Version:
     1.0.0
 """
 
+import re
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
+# Detecta si la pregunta del usuario menciona un archivo de imagen (por
+# extensión o por la palabra "imagen"/"foto"). Cuando pasa, el modelo tiende
+# a interpretar la pregunta como un pedido de "ver" la imagen directamente
+# -- ignorando el contexto -- y responde negando acceso, aunque el texto ya
+# reconocido esté servido completo más abajo en el prompt. Verificado: el
+# disparador está en la redacción de la PREGUNTA, no en cómo se presenta el
+# contexto (se probó reformular la anotación de origen y ocultar la
+# extensión en el header, sin efecto).
+_PATRON_REFERENCIA_IMAGEN = re.compile(
+    r'\b[\w\-]+\.(jpg|jpeg|png|tif|tiff|bmp)\b|\bimagen(es)?\b|\bfoto(s|graf[ií]a)?\b',
+    re.IGNORECASE,
+)
 
-def get_notebook_system_prompt(nombre_notebook: str) -> str:
-    """Genera el prompt del sistema para análisis de un notebook específico."""
+
+def _menciona_archivo_de_imagen(pregunta: str) -> bool:
+    return bool(pregunta) and bool(_PATRON_REFERENCIA_IMAGEN.search(pregunta))
+
+
+# Patrones para reformular la pregunta ANTES de que el modelo la vea (última
+# vía probada, distinta a reforzar instrucciones): si el disparador está en
+# la redacción de la pregunta del usuario, la única forma de evitarlo del
+# todo es que el modelo nunca lea la palabra "imagen"/"foto" ni un nombre de
+# archivo con extensión de imagen. El historial de la conversación guarda
+# esta versión reformulada, no la original -- limitación conocida y
+# aceptada de esta técnica.
+_PATRON_ARCHIVO_IMAGEN_CON_ARTICULO = re.compile(
+    r'\b(?:(?:la|el|lo|una|un)\s+)?[\w\-]+\.(?:jpg|jpeg|png|tif|tiff|bmp)\b',
+    re.IGNORECASE,
+)
+_PATRON_LA_IMAGEN = re.compile(r'\b(la|una)\s+imagen(es)?\b', re.IGNORECASE)
+_PATRON_IMAGEN_SOLA = re.compile(r'\bimagen(es)?\b', re.IGNORECASE)
+_PATRON_FOTO = re.compile(r'\bfoto(s|graf[ií]a)?\b', re.IGNORECASE)
+
+
+def reformular_referencia_imagen(pregunta: str) -> str:
+    """Reemplaza menciones a archivos de imagen por una referencia genérica.
+
+    Devuelve la pregunta sin cambios si no menciona ninguna imagen.
+    """
+    if not _menciona_archivo_de_imagen(pregunta):
+        return pregunta
+
+    resultado = _PATRON_ARCHIVO_IMAGEN_CON_ARTICULO.sub("el archivo subido", pregunta)
+    resultado = _PATRON_LA_IMAGEN.sub("el documento", resultado)
+    resultado = _PATRON_IMAGEN_SOLA.sub("documento", resultado)
+    resultado = _PATRON_FOTO.sub("documento", resultado)
+    return resultado
+
+
+def get_notebook_system_prompt(nombre_notebook: str, pregunta: str = "") -> str:
+    """Genera el prompt del sistema para análisis de un notebook específico.
+
+    Args:
+        nombre_notebook: Nombre del notebook bajo análisis.
+        pregunta: La pregunta del usuario en este turno. Si menciona un
+            archivo de imagen, se agrega un recordatorio reforzado justo
+            antes de "RESPUESTA A LA CONSULTA" -- la posición más cercana
+            a donde el modelo decide qué generar, en vez de solo repetir
+            la regla al principio de un prompt de varios miles de
+            caracteres.
+    """
+    recordatorio_imagen = ""
+    if _menciona_archivo_de_imagen(pregunta):
+        recordatorio_imagen = """
+⚠️ **RECORDATORIO FINAL, LEÉLO JUSTO ANTES DE RESPONDER:**
+Tu pregunta actual menciona un archivo que suena a imagen. Ese archivo
+NO es una imagen que debas "ver" -- es texto ya reconocido por HTR, y si
+tiene contenido real, ya está en "DOCUMENTOS DEL NOTEBOOK" arriba (buscá
+la línea "**Archivo:**" con ese nombre). NUNCA respondas "no puedo
+acceder a imágenes" ni pidas que te describan la imagen: leé el texto ya
+recuperado y respondé con eso, exactamente igual que harías con un PDF.
+"""
+
     return f"""Eres el asistente de ServIA, especializado en analizar los documentos de un notebook (una colección de documentos que el usuario organizó).
 
 🚫 **REGLA #1, LA MÁS IMPORTANTE DE TODAS — LÉELA ANTES QUE CUALQUIER OTRA:**
@@ -127,15 +199,21 @@ Al final de tu respuesta, SIEMPRE incluye las fuentes usando EXACTAMENTE este fo
 - Usa guión + espacio al inicio: "- "
 - Si el mismo archivo aparece varias veces, lista la ruta **UNA SOLA VEZ**
 - NO uses tablas, NO uses otros formatos para las fuentes
-
+{recordatorio_imagen}
 RESPUESTA A LA CONSULTA:
 """
 
 
-def get_notebook_prompt(nombre_notebook: str) -> ChatPromptTemplate:
-    """Crea el prompt template para un notebook específico."""
+def get_notebook_prompt(nombre_notebook: str, pregunta: str = "") -> ChatPromptTemplate:
+    """Crea el prompt template para un notebook específico.
+
+    Args:
+        pregunta: La pregunta del usuario en este turno (ver
+            get_notebook_system_prompt) -- se usa solo para decidir si
+            agregar el recordatorio reforzado contra negar imágenes.
+    """
     return ChatPromptTemplate.from_messages([
-        ("system", get_notebook_system_prompt(nombre_notebook)),
+        ("system", get_notebook_system_prompt(nombre_notebook, pregunta)),
         MessagesPlaceholder("chat_history"),
         ("human", "{input}"),
     ])

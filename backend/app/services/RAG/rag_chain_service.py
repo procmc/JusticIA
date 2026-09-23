@@ -71,6 +71,7 @@ from .retriever import DynamicServIARetriever
 from .general_chains import create_conversational_rag_chain, stream_chain_response
 from .expediente_chains import create_expediente_specific_chain
 from .notebook_chains import create_notebook_specific_chain
+from .prompts.notebook_prompt import reformular_referencia_imagen
 from .session_store import conversation_store
 from app.services.notebook_service import NotebookService
 from app.db.database import get_db
@@ -363,11 +364,22 @@ class RAGChainService:
             f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
         )
 
+        # Última vía contra el rechazo del modelo a reconocer imágenes
+        # (5 refuerzos de prompt fallaron igual): reformular la pregunta
+        # ANTES de que el modelo la vea, quitando la palabra "imagen"/
+        # "foto" o el nombre del archivo. El historial de la conversación
+        # guarda esta versión reformulada, no la que escribió el usuario
+        # -- limitación conocida y aceptada de esta técnica.
+        pregunta_para_llm = reformular_referencia_imagen(pregunta)
+        if pregunta_para_llm != pregunta:
+            logger.info(f"Pregunta reformulada para evitar el rechazo a imágenes: {pregunta!r} -> {pregunta_para_llm!r}")
+
         # Crear chain especializada para notebooks (prompt genérico, no judicial)
         chain = await create_notebook_specific_chain(
             retriever=retriever,
             nombre_notebook=nombre_notebook,
-            with_history=True
+            with_history=True,
+            pregunta=pregunta_para_llm
         )
 
         logger.info(f"Chain notebook creada")
@@ -379,7 +391,7 @@ class RAGChainService:
         }
 
         input_dict = {
-            "input": pregunta
+            "input": pregunta_para_llm
         }
 
         async def event_generator():

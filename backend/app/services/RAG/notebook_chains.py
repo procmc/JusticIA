@@ -31,14 +31,21 @@ logger = logging.getLogger(__name__)
 async def create_notebook_specific_chain(
     retriever,
     nombre_notebook: str,
-    with_history: bool = True
+    with_history: bool = True,
+    pregunta: str = ""
 ):
-    """Crea una chain especializada para análisis de un notebook específico."""
+    """Crea una chain especializada para análisis de un notebook específico.
+
+    Args:
+        pregunta: La pregunta de este turno. Se pasa al prompt para que
+            agregue el recordatorio reforzado contra negar imágenes solo
+            cuando la pregunta menciona un archivo de ese tipo.
+    """
     llm = await get_llm()
 
     formatted_retriever = FormattedRetriever(retriever)
 
-    NOTEBOOK_PROMPT = get_notebook_prompt(nombre_notebook)
+    NOTEBOOK_PROMPT = get_notebook_prompt(nombre_notebook, pregunta)
 
     question_answer_chain = create_stuff_documents_chain(
         llm=llm,
