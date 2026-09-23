@@ -374,12 +374,24 @@ class RAGChainService:
         if pregunta_para_llm != pregunta:
             logger.info(f"Pregunta reformulada para evitar el rechazo a imágenes: {pregunta!r} -> {pregunta_para_llm!r}")
 
+        # Nombres reales de los archivos del notebook, para que el prompt
+        # los liste explícitamente (ver get_notebook_system_prompt). Sin
+        # esto, preguntas vagas ("el documento que subí", "el archivo
+        # agregado") seguían negando el archivo aunque el contexto ya lo
+        # tuviera. Consulta barata: es el mismo filtro por metadata que
+        # ya usa la chain, no una búsqueda semántica nueva.
+        docs_del_notebook = await retriever._aget_relevant_documents(pregunta_para_llm)
+        archivos_disponibles = [
+            d.metadata.get('archivo') for d in docs_del_notebook if d.metadata.get('archivo')
+        ]
+
         # Crear chain especializada para notebooks (prompt genérico, no judicial)
         chain = await create_notebook_specific_chain(
             retriever=retriever,
             nombre_notebook=nombre_notebook,
             with_history=True,
-            pregunta=pregunta_para_llm
+            pregunta=pregunta_para_llm,
+            archivos_disponibles=archivos_disponibles
         )
 
         logger.info(f"Chain notebook creada")

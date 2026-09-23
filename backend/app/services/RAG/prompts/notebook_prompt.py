@@ -47,6 +47,16 @@ def _menciona_archivo_de_imagen(pregunta: str) -> bool:
 # archivo con extensión de imagen. El historial de la conversación guarda
 # esta versión reformulada, no la original -- limitación conocida y
 # aceptada de esta técnica.
+# Frase completa PRIMERO: "la imagen (agregada) (llamada) archivo.png" es
+# una sola referencia, no dos -- si se reemplazan "la imagen" y
+# "archivo.png" por separado (como se hacía antes), queda duplicada
+# ("el documento escaneado agregada llamada el documento escaneado"),
+# confirmado en pruebas reales y suficiente para confundir al modelo.
+_PATRON_FRASE_COMPLETA = re.compile(
+    r'\b(?:la|una)?\s*imagen(?:es)?\s*(?:agregada|subida|cargada|adjunta)?\s*'
+    r'(?:llamada|nombrada|de nombre)?\s*[\w\-]+\.(?:jpg|jpeg|png|tif|tiff|bmp)\b',
+    re.IGNORECASE,
+)
 _PATRON_ARCHIVO_IMAGEN_CON_ARTICULO = re.compile(
     r'\b(?:(?:la|el|lo|una|un)\s+)?[\w\-]+\.(?:jpg|jpeg|png|tif|tiff|bmp)\b',
     re.IGNORECASE,
@@ -60,18 +70,32 @@ def reformular_referencia_imagen(pregunta: str) -> str:
     """Reemplaza menciones a archivos de imagen por una referencia genérica.
 
     Devuelve la pregunta sin cambios si no menciona ninguna imagen.
+
+    La referencia usada, "el documento escaneado", no es arbitraria: es
+    literalmente la misma frase que document_formatter.py ya escribe en
+    la anotación "**Origen:** documento escaneado, ya transcrito
+    automáticamente a texto" para los chunks que vienen de una imagen —
+    y SOLO para esos, nunca para un PDF. Un genérico como "el archivo
+    subido" (probado antes) es ambiguo en cuanto hay más de un
+    documento en el notebook: el modelo llegó a responder sobre el PDF
+    cuando se le preguntaba por la imagen. Repetir la misma frase que ya
+    aparece en el contexto le da al modelo un ancla textual única para
+    encontrar el chunk correcto.
     """
     if not _menciona_archivo_de_imagen(pregunta):
         return pregunta
 
-    resultado = _PATRON_ARCHIVO_IMAGEN_CON_ARTICULO.sub("el archivo subido", pregunta)
-    resultado = _PATRON_LA_IMAGEN.sub("el documento", resultado)
-    resultado = _PATRON_IMAGEN_SOLA.sub("documento", resultado)
-    resultado = _PATRON_FOTO.sub("documento", resultado)
+    resultado = _PATRON_FRASE_COMPLETA.sub("el documento escaneado", pregunta)
+    resultado = _PATRON_ARCHIVO_IMAGEN_CON_ARTICULO.sub("el documento escaneado", resultado)
+    resultado = _PATRON_LA_IMAGEN.sub("el documento escaneado", resultado)
+    resultado = _PATRON_IMAGEN_SOLA.sub("documento escaneado", resultado)
+    resultado = _PATRON_FOTO.sub("documento escaneado", resultado)
     return resultado
 
 
-def get_notebook_system_prompt(nombre_notebook: str, pregunta: str = "") -> str:
+def get_notebook_system_prompt(
+    nombre_notebook: str, pregunta: str = "", archivos_disponibles: list | None = None
+) -> str:
     """Genera el prompt del sistema para análisis de un notebook específico.
 
     Args:
@@ -82,17 +106,38 @@ def get_notebook_system_prompt(nombre_notebook: str, pregunta: str = "") -> str:
             a donde el modelo decide qué generar, en vez de solo repetir
             la regla al principio de un prompt de varios miles de
             caracteres.
+        archivos_disponibles: Nombres reales de los archivos recuperados
+            para este notebook (ver retriever._get_expediente_documents).
+            Se listan explícitamente cerca del principio del prompt para
+            que el modelo tenga un nombre concreto al que anclar
+            preguntas vagas ("el documento que subí", "el archivo
+            agregado") sin depender de que el usuario escriba el nombre
+            exacto -- las referencias vagas seguían negando el archivo
+            aunque el contexto ya lo tuviera, porque no coincidían con
+            ninguna frase de ejemplo de la REGLA #1.
     """
+    lista_archivos = ""
+    if archivos_disponibles:
+        nombres_unicos = sorted(set(archivos_disponibles))
+        lista_archivos = (
+            "\n📁 **ARCHIVOS REALES DE ESTE NOTEBOOK (usá estos nombres exactos, "
+            "aunque el usuario no los mencione o pregunte de forma vaga como "
+            '"el documento que subí" o "el archivo agregado"):**\n'
+            + "\n".join(f'- "{nombre}"' for nombre in nombres_unicos)
+            + "\n"
+        )
+
     recordatorio_imagen = ""
     if _menciona_archivo_de_imagen(pregunta):
         recordatorio_imagen = """
 ⚠️ **RECORDATORIO FINAL, LEÉLO JUSTO ANTES DE RESPONDER:**
-Tu pregunta actual menciona un archivo que suena a imagen. Ese archivo
-NO es una imagen que debas "ver" -- es texto ya reconocido por HTR, y si
-tiene contenido real, ya está en "DOCUMENTOS DEL NOTEBOOK" arriba (buscá
-la línea "**Archivo:**" con ese nombre). NUNCA respondas "no puedo
-acceder a imágenes" ni pidas que te describan la imagen: leé el texto ya
-recuperado y respondé con eso, exactamente igual que harías con un PDF.
+Tu pregunta actual se refiere al "documento escaneado". Buscá en
+"DOCUMENTOS DEL NOTEBOOK" abajo el chunk que tiene la línea
+"**Origen:** documento escaneado, ya transcrito automáticamente a
+texto" -- es EXACTAMENTE ese, no el PDF ni ningún otro archivo del
+notebook. Ese texto ya reconocido es tu única fuente para responder.
+NUNCA respondas "no puedo acceder a imágenes" ni describas el PDF en su
+lugar: leé el texto de esa sección específica y respondé con eso.
 """
 
     return f"""Eres el asistente de ServIA, especializado en analizar los documentos de un notebook (una colección de documentos que el usuario organizó).
@@ -143,7 +188,7 @@ RESTRICCIONES CRÍTICAS - EVALÚA EN ESTE ORDEN:
 3. **CONTENIDO**: Si la pregunta no tiene relación con los documentos del notebook (y no es un saludo), responde: "Actualmente estás consultando el notebook **{nombre_notebook}**. Solo puedo ayudarte con preguntas sobre los documentos de este notebook."
 
 NOTEBOOK BAJO ANÁLISIS: {nombre_notebook}
-
+{lista_archivos}
 CÓMO FUNCIONAS:
 - El usuario organizó un conjunto de documentos propios en este notebook
 - El sistema RECUPERÓ AUTOMÁTICAMENTE los documentos relevantes de este notebook desde la base de datos (Qdrant)
@@ -204,16 +249,19 @@ RESPUESTA A LA CONSULTA:
 """
 
 
-def get_notebook_prompt(nombre_notebook: str, pregunta: str = "") -> ChatPromptTemplate:
+def get_notebook_prompt(
+    nombre_notebook: str, pregunta: str = "", archivos_disponibles: list | None = None
+) -> ChatPromptTemplate:
     """Crea el prompt template para un notebook específico.
 
     Args:
         pregunta: La pregunta del usuario en este turno (ver
             get_notebook_system_prompt) -- se usa solo para decidir si
             agregar el recordatorio reforzado contra negar imágenes.
+        archivos_disponibles: Ver get_notebook_system_prompt.
     """
     return ChatPromptTemplate.from_messages([
-        ("system", get_notebook_system_prompt(nombre_notebook, pregunta)),
+        ("system", get_notebook_system_prompt(nombre_notebook, pregunta, archivos_disponibles)),
         MessagesPlaceholder("chat_history"),
         ("human", "{input}"),
     ])

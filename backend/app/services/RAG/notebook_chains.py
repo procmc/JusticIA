@@ -32,7 +32,8 @@ async def create_notebook_specific_chain(
     retriever,
     nombre_notebook: str,
     with_history: bool = True,
-    pregunta: str = ""
+    pregunta: str = "",
+    archivos_disponibles: list | None = None
 ):
     """Crea una chain especializada para análisis de un notebook específico.
 
@@ -40,12 +41,15 @@ async def create_notebook_specific_chain(
         pregunta: La pregunta de este turno. Se pasa al prompt para que
             agregue el recordatorio reforzado contra negar imágenes solo
             cuando la pregunta menciona un archivo de ese tipo.
+        archivos_disponibles: Nombres reales de los archivos del notebook,
+            para que el prompt los liste explícitamente (ver
+            notebook_prompt.get_notebook_system_prompt).
     """
     llm = await get_llm()
 
     formatted_retriever = FormattedRetriever(retriever)
 
-    NOTEBOOK_PROMPT = get_notebook_prompt(nombre_notebook, pregunta)
+    NOTEBOOK_PROMPT = get_notebook_prompt(nombre_notebook, pregunta, archivos_disponibles)
 
     question_answer_chain = create_stuff_documents_chain(
         llm=llm,
