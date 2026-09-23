@@ -12,7 +12,9 @@ import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
   createUserMessage,
   createEmptyAssistantMessage,
-  createStreamingCallbacks
+  createStreamingCallbacks,
+  saveNotebookChatToSessionStorage,
+  restoreNotebookChatFromSessionStorage
 } from '@/utils/chat/messageUtils';
 
 /**
@@ -102,14 +104,34 @@ const NotebooksPage = () => {
 
   const seleccionarNotebook = (notebook) => {
     setNotebookActivo(notebook);
-    setMessages([]);
     setArchivosSubiendo([]);
     setArchivosSeleccionados([]);
     setDocumentosNotebook([]);
-    const userId = session?.user?.email || 'anonimo';
-    setSessionId(`session_notebook_${notebook.id}_${userId}_${Date.now()}`);
+
+    // Restaurar la conversación si ya existía (guardada en sessionStorage
+    // la última vez que se salió de este notebook). Si no hay nada
+    // guardado, es la primera vez que se abre: sesión nueva.
+    const restaurado = restoreNotebookChatFromSessionStorage(notebook.id);
+    if (restaurado) {
+      setSessionId(restaurado.sessionId);
+      setMessages(restaurado.messages);
+    } else {
+      const userId = session?.user?.email || 'anonimo';
+      setSessionId(`session_notebook_${notebook.id}_${userId}_${Date.now()}`);
+      setMessages([]);
+    }
+
     cargarDocumentos(notebook.id);
   };
+
+  // Guardar la conversación en sessionStorage cada vez que cambia, para
+  // poder restaurarla si el usuario cambia de notebook y vuelve, o
+  // recarga la página.
+  useEffect(() => {
+    if (notebookActivo && sessionId) {
+      saveNotebookChatToSessionStorage(notebookActivo.id, sessionId, messages);
+    }
+  }, [messages, sessionId, notebookActivo]);
 
   const handleEliminarDocumento = async (documentoId) => {
     if (!notebookActivo) return;

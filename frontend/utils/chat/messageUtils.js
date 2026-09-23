@@ -369,3 +369,42 @@ export const restoreFromSessionStorage = (sessionId) => {
 
   return null;
 };
+
+/**
+ * Guarda el chat de un notebook en sessionStorage, con clave propia por
+ * notebook. A diferencia del chat general (una sola conversación activa
+ * a la vez), en NotebookServIA conviven varias conversaciones -- una por
+ * notebook -- así que no alcanza con una clave global como
+ * 'current_chat_session'.
+ */
+export const saveNotebookChatToSessionStorage = (notebookId, sessionId, messages) => {
+  if (!notebookId || !sessionId || !messages || messages.length === 0) return;
+  try {
+    sessionStorage.setItem(`notebook_chat_session_${notebookId}`, sessionId);
+    sessionStorage.setItem(`notebook_chat_messages_${notebookId}`, JSON.stringify(messages));
+  } catch (error) {
+    // sessionStorage lleno o inaccesible (navegación privada): no es crítico
+  }
+};
+
+/**
+ * Restaura el chat de un notebook desde sessionStorage, si existe.
+ * Devuelve null si no hay nada guardado para ese notebook.
+ */
+export const restoreNotebookChatFromSessionStorage = (notebookId) => {
+  if (!notebookId) return null;
+  try {
+    const savedSessionId = sessionStorage.getItem(`notebook_chat_session_${notebookId}`);
+    const savedMessages = sessionStorage.getItem(`notebook_chat_messages_${notebookId}`);
+
+    if (savedSessionId && savedMessages) {
+      const parsedMessages = JSON.parse(savedMessages);
+      if (parsedMessages.length > 0) {
+        return { sessionId: savedSessionId, messages: parsedMessages };
+      }
+    }
+  } catch (error) {
+    sessionStorage.removeItem(`notebook_chat_messages_${notebookId}`);
+  }
+  return null;
+};
