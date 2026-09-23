@@ -105,6 +105,14 @@ services:
       # intercambio: el servidor de HTR hace lo mismo (HTR_IDLE_TIMEOUT),
       # así ninguno de los dos expulsa al otro de la GPU. Ver doc 22.
       - OLLAMA_KEEP_ALIVE=2m
+      # Sin esto, Ollama decide solo cuantas ranuras de generacion
+      # concurrente reservar y DIVIDE el num_ctx configurado entre ellas
+      # (bug real encontrado el 23/09: con 2 ranuras, 8192 quedaba en
+      # 4096 tokens reales por request, truncando notebooks con varios
+      # documentos y llegando a crashear el model runner). La app
+      # procesa una consulta a la vez por usuario, no necesita
+      # paralelismo real dentro de Ollama.
+      - OLLAMA_NUM_PARALLEL=1
     restart: unless-stopped
     deploy:
       resources:
