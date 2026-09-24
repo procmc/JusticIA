@@ -8,6 +8,7 @@ import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX } from 'react-icons/f
 
 import notebookService from '@/services/notebookService';
 import ingestaService from '@/services/ingestaService';
+import Toast from '@/components/ui/CustomAlert';
 import consultaService from '@/services/consultaService';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
@@ -211,6 +212,7 @@ const NotebooksPage = () => {
       nuevos.forEach(a => pollTaskProgress(a.taskId, a.nombre, notebookActivo.id));
     } catch (error) {
       console.error('Error subiendo archivos al notebook:', error);
+      Toast.error('Error al subir', error.message || 'No se pudo subir el archivo. Intentá de nuevo.');
     }
   };
 

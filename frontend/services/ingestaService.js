@@ -10,7 +10,7 @@
  * Características:
  *   - Upload de archivos con FormData
  *   - Reintentos automáticos (exponential backoff) solo para errores de red
- *   - Validación de tamaño máximo (200MB)
+ *   - Validación de tamaño máximo (1GB, igual que el backend)
  *   - Polling de progreso sin reintentos (alta frecuencia)
  *   - Consulta paralela de múltiples tareas
  *   - Cancelación de procesamiento "best effort"
@@ -78,11 +78,14 @@ class IngestaService {
       throw new Error('Debe seleccionar al menos un archivo');
     }
 
-    const maxFileSize = 200 * 1024 * 1024; // 200MB
+    const maxFileSize = 1024 * 1024 * 1024; // 1GB -- igual que MAX_FILE_SIZE del backend (file_config.py)
     const invalidFiles = archivos.filter(file => file.size > maxFileSize);
-    
+
     if (invalidFiles.length > 0) {
-      throw new Error(`Algunos archivos exceden el límite de 200MB: ${invalidFiles.map(f => f.name).join(', ')}`);
+      const detalle = invalidFiles
+        .map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(1)}MB)`)
+        .join(', ');
+      throw new Error(`Supera el límite de 1GB por archivo: ${detalle}`);
     }
 
     return true;

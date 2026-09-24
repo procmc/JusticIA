@@ -323,7 +323,25 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         setUploading(false);
         return;
       }
-      
+
+      // Validación de tamaño: se hace acá (y no solo dentro de
+      // subirArchivos) para que el mensaje específico llegue al usuario --
+      // el catch de la subida más abajo sanitiza el error a un mensaje
+      // genérico, y este sí necesita decir exactamente qué archivo y por
+      // cuánto se pasó del límite.
+      const filesPendientes = listFiles.filter(f =>
+        f.status === 'pendiente' && f.expediente?.trim()
+      );
+      if (filesPendientes.length > 0) {
+        try {
+          ingestaService.validateFiles(filesPendientes.map(f => f.file));
+        } catch (error) {
+          Toast.error('Archivo demasiado grande', error.message);
+          setUploading(false);
+          return;
+        }
+      }
+
       // Agrupar por expediente
       const filesByExpediente = listFiles.reduce((acc, file) => {
         if (file.status === 'pendiente' && file.expediente?.trim()) {
