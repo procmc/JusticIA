@@ -154,11 +154,29 @@ export const markMessageAsCanceled = (message) => {
   const currentText = message.text || '';
   return {
     ...message,
-    text: currentText.trim() 
+    text: currentText.trim()
       ? currentText + '\n\n---\n\n*Consulta cancelada por el usuario*'
       : '*Consulta cancelada por el usuario*',
     timestamp: formatearSoloHoraCostaRica(new Date()),
     isCanceled: true
+  };
+};
+
+/**
+ * Marca mensaje como cortado por pérdida de conexión a mitad de stream
+ * (ver createStreamingCallbacks -> temporizador de inactividad). A
+ * diferencia de createErrorMessage(), conserva el texto parcial que ya
+ * había llegado antes del corte en vez de reemplazarlo.
+ */
+export const markMessageAsConnectionLost = (message) => {
+  const currentText = message.text || '';
+  return {
+    ...message,
+    text: currentText.trim()
+      ? currentText + '\n\n---\n\n*Se perdió la conexión con el servidor. Intentá de nuevo.*'
+      : '*Se perdió la conexión con el servidor. Intentá de nuevo.*',
+    timestamp: formatearSoloHoraCostaRica(new Date()),
+    isError: true
   };
 };
 
@@ -193,6 +211,13 @@ export const createErrorMessage = (error) => {
 // CALLBACKS DE STREAMING
 // ============================================
 
+// Si un stream se queda en silencio (ni chunk, ni done, ni error) por más
+// de esto, se da por perdida la conexión y se libera el estado solo. Ver
+// doc 26 §3.9: un corte abrupto (crash de Docker, wifi) no dispara ni
+// onComplete ni onError -- reader.read() del fetch se queda esperando una
+// promesa que nunca se resuelve.
+const STREAM_INACTIVITY_TIMEOUT_MS = 30000;
+
 /**
  * Crea callbacks para streaming de mensajes
  */
@@ -206,9 +231,46 @@ export const createStreamingCallbacks = (
   retryCountRef,
   retryFunction
 ) => {
+  let inactivityTimer = null;
+
+  const clearInactivityTimer = () => {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+    }
+  };
+
+  const onConnectionLost = () => {
+    inactivityTimer = null;
+    // Verificar que esta request siga siendo la activa
+    if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
+      setStreamingMessageIndex(null);
+      setIsTyping(false);
+      currentRequestRef.current = null;
+
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages];
+        if (updatedMessages[messageIndex]) {
+          updatedMessages[messageIndex] = markMessageAsConnectionLost(updatedMessages[messageIndex]);
+        }
+        return updatedMessages;
+      });
+    }
+  };
+
+  const resetInactivityTimer = () => {
+    clearInactivityTimer();
+    inactivityTimer = setTimeout(onConnectionLost, STREAM_INACTIVITY_TIMEOUT_MS);
+  };
+
+  // Arranca el reloj desde ya: si no llega ni el primer chunk (silencio
+  // total desde el inicio de la consulta), también debe liberarse solo.
+  resetInactivityTimer();
+
   const onChunk = (chunk) => {
     // Verificar que esta request siga siendo la activa
     if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
+      resetInactivityTimer();
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         if (updatedMessages[messageIndex]) {
@@ -223,6 +285,7 @@ export const createStreamingCallbacks = (
   };
 
   const onComplete = () => {
+    clearInactivityTimer();
     // Verificar que esta request siga siendo la activa
     if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
       setStreamingMessageIndex(null);
@@ -253,7 +316,11 @@ export const createStreamingCallbacks = (
               if (currentRequestRef.current === null || currentRequestRef.current.id === requestId) {
                 setIsTyping(true);
                 setStreamingMessageIndex(messageIndex);
-                
+                // Vuelve a armar el reloj para el reintento -- si tampoco
+                // llega nada esta vez, debe liberarse solo igual que la
+                // primera vez.
+                resetInactivityTimer();
+
                 const retryRequestId = requestId + 0.1;
                 currentRequestRef.current = { active: true, id: retryRequestId };
                 
@@ -304,6 +371,7 @@ export const createStreamingCallbacks = (
   };
 
   const onError = (error) => {
+    clearInactivityTimer();
     // Verificar que esta request siga siendo la activa
     if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
       setStreamingMessageIndex(null);
