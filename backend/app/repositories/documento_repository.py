@@ -305,8 +305,11 @@ class DocumentoRepository:
         """
         try:
             query = db.query(T_Documento.CT_Nombre_archivo).join(
+                T_Expediente_Documento,
+                T_Documento.CN_Id_documento == T_Expediente_Documento.c.CN_Id_documento
+            ).join(
                 T_Expediente,
-                T_Documento.CN_Id_expediente == T_Expediente.CN_Id_expediente
+                T_Expediente_Documento.c.CN_Id_expediente == T_Expediente.CN_Id_expediente
             ).filter(
                 T_Expediente.CT_Num_expediente == expediente_numero
             )
@@ -377,8 +380,11 @@ class DocumentoRepository:
             stmt = select(T_Estado_procesamiento.CT_Nombre_estado).select_from(
                 T_Documento
             ).join(
+                T_Expediente_Documento,
+                T_Documento.CN_Id_documento == T_Expediente_Documento.c.CN_Id_documento
+            ).join(
                 T_Expediente,
-                T_Documento.CN_Id_expediente == T_Expediente.CN_Id_expediente
+                T_Expediente_Documento.c.CN_Id_expediente == T_Expediente.CN_Id_expediente
             ).join(
                 T_Estado_procesamiento,
                 T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
