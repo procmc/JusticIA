@@ -53,6 +53,21 @@ class NotebookService {
   }
 
   /**
+   * Obtener el archivo original de un documento como blob, para previsualizarlo
+   * (imagen o PDF) sin forzar una descarga.
+   */
+  async obtenerArchivoPreview(notebookId, documentoId) {
+    try {
+      const response = await httpService.get(`/notebooks/${notebookId}/documentos/${documentoId}/archivo`);
+      const blob = await response.blob();
+      return { success: true, url: URL.createObjectURL(blob), tipo: blob.type };
+    } catch (error) {
+      console.error('Error al obtener el archivo del documento:', error);
+      return { error: true, message: error.message || 'Error al obtener el archivo' };
+    }
+  }
+
+  /**
    * Quitar un documento de un notebook (Qdrant, archivo físico y BD)
    */
   async eliminarDocumento(notebookId, documentoId) {

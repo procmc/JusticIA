@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
-  Card, CardBody, Button, Input, Spinner, Chip
+  Card, CardBody, Button, Input, Spinner, Chip,
+  Modal, ModalContent, ModalHeader, ModalBody
 } from '@heroui/react';
 import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX } from 'react-icons/fi';
 
@@ -141,6 +142,29 @@ const NotebooksPage = () => {
       setDocumentosNotebook(prev => prev.filter(d => d.id !== documentoId));
     }
     setEliminandoId(null);
+  };
+
+  // Previsualización: click en un documento ya procesado abre su archivo
+  // original (imagen o PDF) para verificar qué dice contra la respuesta del chat.
+  const [preview, setPreview] = useState(null); // { url, tipo, nombre } | null
+  const [cargandoPreviewId, setCargandoPreviewId] = useState(null);
+
+  const handleVerArchivo = async (doc, e) => {
+    // El botón "x" de cerrar vive dentro del mismo Chip que este onClick:
+    // si el click vino de ahí, es para eliminar el documento, no para verlo.
+    if (e?.target?.closest('[aria-label="close chip"]')) return;
+    if (!notebookActivo || doc.estado !== 'Procesado' || cargandoPreviewId) return;
+    setCargandoPreviewId(doc.id);
+    const result = await notebookService.obtenerArchivoPreview(notebookActivo.id, doc.id);
+    if (result.success) {
+      setPreview({ url: result.url, tipo: result.tipo, nombre: doc.nombre_archivo });
+    }
+    setCargandoPreviewId(null);
+  };
+
+  const cerrarPreview = () => {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
   };
 
   // ===================== Ingesta =====================
@@ -402,8 +426,11 @@ const NotebooksPage = () => {
                       variant="flat"
                       onClose={() => handleEliminarDocumento(doc.id)}
                       isDisabled={eliminandoId === doc.id}
+                      onClick={(e) => handleVerArchivo(doc, e)}
+                      className={doc.estado === 'Procesado' ? 'cursor-pointer' : ''}
+                      title={doc.estado === 'Procesado' ? 'Click para ver el archivo original' : undefined}
                     >
-                      {doc.nombre_archivo}
+                      {cargandoPreviewId === doc.id ? 'Abriendo…' : doc.nombre_archivo}
                     </Chip>
                   ))}
                 </div>
@@ -467,6 +494,24 @@ const NotebooksPage = () => {
           </>
         )}
       </div>
+
+      {/* Previsualización del archivo original — verificar qué dice contra la respuesta del chat */}
+      <Modal isOpen={!!preview} onClose={cerrarPreview} size="3xl" scrollBehavior="inside">
+        <ModalContent>
+          <ModalHeader>{preview?.nombre}</ModalHeader>
+          <ModalBody className="pb-6">
+            {preview?.tipo?.startsWith('image/') ? (
+              <img src={preview.url} alt={preview.nombre} className="max-w-full h-auto mx-auto" />
+            ) : preview?.tipo === 'application/pdf' ? (
+              <iframe src={preview.url} title={preview.nombre} className="w-full h-[75vh] border-0" />
+            ) : (
+              <p className="text-gray-500 text-center py-8">
+                Vista previa no disponible para este tipo de archivo.
+              </p>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

@@ -22,7 +22,10 @@ Version:
     1.0.0
 """
 
+import mimetypes
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -99,6 +102,13 @@ async def _obtener_notebook_o_404(db: Session, notebook_id: int, usuario_id: str
     return notebook
 
 
+def _obtener_documento_del_notebook_o_404(db: Session, notebook, documento_id: int):
+    documento = documento_repo.obtener_por_id(db, documento_id)
+    if not documento or notebook.clave_interna not in [e.CT_Num_expediente for e in documento.expedientes]:
+        raise HTTPException(status_code=404, detail="Documento no encontrado en este notebook")
+    return documento
+
+
 @router.get("/{notebook_id}/documentos", response_model=list[DocumentoNotebookResponse])
 async def listar_documentos_notebook(
     notebook_id: int,
@@ -123,6 +133,31 @@ async def listar_documentos_notebook(
     ]
 
 
+@router.get("/{notebook_id}/documentos/{documento_id}/archivo")
+async def ver_archivo_documento_notebook(
+    notebook_id: int,
+    documento_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial),
+):
+    """
+    Sirve el archivo original de un documento del notebook para previsualizarlo
+    (imagen o PDF renderizado inline en el navegador, no forzado a descarga).
+    """
+    notebook = await _obtener_notebook_o_404(db, notebook_id, current_user["user_id"])
+    documento = _obtener_documento_del_notebook_o_404(db, notebook, documento_id)
+
+    if not documento_repo.verificar_esta_procesado(db, notebook.clave_interna, documento.CT_Nombre_archivo):
+        raise HTTPException(status_code=400, detail="El archivo aún no está disponible para previsualizar")
+
+    ruta_archivo = file_management_service.obtener_ruta_archivo(notebook.clave_interna, documento.CT_Nombre_archivo)
+    if not ruta_archivo:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    media_type, _ = mimetypes.guess_type(documento.CT_Nombre_archivo)
+    return FileResponse(path=str(ruta_archivo), media_type=media_type or "application/octet-stream")
+
+
 @router.delete("/{notebook_id}/documentos/{documento_id}")
 async def eliminar_documento_notebook(
     notebook_id: int,
@@ -132,10 +167,7 @@ async def eliminar_documento_notebook(
 ):
     """Quita un documento de un notebook: chunks de Qdrant, archivo físico y registro en BD."""
     notebook = await _obtener_notebook_o_404(db, notebook_id, current_user["user_id"])
-
-    documento = documento_repo.obtener_por_id(db, documento_id)
-    if not documento or notebook.clave_interna not in [e.CT_Num_expediente for e in documento.expedientes]:
-        raise HTTPException(status_code=404, detail="Documento no encontrado en este notebook")
+    documento = _obtener_documento_del_notebook_o_404(db, notebook, documento_id)
 
     # 1. Chunks de Qdrant
     await get_vectorstore_backend().delete_document_chunks(documento_id)
