@@ -380,9 +380,14 @@ class RAGChainService:
         # agregado") seguían negando el archivo aunque el contexto ya lo
         # tuviera. Consulta barata: es el mismo filtro por metadata que
         # ya usa la chain, no una búsqueda semántica nueva.
+        # metadata usa 'nombre_archivo' en la práctica (aunque metadata_fields.py
+        # documenta 'archivo' como canónico) — mismo fallback defensivo que ya
+        # usa chunk_context_builder.py para esta misma inconsistencia.
         docs_del_notebook = await retriever._aget_relevant_documents(pregunta_para_llm)
         archivos_disponibles = [
-            d.metadata.get('archivo') for d in docs_del_notebook if d.metadata.get('archivo')
+            d.metadata.get('nombre_archivo') or d.metadata.get('archivo')
+            for d in docs_del_notebook
+            if d.metadata.get('nombre_archivo') or d.metadata.get('archivo')
         ]
 
         # Crear chain especializada para notebooks (prompt genérico, no judicial)
