@@ -1,0 +1,87 @@
+# MEMORY.md — ServIA
+
+Memoria del proyecto entre sesiones. Máximo 200 líneas: resume o elimina lo que ya no aporte. Sin datos sensibles: el repositorio es público.
+Última actualización: 05/10/2026.
+
+## Estado actual
+
+- **Sistema funcionando** con 8 servicios de Docker Compose y el frontend con npm, en una PC con GPU de 8 GB:
+  - inicio de sesión con dos roles;
+  - gestión de usuarios;
+  - ingesta asíncrona de texto (Tika + OCR), audio (Whisper) e imagen (HTR);
+  - chat RAG con streaming y cita de fuente (general, acotado a un tema o a un notebook);
+  - búsqueda híbrida por tema;
+  - historial de conversaciones;
+  - temas similares con resumen IA;
+  - bitácora y dashboard de métricas.
+- **NotebookServIA (v1)**: crear notebooks, subir documentos (botón, pegar o arrastrar), chatear, previsualizar el original y quitar documentos.
+- **Fases de la práctica**:
+  - Fase 1 (ambiente local), Fase 2 (migración a Qdrant, embeddings e5, SQL Server y Ollama locales) y Fase 3 (estado del arte del HTR): cerradas.
+  - Fase 4, Ciclo 1: HTR integrado (`trocr-large-handwritten`, CER 0.2771 sobre letra real).
+  - Fase 4, Ciclo 2: localizador docTR (CER 0.4507 → 0.3248).
+  - Fase 4, Ciclo 3: búsqueda híbrida cerrada.
+  - Fase 4, Ciclo 4: integración de punta a punta probada; el ajuste LoRA no se inició.
+- **Manuscrito**: limitación aceptada (reunión con el tutor, 25/09). El reconocimiento en imagen se orienta a texto impreso o tipeado (RF-09, RF-10).
+- **Documentación de planificación** (28–30/09) en `Documentacion/Documentacion_ServIA_2026/`:
+  - 9 documentos (Visión, StakeHolder, ERS 1.4 (05/10: RA-02 pasa a «Cobertura progresiva de pruebas automatizadas» y RF-09 a «Parcial»), HU 1.1, Casos de Uso, Modelo de Dominio, Procesos, C4 y Modelo Relacional);
+  - 33 diagramas PlantUML y los PDF.
+  - Se enviaron al tutor el 30/09; su revisión está pendiente.
+- **Requisitos parciales** según el ERS («Estado actual»): RF-02, RF-03, RF-05, RF-06, RF-09, RF-13, RF-15, RF-19, RF-20 y RNF-08. El código todavía conserva el vocabulario «expediente».
+- **Integración de Claude Code** (04–05/10): `CLAUDE.md`, `MEMORY.md`, los comandos `/feature` y `/sdd-*` (constitution, spec, clarify, plan, tasks, implement, validate, change y status) y las skills `sdd`, `find-skills`, `frontend-design`, `web-design-guidelines`, `systematic-debugging`, `verification-before-completion`, `webapp-testing` y `pytest-coverage` (esta última para cuando existan las pruebas automatizadas). En borrador (05/10): los agentes `coordinator`, `planner`, `implementer` y `reviewer` (cada comando nombra el suyo en `agent:`), los hooks `validate-bash.sh` (bloquea lo «Nunca» y pregunta lo «Pregunta antes» en la terminal; al revisor solo le deja consultar) y `validate-edit.sh` (el planner solo escribe en `specs/` y en la constitución), y las reglas `api-conventions`, `code-style` y `testing`. La constitución (`docs/constitution.md`) quedó aprobada por Andrés el 05/10; faltan las specs.
+- **Hallazgos sin corregir** (05/10): `/email/test-email` y `/email/email-config` no exigen sesión (incumple RNF-07); las constantes de `metadata_fields.py` no coinciden con las claves reales de Qdrant; `routes/notebooks.py` usa repositorios sin pasar por su servicio.
+- **Repositorio**: rama `fase4`; último commit de código el 24/09. `Documentacion/` todavía no está versionada.
+
+## Aprendizajes y errores a evitar
+
+- **Fallas silenciadas.** Varias fallas reales estuvieron ocultas por excepciones que nadie veía: el filtro de Qdrant, `num_ctx`, un join contra una columna inexistente y la clave de metadatos. Antes de dar algo por terminado, probarlo con datos reales de punta a punta.
+- **Ollama en CPU.** Corría en CPU (unos 5 minutos por respuesta) porque `docker-compose.yml` no reservaba la GPU. Con la reserva `nvidia` baja a ~1,2 s. Si el chat se vuelve lento, revisar `ollama ps` y el uso de la GPU.
+- **Muestras pequeñas engañan.** Con 2 líneas ganaba otro modelo y con 18 el orden se invirtió. El set sintético tampoco predice el resultado con letra real.
+- **El CER no es lo que importa para el RAG.** Una diferencia de mayúsculas casi no mueve el embedding (coseno 0,971). Evaluar también por recuperación, no solo por CER.
+- **El LLM no corrige el HTR.** Corregir la salida del HTR con el LLM empeoró el CER entre 10 % y 14 % y destruye nombres propios.
+- **Límite del modelo de 8B con imágenes.** Aunque el texto esté bien indexado, niega tener acceso al archivo o inventa su identidad. Cuatro variantes de prompt no lo resolvieron.
+- **PyTorch en Windows.** Smart App Control bloquea PyTorch nativo, y si se apaga no se puede reactivar; por eso todo lo de PyTorch corre en contenedores Linux. `transformers` está fijado a `>=4.44,<5`, porque la versión 5 rompe TrOCR.
+- **Ubicación y respaldos.** El proyecto está totalmente en local, fuera de OneDrive, y el código se respalda en Git. `backend/.env` no está en Git y se respalda aparte.
+- **Documentos Word.** Andrés puede editarlos a mano y avisa cuando lo hace, para revisar el cambio. Antes de regenerar un documento, partir siempre del archivo vigente para no perder esas ediciones.
+- **PlantUML:**
+  - recorta las imágenes de más de 4096 px (bajar los dpi);
+  - con ELK, los recuadros ignoran el estilo por etiqueta (usar estilo en línea);
+  - un `switch` que cruza carriles en un diagrama de actividad lo hace fallar.
+
+## Decisiones (y por qué)
+
+- **Monolito modular**: JusticIA, aunque se describía como de microservicios, ya era un monolito a nivel de código. ServIA es su continuidad y el equipo de desarrollo es una sola persona, así que mantener esa arquitectura es lo más conveniente.
+- **Infraestructura 100 % local** (RT-02, RNF-09), porque la información institucional es sensible.
+- **Fase 2**:
+  - Qdrant reemplazó a Milvus (acuerdo del 09/09).
+  - `multilingual-e5-large` reemplazó a BGE-M3, que es de origen chino (RT-04).
+  - SQL Server y Ollama pasaron a correr localmente, en lugar de Azure y la nube.
+- **`llama3.1:8b`** porque la GPU de 8 GB se comparte con el HTR. Cada servicio libera la memoria de video tras 2 minutos sin uso.
+- **Selección del HTR**:
+  - `trocr-large-handwritten` (Ciclo 1) y localizador docTR (Ciclo 2).
+  - Descartados: Surya y Transkribus (licencia), Donut (no transcribe) y el corpus Rodrigo (ortografía del siglo XVI).
+- **Giro gubernamental** (09/09, confirmado el 25/09): ServIA sirve a cualquier institución pública y lo conduce el MICITT — Dirección de Gobernanza. El nombre ServIA se adoptó el 21/09.
+- **NotebookServIA**: reutiliza la tubería existente con la clave interna `NB-<id>`, para no tocar la ingesta. El enlace formal con su tema está planificado en el Modelo Relacional.
+- **Documentación de planificación**: los documentos definen el producto y el código se ajusta a ellos; los desfases se marcan como «Estado actual».
+- **«Expediente» → «tema» en código y base de datos**: el tutor lo autorizó conceptualmente, pero se ejecuta solo con su confirmación explícita, porque toca casi todo el sistema.
+- **Correo**: cuenta de desarrollo propia mientras se define la institucional (acuerdo con el tutor).
+- **Diagramas**: con líneas rectas (ELK), por legibilidad.
+- **Desarrollo *spec-anchored*** (05/10): la spec queda como referencia viva junto al código y todo cambio pasa primero por ella, para que Andrés conozca a la vez las especificaciones y lo que pasa en el código.
+- **Pruebas automatizadas obligatorias** (05/10): ninguna spec se aprueba solo con verificación manual, porque las fallas silenciadas mostraron que la prueba manual no alcanza. Lo heredado se cubre con specs retroactivas por riesgo (orden en `.claude/rules/testing.md`); la meta es al menos una prueba por requisito, no el 100 % de cobertura.
+- **Spec 001, reconocimiento de texto impreso (RF-09): implementada el 05/10.** Los Ciclos 1 y 2 se hicieron sobre manuscrito (limitación aceptada, RT-05), pero RF-09 pide texto impreso y en producción sigue `trocr-large-handwritten`. Se midieron 5 candidatos sobre 10 capturas de pantalla (155 líneas; sin fotos ni escaneos). Herramientas en `htr/` (`evaluar_impreso.py`, `metricas_impreso.py`, suite `pytest` en `servidor-htr`), resultados en `specs/001-reconocimiento-texto-impreso/resultados.md` y sección 9 de `htr/README.md`; el JSON crudo y el set (`htr/dataset/impreso/`) no se versionan, y solo `htr/corpus/impreso/capturas/1.txt` sí.
+  - **Resultado (CER / VRAM / s por página / acierto en tildes y ñ):** modelo actual 0,121 / 2,15 GB / 8,5 / 0 %; qantev 0,064 / 2,35 / 10,25 / 88,8 %; trocr-printed 0,840 / 2,35 / 11,7 / 0,6 %; **docTR 0,048 / 0,71 / 0,31 / 14,2 %**; Tesseract vía Tika 1,0 (sin OCR).
+  - **Ganador N-6: docTR**, «listo para integrar» solo para capturas. Pero pierde á í ó ú ñ ¿ ¡ (su vocabulario solo trae é y ü) y qantev quedó fuera solo por 0,25 s sobre el límite de 10 s, que el planner fijó sin medir (Andrés acepta hasta 1 min en la ingesta). Subir el límite no cambia el ganador. Andrés prioriza acertar las letras y respetar tildes y ñ cuando se pueda.
+  - **RF-09 pasa a «Parcial»** en el ERS 1.4 (N-7, con su «Estado actual»). **Cambio de requisito pendiente (N-8):** RF-09, HU-09, CU-08 y FH-01 dicen «docTR + TrOCR»; se tramita con `/sdd-change` al abrir la spec de integración, que decide el reconocedor midiendo también la recuperación en el chat con docTR y con qantev.
+  - **Lecciones:** (1) en WSL2, `torch.cuda.mem_get_info` solo ve la VRAM del propio proceso (~1,1 GB sin ningún modelo; con Ollama cargado seguía diciendo 1,05 GB mientras `nvidia-smi` marcaba 5,7 GB): la guardia de GPU mide con `nvidia-smi` (umbral 1,0 GB) y hay que probarla con el caso que debe detectar. (2) Al reconstruir `servidor-htr` subieron dependencias menores (fastapi, uvicorn, onnx…); torch, transformers 4.57.6, opencv y docTR 1.1.0 (fijado) no cambiaron, y Andrés aceptó no fijar más versiones. (3) El contenedor no tiene `git`: la prueba de N-10 usa `git check-ignore` si existe y, si no, lee `htr/.gitignore`. (4) Las pruebas nombran la carpeta del set como `"data" + "set"` para no activar la prueba de N-11.
+- **Hallazgo pendiente (corrección de error aparte, fuera de la spec 001)**: el Tika desplegado NO hace OCR de imágenes (`/meta` muestra `EmptyParser` para `image/png`, aunque `TesseractOCRParser` está cargado, y Tesseract directo en su contenedor sí lee la imagen). Corregir `backend/tika-config.xml` y comprobar si los PDF escaneados también pierden su OCR.
+- En Git Bash, un heredoc con comillas invertidas falla («unexpected EOF»): usar Write/Edit. `docker compose exec -w`/`docker cp` necesitan `MSYS_NO_PATHCONV=1`.
+
+## Próximos pasos
+
+1. Recibir las observaciones y la aprobación del tutor sobre los 9 documentos.
+2. Corregir dos inconsistencias: en el Documento de Visión (D-04), Nexus.PJ aparece como «autorizada», y en el ERS, RNF-06 debe quedar Parcial.
+3. Hecho el 05/10: Poppler y el MCP `chrome-devtools` funcionan en Claude Code, y el ERS 1.4 (Word y PDF) está al día.
+4. Specs de pruebas, en orden: infraestructura de pruebas (pytest, Playwright y entorno aislado), red de seguridad de los flujos críticos y specs retroactivas por módulo. Agregar los comandos de prueba a `CLAUDE.md` y al hook del revisor.
+5. Después, los «Estado actual» del ERS y la corrección de los hallazgos, con sus pruebas; y los comandos de operación (`/bitacora`, `/levantar`, `/diagramas`, `/subir`).
+6. Generalización «expediente» → «tema» y cambios del Modelo Relacional: esperar la confirmación del tutor.
+7. Por definir: si el Ciclo 4 (LoRA) sigue vigente tras declarar el manuscrito como limitación. Spec de integración del reconocimiento de imágenes (RF-09): `/sdd-change` por docTR, decidir docTR o qantev midiendo la recuperación en el chat, y corregir antes el OCR de Tika; va después de la red de seguridad de pruebas.
+8. Respuestas pendientes: uso de Nexus.PJ, cuenta de correo institucional y corpus SPA-Sentences.
