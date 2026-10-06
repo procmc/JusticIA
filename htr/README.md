@@ -378,7 +378,60 @@ La brecha es ahora 0.3248 contra 0.2480. Lo que falta es de dos tipos:
 
 ---
 
-## 9. Estado
+## 9. Ciclo de texto impreso (spec 001)
+
+Los ciclos anteriores midieron manuscrito. Este mide **texto impreso en
+capturas de pantalla** (RF-09) con `evaluar_impreso.py`, y su detalle y sus
+límites están en `specs/001-reconocimiento-texto-impreso/resultados.md`.
+
+**Cómo correrlo** (desde la raíz del proyecto, con el set en
+`htr/dataset/impreso/capturas/`, que no se versiona):
+
+```bash
+docker compose exec servidor-htr pytest                       # suite (sin la de integración)
+docker compose exec servidor-htr python evaluar_impreso.py --solo-verificar-set
+docker compose exec servidor-htr python evaluar_impreso.py --descargar   # único paso con red
+docker compose stop ollama                                    # esperar a que /salud diga "cpu" (~120 s)
+docker compose exec servidor-htr python evaluar_impreso.py    # mide sin red; deja el JSON en resultados/
+docker compose exec servidor-htr pytest -m integracion        # GPU, pesos y Tika reales
+docker compose start ollama
+```
+
+La herramienta se niega a medir si Ollama tiene un modelo cargado (lee la
+VRAM con `nvidia-smi`: en WSL2 `torch.cuda.mem_get_info` solo ve el propio
+proceso) o si el servidor HTR tiene el suyo en la GPU.
+
+**Resultado** (10 capturas, 155 líneas, 05/10/2026):
+
+| # | Candidato | CER | s/página | VRAM (GB) | Acierto en español |
+|---|---|---|---|---|---|
+| 1 | trocr-large-handwritten (producción) | 0,1208 | 8,52 | 2,15 | 0,0 % |
+| 2 | qantev/trocr-large-spanish | 0,0642 | 10,25 | 2,35 | 88,8 % |
+| 3 | trocr-large-printed | 0,8401 | 11,72 | 2,35 | 0,6 % |
+| 4 | **docTR 1.1.0 completo** | **0,0484** | 0,31 | 0,71 | 14,2 % |
+| 5 | Tesseract (vía Tika) | 1,0000 | 0,03 | 0,00 | 0,0 % |
+
+Gana docTR, «listo para integrar para capturas de pantalla»; la línea base no
+cumple el criterio (CER > 0,10) y gana un candidato distinto de TrOCR, así que
+queda propuesto RF-09 «Parcial» y un cambio de requisito.
+
+**Advertencias**:
+
+* El vocabulario de docTR no incluye á í ó ú ñ ¿ ¡: pierde esas marcas siempre.
+* qantev (mejor acierto en español) quedó fuera por 0,25 s sobre el límite de
+  10 s; subir el límite no cambia el ganador. Cuál integrar se decide en la spec
+  de integración, midiendo también la recuperación en el chat.
+* Tesseract da CER 1 porque el Tika desplegado no hace OCR de imágenes
+  (`EmptyParser`): es un error de configuración aparte, no la calidad de
+  Tesseract.
+* Solo capturas de pantalla: sin fotos con celular ni escaneos.
+
+**Estado**: medición hecha y documentada; la integración al pipeline de
+ingesta es otra spec y espera a la red de seguridad de pruebas.
+
+---
+
+## 10. Estado
 
 - [x] Entorno aislado del backend, PyTorch en contenedor
 - [x] 21 tipografías con cobertura del español verificada + licencias

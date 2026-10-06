@@ -51,6 +51,8 @@ RUN pip install --no-cache-dir --break-system-packages \
 # adivinar: son sus dependencias obligatorias menos torch, torchvision,
 # numpy y Pillow, que ya vienen de la imagen base o de arriba, y con
 # opencv-python cambiado por su variante headless.
+# python-doctr se fija con == a la version que ya estaba instalada (spec 001,
+# N-4): subirla cambiaria el localizador de produccion como efecto secundario.
 RUN pip install --no-cache-dir --break-system-packages \
         "opencv-python-headless>=4.10" \
         "onnx>=1.12,<3" \
@@ -65,7 +67,12 @@ RUN pip install --no-cache-dir --break-system-packages \
         "validators>=0.18" \
         "tqdm>=4.30" \
     && pip install --no-cache-dir --break-system-packages --no-deps \
-        "python-doctr>=1.0"
+        "python-doctr==1.1.0"
+
+# pytest: suite propia de las herramientas de htr/ (spec 001), que se corre
+# con `docker compose exec servidor-htr pytest`. Va en su propia capa, al
+# final, para no reconstruir las capas anteriores al agregarlo.
+RUN pip install --no-cache-dir --break-system-packages "pytest>=8.0"
 
 # Los pesos descargados de Hugging Face se cachean en un volumen para no
 # re-bajar 1.4 GB en cada corrida. Los de docTR van a su propia cache, que

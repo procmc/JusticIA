@@ -1,0 +1,19 @@
+1.5 Visión General del Documento
+Este documento se organiza en cuatro secciones. La sección 1 (Introducción) presenta el propósito del
+documento, el ámbito del sistema y la terminología utilizada. La sección 2 (Descripción General) expone
+la perspectiva del producto, sus funciones a alto nivel, el perfil de usuarios, las restricciones y los
+supuestos y dependencias del proyecto. La sección 3 (Requisitos Específicos) detalla, módulo por módulo,
+los requisitos funcionales y no funcionales del sistema con su descripción, salida esperada, prioridad,
+estado de implementación y, en el caso de los requisitos funcionales, su trazabilidad hacia las historias de
+usuario y los casos de uso. La sección 4 (Apéndices) incluye la matriz de trazabilidad completa y referencias
+complementarias.
+2. Descripción General
+2.1 Perspectiva del Producto
+ServIA es la continuidad de JusticIA. Es un sistema construido como monolito modular — no como
+arquitectura de microservicios, a diferencia de lo previsto en el análisis de requerimientos original — con
+backend en FastAPI (Python) y frontend en Next.js (React), orquestado con Docker Compose sobre ocho
+servicios: backend, celery-worker (procesamiento asíncrono), tika (extracción de texto), redis (cola de
+tareas), sqlserver (base de datos relacional, local), ollama (modelo de lenguaje local), qdrant (base de
+datos vectorial) y el servidor de reconocimiento de escritura (HTR).
+El sistema funciona en infraestructura 100% local, sin dependencias de servicios de inteligencia artificial
+en la nube, por la sensibilidad de la información judicial y gubernamental que procesa. Esta es una decisión

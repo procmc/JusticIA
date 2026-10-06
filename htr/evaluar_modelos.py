@@ -39,6 +39,8 @@ MODELOS = {
     # Licencia MIT. Advertencia: NO declara con qué dataset se entrenó, así
     # que no se puede verificar la procedencia ni la licencia de esos datos.
     "base_es_hw": "ifesther/trocr-spanish-handwritten",
+    # Spec 001 (texto impreso): versión de TrOCR entrenada con texto impreso.
+    "large_printed": "microsoft/trocr-large-printed",
 }
 
 
