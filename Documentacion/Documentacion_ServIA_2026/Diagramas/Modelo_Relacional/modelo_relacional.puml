@@ -1,0 +1,125 @@
+@startuml modelo_relacional
+!pragma layout elk
+hide circle
+hide empty members
+skinparam dpi 200
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam titleFontSize 22
+skinparam legendBackgroundColor #FFFFFF
+skinparam legendBorderColor #CED4DA
+skinparam legendFontSize 13
+skinparam class {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  ArrowColor #1F4E79
+  HeaderBackgroundColor #D5E3F0
+  FontStyle bold
+  AttributeFontSize 13
+}
+skinparam class<<catálogo>> {
+  BackgroundColor #F8F9FA
+  BorderColor #868E96
+  HeaderBackgroundColor #E9ECEF
+}
+
+title Modelo relacional — ServIA (SQL Server 2022)
+
+legend top left
+|= Leyenda | <&key> Llave primaria (PK) | • Obligatoria (NOT NULL) | «FK» Llave foránea | «UK» Valor único |<#E9ECEF>   | Catálogo | <color:#E67700>Naranja</color>: cambio planificado |
+Cardinalidad en notación de pata de gallo: | uno · o cero · { muchos. Ejemplo: ||--o{ se lee «uno a cero o muchos».
+endlegend
+
+entity "T_Rol" as T_Rol <<catálogo>> {
+  <&key> CN_Id_rol : INT <<PK>>
+  --
+  * CT_Nombre_rol : VARCHAR(50) <<UK>>
+}
+
+entity "T_Estado" as T_Estado <<catálogo>> {
+  <&key> CN_Id_estado : INT <<PK>>
+  --
+  * CT_Nombre_estado : VARCHAR(50) <<UK>>
+}
+
+entity "T_Estado_procesamiento" as T_Estado_procesamiento <<catálogo>> {
+  <&key> CN_Id_estado : INT <<PK>>
+  --
+  * CT_Nombre_estado : VARCHAR(50) <<UK>>
+}
+
+entity "T_Tipo_accion" as T_Tipo_accion <<catálogo>> {
+  <&key> CN_Id_tipo_accion : INT <<PK>>
+  --
+  * CT_Nombre_tipo_accion : VARCHAR(50) <<UK>>
+}
+
+entity "T_Usuario" as T_Usuario {
+  <&key> CN_Id_usuario : VARCHAR(20) <<PK>>
+  --
+  * <color:#E67700>CN_Id_rol : INT <<FK>></color>
+  * <color:#E67700>CN_Id_estado : INT <<FK>></color>
+  * CT_Nombre_usuario : VARCHAR(50) <<UK>>
+  * CT_Nombre : VARCHAR(100)
+  * CT_Apellido_uno : VARCHAR(100)
+  * <color:#E67700>CT_Apellido_dos : VARCHAR(100)</color>
+  * CT_Correo : VARCHAR(100) <<UK>>
+  * CT_Contrasenna : VARCHAR(255)
+  CT_Avatar_ruta : VARCHAR(255)
+  CT_Avatar_tipo : VARCHAR(50)
+  CF_Ultimo_acceso : DATETIME
+  * CF_Fecha_creacion : DATETIME
+}
+
+entity "<color:#E67700>T_Tema</color>" as T_Tema {
+  <&key> <color:#E67700>CN_Id_tema : BIGINT <<PK>></color>
+  --
+  * <color:#E67700>CT_Nombre : VARCHAR(150) <<UK>></color>
+  * CF_Fecha_creacion : DATETIME
+}
+
+entity "T_Notebook" as T_Notebook {
+  <&key> CN_Id_notebook : BIGINT <<PK>>
+  --
+  * <color:#E67700>CN_Id_tema : BIGINT <<FK>> <<UK>></color>
+  * CN_Id_usuario : VARCHAR(20) <<FK>>
+  * CT_Nombre : VARCHAR(150)
+  * CF_Fecha_creacion : DATETIME
+}
+
+entity "T_Documento" as T_Documento {
+  <&key> CN_Id_documento : BIGINT <<PK>>
+  --
+  * <color:#E67700>CN_Id_tema : BIGINT <<FK>></color>
+  * <color:#E67700>CN_Id_usuario : VARCHAR(20) <<FK>></color>
+  * <color:#E67700>CN_Id_estado : INT <<FK>></color>
+  * CT_Nombre_archivo : VARCHAR(255)
+  * CT_Tipo_archivo : VARCHAR(50)
+  * <color:#E67700>CN_Tamanno_bytes : BIGINT</color>
+  CT_Ruta_archivo : VARCHAR(500)
+  <color:#E67700>CT_Mensaje_error : VARCHAR(1000)</color>
+  * CF_Fecha_carga : DATETIME
+}
+
+entity "T_Bitacora" as T_Bitacora {
+  <&key> CN_Id_bitacora : BIGINT <<PK>>
+  --
+  * <color:#E67700>CN_Id_tipo_accion : INT <<FK>></color>
+  CN_Id_usuario : VARCHAR(20) <<FK>>
+  <color:#E67700>CN_Id_tema : BIGINT <<FK>></color>
+  * CF_Fecha_hora : DATETIME
+  * CT_Texto : VARCHAR(MAX)
+  CT_Informacion_adicional : VARCHAR(MAX)
+}
+
+T_Rol ||--o{ T_Usuario : tiene
+T_Estado ||--o{ T_Usuario : clasifica
+T_Usuario ||--o{ T_Notebook : posee
+T_Tema ||--o| T_Notebook : respalda
+T_Tema ||--o{ T_Documento : agrupa
+T_Usuario ||--o{ T_Documento : carga
+T_Estado_procesamiento ||--o{ T_Documento : clasifica
+T_Usuario |o--o{ T_Bitacora : ejecuta
+T_Tipo_accion ||--o{ T_Bitacora : clasifica
+T_Tema |o--o{ T_Bitacora : se asocia a
+@enduml

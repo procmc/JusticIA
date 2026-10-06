@@ -1,0 +1,41 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P9 - Supervisión del Uso del Sistema
+start
+:Abrir "Historial de Actividades";
+if (¿Qué revisar?) then (registros)
+  :Aplicar filtros combinados\n(usuario, tema, tipo de acción y fechas);
+  if (¿Hay registros?) then (sí)
+    :Revisar la tabla y el detalle\nde los registros;
+    if (¿Exportar?) then (sí)
+      :Exportar a PDF (hasta 100 000 registros)\ny registrar la exportación;
+    else (no)
+    endif
+  else (no)
+    :Ver "No se encontraron registros";
+  endif
+else (estadísticas)
+  :Abrir la pestaña "Estadísticas";
+  :Revisar las tarjetas y los gráficos\nde uso del sistema;
+endif
+:Tomar decisiones de seguimiento\ninstitucional;
+stop
+@enduml

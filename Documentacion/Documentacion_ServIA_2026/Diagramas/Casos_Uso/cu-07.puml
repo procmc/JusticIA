@@ -1,0 +1,46 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Motor de procesamiento asíncrono (Celery)" as CELERY
+actor "Servicio de extracción de texto (Apache Tika)" as TIKA
+actor "Base de datos vectorial (Qdrant)" as QDRANT
+rectangle "Sistema ServIA" {
+  usecase "Cargar y Procesar Documentos" as CU07
+  usecase "Validar formato y tamaño" as S1
+  usecase "Asociar archivo a un tema" as S2
+  usecase "Vectorizar e indexar contenido" as S3
+  usecase "Registrar evento en bitácora" as S4
+  usecase "Reconocer Texto en Imagen\n(CU-08)" as RCU08
+  usecase "Cancelar procesamiento" as S5
+}
+UG --> CU07
+CU07 --> CELERY
+CU07 --> TIKA
+S3 --> QDRANT
+CU07 ..> S1 : <<include>>
+CU07 ..> S2 : <<include>>
+CU07 ..> S3 : <<include>>
+CU07 ..> S4 : <<include>>
+CU07 ..> RCU08 : <<extend>>
+CU07 ..> S5 : <<extend>>
+@enduml

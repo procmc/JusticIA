@@ -1,0 +1,77 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+skinparam ranksep 90
+skinparam nodesep 18
+actor "Usuario Gubernamental" as UG
+actor "Administrador" as ADM
+rectangle "Sistema ServIA" {
+  rectangle "Seguridad y Acceso" {
+    usecase "Iniciar Sesión" as CU01
+    usecase "Cerrar Sesión" as CU02
+    usecase "Acceder Según su Rol" as CU03
+    usecase "Recuperar Contraseña" as CU04
+    usecase "Gestionar Usuarios" as CU05
+    usecase "Gestionar Perfil de Usuario" as CU06
+  }
+  rectangle "Ingesta de Datos" {
+    usecase "Cargar y Procesar Documentos" as CU07
+    usecase "Reconocer Texto en Imagen" as CU08
+  }
+  rectangle "Asistente de Consulta" {
+    usecase "Consultar en Lenguaje Natural" as CU09
+    usecase "Copiar y Reintentar Respuesta" as CU10
+  }
+  rectangle "NotebookServIA" {
+    usecase "Crear un Notebook" as CU11
+    usecase "Previsualizar Documento Original" as CU12
+    usecase "Eliminar Documento de un Notebook" as CU13
+  }
+  rectangle "Búsqueda de Temas Similares" {
+    usecase "Buscar Temas o Documentos Similares" as CU14
+  }
+  rectangle "Bitácora y Reportes" {
+    usecase "Consultar y Filtrar la Bitácora" as CU15
+    usecase "Ver Dashboard de Métricas" as CU16
+  }
+}
+UG --> CU01
+ADM --> CU01
+UG --> CU02
+ADM --> CU02
+UG --> CU03
+ADM --> CU03
+ADM --> CU05
+UG --> CU06
+ADM --> CU06
+UG --> CU07
+UG --> CU09
+UG --> CU11
+UG --> CU12
+UG --> CU13
+UG --> CU14
+ADM --> CU15
+CU01 ..> CU04 : <<extend>>
+CU07 ..> CU08 : <<extend>>
+CU09 ..> CU10 : <<extend>>
+CU15 ..> CU16 : <<extend>>
+@enduml

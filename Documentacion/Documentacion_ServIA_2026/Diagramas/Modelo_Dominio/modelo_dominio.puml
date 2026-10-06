@@ -1,0 +1,219 @@
+@startuml
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam dpi 150
+skinparam defaultFontName Calibri
+skinparam class {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  ArrowColor #1F4E79
+  HeaderBackgroundColor #D5E3F0
+}
+skinparam nodesep 40
+skinparam ranksep 60
+
+abstract class Usuario {
+  - cedula: texto
+  - nombreUsuario: texto
+  - nombre: texto
+  - primerApellido: texto
+  - segundoApellido: texto
+  - correo: texto
+  - contrasenaHash: texto
+  - avatarTipo: texto
+  - avatarRuta: texto
+  - ultimoAcceso: fecha
+  - fechaCreacion: fecha
+  - estado: EstadoCuenta
+  + iniciarSesion()
+  + cerrarSesion()
+  + recuperarContrasena()
+  + cambiarContrasena()
+  + cambiarAvatar()
+  + restablecerAvatar()
+}
+class UsuarioGubernamental {
+  + cargarDocumentos()
+  + consultarAsistente()
+  + buscarTemasSimilares()
+  + crearNotebook()
+}
+class Administrador {
+  + crearUsuario()
+  + editarUsuario()
+  + desactivarUsuario()
+  + restablecerContrasena()
+  + consultarBitacora()
+  + exportarBitacora()
+  + verDashboard()
+}
+class CodigoRecuperacion {
+  - codigo: texto
+  - fechaExpiracion: fecha
+  - verificado: binario
+  - plazoCambio: fecha
+  + enviar()
+  + verificar()
+}
+class Tema {
+  - nombre: texto
+  - fechaCreacion: fecha
+  + agregarDocumento()
+  + listarDocumentos()
+}
+class Notebook {
+  + abrir()
+}
+class Documento {
+  - nombreArchivo: texto
+  - extension: texto
+  - tipoArchivo: TipoArchivo
+  - tamano: entero
+  - rutaArchivo: texto
+  - fechaCarga: fecha
+  - estado: EstadoProcesamiento
+  - progreso: entero
+  - mensajeError: texto
+  + validar()
+  + procesar()
+  + cancelarProcesamiento()
+  + previsualizar()
+  + eliminar()
+}
+class Fragmento {
+  - texto: texto
+  - numeroFragmento: entero
+  - numeroPagina: entero
+  - embedding: lista de decimales
+  + vectorizar()
+  + indexar()
+}
+class Conversacion {
+  - identificador: texto
+  - titulo: texto
+  - alcance: AlcanceConsulta
+  - fechaCreacion: fecha
+  + enviarPregunta()
+  + restaurar()
+  + eliminar()
+}
+class Mensaje {
+  - emisor: EmisorMensaje
+  - texto: texto
+  - fechaHora: fecha
+  - interrumpido: binario
+  + copiar()
+  + reintentar()
+}
+class BusquedaSimilitud {
+  - modo: ModoBusqueda
+  - criterio: texto
+  - umbral: decimal
+  - limite: entero
+  - tiempoBusqueda: decimal
+  - precisionPromedio: decimal
+  - fechaHora: fecha
+  + validarCriterio()
+  + ejecutar()
+}
+class ResultadoSimilitud {
+  - porcentajeSimilitud: decimal
+  - clasificacion: NivelSimilitud
+  - posicion: entero
+  + generarResumen()
+  + descargarDocumentos()
+}
+class ResumenIA {
+  - resumen: texto
+  - palabrasClave: lista de texto
+  - factoresSimilitud: texto
+  - conclusion: texto
+  - fechaGeneracion: fecha
+}
+class RegistroBitacora {
+  - fechaHora: fecha
+  - tipoAccion: TipoAccion
+  - descripcion: texto
+  - informacionAdicional: texto
+  + registrar()
+}
+enum EstadoCuenta {
+  ACTIVO
+  INACTIVO
+}
+enum EstadoProcesamiento {
+  PENDIENTE
+  PROCESADO
+  ERROR
+}
+enum TipoArchivo {
+  TEXTO
+  AUDIO
+  IMAGEN
+}
+enum AlcanceConsulta {
+  GENERAL
+  TEMA
+  NOTEBOOK
+}
+enum EmisorMensaje {
+  USUARIO
+  ASISTENTE
+}
+enum ModoBusqueda {
+  DESCRIPCION
+  TEMA
+}
+enum NivelSimilitud {
+  ALTA
+  MEDIA
+  BAJA
+}
+enum TipoAccion {
+  INICIO_SESION
+  CIERRE_SESION
+  RECUPERACION_CONTRASENA
+  CAMBIO_CONTRASENA
+  CREAR_USUARIO
+  EDITAR_USUARIO
+  CONSULTAR_USUARIOS
+  CARGA_DOCUMENTOS
+  LISTAR_ARCHIVOS
+  DESCARGAR_ARCHIVO
+  CONSULTA_ASISTENTE
+  BUSQUEDA_SIMILARES
+  GENERAR_RESUMEN
+  CONSULTAR_BITACORA
+  EXPORTAR_BITACORA
+}
+
+Usuario <|-- UsuarioGubernamental
+Usuario <|-- Administrador
+Tema <|-- Notebook
+Usuario "1" -- "0..*" CodigoRecuperacion : solicita
+Usuario "0..1" -- "0..*" RegistroBitacora : genera
+UsuarioGubernamental "1" -- "0..*" Notebook : crea
+UsuarioGubernamental "1" -- "0..*" Documento : carga
+UsuarioGubernamental "1" -- "0..*" Conversacion : mantiene
+UsuarioGubernamental "1" -- "0..*" BusquedaSimilitud : realiza
+Tema "1" *-- "0..*" Documento : agrupa
+Documento "1" *-- "0..*" Fragmento : se divide en
+Conversacion "1" *-- "0..*" Mensaje : contiene
+Conversacion "0..*" -- "0..1" Tema : acotada a
+Mensaje "0..*" -- "0..*" Documento : cita
+BusquedaSimilitud "1" *-- "0..30" ResultadoSimilitud : obtiene
+BusquedaSimilitud "0..*" -- "0..1" Tema : toma como referencia
+ResultadoSimilitud "0..*" -- "1" Tema : corresponde a
+ResultadoSimilitud "1" -- "0..1" ResumenIA : genera
+RegistroBitacora "0..*" -- "0..1" Tema : asociado a
+Usuario .. EstadoCuenta
+Documento .. EstadoProcesamiento
+Documento .. TipoArchivo
+Conversacion .. AlcanceConsulta
+Mensaje .. EmisorMensaje
+BusquedaSimilitud .. ModoBusqueda
+ResultadoSimilitud .. NivelSimilitud
+RegistroBitacora .. TipoAccion
+@enduml

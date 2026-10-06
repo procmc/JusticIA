@@ -1,0 +1,34 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Servicio de reconocimiento de escritura (docTR + TrOCR)" as HTR
+rectangle "Sistema ServIA" {
+  usecase "Reconocer Texto en Imagen" as CU08
+  usecase "Detectar líneas de texto" as S1
+  usecase "Reconocer contenido de cada línea" as S2
+}
+UG --> CU08
+CU08 --> HTR
+CU08 ..> S1 : <<include>>
+CU08 ..> S2 : <<include>>
+@enduml

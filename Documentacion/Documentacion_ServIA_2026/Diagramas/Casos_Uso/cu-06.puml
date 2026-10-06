@@ -1,0 +1,40 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Administrador" as ADM
+rectangle "Sistema ServIA" {
+  usecase "Gestionar Perfil de Usuario" as CU06
+  usecase "Elegir avatar predefinido" as S1
+  usecase "Subir foto de perfil" as S2
+  usecase "Validar imagen" as S3
+  usecase "Restablecer avatar de iniciales" as S4
+  usecase "Cambiar contraseña" as S5
+}
+UG --> CU06
+ADM --> CU06
+CU06 ..> S1 : <<extend>>
+CU06 ..> S2 : <<extend>>
+S2 ..> S3 : <<include>>
+CU06 ..> S4 : <<extend>>
+CU06 ..> S5 : <<extend>>
+@enduml

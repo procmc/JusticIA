@@ -1,0 +1,52 @@
+@startuml c4_nivel1_contexto
+!pragma layout elk
+!include <C4/C4_Context>
+
+' Estilo: colores del machote C4 del proyecto
+HIDE_STEREOTYPE()
+LAYOUT_TOP_DOWN()
+skinparam dpi 250
+skinparam wrapWidth 190
+skinparam maxMessageSize 100
+skinparam titleFontSize 22
+skinparam noteBorderColor #ADB5BD
+skinparam noteTextAlignment left
+skinparam legendBackgroundColor #FFFFFF
+skinparam legendBorderColor #CED4DA
+skinparam legendFontColor #212529
+skinparam legendFontSize 13
+UpdateElementStyle("person", $bgColor="#A5D8FF", $fontColor="#1864AB", $borderColor="#1971C2")
+UpdateElementStyle("system", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_system", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("container", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_container", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("component", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+AddElementTag("bd", $bgColor="#C5F6FA", $fontColor="#0B7285", $borderColor="#0C8599")
+AddElementTag("infra", $bgColor="#C3FAE8", $fontColor="#087F5B", $borderColor="#099268")
+UpdateRelStyle($textColor="#343A40", $lineColor="#495057")
+
+title Nivel 1 · Diagrama de Contexto — ServIA
+
+legend top left
+|= Leyenda |<#A5D8FF>      | Persona |<#D0BFFF>      | Sistema en foco |<#E9ECEF>      | Sistema externo |<#FFF3BF>      | Planificado (pendiente según el ERS) |<#F1F3F5>      | Nota aclaratoria |
+La flecha sale del elemento que inicia la interacción; entre corchetes, la tecnología o el protocolo.
+endlegend
+
+Person(ug, "Usuario Gubernamental", "Funcionario de una institución pública. Carga documentos, consulta al asistente, trabaja en NotebookServIA y busca temas similares.", $type="Persona · Navegador web")
+Person(adm, "Administrador", "Gestiona las cuentas de usuario y supervisa el uso del sistema con la bitácora y el dashboard de métricas.", $type="Persona · Navegador web")
+System(servia, "ServIA", "Asistente de inteligencia artificial con generación aumentada por recuperación (RAG): procesa documentos de texto, audio e imagen, responde en lenguaje natural citando la fuente y encuentra temas similares.", $type="Sistema de software · Next.js + FastAPI + IA local")
+System_Ext(correo, "Servidor de correo", "Cuenta de correo institucional o de desarrollo que entrega las contraseñas temporales y los códigos de recuperación.", $type="Sistema externo · SMTP")
+
+Rel(ug, servia, "Carga y consulta documentos, trabaja en notebooks y busca temas similares", "HTTPS")
+Rel(adm, servia, "Gestiona las cuentas de usuario y consulta la bitácora y las métricas", "HTTPS")
+Rel(servia, correo, "Envía contraseñas temporales y códigos de recuperación", "SMTP · STARTTLS")
+Rel_Back(ug, correo, "Entrega los correos del sistema", "Correo electrónico")
+Rel_Back(adm, correo, "Entrega los correos del sistema", "Correo electrónico")
+
+note bottom of servia #F1F3F5
+  <color:#343A40>Toda la inteligencia artificial —modelo de lenguaje, embeddings, transcripción de audio y reconocimiento de texto en imagen— se ejecuta dentro de ServIA. Ningún documento, consulta ni respuesta se envía a servicios de IA en la nube (RT-02, RNF-09). Los pesos de los modelos abiertos solo se descargan durante la instalación o el primer arranque.</color>
+end note
+note bottom of correo #FFF3BF
+  <color:#E67700>Pendiente: configurar la cuenta de correo institucional. Mientras tanto, las notificaciones no llegan a los usuarios reales (ERS 2.5).</color>
+end note
+@enduml

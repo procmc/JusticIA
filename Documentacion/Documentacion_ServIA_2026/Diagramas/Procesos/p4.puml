@@ -1,0 +1,57 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P4 - Búsqueda de Temas Similares
+|Usuario Gubernamental|
+start
+:Elegir el modo\n(descripción o tema de referencia);
+:Ingresar el criterio;
+|Sistema|
+if (¿Criterio vacío?) then (sí)
+  :Solicitar completarlo;
+  stop
+else (no)
+endif
+|Base vectorial (Qdrant)|
+:Comparar vectores y calcular\nel porcentaje de similitud;
+|Sistema|
+:Conservar hasta 30 resultados\ncon similitud de al menos 30%;
+:Clasificar en Alta, Media o Baja\ny ordenar de mayor a menor;
+:Registrar la búsqueda en la bitácora;
+if (¿Hay resultados?) then (no)
+  :Mostrar la lista vacía;
+  stop
+else (sí)
+endif
+:Mostrar los resultados con su porcentaje,\nel tiempo y la precisión;
+|Usuario Gubernamental|
+if (¿Generar resumen con IA\nde un resultado?) then (sí)
+  |Motor de lenguaje (Ollama)|
+  :Generar resumen, palabras clave,\nfactores de similitud y conclusión;
+else (no)
+endif
+|Usuario Gubernamental|
+if (¿Descargar sus documentos?) then (sí)
+  |Sistema|
+  :Descargar los documentos\ndel resultado;
+else (no)
+endif
+stop
+@enduml

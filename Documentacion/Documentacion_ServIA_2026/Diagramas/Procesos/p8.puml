@@ -1,0 +1,33 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P8 - Registro Automático de Auditoría
+start
+:Un usuario completa una acción relevante\n(sesión, cuenta, carga, consulta, búsqueda o exportación);
+:Identificar el tipo de acción;
+:Reunir usuario, fecha y hora,\ndescripción y tema asociado;
+:Agregar la información adicional\npropia del tipo de acción;
+if (¿El registro se guardó?) then (sí)
+  :Registro inmutable disponible\npara consulta y métricas;
+else (no)
+  :La acción del usuario se completa\nde todas formas;
+endif
+stop
+@enduml

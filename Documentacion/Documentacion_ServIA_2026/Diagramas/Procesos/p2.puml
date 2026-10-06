@@ -1,0 +1,61 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P2 - Consulta Conversacional con Cita de Fuente
+|Usuario Gubernamental|
+start
+:Elegir el alcance\n(general, tema o notebook);
+repeat
+  |Usuario Gubernamental|
+  :Escribir una pregunta\n(o reintentar la anterior);
+  |Sistema|
+  if (¿Menciona un tema exacto?) then (sí)
+    :Combinar el filtro exacto por tema\ncon la búsqueda semántica;
+  else (no)
+    :Buscar por significado\ndentro del alcance elegido;
+  endif
+  |Base vectorial (Qdrant)|
+  :Recuperar los fragmentos\nmás relevantes;
+  |Sistema|
+  if (¿El filtro por tema no dio resultados?) then (sí)
+    :Repetir la búsqueda sin el filtro;
+  else (no)
+  endif
+  |Motor de lenguaje (Ollama)|
+  :Generar la respuesta en streaming,\ncitando la fuente de cada afirmación;
+  note right
+    Si la información no alcanza, lo indica;
+    si la referencia es ambigua, pide aclaración.
+  end note
+  |Sistema|
+  if (¿30 segundos sin recibir datos?) then (sí)
+    :Liberar el envío y marcar\nla respuesta como interrumpida;
+  else (no)
+    :Mostrar la respuesta con sus fuentes;
+    :Guardar el intercambio en la conversación\ny registrar la consulta en la bitácora;
+  endif
+  |Usuario Gubernamental|
+  if (¿Copiar la respuesta?) then (sí)
+    :Copiar el texto al portapapeles;
+  else (no)
+  endif
+repeat while (¿Otra pregunta o reintentar?) is (sí) not (no)
+stop
+@enduml

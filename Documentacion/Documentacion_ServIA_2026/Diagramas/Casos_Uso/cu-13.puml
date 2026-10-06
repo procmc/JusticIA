@@ -1,0 +1,40 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Base de datos vectorial (Qdrant)" as QDRANT
+rectangle "Sistema ServIA" {
+  usecase "Eliminar Documento de un Notebook" as CU13
+  usecase "Confirmar eliminación" as S1
+  usecase "Verificar pertenencia del documento" as S2
+  usecase "Eliminar fragmentos vectoriales" as S3
+  usecase "Eliminar archivo almacenado" as S4
+  usecase "Eliminar registro del documento" as S5
+}
+UG --> CU13
+S3 --> QDRANT
+CU13 ..> S1 : <<include>>
+CU13 ..> S2 : <<include>>
+CU13 ..> S3 : <<include>>
+CU13 ..> S4 : <<include>>
+CU13 ..> S5 : <<include>>
+@enduml

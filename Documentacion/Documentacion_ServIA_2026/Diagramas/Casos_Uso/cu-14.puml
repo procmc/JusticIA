@@ -1,0 +1,42 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Base de datos vectorial (Qdrant)" as QDRANT
+actor "Motor de lenguaje local (Ollama)" as IA
+rectangle "Sistema ServIA" {
+  usecase "Buscar Temas o Documentos Similares" as CU14
+  usecase "Validar criterio de búsqueda" as S1
+  usecase "Calcular similitud" as S2
+  usecase "Registrar evento en bitácora" as S3
+  usecase "Generar resumen con IA" as S4
+  usecase "Descargar documento del resultado" as S5
+}
+UG --> CU14
+S2 --> QDRANT
+S4 --> IA
+CU14 ..> S1 : <<include>>
+CU14 ..> S2 : <<include>>
+CU14 ..> S3 : <<include>>
+CU14 ..> S4 : <<extend>>
+CU14 ..> S5 : <<extend>>
+@enduml

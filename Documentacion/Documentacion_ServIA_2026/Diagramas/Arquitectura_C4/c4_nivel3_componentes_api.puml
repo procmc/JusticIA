@@ -1,0 +1,124 @@
+@startuml c4_nivel3_componentes_api
+!pragma layout elk
+!include <C4/C4_Component>
+
+' Estilo: colores del machote C4 del proyecto
+HIDE_STEREOTYPE()
+LAYOUT_TOP_DOWN()
+skinparam dpi 112
+skinparam wrapWidth 190
+skinparam maxMessageSize 100
+skinparam titleFontSize 22
+skinparam noteBorderColor #ADB5BD
+skinparam noteTextAlignment left
+skinparam legendBackgroundColor #FFFFFF
+skinparam legendBorderColor #CED4DA
+skinparam legendFontColor #212529
+skinparam legendFontSize 13
+UpdateElementStyle("person", $bgColor="#A5D8FF", $fontColor="#1864AB", $borderColor="#1971C2")
+UpdateElementStyle("system", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_system", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("container", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_container", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("component", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+AddElementTag("bd", $bgColor="#C5F6FA", $fontColor="#0B7285", $borderColor="#0C8599")
+AddElementTag("infra", $bgColor="#C3FAE8", $fontColor="#087F5B", $borderColor="#099268")
+UpdateRelStyle($textColor="#343A40", $lineColor="#495057")
+
+title Nivel 3 · Diagrama de Componentes — API Backend (ServIA)
+
+legend top left
+|= Leyenda |<#D0BFFF>      | Componente del contenedor |<#C3FAE8>      | Componente de infraestructura compartida |<#C5F6FA>      | Base de datos o almacenamiento |<#E9ECEF>      | Contenedor fuera de foco o sistema externo |<#FFF3BF>      | Planificado (pendiente según el ERS) |
+La flecha sale del elemento que inicia la interacción; entre corchetes, la tecnología o el protocolo.
+endlegend
+
+Container_Ext(web, "Aplicación Web", "Contenedor: Next.js 15 · React 18 · NextAuth", "")
+
+rectangle "== <color:#6741D9>Contenedor: API Backend</color>\n<size:12><color:#6741D9>[FastAPI · Python · Uvicorn]</color></size>" <<boundary>> as api #F8F6FF;line:9775FA;line.dashed {
+  Component(main, "Aplicación FastAPI (main.py)", "Componente: FastAPI · CORS", "Monta los routers; al iniciar carga el modelo de embeddings y verifica Qdrant.")
+  Component(auth, "Autenticación y contraseñas", "Componente: /auth · auth_service", "Sesión, renovación del token y recuperación de contraseña.")
+  Component(usuarios, "Usuarios y perfil", "Componente: /usuarios · usuario_service", "Cuentas, contraseñas temporales y avatar.")
+  Component(ingesta, "Ingesta de documentos", "Componente: /ingesta", "Guarda los archivos, encola su procesamiento e informa el progreso.")
+  Component(rag, "Orquestador de consultas", "Componente: /rag · rag_chain_service", "Consulta por alcance (general, tema o notebook) con cita de fuente y streaming.")
+  Component(recuperador, "Recuperador híbrido", "Componente: retriever · search_strategies", "Filtro exacto por tema combinado con búsqueda semántica.")
+  Component(historial, "Historial de conversaciones", "Componente: session_store", "Guarda, restaura y elimina las conversaciones de cada usuario.")
+  Component(notebooks, "NotebookServIA", "Componente: /notebooks · notebook_service", "Notebooks, archivo original y eliminación en tres capas.")
+  Component(similares, "Temas similares", "Componente: /similarity · similarity_service", "Búsqueda por tema o por texto y resumen con IA.")
+  Component(archivosTema, "Archivos de temas", "Componente: /archivos", "Lista y descarga los archivos de un tema.")
+  Component(bitacora, "Bitácora y métricas", "Componente: /bitacora · bitacora_stats_service", "Filtros, exportación e indicadores del dashboard.")
+  rectangle "== <color:#087F5B>Núcleo — infraestructura compartida</color>\n<size:12><color:#087F5B>[los módulos dependen de estos componentes]</color></size>" <<boundary>> as nucleo #EEFCF6;line:63E6BE;line.dashed {
+    Component(seguridad, "Seguridad JWT y roles", "Componente: PyJWT · bcrypt", "Emite y verifica el token; todos los endpoints protegidos exigen el rol con ella.", $tags="infra")
+    Component(auditoria, "Auditoría", "Componente: servicios de auditoría", "Registra cada acción; la usan todos los módulos y el Worker.", $tags="infra")
+    Component(correoSrv, "Envío de correo", "Componente: aiosmtplib · plantillas", "Plantillas y envío de contraseñas temporales y códigos.", $tags="infra")
+    Component(datos, "Acceso a datos", "Componente: SQLAlchemy · repositorios", "Modelos y repositorios de todas las entidades.", $tags="infra")
+    Component(embeddings, "Modelo de embeddings", "Componente: multilingual-e5-large", "Vectores de 1024 dimensiones, en el mismo proceso.", $tags="infra")
+    Component(vector, "Adaptador vectorial", "Componente: VectorStoreBackend · Qdrant", "Búsqueda con filtros de metadatos y eliminación de fragmentos.", $tags="infra")
+    Component(llm, "Cliente del modelo de lenguaje", "Componente: LangChain · ChatOllama", "Invoca al modelo local con streaming.", $tags="infra")
+    Component(gestorArchivos, "Gestión de archivos", "Componente: file_management_service", "Guarda, localiza, entrega y elimina archivos.", $tags="infra")
+  }
+}
+
+ContainerDb(sql, "Base de datos relacional", "Contenedor: SQL Server 2022", "", $tags="bd")
+ContainerDb(qdrant, "Base de datos vectorial", "Contenedor: Qdrant", "", $tags="bd")
+ContainerDb(redis, "Almacén en memoria", "Contenedor: Redis 7", "", $tags="bd")
+ContainerDb(archivos, "Almacenamiento de archivos", "Contenedor: volumen local (uploads)", "", $tags="bd")
+Container_Ext(ollama, "Motor de lenguaje local", "Contenedor: Ollama · llama3.1:8b · GPU compartida", "")
+System_Ext(correo, "Servidor de correo", "", $type="Sistema externo · SMTP")
+
+Rel(web, main, "Llama a la API REST", "HTTPS · JSON · JWT")
+Rel(main, auth, "/auth")
+Rel(main, usuarios, "/usuarios")
+Rel(main, bitacora, "/bitacora")
+Rel(main, ingesta, "/ingesta")
+Rel(main, archivosTema, "/archivos")
+Rel(main, notebooks, "/notebooks")
+Rel(main, similares, "/similarity")
+Rel(main, rag, "/rag")
+Rel(auth, seguridad, "Emite y renueva el token")
+Rel(auth, datos, "Valida credenciales y cambia la contraseña")
+Rel(auth, correoSrv, "Envía el código de recuperación")
+Rel(usuarios, datos, "Lee y escribe cuentas")
+Rel(usuarios, correoSrv, "Envía la contraseña temporal")
+Rel(usuarios, archivos, "Guarda el avatar", "Sistema de archivos")
+Rel(bitacora, datos, "Consulta la bitácora")
+Rel(ingesta, gestorArchivos, "Guarda el archivo original")
+Rel(ingesta, redis, "Encola una tarea por archivo y consulta su progreso", "Celery · Redis")
+Rel(archivosTema, datos, "Documentos del tema")
+Rel(archivosTema, gestorArchivos, "Localiza y entrega el archivo")
+Rel(notebooks, datos, "Notebooks y sus documentos")
+Rel(notebooks, gestorArchivos, "Entrega y elimina el original")
+Rel(notebooks, vector, "Elimina los fragmentos")
+Rel(similares, embeddings, "Vectoriza el criterio")
+Rel(similares, vector, "Busca temas similares")
+Rel(similares, llm, "Genera el resumen")
+Rel(rag, recuperador, "Recupera el contexto")
+Rel(rag, historial, "Lee y guarda la conversación")
+Rel(rag, llm, "Genera la respuesta")
+Rel(recuperador, embeddings, "Vectoriza la pregunta")
+Rel(recuperador, vector, "Busca con filtro de metadatos")
+Rel(historial, redis, "Persiste las conversaciones", "Redis")
+Rel(auditoria, datos, "Inserta registros")
+Rel(datos, sql, "Lee y escribe", "SQLAlchemy · ODBC")
+Rel(vector, qdrant, "Consulta y elimina", "HTTP")
+Rel(llm, ollama, "Genera texto", "HTTP · streaming")
+Rel(gestorArchivos, archivos, "Lee y escribe", "Sistema de archivos")
+Rel(correoSrv, correo, "Envía correos", "SMTP · STARTTLS")
+
+note bottom of web #FFF3BF
+  <color:#E67700>**Planificado**</color>
+  <color:#E67700>(ERS, «Estado actual»):</color>
+  <color:#E67700>• Nombre libre del tema en</color>
+  <color:#E67700>   ingesta, recuperador y</color>
+  <color:#E67700>   temas similares (RF-06,</color>
+  <color:#E67700>   RF-13, RF-20; RT-06).</color>
+  <color:#E67700>• Aviso al Administrador si</color>
+  <color:#E67700>   un correo no se entrega</color>
+  <color:#E67700>   (RF-02, RF-03).</color>
+  <color:#E67700>• Informar si falla alguna</color>
+  <color:#E67700>   de las tres eliminaciones</color>
+  <color:#E67700>   del notebook (RF-19).</color>
+  <color:#E67700>• Mínimo de 8 caracteres</color>
+  <color:#E67700>   también en el servidor</color>
+  <color:#E67700>   (RNF-08).</color>
+end note
+@enduml

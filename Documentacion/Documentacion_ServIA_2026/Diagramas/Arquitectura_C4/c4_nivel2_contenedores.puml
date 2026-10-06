@@ -1,0 +1,74 @@
+@startuml c4_nivel2_contenedores
+!pragma layout elk
+!include <C4/C4_Container>
+
+' Estilo: colores del machote C4 del proyecto
+HIDE_STEREOTYPE()
+LAYOUT_TOP_DOWN()
+skinparam dpi 165
+skinparam wrapWidth 190
+skinparam maxMessageSize 100
+skinparam titleFontSize 22
+skinparam noteBorderColor #ADB5BD
+skinparam noteTextAlignment left
+skinparam legendBackgroundColor #FFFFFF
+skinparam legendBorderColor #CED4DA
+skinparam legendFontColor #212529
+skinparam legendFontSize 13
+UpdateElementStyle("person", $bgColor="#A5D8FF", $fontColor="#1864AB", $borderColor="#1971C2")
+UpdateElementStyle("system", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_system", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("container", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+UpdateElementStyle("external_container", $bgColor="#E9ECEF", $fontColor="#495057", $borderColor="#868E96")
+UpdateElementStyle("component", $bgColor="#D0BFFF", $fontColor="#5F3DC4", $borderColor="#7048E8")
+AddElementTag("bd", $bgColor="#C5F6FA", $fontColor="#0B7285", $borderColor="#0C8599")
+AddElementTag("infra", $bgColor="#C3FAE8", $fontColor="#087F5B", $borderColor="#099268")
+UpdateRelStyle($textColor="#343A40", $lineColor="#495057")
+
+title Nivel 2 · Diagrama de Contenedores — ServIA
+
+legend top left
+|= Leyenda |<#A5D8FF>      | Persona |<#D0BFFF>      | Contenedor de ServIA |<#C5F6FA>      | Base de datos o almacenamiento |<#E9ECEF>      | Sistema externo |<#FFF3BF>      | Planificado (pendiente según el ERS) |<#F1F3F5>      | Nota aclaratoria |
+La flecha sale del elemento que inicia la interacción; entre corchetes, la tecnología o el protocolo.
+endlegend
+
+Person(ug, "Usuario Gubernamental", "Funcionario de una institución pública. Carga documentos, consulta al asistente, trabaja en NotebookServIA y busca temas similares.", $type="Persona · Navegador web")
+Person(adm, "Administrador", "Gestiona las cuentas de usuario y supervisa el uso del sistema con la bitácora y el dashboard de métricas.", $type="Persona · Navegador web")
+
+rectangle "== <color:#6741D9>ServIA — Límite del sistema</color>\n<size:12><color:#6741D9>[Sistema de software · Docker Compose]</color></size>" <<boundary>> as servia #F8F6FF;line:9775FA;line.dashed {
+  Container(web, "Aplicación Web", "Contenedor: Next.js 15 · React 18 · NextAuth", "Interfaz en español para ambos roles; controla el acceso por rol y muestra las respuestas en streaming.")
+  Container(api, "API Backend", "Contenedor: FastAPI · Python", "API REST protegida con JWT; orquesta las consultas RAG y los demás módulos funcionales.")
+  Container(worker, "Worker de procesamiento", "Contenedor: Celery · Python", "Procesa cada archivo en segundo plano: extrae o transcribe el texto, lo fragmenta y lo indexa.")
+  Container(tika, "Servidor de extracción de texto", "Contenedor: Apache Tika · Tesseract OCR", "Extrae el texto de los documentos; aplica OCR a los PDF escaneados.")
+  Container(htr, "Servidor de reconocimiento de texto en imagen", "Contenedor: FastAPI · docTR + TrOCR · GPU compartida", "Reconoce el texto impreso o tipeado de las imágenes.")
+  Container(ollama, "Motor de lenguaje local", "Contenedor: Ollama · llama3.1:8b · GPU compartida", "Genera las respuestas del asistente y los resúmenes de temas similares.")
+  ContainerDb(sql, "Base de datos relacional", "Contenedor: SQL Server 2022", "Usuarios, temas, documentos, notebooks y bitácora.", $tags="bd")
+  ContainerDb(qdrant, "Base de datos vectorial", "Contenedor: Qdrant", "Fragmentos con su embedding y los metadatos de tema y archivo.", $tags="bd")
+  ContainerDb(redis, "Almacén en memoria", "Contenedor: Redis 7", "Cola de tareas, progreso de la ingesta e historial de conversaciones.", $tags="bd")
+  ContainerDb(archivos, "Almacenamiento de archivos", "Contenedor: volumen local (uploads)", "Archivos originales por tema y avatares de usuario.", $tags="bd")
+}
+
+System_Ext(correo, "Servidor de correo", "Cuenta de correo institucional o de desarrollo que entrega las contraseñas temporales y los códigos de recuperación.", $type="Sistema externo · SMTP")
+
+Rel(ug, web, "Usa", "HTTPS")
+Rel(adm, web, "Usa", "HTTPS")
+Rel(web, api, "Llama a la API; recibe las respuestas en streaming", "HTTPS · JSON · SSE · JWT")
+Rel_L(api, correo, "Envía contraseñas y códigos", "SMTP · STARTTLS")
+Rel(api, ollama, "Genera respuestas y resúmenes", "HTTP · streaming")
+Rel(api, archivos, "Guarda y entrega archivos", "Sistema de archivos")
+Rel(api, sql, "Lee y escribe", "SQLAlchemy · ODBC")
+Rel(api, redis, "Encola tareas; guarda conversaciones", "Celery · Redis")
+Rel(api, qdrant, "Busca y elimina fragmentos", "HTTP")
+Rel(worker, redis, "Toma tareas; publica el progreso", "Celery · Redis")
+Rel(worker, sql, "Registra documentos y su estado", "SQLAlchemy · ODBC")
+Rel(worker, qdrant, "Indexa fragmentos", "HTTP")
+Rel(worker, tika, "Extrae texto", "HTTP")
+Rel(worker, htr, "Reconoce texto en imágenes", "HTTP · JSON")
+
+note left of web #FFF3BF
+  <color:#E67700>Planificado: ejecutar la Aplicación Web como un servicio más de Docker Compose (RNF-06); hoy se inicia con Node.js.</color>
+end note
+note bottom of correo #FFF3BF
+  <color:#E67700>Pendiente: cuenta de correo institucional y aviso al Administrador cuando un correo no se entrega (RF-02, RF-03).</color>
+end note
+@enduml

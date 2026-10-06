@@ -1,0 +1,38 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Administrador" as ADM
+rectangle "Sistema ServIA" {
+  usecase "Acceder Según su Rol" as CU03
+  usecase "Filtrar menú por rol" as S1
+  usecase "Verificar permiso de acceso" as S2
+  usecase "Redirigir a inicio de sesión" as S3
+  usecase "Denegar acceso no autorizado" as S4
+}
+UG --> CU03
+ADM --> CU03
+CU03 ..> S1 : <<include>>
+CU03 ..> S2 : <<include>>
+CU03 ..> S3 : <<extend>>
+CU03 ..> S4 : <<extend>>
+@enduml

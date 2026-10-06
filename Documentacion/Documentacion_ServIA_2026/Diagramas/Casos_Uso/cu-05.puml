@@ -1,0 +1,42 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Administrador" as ADM
+actor "Servicio de correo electrónico" as CORREO
+rectangle "Sistema ServIA" {
+  usecase "Gestionar Usuarios" as CU05
+  usecase "Validar datos del usuario" as S1
+  usecase "Enviar credenciales por correo" as S2
+  usecase "Registrar evento en bitácora" as S3
+  usecase "Editar usuario" as S4
+  usecase "Restablecer contraseña de un usuario" as S5
+  usecase "Ver detalle de usuario" as S6
+}
+ADM --> CU05
+S2 --> CORREO
+CU05 ..> S1 : <<include>>
+CU05 ..> S2 : <<include>>
+CU05 ..> S3 : <<include>>
+CU05 ..> S4 : <<extend>>
+CU05 ..> S5 : <<extend>>
+CU05 ..> S6 : <<extend>>
+@enduml

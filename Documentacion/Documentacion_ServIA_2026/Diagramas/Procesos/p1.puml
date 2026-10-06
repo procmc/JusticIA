@@ -1,0 +1,71 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P1 - Ingesta y Procesamiento de Documentos
+|Usuario Gubernamental|
+start
+:Seleccionar o arrastrar los archivos;
+:Indicar el tema\n(en un notebook, el tema es el propio notebook);
+|Sistema|
+:Validar extensión, tipo real\ny tamaño (máximo 1 GB por archivo);
+if (¿Hay archivos no válidos?) then (sí)
+  :Rechazarlos indicando el motivo\n(formato o tamaño);
+else (no)
+endif
+:Mostrar la lista con el tamaño\nde cada archivo y el total;
+|Usuario Gubernamental|
+:Confirmar la carga;
+|Sistema|
+:Asociar cada archivo al tema\n(crearlo si no existe);
+:Almacenar y encolar cada archivo;
+:Registrar la carga en la bitácora;
+fork
+  |Usuario Gubernamental|
+  :Seguir el progreso de cada archivo;
+  if (¿Cancelar un archivo?) then (sí)
+    :Cancelar su procesamiento;
+  else (no)
+  endif
+fork again
+  |Motor de procesamiento|
+  switch (¿Tipo de archivo?)
+  case (Texto)
+    :Extraer el texto (Apache Tika);
+  case (Audio)
+    :Transcribir el audio (Whisper);
+  case (Imagen)
+    :Reconocer el texto impreso\no tipeado (HTR);
+    note right
+      La escritura a mano no se
+      reconoce de forma confiable (RF-10).
+    end note
+  endswitch
+  :Dividir el texto en fragmentos\ny generar sus vectores;
+  |Base vectorial (Qdrant)|
+  :Indexar los fragmentos con sus metadatos\n(tema, archivo, tipo y página);
+end fork
+|Sistema|
+if (¿Procesamiento exitoso?) then (sí)
+  :Estado = Procesado;
+else (no)
+  :Estado = Error, con la causa\n(no detiene a los demás archivos);
+endif
+stop
+@enduml

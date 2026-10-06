@@ -1,0 +1,36 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Motor de lenguaje local (Ollama)" as IA
+rectangle "Sistema ServIA" {
+  usecase "Copiar y Reintentar Respuesta" as CU10
+  usecase "Copiar respuesta" as S1
+  usecase "Reintentar consulta" as S2
+  usecase "Generar respuesta con cita de fuente" as S3
+}
+UG --> CU10
+S3 --> IA
+CU10 ..> S1 : <<extend>>
+CU10 ..> S2 : <<extend>>
+S2 ..> S3 : <<include>>
+@enduml

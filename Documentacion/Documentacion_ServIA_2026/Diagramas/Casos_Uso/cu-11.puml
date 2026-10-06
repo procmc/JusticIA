@@ -1,0 +1,40 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+rectangle "Sistema ServIA" {
+  usecase "Crear un Notebook" as CU11
+  usecase "Validar nombre del notebook" as S1
+  usecase "Abrir notebook" as S2
+  usecase "Cargar y Procesar Documentos\n(CU-07)" as RCU07
+  usecase "Consultar en Lenguaje Natural\n(CU-09)" as RCU09
+  usecase "Previsualizar Documento Original\n(CU-12)" as RCU12
+  usecase "Eliminar Documento de un Notebook\n(CU-13)" as RCU13
+}
+UG --> CU11
+CU11 ..> S1 : <<include>>
+CU11 ..> S2 : <<extend>>
+S2 ..> RCU07 : <<extend>>
+S2 ..> RCU09 : <<extend>>
+S2 ..> RCU12 : <<extend>>
+S2 ..> RCU13 : <<extend>>
+@enduml

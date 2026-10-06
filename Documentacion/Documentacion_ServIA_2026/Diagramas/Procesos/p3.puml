@@ -1,0 +1,64 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P3 - Trabajo en NotebookServIA
+start
+if (¿Ya tiene el notebook?) then (no)
+  :Escribir el nombre del notebook;
+  if (¿Nombre vacío?) then (sí)
+    :El sistema no crea el notebook;
+    stop
+  else (no)
+    :El sistema crea el notebook\ny lo abre;
+  endif
+else (sí)
+  :Seleccionar el notebook;
+  :El sistema lo abre y restaura\nsu conversación;
+endif
+switch (¿Qué desea hacer?)
+case (Cargar documentos)
+  :Subir documentos o pegar\nuna imagen en el chat;
+  note right: Continúa en P1
+case (Conversar)
+  :Preguntar sobre los\ndocumentos del notebook;
+  note right: Continúa en P2
+case (Ver un documento)
+  if (¿Documento procesado?) then (sí)
+    :El sistema verifica que pertenezca\nal usuario y muestra el original;
+  else (no)
+    :El sistema no permite abrirlo;
+  endif
+case (Quitar un documento)
+  :El sistema pide confirmación\n(la acción no se puede deshacer);
+  if (¿Confirma?) then (sí)
+    fork
+      :Eliminar sus fragmentos\nen Qdrant;
+    fork again
+      :Eliminar el archivo\nalmacenado;
+    fork again
+      :Eliminar su registro\nen la base de datos;
+    end fork
+    :Quitarlo de la lista;
+  else (no)
+    :Mantener el documento;
+  endif
+endswitch
+stop
+@enduml

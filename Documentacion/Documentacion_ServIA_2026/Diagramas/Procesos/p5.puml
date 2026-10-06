@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam shadowing false
+skinparam ArrowColor #1F4E79
+skinparam activity {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  DiamondBackgroundColor #FFFFFF
+  DiamondBorderColor #1F4E79
+}
+skinparam swimlane {
+  BorderColor #1F4E79
+  TitleFontColor #1F4E79
+  TitleFontSize 15
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #B7791F
+}
+title P5 - Autenticación y Control de Acceso
+|Usuario|
+start
+:Ingresar correo y contraseña;
+|Sistema|
+:Validar los campos obligatorios\ny el formato del correo;
+:Buscar la cuenta, comparar el hash\ny verificar el estado Activo;
+if (¿Credenciales válidas\ny cuenta activa?) then (no)
+  :Mostrar "Credenciales inválidas"\ny registrar el intento fallido;
+  stop
+else (sí)
+endif
+:Generar el token JWT con el rol\ny registrar el inicio de sesión;
+if (¿Cuenta nueva o contraseña\nrestablecida?) then (sí)
+  |Usuario|
+  :Cambiar la contraseña temporal\n(panel obligatorio);
+  |Sistema|
+else (no)
+endif
+:Mostrar el menú según el rol;
+repeat
+  |Usuario|
+  :Abrir una página o ejecutar una acción;
+  |Sistema|
+  if (¿El rol tiene permiso?) then (sí)
+    :Ejecutar la acción;
+  else (no)
+    :Rechazar y dirigir al inicio;
+  endif
+repeat while (¿Sigue trabajando, con menos\nde 1 hora de inactividad?) is (sí) not (no)
+|Sistema|
+:Cerrar la sesión (por decisión del usuario\no por inactividad) y registrar el cierre;
+stop
+@enduml

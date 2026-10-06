@@ -1,0 +1,30 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Administrador" as ADM
+rectangle "Sistema ServIA" {
+  usecase "Ver Dashboard de Métricas" as CU16
+  usecase "Calcular indicadores de uso" as S1
+}
+ADM --> CU16
+CU16 ..> S1 : <<include>>
+@enduml
