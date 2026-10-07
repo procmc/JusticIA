@@ -2,14 +2,14 @@ fastapi==0.116.1
 uvicorn[standard]==0.30.6
 
 # SQLAlchemy y SQL Server
-sqlalchemy>=2.0.0
+sqlalchemy==2.0.52
 pyodbc>=4.0.0  # Driver ODBC para SQL Server
 
-alembic>=1.12.0  # Para migraciones
+alembic==1.19.2  # Para migraciones
 
 # Autenticación JWT
 python-jose[cryptography]>=3.3.0
-pyjwt>=2.8.0  # JWT handling directo
+pyjwt==2.13.0  # JWT handling directo
 passlib[bcrypt]>=1.7.4  # Versión más reciente para compatibilidad
 bcrypt>=4.0.0,<5.0.0  # Versión compatible con passlib
 python-multipart>=0.0.6
@@ -22,7 +22,7 @@ langchain-community>=0.3.0  # Para chains adicionales
 langchain-core>=0.3.0      # Core components
 
 # Embeddings
-sentence-transformers>=2.2.0  # Para generar embeddings de texto
+sentence-transformers==6.0.1  # Para generar embeddings de texto
 
 # Ollama integration
 httpx>=0.24.0
@@ -65,5 +65,15 @@ aiosmtplib>=3.0.0    # Cliente SMTP asíncrono
 jinja2>=3.1.0        # Para plantillas de correo
 
 # Qdrant SDK + Integración con LangChain
-qdrant-client>=1.9.0
+qdrant-client==1.19.0
 langchain-qdrant>=0.2.0
+
+# Pruebas (spec 002; entran también a Dockerfile.prod por compartir este archivo)
+pytest>=8.0
+fakeredis>=2.20  # Redis simulado en memoria para las pruebas
+# Versiones fijadas el 06/10 (spec 002, T1) tras la deriva de la reconstrucción: estas cuatro
+# son dependencias indirectas que cambiaron al reconstruir la imagen
+torch==2.14.0
+transformers==5.17.0
+langsmith==0.12.4
+filelock==3.32.6
