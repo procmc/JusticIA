@@ -12,7 +12,7 @@
 
 El servicio sigue **el mismo patrón que Apache Tika** en este proyecto:
 contenedor propio que el backend consume por HTTP. No contradice la
-decisión de mantener el monolito modular ([doc 21](../../Registro_Indicaciones_2026/21_Aclaracion_Arquitectura_Monolito_vs_Microservicios.md)):
+decisión de mantener el monolito modular ([doc 21](../../Registro_Indicaciones_2026/Archivo/21_Aclaracion_Arquitectura_Monolito_vs_Microservicios.md)):
 igual que Tika, Qdrant, Redis u Ollama, es infraestructura que la
 aplicación consume, no una pieza del dominio propio.
 

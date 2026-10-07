@@ -34,7 +34,7 @@ Example:
 Ver también:
     * app.vectorstore.base: Contrato VectorStoreBackend
     * app.vectorstore.__init__: Selector get_vectorstore_backend()
-    * Registro_Indicaciones_2026/16_Investigacion_Modelo_Embeddings.md: justificación del modelo
+    * Registro_Indicaciones_2026/Investigacion_RAG/16_Investigacion_Modelo_Embeddings.md: justificación del modelo
 
 Authors:
     Andrés Araya Agüero
