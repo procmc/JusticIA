@@ -107,12 +107,23 @@ permitido+='|docker compose exec( -T)? ollama ollama (list|ps)'
 permitido+='|curl|nvidia-smi|pytest|python -m pytest'
 permitido+='|npm (run (build|lint)|test)|npm --prefix [^ ]+ run (build|lint))( |$)'
 
+# Número de partes no vacías de los comandos encadenados (&&, ||, ;, |, &).
+total_partes="$(printf '%s\n' "$estructura" | sed -E 's/(&&|\|\||;|\||&)/\n/g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | grep -c .)"
+
 # Cada parte de los comandos encadenados (&&, ||, ;, |, &) debe estar en la lista.
 while IFS= read -r parte; do
   parte="$(printf '%s' "$parte" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^([A-Za-z_][A-Za-z0-9_]*=[^ ]*[[:space:]]+)+//; s/[[:space:]]+/ /g')"
   [ -z "$parte" ] && continue
+  # Único comando de «docker compose config» permitido: solo la lista de servicios (T10, RA-02.8). Debe ir
+  # exacto y solo, sin encadenar: «docker compose config» a secas expande las variables del entorno y puede
+  # imprimir credenciales, y con un encadenado («; cat .env», «| cat») se podría leer lo que no debe.
+  if [ "$parte" = "docker compose config --services" ]; then
+    [ "$total_partes" -eq 1 ] \
+      || bloquear "«docker compose config --services» solo se permite como único comando, sin encadenar."
+    continue
+  fi
   contiene "$parte" "$permitido" \
-    || bloquear "el revisor solo ejecuta comandos de consulta (git status/diff/log/show, docker compose ps/logs, curl local, npm run build/lint, pruebas). No permitido: «$parte»."
+    || bloquear "el revisor solo ejecuta comandos de consulta (git status/diff/log/show, docker compose ps/logs/config --services, curl local, npm run build/lint, pruebas). No permitido: «$parte»."
 done < <(printf '%s\n' "$estructura" | sed -E 's/(&&|\|\||;|\||&)/\n/g')
 
 # curl: solo servicios locales, sin escribir archivos y sin modificar datos.

@@ -14,8 +14,8 @@ Principio 4 de la constitución: cada requisito se cubre con pruebas automatizad
 
 El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso como una spec:
 
-1. **Infraestructura de pruebas**: pytest dentro del contenedor del backend, Playwright para las de extremo a extremo y un entorno aislado (base de datos y colección de Qdrant solo para pruebas).
-2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA.
+1. **Infraestructura de pruebas del backend**: pytest dentro del contenedor del backend y un entorno aislado (base de datos y colección de Qdrant solo para pruebas). Playwright y el extremo a extremo llegan con el paso 2.
+2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA, y la infraestructura de extremo a extremo.
 3. **Specs retroactivas por módulo**, por riesgo: autenticación y usuarios, ingesta, RAG y chat, notebooks, temas similares y bitácora.
 4. Después, los «Estado actual» del ERS y las funciones nuevas, con sus pruebas desde el inicio.
 
@@ -27,8 +27,8 @@ El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso 
 ## Tipos de prueba
 
 - **Unitarias**: la lógica del backend (servicios, validaciones, armado de filtros y prompts), con SQL Server, Qdrant, Ollama y Redis simulados.
-- **Integración**: la API contra los servicios reales del entorno aislado: rutas y roles, datos guardados, fragmentos en Qdrant y registro en la bitácora.
-- **Extremo a extremo**: los flujos de la interfaz en el navegador con los dos roles, incluida una pantalla más pequeña (RNF-04).
+- **Integración**: la API contra SQL Server, Qdrant y Tika reales del entorno aislado (Redis simulado): rutas y roles, datos guardados, fragmentos en Qdrant y registro en la bitácora.
+- **Extremo a extremo**: los flujos de la interfaz en el navegador con los dos roles, incluida una pantalla más pequeña (RNF-04), desde la spec de la red de seguridad.
 
 ## Cómo se escriben
 
@@ -54,7 +54,8 @@ El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso 
 - Solo datos inventados y no sensibles: nada de documentos institucionales reales ni datos personales.
 - Nómbralos con el prefijo `PRUEBA` (notebook «PRUEBA hooks», archivo `prueba_contrato.pdf`) para encontrarlos y limpiarlos.
 - Al terminar la verificación manual, límpialos: documento, fragmentos en Qdrant, archivo en `uploads/` y filas de prueba. Prefiere quitarlos desde la interfaz; por terminal, el hook `validate-bash.sh` pide confirmación.
-- Las credenciales de prueba no se escriben en ningún archivo del proyecto: las da Andrés.
+- El borrado físico de los datos de prueba que la propia suite crea, solo en el entorno aislado, es la excepción aprobada a RN-01 y RNF-10 (constitución, principio 5; «Datos» de `CLAUDE.md`): nunca se aplica a datos reales.
+- Las contraseñas de prueba las genera la suite en cada corrida y no se escriben ni se muestran; las de la verificación manual no se escriben en ningún archivo del proyecto: las da Andrés.
 
 ## Evidencia
 

@@ -21,7 +21,9 @@ Desde la raíz del proyecto:
 - Frontend: `cd frontend`, `npm install` (la primera vez o si cambió `package.json`), `npm run dev` → http://localhost:3000. Compilación de prueba: `npm run build`; estilo: `npm run lint`.
 - Migraciones: el backend aplica `alembic upgrade head` al iniciar. Nueva migración: `docker compose exec backend alembic revision --autogenerate -m "..."`, y revisar el archivo generado antes de aplicarlo. Estado: `docker compose exec backend alembic current`.
 - Salud: `curl http://localhost:8000/` (API), `curl http://localhost:6333/collections` (Qdrant), `docker compose exec ollama ollama list` (modelos).
+- Pruebas del backend (dentro del contenedor `backend`, con el servidor ya en marcha): todo (unitarias e integración) `docker compose exec backend pytest` · solo unitarias `docker compose exec backend pytest -m unitaria` · solo integración `docker compose exec backend pytest -m integracion` · en orden inverso, para comprobar que ninguna prueba depende de otra `docker compose exec backend pytest --orden-inverso` · las que fallan a propósito, para verificar el resumen y el ciclo de vida, `docker compose exec backend pytest -m infraestructura` (no entran en el comando por omisión y su salida esperada es distinta de cero). Cada corrida crea y elimina la base y la colección `servia_pruebas`; nunca toca los datos de desarrollo.
 - Diagramas: `docker run --rm -v "<carpeta>:/data" plantuml/plantuml -tpng "/data/*.puml"`.
+- Sesión SDD: `sdd.cmd` (equivale a `claude --agent coordinator`): el coordinador solo lee y reparte el trabajo entre el planner, el implementer y el reviewer; no tiene terminal ni edita archivos. Para operar (docker, git, editar) usa una sesión normal con `claude`.
 - Herramientas locales de Claude Code: Poppler (`pdftoppm`), para leer los PDF de más de 10 páginas (`winget install oschwartz10612.Poppler`); el navegador para verificar la interfaz es el MCP `chrome-devtools` de `.mcp.json`.
 
 ## Convenciones
@@ -54,7 +56,7 @@ Desde la raíz del proyecto:
 - `T_Documento` se une a los temas por la tabla intermedia `T_Expediente_Documento`; la columna `T_Documento.CN_Id_expediente` no existe.
 - Un notebook usa como tema su clave interna `NB-<id>` (`clave_interna`).
 - `CF_Ultimo_acceso = NULL` obliga a cambiar la contraseña temporal al iniciar sesión.
-- Ningún registro se elimina físicamente (RN-01, RNF-10); la única excepción es quitar un documento de un notebook, que borra sus fragmentos en Qdrant, el archivo y la fila.
+- Ningún registro se elimina físicamente (RN-01, RNF-10); las únicas excepciones son quitar un documento de un notebook (borra sus fragmentos en Qdrant, el archivo y la fila) y los datos de prueba que la propia suite crea y borra al terminar sus pruebas.
 
 **Infraestructura**:
 - El LLM y el HTR comparten una GPU de 8 GB, y cada uno libera la memoria de video tras 2 minutos sin uso. Antes de experimentos de GPU en `htr/`, detener Ollama.
@@ -87,9 +89,9 @@ Cambios pequeños y enfocados; no reescribas lo que ya funciona. Al terminar, re
 
 ## Verificación
 
-Cada requisito se aprueba con pruebas automatizadas (unitarias, de integración y de extremo a extremo) y, además, con la verificación manual de punta a punta (principio 4 de la constitución). El código heredado todavía no tiene pruebas (RA-02): se cubre con specs retroactivas, en el orden de `.claude/rules/testing.md`. Los comandos de las pruebas se agregan a «Comandos» al cerrar la spec de infraestructura de pruebas.
+Cada requisito se aprueba con pruebas automatizadas (unitarias, de integración y de extremo a extremo) y, además, con la verificación manual de punta a punta (principio 4 de la constitución). La infraestructura de pruebas del backend existe (spec 002); el código heredado todavía tiene poca cobertura (RA-02) y se cubre con specs retroactivas, en el orden de `.claude/rules/testing.md`. El extremo a extremo llega con la spec de la red de seguridad. Los comandos están en «Comandos».
 
-- Pruebas: la suite completa pasa; las pruebas usan un entorno aislado y nunca datos reales.
+- Pruebas: la suite completa pasa con `docker compose exec backend pytest`; las pruebas usan un entorno aislado (base y colección `servia_pruebas`) y nunca datos reales: los datos de prueba son inventados, con el prefijo `PRUEBA`, y cada prueba limpia lo que crea.
 - Backend: `docker compose ps` sin reinicios, `curl http://localhost:8000/` responde y `docker compose logs backend celery-worker` no muestra errores.
 - Ingesta: cargar un archivo de prueba no sensible y confirmar que queda Procesado y con sus fragmentos en Qdrant.
 - Interfaz: con el navegador (Claude in Chrome o Chrome DevTools MCP) en http://localhost:3000, probar el flujo con los dos roles y revisar la consola. Las credenciales de prueba no se guardan en el repositorio.
