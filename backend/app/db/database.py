@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config.config import DATABASE_URL
+from app.utils.enmascarar import enmascarar_correos_en_texto
 import logging
 import time
 
@@ -65,7 +66,9 @@ def get_db():
     try:
         yield db
     except Exception as e:
-        logger.error(f"Error en sesión de base de datos: {e}")
+        # Por aquí pasa también el texto de un HTTPException (p. ej. el 502 del reseteo, que lleva el correo del
+        # usuario): se enmascara para que el correo no quede en claro en el registro del servidor (RNF-08.2)
+        logger.error(f"Error en sesión de base de datos: {enmascarar_correos_en_texto(str(e))}")
         db.rollback()
         raise e
     finally:

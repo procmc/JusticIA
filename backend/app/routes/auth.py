@@ -19,7 +19,6 @@ Endpoints principales:
     - POST /auth/solicitar-recuperacion: Envío de código por correo
     - POST /auth/verificar-codigo: Verificación del código de recuperación
     - POST /auth/cambiar-contrasenna-recuperacion: Cambio con código verificado
-    - POST /auth/restablecer-contrasenna: Reset de contraseña por administrador
 
 Flujo de recuperación de contraseña:
     1. Usuario solicita recuperación (email) → se envía código de 6 dígitos
@@ -68,11 +67,14 @@ See Also:
     - app.services.bitacora.auth_audit_service: Auditoría de eventos de autenticación
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 import logging
 from app.db.database import get_db
 from app.services.auth_service import AuthService
+from app.services.recuperacion_service import (
+    RESULTADO_CODIGO_VERIFICADO, RESULTADO_CONTRASENA_CAMBIADA, ErrorDeRecuperacion, RecuperacionService,
+)
 from app.services.bitacora.auth_audit_service import auth_audit_service
 from app.auth.jwt_auth import verify_token, create_token
 
@@ -81,12 +83,12 @@ from app.schemas.auth_schemas import (
     LoginRequest, LoginResponse, CambiarContrasenaRequest,
     SolicitarRecuperacionRequest, SolicitarRecuperacionResponse,
     VerificarCodigoRequest, VerificarCodigoResponse,
-    CambiarContrasenaRecuperacionRequest, RestablecerContrasenaRequest,
-    RestablecerContrasenaResponse, MensajeExito, LogoutRequest
+    CambiarContrasenaRecuperacionRequest, MensajeExito, LogoutRequest
 )
 
 router = APIRouter()
 auth_service = AuthService()
+recuperacion_service = RecuperacionService(servicio_de_usuarios=auth_service.usuario_service)
 
 @router.post("/login", response_model=LoginResponse)
 async def login_usuario(
@@ -299,136 +301,96 @@ async def cambiar_contrasenna(
 @router.post("/solicitar-recuperacion", response_model=SolicitarRecuperacionResponse)
 async def solicitar_recuperacion_contrasenna(
     solicitud: SolicitarRecuperacionRequest,
+    tareas: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Solicita recuperación de contraseña enviando código por correo"""
+    """Solicita recuperación de contraseña: el código solo se envía por correo a una cuenta Activa.
+
+    La respuesta es la misma exista o no la cuenta (RF-03.2). Un correo mal formado da 400 y, si el servicio no puede
+    funcionar (Redis o clave de firma), el error de servicio uniforme (503). El envío del correo y el registro de la
+    solicitud ocurren DESPUÉS de responder (tarea posterior): así el tiempo de respuesta no depende de si la cuenta
+    existe ni de si el servidor de correo tarda o falla (RF-03.3). Los demás resultados los registra `completar_solicitud`;
+    aquí solo se registra «servicio no disponible», que no deja nada pendiente (RF-21.1).
+    """
     try:
-        resultado = await auth_service.solicitar_recuperacion_contrasenna(
-            db, solicitud.email
-        )
-        
-        # Registrar solicitud de recuperación
-        await auth_audit_service.registrar_solicitud_recuperacion(
-            db=db,
-            email=solicitud.email
-        )
-        
-        return resultado
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error en solicitar recuperación: {e}")
+        resultado = await recuperacion_service.solicitar(db, solicitud.email)
+    except ErrorDeRecuperacion as error:
+        if error.registrar and error.resultado:  # la entrada inválida no es una solicitud: no se registra
+            await auth_audit_service.registrar_recuperacion_solicitud(
+                db=db, email=error.correo, resultado=error.resultado, usuario_id=None, referencia=error.referencia
+            )
+        raise HTTPException(status_code=error.estado, detail=error.mensaje)
+    except Exception as error:
+        logger.error("Error en solicitar recuperación (%s)", type(error).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
         )
+
+    tareas.add_task(recuperacion_service.completar_solicitud, resultado.pendiente)
+    return resultado.respuesta
 
 @router.post("/verificar-codigo", response_model=VerificarCodigoResponse)
 async def verificar_codigo_recuperacion(
     verificacion: VerificarCodigoRequest,
     db: Session = Depends(get_db)
 ):
-    """Verifica el código de recuperación enviado por correo"""
-    email_from_token = None
+    """Verifica el código de recuperación enviado por correo.
+
+    Ningún error de este paso responde 401, 403 ni 404 (la interfaz cerraría la sesión con un 401): una entrada inválida,
+    un código incorrecto o vencido y un token no reconocido dan 400; el código invalidado por intentos, 429; y si el
+    servicio no puede funcionar (Redis o clave de firma), el error de servicio uniforme (503).
+    Cada resultado queda en la bitácora con la cuenta cuando se conoce y la referencia del token (RF-21.2); si registrar
+    falla, la respuesta es la misma (RF-21.5).
+    """
+    referencia = recuperacion_service.referencia_de_token(verificacion.token)
     try:
-        # Intentar extraer el email del token para auditoría
-        import jwt
-        import os
-        jwt_secret = os.getenv("JWT_SECRET_KEY", "default-secret-key-change-in-production")
-        try:
-            decoded = jwt.decode(verificacion.token, jwt_secret, algorithms=["HS256"])
-            email_from_token = decoded.get('email', 'desconocido')
-        except:
-            email_from_token = 'desconocido'
-        
-        resultado = await auth_service.verificar_codigo_recuperacion(
-            db, verificacion.token, verificacion.codigo
-        )
-        
-        # Registrar verificación exitosa
-        await auth_audit_service.registrar_verificacion_codigo(
-            db=db,
-            email=email_from_token,
-            exitoso=True
-        )
-        
-        return resultado
-        
-    except ValueError as e:
-        # Registrar verificación fallida
-        await auth_audit_service.registrar_verificacion_codigo(
-            db=db,
-            email=email_from_token or 'desconocido',
-            exitoso=False
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error en verificar código: {e}")
+        respuesta, cedula = await recuperacion_service.verificar(db, verificacion.token, verificacion.codigo)
+    except ErrorDeRecuperacion as error:
+        if error.registrar and error.resultado:  # la entrada inválida no se registra
+            await auth_audit_service.registrar_recuperacion_verificacion(
+                db=db, resultado=error.resultado, usuario_id=error.cedula, referencia=referencia
+            )
+        raise HTTPException(status_code=error.estado, detail=error.mensaje)
+    except Exception as error:
+        logger.error("Error en verificar código (%s)", type(error).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
         )
+    await auth_audit_service.registrar_recuperacion_verificacion(
+        db=db, resultado=RESULTADO_CODIGO_VERIFICADO, usuario_id=cedula, referencia=referencia
+    )
+    return respuesta
 
 @router.post("/cambiar-contrasenna-recuperacion", response_model=MensajeExito)
 async def cambiar_contrasenna_recuperacion(
     cambio: CambiarContrasenaRecuperacionRequest,
     db: Session = Depends(get_db)
 ):
-    """Cambia la contraseña después de verificación exitosa del código"""
-    try:
-        resultado = await auth_service.cambiar_contrasenna_recuperacion(
-            db, cambio.verificationToken, cambio.nuevaContrasenna
-        )
+    """Cambia la contraseña después de verificación exitosa del código.
 
-        return resultado
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error en cambiar contraseña recuperación: {e}")
+    Una verificación vencida, perdida o de una cuenta que cambió o dejó de estar Activa responde siempre el mismo 400 de
+    proceso vencido, sin decir el motivo. Nunca 401, 403 ni 404.
+    Cada resultado queda en la bitácora (RF-21.2); si registrar falla, la respuesta es la misma (RF-21.5). La contraseña
+    nueva no se registra jamás.
+    """
+    referencia = recuperacion_service.referencia_de_token(cambio.verificationToken)
+    try:
+        respuesta, cedula = await recuperacion_service.cambiar(db, cambio.verificationToken, cambio.nuevaContrasenna)
+    except ErrorDeRecuperacion as error:
+        if error.registrar and error.resultado:  # la entrada inválida no se registra
+            await auth_audit_service.registrar_recuperacion_cambio(
+                db=db, resultado=error.resultado, usuario_id=error.cedula, referencia=referencia
+            )
+        raise HTTPException(status_code=error.estado, detail=error.mensaje)
+    except Exception as error:
+        logger.error("Error en cambiar contraseña recuperación (%s)", type(error).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
         )
-
-@router.post("/restablecer-contrasenna", response_model=RestablecerContrasenaResponse)
-async def restablecer_contrasenna(
-    restablecimiento: RestablecerContrasenaRequest,
-    db: Session = Depends(get_db)
-):
-    """Restablece la contraseña de un usuario (función para administradores)"""
-    try:
-        resultado = await auth_service.restablecer_contrasenna(
-            db, restablecimiento.cedula
-        )
-        
-        # Registrar restablecimiento - cedula es el CN_Id_usuario (string)
-        await auth_audit_service.registrar_cambio_password(
-            db=db,
-            usuario_id=restablecimiento.cedula,
-            tipo_cambio="restablecimiento_admin"
-        )
-        
-        return resultado
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error en restablecer contraseña: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
-        )
+    await auth_audit_service.registrar_recuperacion_cambio(
+        db=db, resultado=RESULTADO_CONTRASENA_CAMBIADA, usuario_id=cedula, referencia=referencia
+    )
+    return respuesta

@@ -79,7 +79,14 @@ class UsuarioService {
       }
 
       const data = await httpService.post('/usuarios', usuarioData);
-      return { success: true, usuario: data };
+      // La API decide el texto y si el correo con la contraseña temporal salió (RF-02.1);
+      // aquí solo se transportan para que la pantalla los muestre tal cual.
+      return {
+        success: true,
+        usuario: data,
+        mensaje: data.mensaje,
+        notificacionEntregada: data.notificacion_entregada
+      };
       
     } catch (error) {
       console.error('Error al crear usuario:', error);
@@ -167,7 +174,14 @@ class UsuarioService {
       if (error.status === 403) {
         return { error: true, message: 'No tiene permisos para resetear contraseñas' };
       }
-      
+
+      // 502: el correo no salió y la contraseña no se modificó (RF-03.14). El texto
+      // completo, con el correo del usuario, viene en el `detail` de la API y se
+      // muestra sin cambios (httpService ya lo deja en error.message).
+      if (error.status === 502) {
+        return { error: true, message: error.message };
+      }
+
       return { error: true, message: error.message || 'Error al resetear contraseña' };
     }
   }

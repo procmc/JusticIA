@@ -46,6 +46,36 @@
 import httpService from './httpService';
 
 /**
+ * Convierte el error de uno de los tres pasos de la recuperación en el resultado que usa la pantalla (RF-03.23).
+ *
+ * El mensaje es el que devolvió la API, sin sustituirlo por código HTTP. Las banderas sí salen del código HTTP:
+ * 429 = código invalidado por intentos y 503 = servicio no disponible. Un 422 de FastAPI trae `detail` como lista y
+ * no se puede mostrar, así que en ese caso se usa el mensaje por omisión.
+ */
+function resultadoDeErrorDeRecuperacion(error, mensajePorOmision) {
+  if (error?.isNetworkError) {
+    return { error: true, message: 'Error de conexión. Verifique su red.' };
+  }
+
+  if (error?.isTimeout) {
+    return { error: true, message: 'El servidor tardó demasiado en responder. Inténtelo de nuevo.' };
+  }
+
+  const detalle = error?.data?.detail;
+  const mensaje = detalle !== undefined && typeof detalle !== 'string'
+    ? mensajePorOmision
+    : (error?.message || mensajePorOmision);
+
+  return {
+    error: true,
+    message: mensaje,
+    status: error?.status,
+    codigoInvalidado: error?.status === 429,
+    servicioNoDisponible: error?.status === 503
+  };
+}
+
+/**
  * Servicio de autenticación y gestión de contraseñas.
  * 
  * @class AuthService
@@ -198,7 +228,10 @@ class AuthService {
   }
 
   /**
-   * Solicitar recuperación de contraseña (envía código por email)
+   * Solicitar recuperación de contraseña (RF-03.23).
+   *
+   * Devuelve el mensaje de la API tal cual: la respuesta es la misma exista o no la cuenta, así que la interfaz
+   * no sustituye ni agrega textos que afirmen o nieguen su existencia.
    */
   async solicitarRecuperacion(email) {
     try {
@@ -209,41 +242,26 @@ class AuthService {
 
       const data = await httpService.post('/auth/solicitar-recuperacion', { email });
       
-      if (data?.error) {
-        return { error: true, message: data.message || 'Error al solicitar recuperación' };
-      }
-      
-      if (!data?.success) {
+      if (data?.error || !data?.success) {
         return { error: true, message: data?.message || 'Error al solicitar recuperación' };
       }
       
       return { 
         success: true, 
-        message: data.message || 'Código enviado exitosamente', 
+        message: data.message, 
         token: data.token 
       };
       
     } catch (error) {
-      console.error('Error en solicitar recuperación:', error);
-      
-      if (error.status === 404) {
-        return { error: true, message: 'Email no registrado' };
-      }
-      
-      if (error.status === 429) {
-        return { error: true, message: 'Demasiados intentos. Intente más tarde.' };
-      }
-      
-      if (error.isNetworkError) {
-        return { error: true, message: 'Error de conexión. Verifique su red.' };
-      }
-      
-      return { error: true, message: error.message || 'Error al solicitar recuperación' };
+      return resultadoDeErrorDeRecuperacion(error, 'Error al solicitar recuperación');
     }
   }
 
   /**
-   * Verificar código de recuperación
+   * Verificar código de recuperación.
+   *
+   * Con 429 la API informa que el código quedó invalidado por intentos: se devuelve `codigoInvalidado` para
+   * que la pantalla lo muestre sin comparar textos.
    */
   async verificarCodigoRecuperacion(token, codigo) {
     try {
@@ -254,41 +272,25 @@ class AuthService {
 
       const data = await httpService.post('/auth/verificar-codigo', { token, codigo });
       
-      if (data?.error) {
-        return { error: true, message: data.message || 'Código inválido' };
-      }
-      
-      if (!data?.success) {
-        return { error: true, message: data?.message || 'Código inválido' };
+      if (data?.error || !data?.success) {
+        return { error: true, message: data?.message || 'Error al verificar código' };
       }
       
       return { 
         success: true, 
-        message: data.message || 'Código verificado exitosamente', 
+        message: data.message, 
         verificationToken: data.verificationToken 
       };
       
     } catch (error) {
-      console.error('Error al verificar código:', error);
-      
-      if (error.status === 400) {
-        return { error: true, message: 'Código inválido o expirado' };
-      }
-      
-      if (error.status === 404) {
-        return { error: true, message: 'Token de recuperación no válido' };
-      }
-      
-      if (error.isNetworkError) {
-        return { error: true, message: 'Error de conexión. Verifique su red.' };
-      }
-      
-      return { error: true, message: error.message || 'Error al verificar código' };
+      return resultadoDeErrorDeRecuperacion(error, 'Error al verificar código');
     }
   }
 
   /**
-   * Cambiar contraseña con token de verificación (recuperación)
+   * Cambiar contraseña con token de verificación (recuperación).
+   *
+   * `contrasenaRepetida` marca el rechazo de una contraseña igual a la actual, para mostrarlo junto al campo.
    */
   async cambiarContrasenaRecuperacion(verificationToken, nuevaContraseña) {
     try {
@@ -304,35 +306,21 @@ class AuthService {
       
       const data = await httpService.post('/auth/cambiar-contrasenna-recuperacion', payload);
       
-      if (data?.error) {
-        return { error: true, message: data.message || 'Error al cambiar contraseña' };
-      }
-      
-      if (!data?.success) {
+      if (data?.error || !data?.success) {
         return { error: true, message: data?.message || 'Error al cambiar contraseña' };
       }
       
       return { 
         success: true, 
-        message: data.message || 'Contraseña cambiada exitosamente' 
+        message: data.message 
       };
       
     } catch (error) {
-      console.error('Error al cambiar contraseña (recuperación):', error);
-      
-      if (error.status === 400) {
-        return { error: true, message: error.message || 'Token inválido o contraseña no válida' };
-      }
-      
-      if (error.status === 404) {
-        return { error: true, message: 'Token de verificación no válido o expirado' };
-      }
-      
-      if (error.isNetworkError) {
-        return { error: true, message: 'Error de conexión. Verifique su red.' };
-      }
-      
-      return { error: true, message: error.message || 'Error al cambiar contraseña' };
+      const resultado = resultadoDeErrorDeRecuperacion(error, 'Error al cambiar contraseña');
+      return {
+        ...resultado,
+        contrasenaRepetida: resultado.status === 400 && /debe ser diferente a la actual/i.test(resultado.message)
+      };
     }
   }
 

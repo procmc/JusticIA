@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TablaUsuarios from './TablaUsuarios';
 import DetalleUsuario from './DetalleUsuario';
 import FormularioUsuario from './FormularioUsuario';
@@ -6,6 +6,10 @@ import HeaderGestionUsuarios from './HeaderGestionUsuarios';
 import ConfirmModal from '../../ui/ConfirmModal';
 import { obtenerUsuariosService, crearUsuarioService, editarUsuarioService, resetearContrasenaService } from '../../../services/usuarioService';
 import { Toast } from '../../ui/CustomAlert';
+
+// Los avisos con el texto de la API sobre el correo (RF-03.14, RF-02.1) son largos y
+// el administrador necesita leerlos: los 3 s por omisión de Toast no alcanzan.
+const DURACION_AVISO_LARGO_MS = 10000;
 
 const GestionUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -18,6 +22,10 @@ const GestionUsuarios = () => {
   const [modalFormularioAbierto, setModalFormularioAbierto] = useState(false);
   const [modalConfirmResetAbierto, setModalConfirmResetAbierto] = useState(false); // Modal de confirmación
   const [usuarioParaReset, setUsuarioParaReset] = useState(null); // Usuario a resetear
+  // ConfirmModal llama a onClose justo después de onConfirm con el valor viejo de
+  // isLoading, así que el estado no basta para impedir que el cuadro se cierre
+  // mientras el reseteo está en curso (RF-03.15 c): se usa una referencia.
+  const reseteoEnCursoRef = useRef(false);
   const [modoFormulario, setModoFormulario] = useState('crear');
   const [filtroTexto, setFiltroTexto] = useState('');
 
@@ -98,7 +106,12 @@ const GestionUsuarios = () => {
         // Crear usuario
         resultado = await crearUsuarioService(datosUsuario);
         if (resultado.success) {
-          Toast.success('Éxito', 'Usuario creado exitosamente');
+          // La cuenta existe en ambos casos; el texto y si el correo salió los dicta la API (RF-02.2)
+          if (resultado.notificacionEntregada === false) {
+            Toast.warning('Advertencia', resultado.mensaje, { timeout: DURACION_AVISO_LARGO_MS });
+          } else {
+            Toast.success('Éxito', resultado.mensaje || 'Usuario creado exitosamente');
+          }
           setModalFormularioAbierto(false);
           setUsuarioSeleccionado(null);
           await cargarUsuarios(); // Recargar lista después de cerrar el modal
@@ -144,29 +157,30 @@ const GestionUsuarios = () => {
   };
 
   const confirmarResetearContrasena = async () => {
+    reseteoEnCursoRef.current = true;
     setLoadingResetPassword(true);
     try {
       const resultado = await resetearContrasenaService(usuarioParaReset.CN_Id_usuario);
       if (resultado.success) {
         Toast.success('Éxito', resultado.message || 'Contraseña reseteada exitosamente');
-        // Cerrar modal después del éxito
-        setTimeout(() => {
-          setModalConfirmResetAbierto(false);
-          setUsuarioParaReset(null);
-        }, 1000);
+        // Cerrar el cuadro solo si el reseteo salió bien
+        setModalConfirmResetAbierto(false);
+        setUsuarioParaReset(null);
       } else {
-        Toast.error('Error', resultado.message || 'Error al resetear contraseña');
+        // El cuadro queda abierto para reintentar; el texto de la API lleva el correo (RF-03.14)
+        Toast.error('Error', resultado.message || 'Error al resetear contraseña', { timeout: DURACION_AVISO_LARGO_MS });
       }
     } catch (error) {
       console.error('Error al resetear contraseña:', error);
-      Toast.error('Error', 'Error al resetear contraseña del usuario');
+      Toast.error('Error', 'Error al resetear contraseña del usuario', { timeout: DURACION_AVISO_LARGO_MS });
     } finally {
+      reseteoEnCursoRef.current = false;
       setLoadingResetPassword(false);
     }
   };
 
   const cerrarModalConfirmReset = () => {
-    if (!loadingResetPassword) {
+    if (!reseteoEnCursoRef.current) {
       setModalConfirmResetAbierto(false);
       setUsuarioParaReset(null);
     }
@@ -222,7 +236,7 @@ const GestionUsuarios = () => {
         title="Resetear Contraseña"
         description={`¿Estás seguro de que deseas resetear la contraseña del usuario ${usuarioParaReset?.CT_Nombre || ''} ${usuarioParaReset?.CT_Apellido_uno || ''} ${usuarioParaReset?.CT_Apellido_dos || ''}?
 
-Se enviará un correo electrónico a ${usuarioParaReset?.CT_Correo || ''} con las instrucciones para establecer una nueva contraseña.`}
+Se enviará una contraseña temporal al correo ${usuarioParaReset?.CT_Correo || ''}.`}
         confirmText={loadingResetPassword ? "Enviando..." : "Sí, Resetear"}
         cancelText="Cancelar"
         confirmColor="danger"

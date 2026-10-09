@@ -91,6 +91,9 @@ from app.db.models.usuario import T_Usuario
 from app.db.models.estado import T_Estado
 from passlib.context import CryptContext
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UsuarioRepository:
@@ -127,6 +130,31 @@ class UsuarioRepository:
             .first()
         )
     
+    def obtener_usuario_por_correo(self, db: Session, correo_normalizado: str) -> Optional[T_Usuario]:
+        """Obtiene un usuario por su correo ya normalizado (recortado y en minúsculas), con su rol y su estado cargados.
+
+        Quien llama normaliza el correo; la comparación con el guardado no distingue mayúsculas porque el ordenamiento de
+        la base tampoco (el código heredado también dependía de eso). El correo es único por cuenta (RF-03.4, RF-03.12).
+        """
+        return (
+            db.query(T_Usuario)
+            .options(joinedload(T_Usuario.rol), joinedload(T_Usuario.estado))
+            .filter(T_Usuario.CT_Correo == correo_normalizado)
+            .first()
+        )
+
+    def actualizar_contrasenna_recuperacion(self, db: Session, usuario: T_Usuario, nuevo_hash: str) -> None:
+        """Guarda el hash de la contraseña nueva de una recuperación; si el guardado falla, deshace y relanza (RF-03.4).
+
+        Solo cambia el hash: no toca `CF_Ultimo_acceso` ni el estado de la cuenta.
+        """
+        try:
+            usuario.CT_Contrasenna = nuevo_hash
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
     def editar_usuario(self, db: Session, usuario_id: str, nombre_usuario: str, nombre: str, apellido_uno: str, apellido_dos: str, correo: str, id_rol: int, id_estado: int) -> Optional[T_Usuario]:
         """Edita los datos de un usuario incluyendo rol y estado"""
         usuario = self.obtener_usuario_por_id(db, usuario_id)
@@ -187,7 +215,9 @@ class UsuarioRepository:
         
         except Exception as e:
             db.rollback()
-            print(f"Error al crear usuario: {e}")
+            # Solo el tipo del error, sin su texto ni la traza: el mensaje de SQLAlchemy lista los parámetros de la
+            # consulta (entre ellos el correo de la cuenta) y no deben llegar a los registros (RNF-08.2).
+            logger.error("Error al crear usuario (%s)", type(e).__name__)
             raise
 
     def actualizar_ultimo_acceso(self, db: Session, usuario_id: str) -> Optional[T_Usuario]:
@@ -201,22 +231,42 @@ class UsuarioRepository:
         db.refresh(usuario)
         return usuario
 
-    def resetear_contrasenna(self, db: Session, usuario_id: str, nueva_contrasenna: str) -> Optional[T_Usuario]:
-        """Resetea la contraseña de un usuario"""
+    def resetear_contrasenna(self, db: Session, usuario_id: str, nueva_contrasenna: str, confirmar: bool = True) -> Optional[T_Usuario]:
+        """Resetea la contraseña de un usuario.
+
+        Con `confirmar=False` solo hace `flush`: el cambio queda dentro de la transacción abierta y quien llama lo
+        confirma con `confirmar_cambios` o lo deshace con `descartar_cambios`. Así el restablecimiento por el
+        Administrador puede enviar el correo antes de confirmar (RF-03.14).
+        """
         usuario = self.obtener_usuario_por_id(db, usuario_id)
         if not usuario:
             return None
-        
+
         # Encriptar la nueva contraseña
         contrasenna_hash = self._hash_password(nueva_contrasenna)
         usuario.CT_Contrasenna = contrasenna_hash
-        
+
         # Limpiar fecha de último acceso para forzar cambio de contraseña obligatorio
         usuario.CF_Ultimo_acceso = None
-        
-        db.commit()
-        db.refresh(usuario)
+
+        if confirmar:
+            db.commit()
+            db.refresh(usuario)
+        else:
+            db.flush()
         return usuario
+
+    def confirmar_cambios(self, db: Session) -> None:
+        """Confirma la transacción abierta; si el commit falla la revierte y relanza el error (queda lo anterior)."""
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+    def descartar_cambios(self, db: Session) -> None:
+        """Deshace la transacción abierta: lo que se guardó sin confirmar vuelve a como estaba."""
+        db.rollback()
 
     def actualizar_avatar_ruta(self, db: Session, usuario_id: str, ruta_avatar: str) -> Optional[T_Usuario]:
         """Actualiza la ruta del avatar de un usuario"""

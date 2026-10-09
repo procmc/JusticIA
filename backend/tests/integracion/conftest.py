@@ -61,3 +61,37 @@ def cliente_api():
         import main
 
     return TestClient(main.app)
+
+
+@pytest.fixture
+def iniciar_sesion(cliente_api):
+    """Devuelve una función que inicia sesión con un usuario de prueba y entrega sus cabeceras con el token (spec 003a, T3).
+
+    Se usa así: `cabeceras = iniciar_sesion(administrador)` y luego `cliente_api.get(ruta, headers=cabeceras)`. Entra por
+    `POST /auth/login`, como lo haría el navegador, así que el token es el que firma el propio sistema. La contraseña de
+    la prueba nunca se escribe en ningún mensaje: si el inicio de sesión falla, el error solo dice el código recibido.
+    """
+
+    def _iniciar(usuario) -> dict:
+        respuesta = cliente_api.post("/auth/login", json={"email": usuario.correo, "password": usuario.contrasena})
+        assert respuesta.status_code == 200, f"No se pudo iniciar sesión con el usuario de prueba (código {respuesta.status_code})."
+        return {"Authorization": f"Bearer {respuesta.json()['access_token']}"}
+
+    return _iniciar
+
+
+@pytest.fixture
+def llamar_asgi(cliente_api):
+    """Devuelve una función que llama a la aplicación real por ASGI dentro del bucle de la prueba (spec 003b, T7).
+
+    Se usa dentro de un `asyncio.run`: `llamada = llamar_asgi("POST", ruta, json={...}, cabeceras={...})` devuelve enseguida
+    una `Llamada` con `respuesta` (futuro que se resuelve al llegar el cuerpo) y `tarea` (la aplicación completa, con sus
+    tareas posteriores). Así la prueba ve la respuesta MIENTRAS el envío del correo sigue pendiente, cosa que `cliente_api`
+    no permite: espera a que la aplicación termine. Es la misma aplicación que usa `cliente_api`, sin su arranque.
+    """
+    from tests.soporte import asgi
+
+    def _llamar(metodo, ruta, json=None, cabeceras=None):
+        return asgi.llamar(cliente_api.app, metodo, ruta, json=json, cabeceras=cabeceras)
+
+    return _llamar

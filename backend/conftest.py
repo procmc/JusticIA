@@ -21,7 +21,7 @@ from tests.soporte.resumen import calcular_resumen, codigo_salida, texto_resumen
 
 # Fixtures de las piezas simuladas (Celery inmediato, carpeta temporal de archivos...) y de los datos de prueba
 # (usuarios `PRUEBA`, limpieza automática de cada prueba).
-pytest_plugins = ["tests.soporte.simulados", "tests.soporte.datos"]
+pytest_plugins = ["tests.soporte.simulados", "tests.soporte.datos", "tests.soporte.reloj"]
 
 
 def pytest_addoption(parser):

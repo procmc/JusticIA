@@ -22,48 +22,56 @@ Configuración requerida (variables de entorno):
 
 Example:
     ```python
-    # Probar configuración de correo
-    response = await client.post("/email/test-email", json={
+    # Probar configuración de correo (con el token de un Administrador)
+    cabeceras = {"Authorization": f"Bearer {token_admin}"}
+    response = await client.post("/email/test-email", headers=cabeceras, json={
         "email": "destino@example.com",
         "password": "password123",
         "nombre_usuario": "Usuario Test"
     })
     
     # Verificar configuración actual
-    config = await client.get("/email/email-config")
+    config = await client.get("/email/email-config", headers=cabeceras)
     print(config["provider"])  # gmail
     print(config["configured"])  # True si está configurado
     ```
 
-Note:
-    Estos endpoints NO deberían estar expuestos en producción sin autenticación.
-    Considerar agregar require_administrador en ambientes productivos.
+Roles:
+    Ambos endpoints exigen sesión de Administrador (require_administrador): sin token responden 401 y con
+    un Usuario Gubernamental, 403. Ninguno devuelve al navegador el texto de una excepción ni la contraseña
+    de la cuenta de correo (spec 003a, RNF-07.2).
 
 See Also:
     - app.email.EmailService: Servicio de envío de correos
     - app.email.get_email_config_from_env: Carga de configuración desde .env
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+import logging
+import os
+
+from fastapi import APIRouter, Depends, HTTPException
 from dotenv import load_dotenv
+from app.auth.jwt_auth import require_administrador
 from app.email import EmailService, get_email_config_from_env
+from app.schemas.email_schemas import (
+    ConfiguracionCorreoRespuesta, PruebaCorreoRespuesta, PruebaCorreoSolicitud
+)
+
+logger = logging.getLogger(__name__)
 
 # Cargar variables de entorno (como en Node.js)
 load_dotenv()
 
 router = APIRouter()
 
-class TestEmailRequest(BaseModel):
-    email: str
-    password: str
-    nombre_usuario: str = "Usuario de Prueba"
-
-@router.post("/test-email")
-async def test_email(request: TestEmailRequest):
+@router.post("/test-email", response_model=PruebaCorreoRespuesta)
+async def test_email(
+    request: PruebaCorreoSolicitud,
+    current_user: dict = Depends(require_administrador)
+):
     """
-    Prueba el envío de correo electrónico
-    Similar a una función de test en Node.js
+    Prueba el envío de correo electrónico (solo Administrador).
+    Si el servidor de correo no acepta el mensaje, responde 200 con success=False.
     """
     try:
         # Inicializar servicio de correo
@@ -78,43 +86,42 @@ async def test_email(request: TestEmailRequest):
         )
         
         if success:
-            return {
-                "success": True,
-                "message": f"Correo enviado exitosamente a {request.email}"
-            }
+            return PruebaCorreoRespuesta(
+                success=True,
+                message=f"Correo enviado exitosamente a {request.email}"
+            )
         else:
-            return {
-                "success": False,
-                "message": "Error al enviar el correo"
-            }
+            return PruebaCorreoRespuesta(
+                success=False,
+                message="Error al enviar el correo"
+            )
             
-    except Exception as e:
+    except Exception:
+        # El detalle de la excepción puede traer datos del servidor de correo: va al registro, no al navegador
+        logger.exception("Error en el envío de correo de prueba")
         raise HTTPException(
             status_code=500,
-            detail=f"Error al enviar correo: {str(e)}"
+            detail="Error interno del servidor"
         )
 
-@router.get("/email-config")
-async def get_email_config():
+@router.get("/email-config", response_model=ConfiguracionCorreoRespuesta)
+async def get_email_config(current_user: dict = Depends(require_administrador)):
     """
-    Obtiene la configuración actual de correo (sin credenciales)
+    Obtiene la configuración actual de correo, sin credenciales (solo Administrador).
     Útil para verificar la configuración
     """
     try:
-        import os
+        return ConfiguracionCorreoRespuesta(
+            provider=os.getenv("EMAIL_PROVIDER", "gmail"),
+            username=os.getenv("EMAIL_USERNAME", "No configurado"),
+            host=os.getenv("EMAIL_HOST", "Usando configuración por defecto"),
+            port=os.getenv("EMAIL_PORT", "587"),
+            configured=bool(os.getenv("EMAIL_USERNAME") and os.getenv("EMAIL_PASSWORD"))
+        )
         
-        config_info = {
-            "provider": os.getenv("EMAIL_PROVIDER", "gmail"),
-            "username": os.getenv("EMAIL_USERNAME", "No configurado"),
-            "host": os.getenv("EMAIL_HOST", "Usando configuración por defecto"),
-            "port": os.getenv("EMAIL_PORT", "587"),
-            "configured": bool(os.getenv("EMAIL_USERNAME") and os.getenv("EMAIL_PASSWORD"))
-        }
-        
-        return config_info
-        
-    except Exception as e:
+    except Exception:
+        logger.exception("Error al obtener la configuración de correo")
         raise HTTPException(
             status_code=500,
-            detail=f"Error al obtener configuración: {str(e)}"
+            detail="Error interno del servidor"
         )

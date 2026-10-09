@@ -23,14 +23,20 @@
 Este módulo es también un plugin de pytest (lo declara el `conftest.py` raíz) y nunca importa
 `app` ni `celery_app` al cargarse: lo hace dentro de las funciones y las fixtures.
 """
+import asyncio
 import contextlib
+import copy
+import email.generator
 import email.message
+import email.policy
 import importlib.abc
+import io
 import os
 import re
 import shutil
 import sys
 import tempfile
+import threading
 import zlib
 from pathlib import Path
 from typing import Callable, Dict, Iterator, List, Mapping, Optional
@@ -80,6 +86,229 @@ def instalar_redis_simulado():
     redis.Redis = RedisSimulado
     _estado["servidor_redis"] = servidor
     return servidor
+
+
+# --- Redis controlable (spec 003b, RA-02.11) -------------------------------------------------
+
+# Cuánto espera, como máximo, una llamada retenida por `colgar()` antes de rendirse con un error de tiempo.
+# Es solo una red de seguridad: una prueba que olvide `liberar()` no deja un hilo colgado para siempre.
+TOPE_DE_RETENCION = 10.0
+
+_clases_de_cliente: Dict[object, type] = {}
+
+
+def _clase_de_cliente_controlable():
+    """La clase del cliente que obedece al controlador; se crea al primer uso sobre el `redis.Redis` simulado.
+
+    Se crea aquí dentro (y no al cargar el módulo) porque necesita `redis` y `fakeredis`, y este módulo
+    se carga como plugin antes de que `pytest_configure` los instale. Guarda en un `dict` la clase creada
+    para cada `redis.Redis` (la suite instala uno solo, pero así no se crean clases de más).
+    """
+    instalar_redis_simulado()
+    import fakeredis
+    import redis
+
+    base = redis.Redis
+    if not issubclass(base, fakeredis.FakeRedis):
+        raise AbortoPruebas("RedisControlable solo funciona sobre el Redis simulado, y `redis.Redis` no lo es.")
+    if base not in _clases_de_cliente:
+
+        class ClienteControlable(base):
+            """Un cliente del servidor simulado que antes de cada orden (o transacción) consulta al controlador."""
+
+            def __init__(self, controlador, *args, **kwargs):
+                self._controlador = controlador
+                super().__init__(*args, **kwargs)
+
+            def execute_command(self, *args, **opciones):
+                self._controlador._pasar()
+                return super().execute_command(*args, **opciones)
+
+            def pipeline(self, *args, **kwargs):
+                tuberia = super().pipeline(*args, **kwargs)
+                original = tuberia.execute
+                controlador = self._controlador
+
+                def execute(*argumentos, **opciones):
+                    # Las órdenes de una transacción se encolan sin hablar con el servidor: el momento en que
+                    # puede fallar es `execute()` (MULTI/EXEC), también si se armó antes de `no_responde()`.
+                    controlador._pasar()
+                    return original(*argumentos, **opciones)
+
+                tuberia.execute = execute
+                return tuberia
+
+        _clases_de_cliente[base] = ClienteControlable
+    return _clases_de_cliente[base]
+
+
+class RedisControlable:
+    """El Redis simulado de la suite, con tres poderes para la prueba (RA-02.11).
+
+    - No responder: `no_responde("conexion")` / `no_responde("tiempo")` hacen que toda orden (y toda
+      transacción) lance el error de `redis` correspondiente hasta `responder_bien()`; `colgar()` retiene
+      la llamada hasta `liberar()`, con un tope de seguridad (`TOPE_DE_RETENCION`).
+    - Perder claves: `perder(clave)` y `perder_todas()` imitan el desalojo por memoria. Son un efecto del
+      servidor, así que funcionan aunque el cliente no pueda hablarle.
+    - Caducar por tiempo virtual: `avanzar(segundos)` recorta la caducidad de las claves con la API pública
+      (`pttl`, `pexpire`, `delete`), sin esperar tiempo real; `vincular_reloj(reloj)` hace que
+      `await reloj.avanzar(s)` también la aplique.
+
+    Envuelve un cliente del MISMO servidor en memoria que usa toda la suite: lo que escribe lo ven los demás
+    clientes de su base y la limpieza de cada prueba (`flushall`) lo vacía. Cualquier otro atributo se
+    delega al cliente, así que se usa como un `redis.Redis` (`set`, `hset`, `pipeline`, `ttl`...), con
+    respuestas en texto. Redis real no se usa en ninguna prueba.
+    """
+
+    def __init__(self, db: int = 3):
+        self.db = db
+        self._fallo: Optional[str] = None
+        self._colgado = False
+        self._liberada = threading.Event()
+        self._hay_retenida = threading.Event()
+        self._cerrojo = threading.Lock()
+        self._vinculo = None
+        self.cliente = _clase_de_cliente_controlable()(self, db=db, decode_responses=True)
+
+    def __getattr__(self, nombre: str):
+        # Solo se llama cuando el atributo no existe aquí: lo demás es del cliente. Los nombres propios
+        # todavía sin asignar (durante `__init__`) no se delegan, para no entrar en un ciclo.
+        if nombre.startswith("_") or nombre in ("cliente", "db"):
+            raise AttributeError(nombre)
+        return getattr(self.cliente, nombre)
+
+    # --- Que no responda ---
+
+    def no_responde(self, tipo: str = "conexion") -> None:
+        """Desde ahora toda orden lanza el error de `redis` de ese tipo: «conexion» o «tiempo»."""
+        if tipo not in ("conexion", "tiempo"):
+            raise ValueError("`no_responde` admite «conexion» o «tiempo».")
+        self._fallo = tipo
+
+    def responder_bien(self) -> None:
+        """Restablece el servicio: se acaban los errores y se libera lo que estuviera retenido."""
+        self._fallo = None
+        self.liberar()
+
+    def colgar(self) -> None:
+        """Desde ahora cada llamada queda retenida (un Redis colgado) hasta `liberar()` o el tope de seguridad."""
+        self._liberada.clear()
+        self._hay_retenida.clear()
+        self._colgado = True
+
+    def liberar(self) -> None:
+        """Suelta las llamadas retenidas por `colgar()`: terminan normalmente."""
+        self._colgado = False
+        self._liberada.set()
+
+    def esperar_retenida(self, tiempo: float = 2.0) -> bool:
+        """Espera (tiempo real, como máximo `tiempo`) a que alguna llamada quede retenida; dice si ya hay una."""
+        return self._hay_retenida.wait(tiempo)
+
+    def _pasar(self) -> None:
+        """Lo llama el cliente antes de cada orden: lanza el fallo, retiene la llamada o la deja pasar."""
+        from redis.exceptions import ConnectionError as ErrorDeConexion
+        from redis.exceptions import TimeoutError as ErrorDeTiempo
+
+        if self._fallo == "conexion":
+            raise ErrorDeConexion("Redis simulado: sin conexión")
+        if self._fallo == "tiempo":
+            raise ErrorDeTiempo("Redis simulado: tiempo agotado")
+        if self._colgado:
+            self._hay_retenida.set()
+            if not self._liberada.wait(TOPE_DE_RETENCION):
+                raise ErrorDeTiempo("Redis simulado: la llamada retenida agotó el tope de seguridad")
+
+    # --- Perder claves ---
+
+    def _interno(self, db: Optional[int] = None):
+        """Un cliente del mismo servidor que NO obedece al controlador: lo que hace el servidor por su cuenta."""
+        import redis
+
+        return redis.Redis(db=self.db if db is None else db, decode_responses=True)
+
+    def perder(self, clave: str) -> None:
+        """El servidor pierde esa clave (desalojo por memoria). Perder una que no existe no es un error."""
+        self._interno().delete(clave)
+
+    def perder_todas(self) -> None:
+        """El servidor pierde todas sus claves, de todas las bases."""
+        self._interno().flushall()
+
+    def claves(self, patron: str = "*") -> List[str]:
+        """Las claves de la base del cliente que coinciden con el patrón, como texto y ordenadas."""
+        return sorted(self._interno().scan_iter(match=patron))
+
+    # --- Caducidad por tiempo virtual ---
+
+    def avanzar(self, segundos: float) -> None:
+        """Pasan `segundos` de tiempo virtual: se recorta la caducidad de las claves y caducan las que se cumplen.
+
+        Usa solo órdenes públicas (`pttl`, `pexpire`, `delete`) y recorre todas las bases, porque el tiempo
+        es del servidor. Las claves sin caducidad no se tocan.
+        """
+        if segundos < 0:
+            raise ValueError("El Redis controlable solo avanza (segundos >= 0).")
+        milisegundos = int(round(segundos * 1000))
+        for numero in list(_estado["servidor_redis"].dbs):
+            cliente = self._interno(numero)
+            for clave in list(cliente.scan_iter()):
+                restante = cliente.pttl(clave)
+                if restante < 0:  # -1 sin caducidad, -2 ya no existe
+                    continue
+                if restante - milisegundos <= 0:
+                    cliente.delete(clave)
+                else:
+                    cliente.pexpire(clave, restante - milisegundos)
+
+    def vincular_reloj(self, reloj) -> None:
+        """Hace que `await reloj.avanzar(s)` también avance este Redis (el reloj sigue siendo el de la prueba)."""
+        self.desvincular_reloj()
+        original = reloj.avanzar
+
+        async def avanzar(segundos: float) -> None:
+            # Primero el servidor: así, cuando el reloj libera una espera, el Redis ya está en su nuevo momento.
+            self.avanzar(segundos)
+            await original(segundos)
+
+        self._vinculo = (reloj, reloj.__dict__.get("avanzar"))
+        reloj.avanzar = avanzar
+
+    def desvincular_reloj(self) -> None:
+        """Devuelve al reloj vinculado su `avanzar` original (no hace nada si no hay ninguno)."""
+        if self._vinculo is None:
+            return
+        reloj, previo = self._vinculo
+        self._vinculo = None
+        if previo is None:
+            reloj.__dict__.pop("avanzar", None)
+        else:
+            reloj.avanzar = previo
+
+    def cerrar(self) -> None:
+        """Lo que hace la fixture al terminar la prueba: libera lo retenido y desvincula el reloj."""
+        self.liberar()
+        self.desvincular_reloj()
+
+
+@pytest.fixture
+def redis_controlable(monkeypatch):
+    """El Redis simulado con fallos, pérdida de claves y caducidad por tiempo virtual (RA-02.11).
+
+    No hace falta pedirlo para que Redis esté simulado (lo está en toda la suite): solo lo piden las pruebas
+    que necesitan controlarlo. Además (spec 003b, T4) hace que el repositorio de la recuperación hable con este
+    cliente: se parcha `obtener_cliente` del repositorio, así la recuperación obedece a `no_responde`, `colgar`
+    y `avanzar`. Al terminar libera las llamadas retenidas y desvincula el reloj; las claves las vacía la
+    limpieza de cada prueba y `monkeypatch` restaura el repositorio.
+    """
+    from app.repositories import recuperacion_estado_repository
+
+    controlable = RedisControlable()
+    monkeypatch.setattr(recuperacion_estado_repository, "obtener_cliente", lambda: controlable.cliente)
+    try:
+        yield controlable
+    finally:
+        controlable.cerrar()
 
 
 # --- Celery ----------------------------------------------------------------------------------
@@ -341,10 +570,34 @@ class AudioSimulado(_Simulado):
 
 
 class Intento(dict):
-    """Un correo que se intentó enviar. Su `repr` omite el contenido para no mostrarlo en los informes."""
+    """Un correo que se intentó enviar. Su `repr` omite el contenido para no mostrarlo en los informes.
+
+    Sigue siendo un diccionario de cuatro claves (`a`, `asunto`, `html`, `texto`). Lo que suma RA-02.10 es un
+    atributo, no una clave, para que un `json.dumps(intentos)` no lo arrastre: `bytes_serializados` es el
+    mensaje tal como se enviaría por la red (ver `CorreoSimulado`).
+    """
+
+    bytes_serializados: bytes = b""
 
     def __repr__(self) -> str:
         return f"Intento(a={self['a']!r}, asunto={self['asunto']!r})"
+
+
+class ContenidoReal:
+    """El contenido de un correo SIN reemplazar lo que la prueba declaró con `ocultar()` (RA-02.10).
+
+    Existe para que la prueba lea de ahí la contraseña temporal o el código que el sistema envió. Su
+    `repr` no muestra nada del contenido, así que no aparece en un informe ni en un fallo de aserción.
+    Quien extraiga un secreto debe envolverlo en `Contrasena` (`tests/soporte/datos.py`).
+    """
+
+    __slots__ = ("a", "asunto", "html", "texto")
+
+    def __init__(self, a: str, asunto: str, html: str, texto: str):
+        self.a, self.asunto, self.html, self.texto = a, asunto, html, texto
+
+    def __repr__(self) -> str:
+        return "ContenidoReal(<oculto>)"
 
 
 class CorreoSimulado(_Simulado):
@@ -353,12 +606,33 @@ class CorreoSimulado(_Simulado):
     `EmailService.send_email` real sigue ejecutándose: si aquí se lanza una excepción, la atrapa y
     devuelve `False`, igual que en el sistema. Las credenciales que recibe `aiosmtplib.send`
     (`username`, `password`, `hostname`...) se descartan: nunca se leen ni se guardan.
+
+    Desde la spec 003a (RA-02.10) también:
+    - `tiempos_maximos`: el `timeout` con que se llamó cada envío (`None` si no se pasó), en orden.
+    - `Intento.bytes_serializados`: el mensaje aplanado con el mismo generador que usa `aiosmtplib`, para que
+      la prueba lo lea con un lector independiente (`email.message_from_bytes`). Son los bytes REALES: no se
+      les aplica `ocultar()` (un valor dentro de un cuerpo en base64 no se podría reemplazar) y no salen en ningún `repr`.
+    - `contenido_real()`: el contenido sin ocultar de un intento.
+    - `no_responde()` y `lento()`: un servidor que nunca contesta y otro que tarda, medido con el reloj
+      controlable. NO reproducen el diálogo SMTP (EHLO, STARTTLS, AUTH...), los límites del servidor ni TLS.
+
+    Desde la spec 003b (T7, RF-03.3) también `retener()` y `liberar()`: el envío queda registrado como intento y
+    detenido hasta que la prueba lo libera, para observar qué hace la aplicación MIENTRAS el envío sigue pendiente.
+    `esperar_retenido()` espera (tiempo real, con tope) a que llegue un envío retenido y `envios_retenidos` los cuenta.
+    Los envíos retenidos viven en el bucle de eventos donde se invocaron: se retienen y se liberan en el mismo bucle.
     """
 
     def __init__(self):
         self.intentos: List[Intento] = []
+        self.tiempos_maximos: List[Optional[float]] = []
+        self._contenidos: List[ContenidoReal] = []
         self._error: Optional[BaseException] = None
         self._secretos: List[str] = []
+        self._cuelga = False
+        self._demora: Optional[tuple] = None  # (reloj, operaciones, segundos)
+        self._retiene = False
+        self._retenidos: List["asyncio.Future"] = []  # envíos detenidos; `liberar` los resuelve
+        self._esperas_de_retenido: List["asyncio.Future"] = []  # quienes esperan a que llegue un envío retenido
 
     def fallar(self, excepcion: Optional[BaseException] = None) -> None:
         import aiosmtplib
@@ -366,13 +640,85 @@ class CorreoSimulado(_Simulado):
         self._error = excepcion or aiosmtplib.SMTPConnectError("El servidor de correo no responde (simulado)")
 
     def responder_bien(self) -> None:
+        """Vuelve a la normalidad: sin error, sin colgarse, sin demora y sin retener (lo retenido se libera)."""
         self._error = None
+        self._cuelga = False
+        self._demora = None
+        self.liberar()
+
+    def retener(self) -> None:
+        """Desde ahora cada envío queda registrado como intento y detenido hasta `liberar()` (RF-03.3, spec 003b)."""
+        self._retiene = True
+
+    def liberar(self, error: Optional[BaseException] = None) -> None:
+        """Deja de retener y suelta los envíos detenidos: terminan bien o, si se da `error`, lanzando ese error.
+
+        Es lo que ve el sistema cuando el servidor de correo contesta (o cae) mientras el envío estaba en curso. No hace
+        nada si no había nada retenido. Se llama desde el mismo bucle donde se retuvo, o desde otro hilo.
+        """
+        self._retiene = False
+        pendientes, self._retenidos = self._retenidos, []
+        for envio in pendientes:
+            try:
+                envio.get_loop().call_soon_threadsafe(self._soltar, envio, error)
+            except RuntimeError:  # el bucle ya se cerró: nadie espera este envío
+                pass
+
+    @staticmethod
+    def _soltar(envio: "asyncio.Future", error: Optional[BaseException]) -> None:
+        if not envio.done():
+            envio.set_result(error)
+
+    @property
+    def envios_retenidos(self) -> int:
+        """Cuántos envíos siguen detenidos por `retener()`."""
+        return len(self._retenidos)
+
+    async def esperar_retenido(self, tiempo: float = 2.0) -> bool:
+        """Espera (tiempo REAL, como máximo `tiempo`) a que haya un envío retenido; dice si lo hay.
+
+        Sirve para saber, sin adivinar vueltas del bucle, que la aplicación ya invocó el envío y este sigue pendiente.
+        """
+        if self._retenidos:
+            return True
+        espera = asyncio.get_running_loop().create_future()
+        self._esperas_de_retenido.append(espera)
+        try:
+            await asyncio.wait_for(espera, tiempo)
+            return True
+        except asyncio.TimeoutError:
+            return False
+        finally:
+            if espera in self._esperas_de_retenido:
+                self._esperas_de_retenido.remove(espera)
+
+    def no_responde(self) -> None:
+        """El envío registra el intento y se queda esperando para siempre: solo un límite de tiempo lo corta."""
+        self._cuelga = True
+        self._demora = None
+
+    def lento(self, reloj, operaciones: int, segundos: float) -> None:
+        """El servidor tarda `segundos` en cada una de `operaciones` (conexión, saludo, autenticación, envío...).
+
+        Mide con `reloj` (el controlable): el envío termina cuando el reloj avanzó `operaciones * segundos`.
+        Si además la prueba llamó a `fallar()`, el error llega después de esa espera.
+        """
+        self._demora = (reloj, operaciones, segundos)
+        self._cuelga = False
 
     def ocultar(self, *secretos: str) -> None:
         """Contraseñas o códigos que la prueba conoce: se reemplazan por `<oculto>` en lo que se registra."""
         self._secretos.extend(secreto for secreto in secretos if secreto)
 
-    def _registrar(self, mensaje) -> Intento:
+    def contenido_real(self, indice: int = -1) -> ContenidoReal:
+        """El contenido sin ocultar del intento `indice` (por omisión, el último)."""
+        try:
+            return self._contenidos[indice]
+        except IndexError:
+            raise LookupError(f"No hay un intento de correo en la posición {indice} ({len(self._contenidos)} registrados).") from None
+
+    @staticmethod
+    def _campos(mensaje) -> Dict[str, str]:
         campos = {"a": "", "asunto": "", "html": "", "texto": ""}
         if isinstance(mensaje, email.message.Message):
             campos["a"] = str(mensaje["To"] or "")
@@ -386,12 +732,57 @@ class CorreoSimulado(_Simulado):
                     campos["html"] += contenido
                 elif parte.get_content_type() == "text/plain":
                     campos["texto"] += contenido
+        return campos
+
+    @staticmethod
+    def _aplanar(mensaje) -> bytes:
+        """Los bytes del mensaje, como los aplana `aiosmtplib.send` (sin los encabezados `Bcc`)."""
+        if isinstance(mensaje, bytes):
+            return mensaje
+        if isinstance(mensaje, str):
+            return mensaje.encode("utf-8")
+        if not isinstance(mensaje, email.message.Message):
+            return b""
+        copia = copy.copy(mensaje)
+        del copia["Bcc"]
+        del copia["Resent-Bcc"]
+        politica = email.policy.SMTP if isinstance(copia, email.message.EmailMessage) else email.policy.compat32
+        with io.BytesIO() as salida:
+            email.generator.BytesGenerator(salida, policy=politica).flatten(copia)
+            return salida.getvalue()
+
+    def _registrar(self, mensaje) -> Intento:
+        reales = self._campos(mensaje)
+        self._contenidos.append(ContenidoReal(**reales))
+        campos = dict(reales)
         for secreto in self._secretos:
             campos = {nombre: valor.replace(secreto, "<oculto>") for nombre, valor in campos.items()}
-        return Intento(campos)
+        intento = Intento(campos)
+        intento.bytes_serializados = self._aplanar(mensaje)
+        return intento
 
     async def enviar(self, mensaje, /, *args, **kwargs):
         self.intentos.append(self._registrar(mensaje))
+        self.tiempos_maximos.append(kwargs.get("timeout"))
+        if self._retiene:
+            retenido = asyncio.get_running_loop().create_future()
+            self._retenidos.append(retenido)
+            for espera in self._esperas_de_retenido:
+                if not espera.done():
+                    espera.set_result(True)
+            try:
+                error_al_liberar = await retenido  # `liberar` lo resuelve con `None` o con el error que debe lanzar el envío
+            finally:  # si el envío se cancela (por su plazo) mientras está retenido, deja de contar como retenido
+                if retenido in self._retenidos:
+                    self._retenidos.remove(retenido)
+            if error_al_liberar is not None:
+                raise error_al_liberar
+        if self._cuelga:
+            await asyncio.get_running_loop().create_future()  # nadie lo resuelve: solo una cancelación lo termina
+        if self._demora is not None:
+            reloj, operaciones, segundos = self._demora
+            for _ in range(operaciones):
+                await reloj.dormir(segundos)
         if self._error is not None:
             raise self._error
         return {}, "OK (simulado)"

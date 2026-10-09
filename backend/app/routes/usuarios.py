@@ -69,15 +69,19 @@ See Also:
     - app.services.bitacora.usuarios_audit_service: Auditoría de usuarios
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.services.avatar_service import avatar_service
-from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta, ActualizarAvatarRequest
+from app.schemas.usuario_schemas import UsuarioRespuesta, UsuarioCreadoRespuesta, UsuarioCrear, UsuarioEditar, MensajeRespuesta, ActualizarAvatarRequest
 from app.auth.jwt_auth import require_administrador, require_usuario_judicial, require_usuario_autenticado
 from app.services.bitacora.usuarios_audit_service import usuarios_audit_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 usuario_service = UsuarioService()
@@ -120,16 +124,19 @@ async def obtener_usuario(
     
     return usuario
 
-@router.post("/", response_model=UsuarioRespuesta)
+@router.post("/", response_model=UsuarioCreadoRespuesta)
 async def crear_usuario(
     usuario_data: UsuarioCrear, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_administrador)
 ):
     """
-    Crea un nuevo usuario con contraseña automática.
-    SIEMPRE genera contraseña aleatoria y envía correo al usuario.
+    Crea un nuevo usuario con contraseña temporal automática y se la envía por correo.
     Solo para administradores.
+
+    La cuenta se crea aunque el correo falle: la respuesta (200) trae `notificacion_entregada` y el `mensaje` para el
+    Administrador (éxito o advertencia con el correo). Nunca lleva la contraseña temporal. El resultado queda en la
+    bitácora con la notificación.
     """
     try:
         usuario = await usuario_service.crear_usuario(
@@ -150,14 +157,16 @@ async def crear_usuario(
                 "nombre_completo": f"{usuario_data.nombre} {usuario_data.apellido_uno} {usuario_data.apellido_dos or ''}".strip(),
                 "correo": usuario_data.correo,
                 "id_rol": usuario_data.id_rol
-            }
+            },
+            notificacion_entregada=usuario.notificacion_entregada
         )
         
         return usuario
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"Error en crear_usuario: {e}")
+        # Solo el tipo del error, sin su texto ni la traza: puede traer el correo de la cuenta (RNF-08.2)
+        logger.error("Error en crear_usuario (%s)", type(e).__name__)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @router.put("/{usuario_id}", response_model=UsuarioRespuesta)
@@ -223,29 +232,49 @@ async def resetear_contrasenna(
     current_user: dict = Depends(require_administrador)
 ):
     """
-    Resetea la contraseña de un usuario y envía la nueva por correo.
+    Resetea la contraseña de un usuario y le envía la temporal por correo.
     Solo para administradores.
+
+    Si el correo no sale, la contraseña NO se modifica y responde 502 con el texto para el Administrador (nunca 401 ni
+    403: la interfaz cerraría su sesión). El intento queda en la bitácora con su resultado antes de responder; también
+    queda si el correo salió pero la contraseña no se guardó (500: el texto lo dice y la contraseña anterior se conserva).
     """
     try:
-        usuario = await usuario_service.resetear_contrasenna_usuario(db, usuario_id)
-        if not usuario:
+        resultado = await usuario_service.resetear_contrasenna_usuario(db, usuario_id)
+        if not resultado:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-        # Registrar reseteo en bitácora
+        # Registrar reseteo en bitácora (también el intento fallido, antes del 502)
         await usuarios_audit_service.registrar_reseteo_contrasena(
             db=db,
             usuario_admin_id=current_user["user_id"],
-            usuario_reseteado_id=usuario_id
+            usuario_reseteado_id=usuario_id,
+            notificacion_entregada=resultado.entregada
         )
         
-        return MensajeRespuesta(mensaje="Contraseña reseteada exitosamente. Se envió un correo con la nueva contraseña al usuario.")
+        if not resultado.entregada:
+            raise HTTPException(status_code=502, detail=resultado.mensaje)
+        
+        return MensajeRespuesta(mensaje=resultado.mensaje)
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error al resetear contraseña: {e}")
-        import traceback
-        traceback.print_exc()
+        # Solo el tipo del error, sin su texto ni la traza: puede traer el correo de la cuenta (RNF-08.2)
+        logger.error("Error en resetear_contrasenna (%s)", type(e).__name__)
+        if getattr(e, "correo_entregado", False):
+            # El correo salió pero la contraseña no se guardó: el intento queda en la bitácora (RF-21.4). Si el registro
+            # falla, la acción continúa y se responde el mismo 500 (RF-21).
+            try:
+                await usuarios_audit_service.registrar_reseteo_contrasena(
+                    db=db,
+                    usuario_admin_id=current_user["user_id"],
+                    usuario_reseteado_id=usuario_id,
+                    notificacion_entregada=True,
+                    contrasenna_guardada=False
+                )
+            except Exception as error_bitacora:
+                logger.error("Error registrando el intento de reseteo (%s)", type(error_bitacora).__name__)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 

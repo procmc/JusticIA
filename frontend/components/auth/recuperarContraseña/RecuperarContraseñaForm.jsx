@@ -12,12 +12,18 @@ import Step1Email from "./steps/Step1Email";
 import Step2Code from "./steps/Step2Code";
 import Step3Password from "./steps/Step3Password";
 
+// Los avisos de la recuperación llevan mensajes largos de la API: duran más que los 3 s por omisión.
+const OPCIONES_AVISO = { timeout: 10000 };
+const MENSAJE_ERROR_INESPERADO = "Ocurrió un error inesperado. Inténtelo de nuevo.";
+
 const RecuperarContraseñaForm = () => {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [token, setToken] = useState("");
     const [verificationToken, setVerificationToken] = useState("");
+    // Mensaje de la API cuando el código quedó invalidado por intentos (429); vacío si no lo está.
+    const [mensajeCodigoInvalidado, setMensajeCodigoInvalidado] = useState("");
 
     // Timer para el código
     const [timeLeft, setTimeLeft] = useState(0);
@@ -78,173 +84,138 @@ const RecuperarContraseñaForm = () => {
 
     // PASO 1: Solicitar recuperación
     const handleSolicitarRecuperacion = async (e) => {
+        e.preventDefault();
+
+        if (!formData.email.trim()) {
+            setErrors({ email: "El correo electrónico es requerido" });
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setErrors({ email: "Ingrese un correo electrónico válido" });
+            return;
+        }
+
+        setLoading(true);
+        setErrors({});
+
         try {
-            e.preventDefault();
+            const result = await solicitarRecuperacionService(formData.email);
 
-            if (!formData.email.trim()) {
-                setErrors({ email: "El correo electrónico es requerido" });
-                return;
+            if (result.error) {
+                Toast.error("Error", result.message, OPCIONES_AVISO);
+            } else {
+                // La respuesta es la misma exista o no la cuenta: siempre se avanza y el aviso es informativo,
+                // no afirma que el código se envió (RF-03.23).
+                setToken(result.token);
+                setMensajeCodigoInvalidado("");
+                setCurrentStep(2);
+                setTimeLeft(15 * 60); // 15 minutos
+                Toast.info("Información", result.message, OPCIONES_AVISO);
             }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(formData.email)) {
-                setErrors({ email: "Ingrese un correo electrónico válido" });
-                return;
-            }
-
-            setLoading(true);
-            setErrors({});
-
-            try {
-                const result = await solicitarRecuperacionService(formData.email);
-
-                if (result.error) {
-                    Toast.error("Error", result.message);
-                } else {
-                    setToken(result.token);
-                    setCurrentStep(2);
-                    setTimeLeft(15 * 60); // 15 minutos
-                    Toast.success("Éxito", "Código de verificación enviado a tu correo");
-                }
-            } catch (error) {
-                console.error("Error al solicitar recuperación:", error);
-                Toast.error("Error", error.message || "Error inesperado al solicitar recuperación");
-            } finally {
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error("Error no manejado en handleSolicitarRecuperacion:", error);
-            Toast.error("Error", error.message || "Error inesperado");
+        } catch {
+            Toast.error("Error", MENSAJE_ERROR_INESPERADO, OPCIONES_AVISO);
+        } finally {
             setLoading(false);
         }
     };
 
     // PASO 2: Verificar código
     const handleVerificarCodigo = async (e) => {
+        e.preventDefault();
+
+        if (!formData.codigo.trim()) {
+            setErrors({ codigo: "El código es requerido" });
+            return;
+        }
+
+        if (formData.codigo.length !== 6) {
+            setErrors({ codigo: "El código debe tener 6 dígitos" });
+            return;
+        }
+
+        setLoading(true);
+        setErrors({});
+
         try {
-            e.preventDefault();
+            const result = await verificarCodigoRecuperacionService(token, formData.codigo);
 
-            if (!formData.codigo.trim()) {
-                setErrors({ codigo: "El código es requerido" });
-                return;
-            }
-
-            if (formData.codigo.length !== 6) {
-                setErrors({ codigo: "El código debe tener 6 dígitos" });
-                return;
-            }
-
-            setLoading(true);
-            setErrors({});
-
-            try {
-                const result = await verificarCodigoRecuperacionService(token, formData.codigo);
-
-                if (result.error) {
-                    Toast.error("Error", result.message);
+            if (result.error) {
+                // Un código incorrecto no cierra la sesión ni redirige: se muestra el mensaje y se puede reintentar.
+                handleChange("codigo", "");
+                if (result.codigoInvalidado) {
+                    setMensajeCodigoInvalidado(result.message);
                 } else {
-                    setVerificationToken(result.verificationToken);
-                    setCurrentStep(3);
-                    setTimeLeft(10 * 60); // 10 minutos para cambiar contraseña
-                    Toast.success("Éxito", "Código verificado correctamente");
+                    Toast.error("Error", result.message, OPCIONES_AVISO);
                 }
-            } catch (error) {
-                console.error("Error al verificar código:", error);
-                Toast.error("Error", error.message || "Error inesperado al verificar código");
-            } finally {
-                setLoading(false);
+            } else {
+                setVerificationToken(result.verificationToken);
+                setCurrentStep(3);
+                setTimeLeft(10 * 60); // 10 minutos para cambiar contraseña
+                Toast.success("Éxito", result.message);
             }
-        } catch (error) {
-            console.error("Error no manejado en handleVerificarCodigo:", error);
-            Toast.error("Error", error.message || "Error inesperado");
+        } catch {
+            Toast.error("Error", MENSAJE_ERROR_INESPERADO, OPCIONES_AVISO);
+        } finally {
             setLoading(false);
         }
     };
 
     // PASO 3: Cambiar contraseña
     const handleCambiarContraseña = async (e) => {
+        e.preventDefault();
+
+        const newErrors = {};
+
+        if (!formData.nuevaContraseña.trim()) {
+            newErrors.nuevaContraseña = "La nueva contraseña es requerida";
+        } else if (formData.nuevaContraseña.length < 8) {
+            newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
+        } else {
+            // Validar fortaleza de la contraseña con zxcvbn
+            const strengthResult = zxcvbn(formData.nuevaContraseña);
+            if (strengthResult.score < 2) {
+                newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elige una contraseña más segura.";
+            }
+        }
+
+        if (!formData.confirmarContraseña.trim()) {
+            newErrors.confirmarContraseña = "Debe confirmar la nueva contraseña";
+        } else if (formData.nuevaContraseña !== formData.confirmarContraseña) {
+            newErrors.confirmarContraseña = "Las contraseñas no coinciden";
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setLoading(true);
+        setErrors({});
+
         try {
-            e.preventDefault();
+            const result = await cambiarContraseñaRecuperacionService(
+                verificationToken,
+                formData.nuevaContraseña
+            );
 
-            const newErrors = {};
-
-            if (!formData.nuevaContraseña.trim()) {
-                newErrors.nuevaContraseña = "La nueva contraseña es requerida";
-            } else if (formData.nuevaContraseña.length < 8) {
-                newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
-            } else {
-                // Validar fortaleza de la contraseña con zxcvbn
-                const strengthResult = zxcvbn(formData.nuevaContraseña);
-                if (strengthResult.score < 2) {
-                    newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elige una contraseña más segura.";
-                }
-            }
-
-            if (!formData.confirmarContraseña.trim()) {
-                newErrors.confirmarContraseña = "Debe confirmar la nueva contraseña";
-            } else if (formData.nuevaContraseña !== formData.confirmarContraseña) {
-                newErrors.confirmarContraseña = "Las contraseñas no coinciden";
-            }
-
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                return;
-            }
-
-            setLoading(true);
-            setErrors({});
-
-            try {
-                const result = await cambiarContraseñaRecuperacionService(
-                    verificationToken,
-                    formData.nuevaContraseña
-                );
-
-                if (result.error) {
-                    // Detectar error específico: contraseña nueva igual a la actual
-                    const mensajeError = result.message || "Error al cambiar contraseña";
-                    
-                    if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
-                        mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
-                        // Mostrar error en el campo de nueva contraseña
-                        setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
-                    } else {
-                        // Otros errores se muestran como toast
-                        Toast.error("Error", mensajeError);
-                    }
+            if (result.error) {
+                if (result.contrasenaRepetida) {
+                    // Junto al campo, con el texto de la API; se puede reintentar con la misma verificación.
+                    setErrors({ nuevaContraseña: result.message });
                 } else {
-                    Toast.success("Éxito", "Contraseña recuperada exitosamente");
-                    setTimeout(() => {
-                        router.push('/auth/login');
-                    }, 2000);
+                    Toast.error("Error", result.message, OPCIONES_AVISO);
                 }
-            } catch (error) {
-                console.error("Error al cambiar contraseña:", error);
-                
-                // Intentar extraer mensaje del error
-                const mensajeError = error.message || "Error inesperado al cambiar contraseña";
-                
-                // Verificar si es el error de contraseña repetida
-                if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
-                    mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
-                    setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
-                } else {
-                    Toast.error("Error", mensajeError);
-                }
-            } finally {
-                setLoading(false);
-            }
-        } catch (error) {
-            // Catch externo para capturar CUALQUIER error no manejado
-            console.error("Error no manejado en handleCambiarContraseña:", error);
-            const mensajeError = error.message || "Error inesperado";
-            
-            if (mensajeError.toLowerCase().includes("nueva contraseña debe ser diferente") || 
-                mensajeError.toLowerCase().includes("debe ser diferente a la actual")) {
-                setErrors({ nuevaContraseña: "La nueva contraseña debe ser diferente a la actual" });
             } else {
-                Toast.error("Error", mensajeError);
+                Toast.success("Éxito", result.message);
+                setTimeout(() => {
+                    router.push('/auth/login');
+                }, 2000);
             }
+        } catch {
+            Toast.error("Error", MENSAJE_ERROR_INESPERADO, OPCIONES_AVISO);
+        } finally {
             setLoading(false);
         }
     };
@@ -252,6 +223,7 @@ const RecuperarContraseñaForm = () => {
     const handleVolverAtras = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
+            setMensajeCodigoInvalidado("");
             setErrors({});
         }
     };
@@ -260,6 +232,7 @@ const RecuperarContraseñaForm = () => {
         setCurrentStep(1);
         setToken("");
         setTimeLeft(0);
+        setMensajeCodigoInvalidado("");
         setErrors({});
         setFormData(prev => ({ ...prev, codigo: "" }));
     };
@@ -268,6 +241,7 @@ const RecuperarContraseñaForm = () => {
         setCurrentStep(1);
         setVerificationToken("");
         setTimeLeft(0);
+        setMensajeCodigoInvalidado("");
         setErrors({});
         setFormData({
             email: "",
@@ -288,7 +262,7 @@ const RecuperarContraseñaForm = () => {
                 </h2>
                 <p className="text-gray-600 text-xs md:text-sm lg:text-base px-2">
                     {currentStep === 1 && "Ingresa tu correo para recibir un código de verificación"}
-                    {currentStep === 2 && "Ingresa el código de 6 dígitos enviado a tu correo"}
+                    {currentStep === 2 && "Ingresa el código de 6 dígitos del correo de recuperación"}
                     {currentStep === 3 && "Establece tu nueva contraseña"}
                 </p>
 
@@ -331,6 +305,7 @@ const RecuperarContraseñaForm = () => {
                         errors={errors}
                         loading={loading}
                         timeLeft={timeLeft}
+                        mensajeCodigoInvalidado={mensajeCodigoInvalidado}
                         handleChange={handleChange}
                         handleVerificarCodigo={handleVerificarCodigo}
                         handleVolverAtras={handleVolverAtras}

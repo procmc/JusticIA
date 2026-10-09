@@ -29,11 +29,11 @@ Eventos auditados:
        - Tipo: "cambio_usuario" o "recuperacion"
        - Registra: tipo de cambio, timestamp
 
-    5. **Recuperación de contraseña** (TiposAccion.RECUPERAR_PASSWORD):
-       - Solicitud de código de recuperación
-       - Código de verificación enviado por email
-       - Registra: email, timestamp
-       - Info adicional: accion="solicitar_recuperacion"
+    5. **Recuperación de contraseña** (TiposAccion.RECUPERACION_CONTRASENA):
+       - Un registro por paso: solicitud del código, verificación del código y cambio de contraseña
+       - Cada uno con su resultado (código enviado, código incorrecto, contraseña cambiada, servicio no disponible...)
+       - Lleva el usuario cuando la cuenta existe y se conoce; nunca el código ni la contraseña
+       - Info adicional: paso, resultado, referencia, timestamp (y el email solo en la solicitud)
 
     6. **Reset por administrador** (TiposAccion.RESET_PASSWORD):
        - Administrador restablece contraseña de otro usuario
@@ -79,6 +79,15 @@ Estructura de info_adicional (JSON):
         "email": "usuario@ejemplo.com",
         "motivo": "password_incorrecto",
         "resultado": "fallido",
+        "timestamp": "2025-11-24T10:30:00Z"
+    }
+
+    Recuperación de contraseña (solicitud):
+    {
+        "paso": "solicitud",
+        "resultado": "código enviado",
+        "email": "usuario@ejemplo.com",
+        "referencia": "KxQWTw69",
         "timestamp": "2025-11-24T10:30:00Z"
     }
 
@@ -328,76 +337,117 @@ class AuthAuditService:
             return None
     
     
-    async def registrar_solicitud_recuperacion(
-        self,
-        db: Session,
-        email: str
-    ) -> Optional[T_Bitacora]:
-        """
-        Registra una solicitud de recuperación de contraseña.
-        
-        Args:
-            db: Sesión de base de datos
-            email: Correo electrónico del usuario
-            
-        Returns:
-            T_Bitacora: Registro creado o None si hubo error
-        """
-        try:
-            return await self.bitacora_service.registrar(
-                db=db,
-                usuario_id=None,  # No tenemos usuario autenticado
-                tipo_accion_id=TiposAccion.RECUPERACION_CONTRASENA,
-                texto=f"Solicitud de recuperación de contraseña para: {email}",
-                info_adicional={
-                    "email": email,
-                    "accion": "solicitud_recuperacion",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Error registrando solicitud de recuperación: {e}")
-            return None
-    
-    
-    async def registrar_verificacion_codigo(
+    async def registrar_recuperacion_solicitud(
         self,
         db: Session,
         email: str,
-        exitoso: bool
+        resultado: str,
+        usuario_id: Optional[str] = None,
+        referencia: Optional[str] = None
     ) -> Optional[T_Bitacora]:
         """
-        Registra la verificación de código de recuperación.
-        
+        Registra la solicitud de un código de recuperación de contraseña con su resultado (RF-21.1).
+
         Args:
             db: Sesión de base de datos
-            email: Correo electrónico del usuario
-            exitoso: Si la verificación fue exitosa
-            
+            email: Correo normalizado de la solicitud (la fila lo conserva completo; el registro del servidor lo enmascara)
+            resultado: `código enviado`, `envío fallido`, `correo no registrado`, `cuenta inactiva`,
+                `límite alcanzado` o `servicio no disponible`
+            usuario_id: Cédula de la cuenta si existe (Activa o Inactiva); `None` si no existe o el servicio no estaba disponible
+            referencia: Los 8 primeros caracteres de la huella del correo: une los tres pasos de una solicitud sin revelar el correo
+
         Returns:
-            T_Bitacora: Registro creado o None si hubo error
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21.5)
+        """
+        return await self._registrar_recuperacion(
+            db, usuario_id, "solicitud",
+            f"Solicitud de recuperación de contraseña para {email}: {resultado}",
+            {"resultado": resultado, "email": email, "referencia": referencia}
+        )
+
+
+    async def registrar_recuperacion_verificacion(
+        self,
+        db: Session,
+        resultado: str,
+        usuario_id: Optional[str] = None,
+        referencia: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra la verificación del código de recuperación con su resultado (RF-21.2).
+
+        Args:
+            db: Sesión de base de datos
+            resultado: `código verificado`, `código incorrecto`, `código vencido`,
+                `código invalidado por intentos` o `servicio no disponible`
+            usuario_id: Cédula de la cuenta si se sabe (Activa o Inactiva); `None` en otro caso
+            referencia: Los 8 primeros caracteres de la huella del correo, tomados del token
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21.5)
+        """
+        return await self._registrar_recuperacion(
+            db, usuario_id, "verificación del código",
+            f"Verificación del código de recuperación de contraseña: {resultado}",
+            {"resultado": resultado, "referencia": referencia}
+        )
+
+
+    async def registrar_recuperacion_cambio(
+        self,
+        db: Session,
+        resultado: str,
+        usuario_id: Optional[str] = None,
+        referencia: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra el último paso de la recuperación (definir la contraseña nueva) con su resultado (RF-21.2).
+
+        Args:
+            db: Sesión de base de datos
+            resultado: `contraseña cambiada`, `cambio rechazado` o `servicio no disponible`
+            usuario_id: Cédula de la cuenta si se sabe; `None` en otro caso
+            referencia: Los 8 primeros caracteres de la huella del correo, tomados del token
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21.5)
+        """
+        return await self._registrar_recuperacion(
+            db, usuario_id, "cambio de contraseña",
+            f"Cambio de contraseña por recuperación: {resultado}",
+            {"resultado": resultado, "referencia": referencia}
+        )
+
+
+    async def _registrar_recuperacion(
+        self,
+        db: Session,
+        usuario_id: Optional[str],
+        paso: str,
+        texto: str,
+        datos: dict
+    ) -> Optional[T_Bitacora]:
+        """
+        Escribe una fila de recuperación de contraseña. Nunca lanza.
+
+        La información adicional lleva el paso, el resultado, la referencia (si hay) y la marca de tiempo, y el correo solo
+        en la solicitud. Jamás el código ni la contraseña (RNF-08.1). Si registrar falla, en el registro del servidor queda
+        únicamente el tipo de la excepción: su texto puede traer el correo (RNF-08.2).
         """
         try:
-            texto = (
-                f"Código de recuperación verificado exitosamente para: {email}"
-                if exitoso
-                else f"Intento fallido de verificación de código para: {email}"
-            )
-            
+            info_adicional = {"paso": paso}
+            info_adicional.update({clave: valor for clave, valor in datos.items() if valor is not None})
+            info_adicional["timestamp"] = datetime.utcnow().isoformat()
+
             return await self.bitacora_service.registrar(
                 db=db,
-                usuario_id=None,  # No tenemos usuario autenticado
+                usuario_id=usuario_id,
                 tipo_accion_id=TiposAccion.RECUPERACION_CONTRASENA,
                 texto=texto,
-                info_adicional={
-                    "email": email,
-                    "resultado": "exitoso" if exitoso else "fallido",
-                    "accion": "verificacion_codigo",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+                info_adicional=info_adicional
             )
         except Exception as e:
-            logger.warning(f"Error registrando verificación de código: {e}")
+            logger.warning("No se pudo registrar el paso «%s» de la recuperación de contraseña (%s)", paso, type(e).__name__)
             return None
 
 

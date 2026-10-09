@@ -63,7 +63,8 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       isObject = false,
       highlight = false,
       badge = false,
-      codigo = false
+      codigo = false,
+      colorChip = null
     } = options;
 
     // Si el valor es null o undefined
@@ -138,7 +139,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
           {label}
         </span>
         {badge ? (
-          <Chip size="sm" variant="flat" color={highlight ? "success" : "default"}>
+          <Chip size="sm" variant="flat" color={colorChip || (highlight ? "success" : "default")}>
             {String(valorFormateado)}
           </Chip>
         ) : codigo ? (
@@ -152,6 +153,35 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         )}
       </div>
     );
+  };
+
+  // Resultado del correo con la contraseña temporal (RF-21.6): la bitácora guarda
+  // «entregada» / «no entregada»; los registros anteriores no traen el dato.
+  const renderizarNotificacionCorreo = (valor) => {
+    if (!valor) return null;
+    const entregada = valor === 'entregada';
+    return renderizarCampo(
+      'Notificación por correo',
+      entregada ? 'Entregada' : 'No entregada',
+      { badge: true, highlight: entregada }
+    );
+  };
+
+  // Color del resultado de cada paso de la recuperación de contraseña (RF-21.3): verde si el paso salió bien, amarillo si
+  // la solicitud o el código no prosperaron por la persona, rojo si falló el envío, se agotaron los intentos o el servicio.
+  const COLOR_RESULTADO_RECUPERACION = {
+    'código enviado': 'success',
+    'código verificado': 'success',
+    'contraseña cambiada': 'success',
+    'correo no registrado': 'warning',
+    'cuenta inactiva': 'warning',
+    'límite alcanzado': 'warning',
+    'código incorrecto': 'warning',
+    'código vencido': 'warning',
+    'envío fallido': 'danger',
+    'código invalidado por intentos': 'danger',
+    'cambio rechazado': 'danger',
+    'servicio no disponible': 'danger'
   };
 
   // Renderizado específico según tipo de acción
@@ -263,14 +293,18 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       // RECUPERACION_CONTRASENA (6) - Recuperación de contraseña
       // ============================================
       case 6: {
-        const { email, metodo, codigo_enviado, expiracion, timestamp } = informacionAdicional;
+        const { paso, resultado, email, referencia, timestamp } = informacionAdicional;
         
         return (
           <>
-            {email && renderizarCampo('Email', email)}
-            {metodo && renderizarCampo('Método', metodo, { badge: true })}
-            {codigo_enviado !== undefined && renderizarCampo('Código Enviado', codigo_enviado ? 'Sí' : 'No', { badge: true })}
-            {expiracion && renderizarCampo('Expiración', expiracion)}
+            {paso && renderizarCampo('Paso', paso.charAt(0).toUpperCase() + paso.slice(1), { badge: true })}
+            {resultado && renderizarCampo(
+              'Resultado',
+              resultado.charAt(0).toUpperCase() + resultado.slice(1),
+              { badge: true, colorChip: COLOR_RESULTADO_RECUPERACION[resultado] || 'default' }
+            )}
+            {email && renderizarCampo('Correo', email)}
+            {referencia && renderizarCampo('Referencia', referencia, { codigo: true })}
             {timestamp && renderizarCampo('Timestamp', timestamp)}
           </>
         );
@@ -280,8 +314,8 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       // CREAR_USUARIO (7) - Creación de usuarios
       // ============================================
       case 7: {
-        const { usuario_creado_cedula, nombre_usuario, email, rol_id, nombre_completo, modulo, timestamp } = informacionAdicional;
-        
+        const { usuario_creado_cedula, nombre_usuario, email, rol_id, nombre_completo, notificacion_correo, modulo, timestamp } = informacionAdicional;
+
         return (
           <>
             {renderizarCampo('Cédula del Usuario Creado', usuario_creado_cedula, { codigo: true })}
@@ -289,6 +323,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
             {nombre_usuario && renderizarCampo('Nombre de Usuario', nombre_usuario)}
             {email && renderizarCampo('Correo Electrónico', email)}
             {rol_id && renderizarCampo('ID del Rol', rol_id, { badge: true })}
+            {renderizarNotificacionCorreo(notificacion_correo)}
             {modulo && renderizarCampo('Módulo', modulo, { badge: true })}
             {timestamp && renderizarCampo('Timestamp', timestamp, { fullWidth: true })}
           </>
@@ -299,7 +334,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       // EDITAR_USUARIO (8) - Edición de usuarios
       // ============================================
       case 8: {
-        const { usuario_editado_id, cambios, campos_modificados, accion, usuario_reseteado_id, tipo_reseteo, modulo, timestamp } = informacionAdicional;
+        const { usuario_editado_id, cambios, campos_modificados, accion, usuario_reseteado_id, tipo_reseteo, notificacion_correo, modulo, timestamp } = informacionAdicional;
         
         return (
           <>
@@ -307,6 +342,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
             {usuario_reseteado_id && renderizarCampo('Usuario Reseteado (Cédula)', usuario_reseteado_id, { codigo: true })}
             {accion && renderizarCampo('Acción', accion, { badge: true })}
             {tipo_reseteo && renderizarCampo('Tipo de Reseteo', tipo_reseteo, { badge: true })}
+            {renderizarNotificacionCorreo(notificacion_correo)}
             {campos_modificados && renderizarCampo('Campos Modificados', campos_modificados, { isArray: true, fullWidth: true })}
             {cambios && renderizarCampo('Cambios Realizados', cambios, { isObject: true, fullWidth: true })}
             {modulo && renderizarCampo('Módulo', modulo, { badge: true })}

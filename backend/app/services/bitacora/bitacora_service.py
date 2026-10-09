@@ -66,6 +66,7 @@ import logging
 from app.db.models.bitacora import T_Bitacora
 from app.repositories.bitacora_repository import BitacoraRepository
 from app.constants.tipos_accion import TiposAccion, DESCRIPCIONES_TIPOS_ACCION
+from app.utils.enmascarar import enmascarar_correos_en_texto
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,8 @@ class BitacoraService:
             456
         
         Note:
-            * Se registra automáticamente en logs con nivel INFO
+            * Se registra automáticamente en logs con nivel INFO; los correos del texto salen
+              enmascarados (p***@dominio.cr) y la fila de la bitácora conserva el texto completo
             * Usuario None se muestra como "Sistema" en logs
             * info_adicional se serializa con ensure_ascii=False para UTF-8
             * No falla silenciosamente, propaga excepciones
@@ -151,16 +153,20 @@ class BitacoraService:
                 info_adicional=info_json
             )
             
+            # El registro del servidor no lleva el correo en claro (RNF-08.2): se enmascara aquí, en el punto
+            # único por el que pasan todos los servicios de auditoría. La fila de la bitácora, que solo ve el
+            # Administrador, ya se guardó con el texto completo.
             logger.info(
                 f"Bitácora registrada: Usuario={usuario_id or 'Sistema'}, "
                 f"Tipo={DESCRIPCIONES_TIPOS_ACCION.get(tipo_accion_id, 'Desconocido')}, "
-                f"Texto='{texto}'"
+                f"Texto='{enmascarar_correos_en_texto(texto)}'"
             )
             
             return bitacora
             
         except Exception as e:
-            logger.error(f"Error registrando en bitácora: {e}")
+            # El texto del error de la base puede listar los parámetros del INSERT (entre ellos un correo): se enmascara (RNF-08.2)
+            logger.error(f"Error registrando en bitácora: {enmascarar_correos_en_texto(str(e))}")
             raise Exception(f"Error al registrar en bitácora: {str(e)}")
 
 

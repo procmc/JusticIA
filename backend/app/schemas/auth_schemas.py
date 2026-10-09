@@ -34,16 +34,18 @@ class LogoutRequest(BaseModel):
     email: str  # Email del usuario
 
 class SolicitarRecuperacionRequest(BaseModel):
-    email: str
+    # Vacío por omisión: el servicio valida el correo y responde con su mensaje en español (400), no FastAPI (422).
+    email: str = ""
 
 class SolicitarRecuperacionResponse(BaseModel):
     success: bool
     message: str
-    token: Optional[str] = None
+    token: str  # Siempre presente y con la misma forma, exista o no la cuenta (RF-03.21)
 
 class VerificarCodigoRequest(BaseModel):
-    token: str
-    codigo: str
+    # Vacíos por omisión, como en la solicitud: el servicio valida y responde 400 en español.
+    token: str = ""
+    codigo: str = ""
 
 class VerificarCodigoResponse(BaseModel):
     success: bool
@@ -51,13 +53,5 @@ class VerificarCodigoResponse(BaseModel):
     verificationToken: str
 
 class CambiarContrasenaRecuperacionRequest(BaseModel):
-    verificationToken: str
-    nuevaContrasenna: str
-
-class RestablecerContrasenaRequest(BaseModel):
-    cedula: str
-
-class RestablecerContrasenaResponse(BaseModel):
-    success: bool
-    message: str
-    data: dict
+    verificationToken: str = ""
+    nuevaContrasenna: str = ""

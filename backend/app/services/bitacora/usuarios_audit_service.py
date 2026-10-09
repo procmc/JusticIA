@@ -74,6 +74,7 @@ Estructura de info_adicional (JSON):
         "email": "nuevo@ejemplo.com",
         "rol_asignado": "Usuario Judicial",
         "estado_inicial": "Activo",
+        "notificacion_correo": "entregada",   # o "no entregada" (RF-21.4)
         "modulo": "administracion_usuarios",
         "timestamp": "2025-11-24T10:30:00Z"
     }
@@ -278,40 +279,50 @@ class UsuariosAuditService:
         db: Session,
         usuario_admin_id: str,
         usuario_creado_cedula: str,
-        datos_usuario: Dict[str, Any]
+        datos_usuario: Dict[str, Any],
+        notificacion_entregada: bool
     ) -> Optional[T_Bitacora]:
         """
-        Registra la creación de un nuevo usuario.
+        Registra la creación de un nuevo usuario, con el resultado de la notificación (RF-21.4).
+        
+        Nunca guarda la contraseña temporal ni el texto del error del servidor de correo.
         
         Args:
             db: Sesión de base de datos
             usuario_admin_id: ID del admin que crea
             usuario_creado_cedula: Cédula del usuario creado
             datos_usuario: Datos del usuario (nombre, email, rol)
+            notificacion_entregada: True si el servidor de correo aceptó el mensaje con la temporal
             
         Returns:
             T_Bitacora: Registro creado o None si hubo error
         """
         try:
             nombre_completo = datos_usuario.get('nombre_completo', usuario_creado_cedula)
+            resultado_correo = "entregada" if notificacion_entregada else "no entregada"
             
             return await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=str(usuario_admin_id),
                 tipo_accion_id=TiposAccion.CREAR_USUARIO,
-                texto=f"Creación de usuario: {nombre_completo} (Cédula: {usuario_creado_cedula})",
+                texto=(
+                    f"Creación de usuario: {nombre_completo} (Cédula: {usuario_creado_cedula}) - "
+                    f"notificación por correo: {resultado_correo}"
+                ),
                 info_adicional={
                     "usuario_creado_cedula": usuario_creado_cedula,
                     "nombre_usuario": datos_usuario.get("nombre_usuario"),
                     "email": datos_usuario.get("correo"),
                     "rol_id": datos_usuario.get("id_rol"),
                     "nombre_completo": nombre_completo,
+                    "notificacion_correo": resultado_correo,
                     "modulo": "administracion_usuarios",
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
         except Exception as e:
-            logger.warning(f"Error registrando creación de usuario: {e}")
+            # Solo el tipo del error, sin su texto: el del INSERT lista los parámetros (entre ellos el correo de la cuenta) (RNF-08.2)
+            logger.warning("Error registrando creación de usuario (%s)", type(e).__name__)
             return None
     
     
@@ -361,41 +372,71 @@ class UsuariosAuditService:
         self,
         db: Session,
         usuario_admin_id: str,
-        usuario_reseteado_id: str
+        usuario_reseteado_id: str,
+        notificacion_entregada: bool,
+        contrasenna_guardada: bool = True
     ) -> Optional[T_Bitacora]:
         """
-        Registra el reseteo de contraseña de un usuario por un admin.
-        
+        Registra el reseteo de contraseña de un usuario por un admin, con el resultado de la notificación (RF-21.4).
+
+        Si el correo no se entregó, el reseteo no modificó la contraseña (RF-03.14) y el texto lo dice. Si el correo sí
+        salió pero la contraseña no se guardó (falló la confirmación), el texto lo dice y la información adicional lleva
+        `contrasenna_guardada` en falso. Nunca guarda la contraseña temporal ni el texto del error del servidor de correo.
+
         Args:
             db: Sesión de base de datos
             usuario_admin_id: ID del admin que resetea
             usuario_reseteado_id: ID (cédula) del usuario cuya contraseña se resetea
-            
+            notificacion_entregada: True si el servidor de correo aceptó el mensaje con la temporal
+            contrasenna_guardada: False solo cuando el correo salió pero la contraseña no se guardó; en los demás casos
+                (por omisión) el registro queda como siempre
+
         Returns:
             T_Bitacora: Registro creado o None si hubo error
         """
         try:
             logger.info(f"Iniciando registro de reseteo de contraseña. Admin: {usuario_admin_id}, Usuario: {usuario_reseteado_id}")
             
+            estado_notificacion = "entregada" if notificacion_entregada else "no entregada"
+            if not contrasenna_guardada:
+                texto = (
+                    f"Intento de reseteo de contraseña de usuario: {usuario_reseteado_id} - "
+                    f"notificación por correo: {estado_notificacion}; la contraseña no se guardó"
+                )
+            elif notificacion_entregada:
+                texto = f"Reseteo de contraseña de usuario: {usuario_reseteado_id} - notificación por correo: entregada"
+            else:
+                texto = (
+                    f"Intento de reseteo de contraseña de usuario: {usuario_reseteado_id} - "
+                    "notificación por correo: no entregada; la contraseña no se modificó"
+                )
+
+            info_adicional = {
+                "usuario_reseteado_id": usuario_reseteado_id,
+                "accion": "reseteo_contrasena",
+                "tipo_reseteo": "admin",
+                "notificacion_correo": estado_notificacion,
+                "modulo": "administracion_usuarios",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            if not contrasenna_guardada:
+                # Solo este caso lleva el indicador: los demás registros conservan su forma de siempre
+                info_adicional["contrasenna_guardada"] = False
+
             resultado = await self.bitacora_service.registrar(
                 db=db,
                 usuario_id=str(usuario_admin_id),
                 tipo_accion_id=TiposAccion.EDITAR_USUARIO,
-                texto=f"Reseteo de contraseña de usuario: {usuario_reseteado_id}",
-                info_adicional={
-                    "usuario_reseteado_id": usuario_reseteado_id,
-                    "accion": "reseteo_contrasena",
-                    "tipo_reseteo": "admin",
-                    "modulo": "administracion_usuarios",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+                texto=texto,
+                info_adicional=info_adicional
             )
             
             logger.info(f"Registro de reseteo de contraseña completado exitosamente. ID bitácora: {resultado.CN_Id_bitacora if resultado else 'None'}")
             return resultado
             
         except Exception as e:
-            logger.error(f"Error registrando reseteo de contraseña: {e}", exc_info=True)
+            # Solo el tipo del error, sin su texto ni la traza: el texto del INSERT puede traer datos de la cuenta (RNF-08.2)
+            logger.error("Error registrando reseteo de contraseña (%s)", type(e).__name__)
             return None
     
     

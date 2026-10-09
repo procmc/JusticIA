@@ -54,6 +54,17 @@ class UsuarioRespuesta(BaseModel):
         from_attributes = True
 
 
+class UsuarioCreadoRespuesta(UsuarioRespuesta):
+    """Respuesta de crear una cuenta (RF-02.1): los datos de la cuenta más el resultado de la notificación.
+
+    Solo la creación la usa; el listado y la edición siguen con `UsuarioRespuesta`. `mensaje` es el texto que la
+    interfaz muestra tal cual (éxito o advertencia con el correo) y nunca lleva la contraseña temporal.
+    """
+
+    notificacion_entregada: bool
+    mensaje: str
+
+
 class ActualizarAvatarRequest(BaseModel):
     """Schema para actualizar la preferencia de avatar (sin imagen)"""
     avatar_tipo: str  # Ej: 'hombre', 'mujer', 'neutral'
