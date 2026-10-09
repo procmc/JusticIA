@@ -1,6 +1,7 @@
 ---
 name: implementer
 description: SDD · Implementa UNA tarea de un plan aprobado de ServIA, con la verificación definida primero
+model: claude-sonnet-5-5
 disallowedTools: WebFetch, Agent
 skills: sdd, verification-before-completion
 ---

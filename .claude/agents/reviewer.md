@@ -1,6 +1,7 @@
 ---
 name: reviewer
 description: SDD · Revisa la spec de ServIA como QA (clarificación) y valida la implementación requisito por requisito, sin modificar archivos
+model: claude-sonnet-5-5
 disallowedTools: Edit, Write, NotebookEdit, PowerShell, WebFetch, WebSearch, Agent
 skills: sdd, verification-before-completion
 hooks:

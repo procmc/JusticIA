@@ -1,6 +1,7 @@
 ---
 name: planner
 description: SDD · Redacta la constitución, la spec, el plan y las tareas de ServIA, trazados contra el ERS, sin tocar código
+model: claude-opus-5-5
 tools: Read, Grep, Glob, Edit, Write
 skills: sdd
 hooks:

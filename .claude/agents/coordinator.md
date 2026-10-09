@@ -1,6 +1,7 @@
 ---
 name: coordinator
 description: SDD · Coordina el flujo SDD completo de ServIA con planner, implementer, reviewer y committer, y transmite el contexto entre fases. Se ejecuta como agente principal (claude --agent coordinator).
+model: claude-opus-5-5
 tools: Agent(planner, implementer, reviewer, committer), Read, Grep, Glob
 skills: sdd, verification-before-completion
 ---
