@@ -32,9 +32,24 @@ if (¿Crear una cuenta?) then (sí)
   else (sí)
   endif
   :Crear la cuenta con una contraseña\ntemporal de 8 caracteres;
+  |Servicio de correo|
+  :Enviar la contraseña temporal\nal usuario;
+  |Sistema|
+  if (¿Envío exitoso?) then (no)
+    :Informar al Administrador que no se entregó\n(la cuenta ya está creada);
+  else (sí)
+  endif
 elseif (¿Restablecer la contraseña?) then (sí)
   |Sistema|
-  :Generar una nueva contraseña temporal\ny exigir su cambio en el próximo ingreso;
+  :Generar una nueva contraseña temporal;
+  |Servicio de correo|
+  :Enviar la contraseña temporal\nal usuario;
+  |Sistema|
+  if (¿Envío exitoso?) then (sí)
+    :Guardar la contraseña y exigir su cambio\nen el próximo ingreso;
+  else (no)
+    :No modificar la contraseña e informar\nal Administrador (puede reintentar);
+  endif
 else (editar o desactivar)
   |Administrador|
   :Modificar datos, rol o estado\n(Inactivo = desactivación lógica);
@@ -42,13 +57,7 @@ else (editar o desactivar)
   :Guardar los cambios\ny registrar la operación;
   stop
 endif
-|Servicio de correo|
-:Enviar la contraseña temporal\nal usuario;
 |Sistema|
-if (¿Envío exitoso?) then (no)
-  :Informar al Administrador\nque no se entregó;
-else (sí)
-endif
-:Registrar la operación en la bitácora;
+:Registrar la operación en la bitácora\ncon el resultado del envío;
 stop
 @enduml
