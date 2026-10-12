@@ -23,18 +23,41 @@ start
 switch (¿Qué necesita el usuario?)
 case (Olvidó su contraseña)
   :Indicar su correo registrado;
-  :El sistema genera un código de 6 dígitos
-(válido por 15 minutos);
-  :El servicio de correo envía el código;
-  if (¿Envío exitoso?) then (no)
-    :El sistema informa el error;
+  if (¿El servicio de recuperación
+está disponible?) then (no)
+    :El sistema informa que no está
+disponible y lo registra
+en la bitácora;
     stop
   else (sí)
   endif
+  :El sistema responde siempre
+el mismo mensaje, exista o no
+la cuenta;
+  if (¿Cuenta Activa y dentro
+del límite de solicitudes?) then (sí)
+    :El sistema genera un código
+de 6 dígitos (válido 15 minutos);
+    :El servicio de correo envía
+el código (después de responder);
+  else (no)
+    :No se envía ningún código;
+  endif
+  :El sistema registra el resultado
+de la solicitud en la bitácora;
   :Ingresar el código recibido;
-  if (¿Código correcto y vigente?) then (no)
-    :El sistema lo indica y permite
-solicitar otro código;
+  if (¿Código correcto, vigente
+y con intentos disponibles?) then (no)
+    :El sistema lo indica (al quinto
+intento fallido invalida el código)
+y permite solicitar otro código;
+    stop
+  else (sí)
+  endif
+  if (¿La cuenta sigue Activa
+y sin cambios?) then (no)
+    :El sistema informa que el proceso
+venció; debe iniciarlo de nuevo;
     stop
   else (sí)
   endif
