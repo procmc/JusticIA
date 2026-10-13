@@ -68,7 +68,7 @@ Desde la raíz del proyecto:
 
 - Al empezar, lee `MEMORY.md` para conocer el estado del proyecto y las decisiones tomadas.
 - Al terminar una tarea, actualízalo: estado actual, decisiones importantes (con su porqué) y errores a evitar.
-- Máximo 200 líneas, sin pasarse de ese límite: resume o elimina lo que ya no aporte.
+- Máximo 100 líneas, sin pasarse de ese límite (cada agente lo lee entero al empezar): resume o elimina lo que ya no aporte.
 - Si algo se convierte en una regla permanente, propón moverlo a `CLAUDE.md` en lugar de dejarlo en la memoria.
 - No guardes nunca datos sensibles (claves, contraseñas, tokens, datos personales): el repositorio es público.
 - La bitácora de la práctica es aparte y privada; no se mezcla con `MEMORY.md`.
