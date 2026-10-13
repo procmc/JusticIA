@@ -11,6 +11,7 @@ Constitución (`/sdd-constitution`) → Spec (`/sdd-spec`) → Clarificación (`
 
 - Nunca pases a la siguiente fase sin la aprobación explícita del usuario.
 - La documentación de planificación (`Documentacion/Documentacion_ServIA_2026/`) define el producto; la spec detalla y vuelve verificable la parte que se construye ahora. Si la spec contradice al ERS, para y pregunta.
+- La documentación de planificación se consulta en texto, no en PDF: `graphify-out/documentacion_texto/indice.md` ubica cada RF/RNF, caso de uso e historia (`archivo:línea`) y se lee solo ese tramo. Se regenera con `python3 -X utf8 graphify-out/generar_documentacion_texto.py` cada vez que se exporta un PDF nuevo.
 - La spec manda sobre el código: si algo no está en la spec, no se implementa. Si falta una decisión, para y pregunta.
 - Un cambio de requisitos se hace primero en la spec, luego en el plan y las tareas, y por último en el código. Si cambia lo que el producto debe hacer, se actualiza también el ERS.
 - Cada spec vive en su carpeta: `specs/NNN-nombre/` (desde `001`), con `spec.md`, `plan.md` y `tasks.md`.
@@ -75,9 +76,17 @@ El código heredado se cubre con specs retroactivas (orden en `.claude/rules/tes
 - Fuera de alcance: reescribir código que ya funciona.
 - Al cerrarla, la spec queda en `specs/` como referencia viva del módulo (constitución, principio 2).
 
+## Ubicar el código sin leerlo todo (grafo de graphify)
+
+Aplica al plan, las tareas y las specs retroactivas. En una spec nueva o un cambio no se usa: la spec es el QUÉ y no necesita código.
+
+- Orden: (1) `graphify-out/mapa_codigo.md` (carpetas, archivos y símbolos principales); (2) el grafo por MCP (`get_neighbors`, `get_node`, `query_graph`, `shortest_path`), que da cada símbolo con su `archivo:línea`; (3) `Read` solo del rango necesario, para confirmar.
+- Ni el mapa ni el grafo incluyen las pruebas (`.graphifyignore`): para ellas, `Grep` en `graphify-out/mapa_pruebas.md` (módulos de apoyo con sus símbolos, archivos de prueba y requisito → pruebas, con `archivo:línea`); no lo leas entero ni abras enteros `tests/soporte/*` ni `conftest.py`. Si el símbolo no aparece (código posterior a la última actualización) o el grafo no responde, usa `Grep` y dilo.
+- El grafo se actualiza al cerrar cada spec (`graphify update .`, nombres de comunidades, `graphify-out/generar_mapa.py` y `graphify-out/generar_mapa_pruebas.py`); si no, el planner consulta un grafo atrasado.
+
 ## Plan (plan.md)
 
-Archivos y responsabilidades · Lógica por capa (router → servicio → repositorio) y dependencias externas (SQL Server, Qdrant, Ollama, Redis, HTR) · Algoritmo o flujo en pseudocódigo · Datos (migración de Alembic, metadatos de Qdrant, Redis; cómo se conservan los datos existentes) · Interfaz (roles, mensajes en español, `ROUTE_PERMISSIONS`) · Bitácora (RF-21) · Decisiones justificadas con su alternativa descartada · Pruebas (las unitarias, de integración y de extremo a extremo que cubren cada requisito, y la exención justificada de lo que no se pueda automatizar) · Verificación manual de punta a punta · Documentación que habrá que actualizar. Indica qué requisito cubre cada parte.
+Archivos y responsabilidades (los existentes salen de las consultas al grafo, con símbolo y `archivo:línea`; los nuevos se marcan como tales) · Lógica por capa (router → servicio → repositorio) y dependencias externas (SQL Server, Qdrant, Ollama, Redis, HTR) · Algoritmo o flujo en pseudocódigo · Datos (migración de Alembic, metadatos de Qdrant, Redis; cómo se conservan los datos existentes) · Interfaz (roles, mensajes en español, `ROUTE_PERMISSIONS`) · Bitácora (RF-21) · Decisiones justificadas con su alternativa descartada · Pruebas (las unitarias, de integración y de extremo a extremo que cubren cada requisito, y la exención justificada de lo que no se pueda automatizar) · Verificación manual de punta a punta · Documentación que habrá que actualizar. Indica qué requisito cubre cada parte.
 
 ## Tareas (tasks.md)
 
@@ -87,7 +96,7 @@ Archivos y responsabilidades · Lógica por capa (router → servicio → reposi
   - Hecho cuando: <esas pruebas y la suite completa pasan, y la comprobación de punta a punta se cumple>.
 ```
 
-Máximo 20-30 min por tarea, en orden de dependencia (por ejemplo: migración → backend → Worker → frontend → verificación); cada tarea empieza por sus pruebas. La última tarea actualiza la documentación de planificación afectada. Si salen más de 10, propón dividir la spec.
+Máximo 20-30 min por tarea, en orden de dependencia (por ejemplo: migración → backend → Worker → frontend → verificación); cada tarea empieza por sus pruebas. La última tarea actualiza la documentación de planificación afectada y, si la spec cambió código, el grafo y el mapa (sección «Ubicar el código…»); no cuenta como tarea aparte. Si salen más de 10, propón dividir la spec.
 
 ## Implementación
 

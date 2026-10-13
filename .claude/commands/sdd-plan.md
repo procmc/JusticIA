@@ -3,10 +3,10 @@ description: SDD · Genera el plan técnico de una spec aprobada
 argument-hint: <carpeta-de-la-spec>
 agent: planner
 ---
-Lee `docs/constitution.md`, `CLAUDE.md`, `specs/$1/spec.md` y el código que la spec afecta. Usa la skill `sdd`. NO escribas código.
+Lee `docs/constitution.md`, `CLAUDE.md`, `specs/$1/spec.md`. Ubica el código que la spec afecta con el mapa y el grafo, como indica la skill `sdd`, sin explorarlo archivo por archivo. NO escribas código.
 
 Genera `specs/$1/plan.md` con:
-- **Archivos** que se crean o modifican (backend, Worker, frontend, migraciones) y la responsabilidad de cada uno.
+- **Archivos** que se crean o modifican (backend, Worker, frontend, migraciones) y la responsabilidad de cada uno. Los existentes salen de las consultas al grafo: ruta, símbolo y `archivo:línea`; los nuevos se marcan como tales.
 - **Lógica**: qué va en cada capa (router → servicio → repositorio) y qué depende de servicios externos (SQL Server, Qdrant, Ollama, Redis, HTR).
 - **Algoritmo o flujo** en pseudocódigo.
 - **Datos**: cambios de esquema (migración de Alembic), de metadatos en Qdrant o de lo guardado en Redis, y cómo se conservan los datos existentes.

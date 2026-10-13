@@ -3,7 +3,7 @@ description: SDD · Implementa UNA tarea, con la verificación definida primero 
 argument-hint: <carpeta-de-la-spec> <tarea>
 agent: implementer
 ---
-Implementa SOLO la tarea $2 de `specs/$1/tasks.md`, siguiendo `specs/$1/plan.md`, `docs/constitution.md`, `CLAUDE.md` y la skill `sdd`.
+Implementa SOLO la tarea $2 de `specs/$1/tasks.md`, siguiendo `specs/$1/plan.md` (lee solo las secciones de la tarea, como indica el agente), `docs/constitution.md`, `CLAUDE.md` y la skill `sdd`.
 
 1. Antes del código, define cómo se comprueba la tarea:
    - Escribe primero sus pruebas automatizadas (las de la línea "Pruebas:") y comprueba que fallan. En una spec retroactiva, las pruebas siguen al ERS: si el código no lo cumple, márcalas como fallo esperado (`xfail`) con su referencia. Si corriges un error, empieza por su prueba de regresión.

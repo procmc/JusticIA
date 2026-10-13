@@ -43,3 +43,4 @@ antigravity-instructions.md
 ~$*
 .pytest_cache/
 /.env
+/graphify-out/

@@ -33,7 +33,7 @@ Los subagentes leen `CLAUDE.md` por su cuenta, pero NO ven esta conversación. E
 - La fase en la que están y qué se espera de ellos.
 - La petición original del usuario, con sus palabras, y sus decisiones.
 - Los RF/RNF del ERS involucrados.
-- Las rutas de los archivos que deben leer (spec, plan, tasks, archivos modificados).
+- Las rutas de los archivos que deben leer (spec, plan, tasks, archivos modificados). Al implementer pásale solo la carpeta de la spec y el número de tarea: él lee por secciones lo que su tarea necesita, no pidas que lea los tres archivos completos.
 - El resultado de la fase anterior.
 
 ## Reglas

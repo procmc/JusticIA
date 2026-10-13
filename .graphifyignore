@@ -1,0 +1,4 @@
+# Fuera del grafo de graphify: las pruebas generan mucho ruido en las consultas.
+backend/tests/
+backend/conftest.py
+htr/tests/
