@@ -45,6 +45,7 @@ rectangle "== <color:#6741D9>Contenedor: API Backend</color>\n<size:12><color:#6
   Component(notebooks, "NotebookServIA", "Componente: /notebooks · notebook_service", "Notebooks, archivo original y eliminación en tres capas.")
   Component(similares, "Temas similares", "Componente: /similarity · similarity_service", "Búsqueda por tema o por texto y resumen con IA.")
   Component(archivosTema, "Archivos de temas", "Componente: /archivos", "Lista y descarga los archivos de un tema.")
+  Component(avataresPub, "Avatares públicos", "Componente: /uploads/profiles · avatares.py", "Entrega solo las fotografías de perfil (GET y HEAD), sin sesión; la carpeta de documentos no se publica.")
   Component(bitacora, "Bitácora y métricas", "Componente: /bitacora · bitacora_stats_service", "Filtros, exportación e indicadores del dashboard.")
   rectangle "== <color:#087F5B>Núcleo — infraestructura compartida</color>\n<size:12><color:#087F5B>[los módulos dependen de estos componentes]</color></size>" <<boundary>> as nucleo #EEFCF6;line:63E6BE;line.dashed {
     Component(seguridad, "Seguridad JWT y roles", "Componente: PyJWT · bcrypt", "Emite y verifica el token; todos los endpoints protegidos exigen el rol con ella.", $tags="infra")
@@ -71,6 +72,7 @@ Rel(main, usuarios, "/usuarios")
 Rel(main, bitacora, "/bitacora")
 Rel(main, ingesta, "/ingesta")
 Rel(main, archivosTema, "/archivos")
+Rel(main, avataresPub, "/uploads/profiles (sin sesión)")
 Rel(main, notebooks, "/notebooks")
 Rel(main, similares, "/similarity")
 Rel(main, rag, "/rag")
@@ -80,6 +82,7 @@ Rel(auth, correoSrv, "Envía el código de recuperación")
 Rel(usuarios, datos, "Lee y escribe cuentas")
 Rel(usuarios, correoSrv, "Envía la contraseña temporal")
 Rel(usuarios, archivos, "Guarda el avatar", "Sistema de archivos")
+Rel(avataresPub, archivos, "Lee el avatar", "Sistema de archivos")
 Rel(bitacora, datos, "Consulta la bitácora")
 Rel(ingesta, gestorArchivos, "Guarda el archivo original")
 Rel(ingesta, redis, "Encola una tarea por archivo y consulta su progreso", "Celery · Redis")
@@ -120,5 +123,8 @@ note bottom of web #FFF3BF
   <color:#E67700>• Mínimo de 8 caracteres</color>
   <color:#E67700>   también en el servidor</color>
   <color:#E67700>   (RNF-08).</color>
+  <color:#E67700>• Sesión también para la</color>
+  <color:#E67700>   entrega de avatares</color>
+  <color:#E67700>   (RNF-07).</color>
 end note
 @enduml
