@@ -1,6 +1,6 @@
 # MEMORY.md — ServIA
 
-Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empezar); sin datos sensibles (el repositorio es público). Última actualización: 13/10/2026.
+Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empezar); sin datos sensibles (el repositorio es público). Última actualización: 14/10/2026.
 
 ## Estado actual
 
@@ -9,8 +9,8 @@ Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empeza
 - **Spec 001 (RF-09, texto impreso), 05/10**: se midieron 5 reconocedores sobre capturas. Ganador docTR (CER 0,048, 0,31 s/página) pero pierde á í ó ú ñ ¿ ¡; qantev (CER 0,064, 88,8 % en tildes) quedó fuera por 0,25 s sobre un límite de 10 s fijado sin medir (Andrés acepta hasta 1 min). RF-09 queda «Parcial». Resultados: `specs/001-*/resultados.md` y sección 9 de `htr/README.md`; el set y el JSON crudo no se versionan.
 - **Spec 002 (infraestructura de pruebas del backend), cerrada 07/10**: pytest en el contenedor `backend`, entorno aislado (`servia_pruebas`), simulados de Ollama, HTR, audio y correo. Comandos en `CLAUDE.md`.
 - **Spec 003 cerrada 12/10** (publicada y subida): 003a (correo de cuentas: el Administrador sabe si el correo no salió; envío con tiempo máximo) y 003b (RF-03, recuperación pública de contraseña por código, respuesta uniforme, límites en Redis que falla cerrado, una fila de bitácora por paso).
-- **Suite vigente**: 1029 pasan (768 unitarias, 261 de integración), 0 fallos esperados, ~3 min 30 s, también con `--orden-inverso`, sin residuos. `-m infraestructura` aparte: sale con código 1 a propósito.
-- **Documentos vigentes** (`Documentacion/Documentacion_ServIA_2026/`): ERS V1.5; Historias de Usuario, Casos de Uso y Procesos V1.2; Visión, StakeHolder, Modelo de Dominio, C4 y Modelo Relacional sin versión. Enviados al tutor el 30/09; su revisión sigue pendiente.
+- **Suite vigente**: 1326 pasan (a 14/10, tras la 004a T5 corrección 1), 0 fallos esperados, también con `--orden-inverso`, sin residuos. `-m infraestructura` aparte: sale con código 1 a propósito.
+- **Documentos vigentes** (`Documentacion/Documentacion_ServIA_2026/`): ERS V1.6; Casos de Uso V1.3; Historias de Usuario y Procesos V1.2; C4 1.1 (PDF `Arquitectura C4 - ServIA.pdf`, sin versión en el nombre); Visión, StakeHolder, Modelo de Dominio y Modelo Relacional sin versión. Enviados al tutor el 30/09; su revisión sigue pendiente.
 - **Convención de PDF** (Andrés, 08/10): `Nombre_V#.#.pdf`, vigente = versión más alta; la portada del Word debe coincidir; el Word conserva siempre el mismo nombre. Los PDF sin versión y `ERS…_V1.3` son anteriores y no se editan. Los agentes no leen `.docx`: el coordinador pasa la ruta exacta. `Documentacion_Lista/` no se usa ni se toca.
 - **Requisitos parciales** (ERS, «Estado actual»): RF-03, RF-05, RF-06, RF-09, RF-13, RF-15, RF-19, RF-20, RNF-07, RNF-08. El código conserva el vocabulario «expediente».
 - **Claude Code**: `CLAUDE.md`, comandos `/feature`, `/git-commits`, `/sdd-*`, agentes `coordinator`, `planner`, `implementer`, `reviewer` y `committer` (`/git-commits`: nunca hace push), hooks `validate-bash.sh` y `validate-edit.sh`, reglas en `.claude/rules/`. Constitución (`docs/constitution.md`) aprobada el 05/10. Rama de trabajo: `fase4`, al día con el remoto.
@@ -18,9 +18,9 @@ Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empeza
 
 ## En curso
 
-- **Spec 004a (correcciones urgentes de seguridad)**: borrador; va primero.
+- **Spec 004a (correcciones urgentes de seguridad)**: implementada y validada (APROBADO, 14/10), publicada con su commit de cierre. T1–T7 cerradas; documentación al día (ERS V1.6, CU V1.3, C4 1.1 con avatares públicos). `uploads/` ya no se publica; avatares en `GET`/`HEAD /uploads/profiles/{nombre}` sin sesión (excepción hasta la spec de autenticación). El paso 6 (interfaz del archivo rechazado) pasa a la 004.
 - **Spec 004 (red de seguridad del backend)**: borrador, 14 tareas.
-- Ambas carpetas siguen fuera del repositorio hasta cerrar la 004a.
+- La 004a se publica con su commit de cierre; la carpeta de la 004 (con su `respaldo/`) sigue fuera del repositorio hasta que se apruebe.
 
 ## Decisiones importantes (y por qué)
 
@@ -44,11 +44,12 @@ Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empeza
 ## Errores a evitar
 
 - **Fallas silenciadas** (filtro de Qdrant, `num_ctx`, un join, la clave de metadatos): probar con datos reales de punta a punta antes de dar algo por terminado.
+- **Subidas en el MCP `chrome-devtools`**: su Chrome no abre el diálogo nativo de archivos y `upload_file` solo acepta rutas dentro del proyecto; las subidas con archivos personales se prueban en un Chrome normal.
 - **Ollama en CPU** tarda minutos por respuesta; si el chat se vuelve lento, revisar `ollama ps` y la GPU (el compose debe reservarla).
 - **Muestras pequeñas engañan** y el CER no es lo que importa para el RAG: evaluar también por recuperación. El LLM no corrige el HTR (empeora 10–14 % y destruye nombres). El modelo de 8B con imágenes niega el acceso al archivo o inventa su identidad; cuatro prompts no lo resolvieron.
 - **PyTorch en Windows**: Smart App Control lo bloquea y no se reactiva; todo corre en contenedores Linux. `transformers` fijado a `>=4.44,<5` (la 5 rompe TrOCR).
 - **GPU en WSL2**: `torch.cuda.mem_get_info` solo ve la VRAM del propio proceso; la guardia mide con `nvidia-smi` (umbral 1,0 GB) y se prueba con el caso que debe detectar.
-- **Documentos Word**: Andrés los edita a mano y avisa; partir siempre del archivo vigente. Un `.docx` se edita sobre una copia fuera del proyecto, validando el XML y que solo cambió lo pedido. Antes de decir que un documento se actualizó, leer el archivo vigente.
+- **Documentos Word**: Andrés los edita a mano y avisa; partir siempre del archivo vigente. Un `.docx` se edita sobre una copia fuera del proyecto, validando el XML y que solo cambió lo pedido. No usar python-docx para guardar: reescribe `styles.xml`, `settings.xml`, `numbering.xml` y `[Content_Types].xml` (error del 14/10, T7 de la 004a); editar solo `word/document.xml` dentro del zip y comparar el resto de las partes byte a byte. Antes de decir que un documento se actualizó, leer el archivo vigente.
 - **PlantUML**: recorta imágenes de más de 4096 px (bajar dpi); con ELK los recuadros ignoran el estilo por etiqueta (usar estilo en línea); un `switch` que cruza carriles en un diagrama de actividad lo hace fallar.
 - **Git Bash y scripts**: un heredoc con comillas invertidas falla; no editar con Python en heredoc si el texto lleva `\n` o `\b` (usar Edit). En Windows abrir con `newline=''`. `docker compose exec -w` y `docker cp` necesitan `MSYS_NO_PATHCONV=1`. Al reemplazar una sección por script, acotar el fin a la sección siguiente (sin versionar no se recupera).
 - **Reiniciar para releer**: el `.env` solo se lee al reiniciar `backend` y `celery-worker`; `docker compose up -d --force-recreate backend celery-worker` también recrea `tika` y `servidor-htr`; la imagen es propia, se reconstruyen los dos.
@@ -64,15 +65,19 @@ Memoria entre sesiones. Máximo 100 líneas (cada agente la lee entera al empeza
 
 - **Constantes y capas**: `metadata_fields.py` no coincide con las claves reales de Qdrant; las rutas de notebooks usan repositorios sin pasar por su servicio.
 - **Notebooks**: crear un notebook y quitar un documento no se registran en la bitácora (RF-21): van a la spec de notebooks.
-- **Ingesta**: el guardado de archivos falla con rutas fuera de la raíz del backend (a corregir en la spec de ingesta, con su prueba); el Tika desplegado no hace OCR de imágenes (revisar `tika-config.xml` y si los PDF escaneados también lo pierden).
+- **Ingesta**: el guardado fuera de la raíz del backend ya se corrigió (004a, RF-05.21); el Tika desplegado no hace OCR de imágenes (revisar `tika-config.xml` y si los PDF escaneados también lo pierden).
 - **Usuarios**: la bitácora de «Editar Usuario» lista todos los campos como modificados; la edición guarda directo, sin paso de confirmación (decisión de Andrés); un caso borde al reactivar una cuenta; la detección por texto de un mensaje del último paso de la recuperación.
 - **Frontend**: un `console.error` heredado de `usuarioService.js` abre el aviso rojo de Next en desarrollo; no hay botón para cambiar de tema; `npm run build` falla por 4 errores de lint heredados de la página de notebooks; la excepción de modo oscuro en las pantallas de acceso.
 - **Bitácora y avisos**: el detalle del Historial muestra la hora en UTC y la tabla la local; el color y los 10 s del aviso de creación están sin medir; aviso inocuo de `passlib`/`bcrypt`.
 - **Documentos y pruebas**: cosméticos opcionales (página final del ERS, fila huérfana de CU-12, imagen de P7); un `.gitkeep` sobrante en las pruebas de integración; sin fijar `LANGSMITH_TRACING=false` en la suite (RNF-09); sin cubrir de punta a punta la salida de `pytest.exit` de `_exigir_simulados`; que cada `xfail` cite su requisito aún es convención, no chequeo (RA-02.1); un script auxiliar quedó en el contenedor `sqlserver`.
 
+- Spec 004a, T3 (14/10): la ruta por tema y nombre reutiliza `obtener_documento_por_ruta` (pertenencia, 404 uniforme); rechazos a bitácora solo con motivo (`registrar_descarga_rechazada`), sin nombres ni rutas; 500 genérico; claves `NB-` canónicas (decisión 13). Suite 1267, también en orden inverso. Esa ruta exige formato de expediente (17-20 caracteres): un `NB-<id>` corto da 400 a todos.
+- Spec 004a, T4 (14/10): `guardar_archivo` valida tema y nombre antes de escribir (400 genéricos), escribe en modo `xb` y borra solo lo que creó; ruta `uploads/<tema>/<nombre>` sin `relative_to`; el registro del servidor solo lleva el tipo de error (su traza trae la ruta y el nombre). Un nombre de 256 bytes con el sufijo `_1` hace que `Path.exists()` lance `ENAMETOOLONG`: se comprueba antes. La interfaz sigue sin mostrar el aviso de un archivo rechazado (spec 004).
+- Spec 004a, resumen: el confinamiento por tema y nombre es común (la carpeta real se llama igual que el tema); la descarga entrega solo documentos registrados, Procesados, propios y confinados (404 uniforme); `uploads/` sin `StaticFiles`; `routes/avatares.py` (excepción documentada a «todo endpoint exige rol») con `Vary: Origin`, porque Chrome reutilizaba la respuesta del `<img>` (sin CORS) en el `fetch` HEAD y fallaba por CORS.
+
 ## Próximos pasos
 
-1. Spec 004a → spec 004 (red de seguridad del backend) → spec 005 (extremo a extremo con Playwright) → specs retroactivas por módulo, por riesgo.
+1. Spec 004 (red de seguridad del backend): aprobar su plan y sus tareas (decisiones abiertas en el plan §16), tras aplicar el `/sdd-change` anotado en la T7 de la 004a → spec 005 (extremo a extremo con Playwright) → specs retroactivas por módulo, por riesgo.
 2. Anotadas en general: una spec de autenticación y otra de infraestructura del almacén temporal (Redis).
 3. Spec de integración del reconocimiento de imágenes (RF-09): `/sdd-change` (RF-09, HU-09, CU-08 y FH-01 dicen «docTR + TrOCR»), decidir docTR o qantev midiendo la recuperación en el chat y corregir antes el OCR de Tika; va después de la red de seguridad. Por definir: si el Ciclo 4 (LoRA) sigue vigente.
 4. Después, los «Estado actual» del ERS y los hallazgos, con sus pruebas; comandos de operación (`/bitacora`, `/levantar`, `/diagramas`, `/subir`).
