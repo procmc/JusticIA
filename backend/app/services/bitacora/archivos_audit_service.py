@@ -215,7 +215,7 @@ class ArchivosAuditService:
         self,
         db: Session,
         usuario_id: Optional[str],
-        nombre_archivo: str,
+        nombre_archivo: Optional[str],
         expediente_numero: Optional[str] = None,
         ruta_archivo: Optional[str] = None,
         tamaño_bytes: Optional[int] = None,
@@ -275,8 +275,12 @@ class ArchivosAuditService:
                 # Agregar información de error
                 info["error"] = error
                 info["tipo_error"] = "acceso" if "no encontrado" in error.lower() or "404" in error else "interno"
-                texto_registro = f"Error descargando archivo: {nombre_archivo} - {error[:100]}"
-            
+                if nombre_archivo:
+                    texto_registro = f"Error descargando archivo: {nombre_archivo} - {error[:100]}"
+                else:
+                    # Sin nombre ni ruta: un error inesperado no debe repetir lo que el usuario pidió (RNF-07.24)
+                    texto_registro = f"Error descargando archivo - {error[:100]}"
+
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(
                 db=db,
@@ -286,11 +290,48 @@ class ArchivosAuditService:
                 expediente_id=expediente_db_id,
                 info_adicional=info
             )
-            
+
         except Exception as e:
             logger.warning(f"Error registrando descarga de archivo en bitácora: {e}")
             return None
-    
+
+    async def registrar_descarga_rechazada(
+        self,
+        db: Session,
+        usuario_id: Optional[str],
+        motivo: str
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra una descarga rechazada (RF-21.20) solo con su motivo clasificado.
+
+        No recibe ni guarda el nombre, el tema ni la ruta pedidos: pueden contener nombres de personas
+        (RNF-07.24, Ley 8968) y el motivo basta para auditar. Se clasifica como error de acceso, no interno.
+
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario que pidió la descarga
+            motivo: «ruta no permitida», «documento ajeno» o «documento no disponible»
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21)
+        """
+        try:
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=TiposAccion.DESCARGAR_ARCHIVO,
+                texto=f"Descarga rechazada: {motivo}",
+                info_adicional={
+                    "motivo": motivo,
+                    "error": "descarga rechazada",
+                    "tipo_error": "acceso",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando descarga rechazada en bitácora: {e}")
+            return None
+
     async def registrar_listado_archivos(
         self,
         db: Session,

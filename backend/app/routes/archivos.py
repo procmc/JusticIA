@@ -68,7 +68,7 @@ Estados de procesamiento:
 
 Note:
     Solo archivos con estado COMPLETADO (3) pueden descargarse.
-    Intentos de descarga de archivos no procesados retornan HTTP 400.
+    Intentos de descarga de archivos no procesados retornan HTTP 404 (el mismo que un archivo inexistente).
 
 See Also:
     - app.services.documentos.file_management_service: Gestión de archivos
@@ -77,13 +77,14 @@ See Also:
     - app.services.bitacora.archivos_audit_service: Auditoría de acceso a archivos
 """
 from fastapi import APIRouter, HTTPException, Depends, Path as PathParam
-from fastapi.responses import FileResponse
 from typing import List, Optional
 from sqlalchemy.orm import Session
 import logging
 import os
 
-from app.services.documentos.file_management_service import file_management_service
+from app.services.documentos.file_management_service import (
+    file_management_service, AccesoArchivoDenegado, _sin_control
+)
 from app.db.database import get_db
 from app.utils.expediente_validator import validar_expediente
 from app.auth.jwt_auth import require_usuario_judicial
@@ -91,6 +92,20 @@ from app.services.bitacora.archivos_audit_service import archivos_audit_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def _auditar_rechazo(db: Session, current_user, rechazo: AccesoArchivoDenegado) -> None:
+    """Registra una descarga rechazada solo con su motivo (RF-21.20, RNF-07.24); si el registro falla, la respuesta no cambia."""
+    await archivos_audit_service.registrar_descarga_rechazada(
+        db=db, usuario_id=current_user["user_id"], motivo=rechazo.motivo
+    )
+
+
+async def _auditar_error_interno(db: Session, current_user) -> None:
+    """Registra un error inesperado de descarga como error interno, sin el nombre ni la ruta pedidos (RNF-07.24)."""
+    await archivos_audit_service.registrar_descarga_archivo(
+        db=db, usuario_id=current_user["user_id"], nombre_archivo=None, exito=False, error="error interno"
+    )
 
 @router.get("/expediente/{expediente_numero}/archivos")
 async def listar_archivos_expediente(
@@ -126,20 +141,22 @@ async def listar_archivos_expediente(
             "total_archivos": total_archivos,
             "archivos": archivos
         }
-    except Exception as e:
-        # Auditar error en listado
+    except Exception:
+        # El texto de la excepción puede traer rutas del servidor o nombres de personas: solo va al registro del servidor
+        # (RNF-07.23, RNF-07.24); la bitácora y la respuesta llevan un texto genérico.
+        logger.exception("Error inesperado al listar los archivos de un tema")
         await archivos_audit_service.registrar_listado_archivos(
             db=db,
             usuario_id=current_user["user_id"],
             expediente_numero=expediente_numero,
             total_archivos=0,
             exito=False,
-            error=str(e)
+            error="error interno"
         )
-        
+
         raise HTTPException(
             status_code=500,
-            detail=f"Error listando archivos: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 @router.get("/expediente/{expediente_numero}/archivo/{nombre_archivo}")
@@ -164,86 +181,42 @@ async def descargar_archivo_expediente(
         )
     
     try:
-        # Verificar que el archivo esté procesado (validación centralizada)
-        from app.repositories.documento_repository import DocumentoRepository
-        
-        repo = DocumentoRepository()
-        if not repo.verificar_esta_procesado(db, expediente_numero, nombre_archivo):
-            # Auditar intento de descarga de archivo no procesado
-            await archivos_audit_service.registrar_descarga_archivo(
-                db=db,
-                usuario_id=current_user["user_id"],
-                nombre_archivo=nombre_archivo,
-                expediente_numero=expediente_numero,
-                exito=False,
-                error="Archivo no disponible para descarga (no procesado)"
-            )
-            
-            raise HTTPException(
-                status_code=400,
-                detail="El archivo aún no está disponible para descarga"
-            )
-        
-        ruta_archivo = file_management_service.obtener_ruta_archivo(expediente_numero, nombre_archivo)
-        
-        if not ruta_archivo:
-            # Auditar intento de descarga de archivo no encontrado
-            await archivos_audit_service.registrar_descarga_archivo(
-                db=db,
-                usuario_id=current_user["user_id"],
-                nombre_archivo=nombre_archivo,
-                expediente_numero=expediente_numero,
-                exito=False,
-                error="Archivo no encontrado en disco"
-            )
-            
-            raise HTTPException(
-                status_code=404,
-                detail="Archivo no encontrado"
-            )
-        
+        # Misma comprobación que la descarga por ruta, sin lógica duplicada: documento registrado y Procesado, notebook
+        # propio y archivo dentro de la carpeta de su tema; si no, AccesoArchivoDenegado (404 uniforme, RNF-07.20, RF-18.20).
+        ruta_documento = f"uploads/{expediente_numero}/{nombre_archivo}"
+        ubicacion = await file_management_service.obtener_documento_por_ruta(db, ruta_documento, current_user["user_id"])
+
         # Obtener tamaño del archivo para auditoría
         tamaño_bytes = None
         try:
-            if os.path.exists(str(ruta_archivo)):
-                tamaño_bytes = os.path.getsize(str(ruta_archivo))
-        except:
+            tamaño_bytes = os.path.getsize(ubicacion)
+        except OSError:
             pass
-        
-        # Auditar descarga exitosa
+
+        file_response = file_management_service.descargar_archivo(ubicacion)
+
+        # Auditar descarga exitosa (con la ruta del documento, no la del servidor, y sin caracteres de control)
         await archivos_audit_service.registrar_descarga_archivo(
             db=db,
             usuario_id=current_user["user_id"],
-            nombre_archivo=nombre_archivo,
-            expediente_numero=expediente_numero,
-            ruta_archivo=str(ruta_archivo),
+            nombre_archivo=_sin_control(ubicacion.name),
+            expediente_numero=_sin_control(expediente_numero),
+            ruta_archivo=_sin_control(ruta_documento),
             tamaño_bytes=tamaño_bytes,
             exito=True
         )
-        
-        return FileResponse(
-            path=str(ruta_archivo),
-            filename=nombre_archivo,
-            media_type='application/octet-stream'
-        )
-        
+
+        return file_response
+
+    except AccesoArchivoDenegado as e:
+        await _auditar_rechazo(db, current_user, e)
+        raise
     except HTTPException:
         raise
-    except Exception as e:
-        # Auditar error en descarga
-        await archivos_audit_service.registrar_descarga_archivo(
-            db=db,
-            usuario_id=current_user["user_id"],
-            nombre_archivo=nombre_archivo,
-            expediente_numero=expediente_numero,
-            exito=False,
-            error=str(e)
-        )
-        
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error descargando archivo: {str(e)}"
-        )
+    except Exception:
+        await _auditar_error_interno(db, current_user)
+        logger.exception("Error inesperado en la descarga por tema y nombre")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @router.get("/download")
 async def descargar_archivo_por_ruta(
@@ -259,63 +232,45 @@ async def descargar_archivo_por_ruta(
         ruta_archivo: Ruta completa del archivo a descargar
     """
     try:
-        # Decodificar la ruta en caso de que contenga caracteres especiales (FastAPI debería hacerlo automáticamente, pero por seguridad)
+        # Se conserva la segunda decodificación (D9): la ruta que se comprueba es la final, ya decodificada.
         from urllib.parse import unquote
         ruta_archivo = unquote(ruta_archivo)
-        
-        # Normalizar la ruta: convertir rutas relativas "uploads/..." a rutas absolutas
-        if ruta_archivo.startswith("uploads/"):
-            # Ruta relativa desde la raíz del proyecto backend
-            import os
-            from pathlib import Path
-            backend_root = Path(__file__).resolve().parent.parent.parent  # Subir 3 niveles desde routes/archivos.py
-            ruta_archivo = str(backend_root / ruta_archivo)
-        
-        # Extraer nombre del archivo de la ruta
-        nombre_archivo = os.path.basename(ruta_archivo)
-        
+
+        # Solo se entrega un documento registrado, Procesado, propio y dentro de la carpeta de su tema; si no,
+        # AccesoArchivoDenegado (404 uniforme) y no se completa ni se busca ninguna otra ruta (RNF-07.20, RF-18.20).
+        ubicacion = await file_management_service.obtener_documento_por_ruta(db, ruta_archivo, current_user["user_id"])
+        nombre_archivo = ubicacion.name
+
         # Obtener tamaño del archivo para auditoría
         tamaño_bytes = None
         try:
-            if os.path.exists(ruta_archivo):
-                tamaño_bytes = os.path.getsize(ruta_archivo)
-        except:
+            tamaño_bytes = os.path.getsize(ubicacion)
+        except OSError:
             pass
-        
-        # Log para debugging
-        logger.info(f"Intentando descargar archivo: {ruta_archivo}")
-        
+
         # Realizar descarga
-        file_response = file_management_service.descargar_archivo(ruta_archivo)
-        
-        # Auditar descarga exitosa
+        file_response = file_management_service.descargar_archivo(ubicacion)
+
+        # Auditar descarga exitosa (con la ruta del documento, no la del servidor)
         await archivos_audit_service.registrar_descarga_archivo(
             db=db,
             usuario_id=current_user["user_id"],
-            nombre_archivo=nombre_archivo,
-            ruta_archivo=ruta_archivo,
+            nombre_archivo=_sin_control(nombre_archivo),
+            ruta_archivo=_sin_control(ruta_archivo),
             tamaño_bytes=tamaño_bytes,
             exito=True
         )
-        
+
         return file_response
-        
-    except HTTPException:
-        # Re-lanzar excepciones HTTP (ej: 404 del FileManagementService)
+
+    except AccesoArchivoDenegado as e:
+        await _auditar_rechazo(db, current_user, e)
         raise
-    except Exception as e:
-        # Auditar error en descarga
-        await archivos_audit_service.registrar_descarga_archivo(
-            db=db,
-            usuario_id=current_user["user_id"],
-            nombre_archivo=os.path.basename(ruta_archivo) if ruta_archivo else "Desconocido",
-            ruta_archivo=ruta_archivo,
-            exito=False,
-            error=str(e)
-        )
-        
-        logger.error(f"Error descargando archivo {ruta_archivo}: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error descargando archivo: {str(e)}"
-        )
+    except HTTPException:
+        # Re-lanzar excepciones HTTP (el 400 de archivo vacío)
+        raise
+    except Exception:
+        # El detalle va solo al registro del servidor; ni la respuesta ni la bitácora llevan la ruta pedida (RNF-07.23, RNF-07.24)
+        await _auditar_error_interno(db, current_user)
+        logger.exception("Error inesperado en la descarga por ruta")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

@@ -58,7 +58,9 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
-from app.services.documentos.file_management_service import file_management_service
+from app.services.documentos.file_management_service import (
+    file_management_service, validar_tema, MENSAJE_NOMBRE_NO_VALIDO
+)
 from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
 from app.constants.tipos_accion import TiposAccion
 import logging
@@ -177,16 +179,26 @@ async def ingestar_archivos(
             detail="Debe proporcionar al menos un archivo"
         )
     
+    # El tema se comprueba antes de escribir o encolar nada: si no sirve como nombre de carpeta se rechaza la carga
+    # completa, sin repetirlo en la respuesta ni en la bitácora (RF-06.20, RF-21.20, RNF-07.24).
+    try:
+        validar_tema(CT_Num_expediente)
+    except HTTPException:
+        await ingesta_audit_service.registrar_carga_rechazada(
+            db=db, usuario_id=current_user["user_id"], motivo="tema no válido"
+        )
+        raise
+
     try:
         # Procesar cada archivo con Celery
         task_ids = []
         from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
-        
+
         for file in files:
             try:
                 # Guardar archivo físicamente
                 archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
-                
+
                 # Enviar a Celery con usuario_id (genera task_id automáticamente)
                 celery_task = procesar_archivo_celery.delay(
                     CT_Num_expediente,
@@ -194,15 +206,19 @@ async def ingestar_archivos(
                     current_user["user_id"]  # Pasar usuario que inició la ingesta
                 )
                 task_ids.append(celery_task.id)
-                
-            except Exception as e:
-                logger.error(f"Error guardando archivo {file.filename}: {e}")
-                # Agregar error a la lista para notificar al frontend
-                task_ids.append({
-                    "error": True,
-                    "filename": file.filename,
-                    "message": f"Error al guardar: {str(e)}"
-                })
+
+            except HTTPException as e:
+                # Rechazo de ese archivo (RF-05.20, RF-05.21): su `detail` es un aviso genérico del servicio, se identifica
+                # por su posición en la lista y no lleva el nombre pedido (RNF-07.24).
+                task_ids.append({"error": True, "message": e.detail})
+                if e.detail == MENSAJE_NOMBRE_NO_VALIDO:
+                    await ingesta_audit_service.registrar_carga_rechazada(
+                        db=db, usuario_id=current_user["user_id"], motivo="nombre de archivo no válido"
+                    )
+            except Exception:
+                # El detalle va solo al registro del servidor, sin el nombre del archivo (RNF-07.23, RNF-07.24).
+                logger.exception("Error inesperado al guardar o encolar un archivo")
+                task_ids.append({"error": True, "message": "Error interno del servidor"})
         
         # Registrar en bitácora - Ingesta iniciada
         await ingesta_audit_service.registrar_ingesta(
@@ -221,7 +237,8 @@ async def ingestar_archivos(
             "total_files": len(files)
         }
         
-    except Exception as e:
+    except Exception:
+        logger.exception("Error inesperado en la carga de archivos")
         # Registrar error en bitácora
         await ingesta_audit_service.registrar_ingesta(
             db=db,
@@ -233,7 +250,7 @@ async def ingestar_archivos(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Error al procesar archivos: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 

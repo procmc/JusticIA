@@ -65,6 +65,7 @@ Authors:
 Version:
     1.0.0 - Auditoría de ingesta y procesamiento
 """
+from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
 import logging
@@ -145,6 +146,43 @@ class IngestaAuditService:
             return None
     
     
+    async def registrar_carga_rechazada(
+        self,
+        db: Session,
+        usuario_id: Optional[str],
+        motivo: str
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra una carga rechazada (RF-21.20) solo con su motivo clasificado.
+
+        No recibe ni guarda el tema ni el nombre del archivo: pueden contener nombres de personas
+        (RNF-07.24, Ley 8968) y el motivo basta para auditar. Se clasifica como error de validación.
+
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario que cargó
+            motivo: «tema no válido» o «nombre de archivo no válido»
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21)
+        """
+        try:
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
+                texto=f"Carga rechazada: {motivo}",
+                info_adicional={
+                    "motivo": motivo,
+                    "error": "carga rechazada",
+                    "tipo_error": "validacion",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando carga rechazada en bitácora: {e}")
+            return None
+
     async def registrar_almacenamiento_vectorial(
         self,
         db: Session,

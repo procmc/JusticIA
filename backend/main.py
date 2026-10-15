@@ -77,18 +77,45 @@ Version:
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.vectorstore import get_vectorstore_backend
-from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora, notebooks
+from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora, notebooks, avatares
 from app.db import database
 import asyncio
 import logging
+import re
 from app.utils.hf_model import ensure_model_available
 from app.embeddings.embeddings import get_embeddings
 from app.services.RAG.session_store import conversation_store
 
 logger = logging.getLogger(__name__)
+
+
+class OcultarDatosDeDescarga(logging.Filter):
+    """Oculta en el registro de acceso de uvicorn lo que una persona pide al descargar (RNF-07.24, Ley 8968).
+
+    El registro de acceso imprime la URL completa, y el tema o el nombre del archivo pueden ser nombres de personas.
+    Se enmascara solo el valor de `ruta_archivo` en `/archivos/download` y el tema y el nombre en
+    `/archivos/expediente/{tema}/archivo/{nombre}`; el método, el endpoint y el estado se conservan.
+    Vive aquí (y no en el núcleo) para que lo cargue la API y no el worker de Celery.
+    """
+
+    _RUTA_ARCHIVO = re.compile(r"(?<=[?&]ruta_archivo=)[^&#]*")
+    _TEMA_Y_NOMBRE = re.compile(r"^(/archivos/expediente/)[^/?#]*(/archivo/)[^?#]*")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn registra (cliente, método, ruta con consulta, versión HTTP, estado).
+        argumentos = record.args
+        if isinstance(argumentos, tuple) and len(argumentos) >= 3 and isinstance(argumentos[2], str):
+            ruta = self._RUTA_ARCHIVO.sub("***", argumentos[2])
+            ruta = self._TEMA_Y_NOMBRE.sub(r"\1***\2***", ruta)
+            record.args = (*argumentos[:2], ruta, *argumentos[3:])
+        return True
+
+
+_acceso_uvicorn = logging.getLogger("uvicorn.access")
+if not any(isinstance(f, OcultarDatosDeDescarga) for f in _acceso_uvicorn.filters):
+    _acceso_uvicorn.addFilter(OcultarDatosDeDescarga())
 
 # Crear instancia de FastAPI
 app = FastAPI(
@@ -182,10 +209,10 @@ app.include_router(rag.router, tags=["rag"])
 app.include_router(bitacora.router, prefix="/bitacora", tags=["bitacora"])
 app.include_router(notebooks.router, prefix="/notebooks", tags=["notebooks"])
 
-# Servir archivos estáticos para avatares
-uploads_path = Path("uploads")
-uploads_path.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Avatares públicos (sin sesión, RF-04.20). La carpeta de documentos NO se publica (RNF-07.22): se descargan
+# solo por /archivos/download, con sesión y pertenencia.
+app.include_router(avatares.router, prefix="/uploads/profiles", tags=["avatares"])
+Path("uploads").mkdir(exist_ok=True)
 
 
 @app.get("/")

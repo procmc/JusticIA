@@ -121,6 +121,7 @@ Version:
 """
 
 import os
+import re
 import shutil
 import logging
 from pathlib import Path
@@ -510,6 +511,25 @@ class AvatarService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No puedes modificar el avatar de otro usuario"
             )
+
+    def obtener_ubicacion_avatar_publico(self, nombre: str) -> Optional[Path]:
+        """Ubicación del avatar `nombre` si es entregable sin sesión; `None` en cualquier otro caso (RF-04.20).
+
+        Solo acepta `<id>.<extensión>` con el id de 1 a 40 caracteres (letras, números, `_` y `-`) y una extensión
+        de `ALLOWED_IMAGE_EXTENSIONS`. Se resuelve contra `self.upload_dir` en cada petición (no contra una ruta
+        fija) y se confina: un enlace que sale de la carpeta, una carpeta o un archivo ausente dan `None`.
+        """
+        coincidencia = re.fullmatch(r"([A-Za-z0-9_-]{1,40})(\.[A-Za-z0-9]+)", nombre or "")
+        if coincidencia is None or coincidencia.group(2).lower() not in ALLOWED_IMAGE_EXTENSIONS:
+            return None
+        try:
+            base = self.upload_dir.resolve()
+            ubicacion = (base / nombre).resolve()
+            if ubicacion.parent != base or not ubicacion.is_file():
+                return None
+        except (OSError, ValueError):
+            return None
+        return ubicacion
 
 
 # Crear instancia singleton
