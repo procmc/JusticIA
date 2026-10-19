@@ -258,10 +258,13 @@ def test_rechazo_de_carga_con_bitacora_que_falla_responde_igual(cliente_api, ses
 
 # --- RNF-07.23: un error inesperado da un mensaje genérico ------------------------------------------------------
 
-def test_error_inesperado_es_generico(cliente_api, sesion, usuario_gubernamental, carpeta_archivos, monkeypatch):
+def test_error_inesperado_es_generico(cliente_api, sesion, usuario_gubernamental, carpeta_archivos, encoladas, monkeypatch):
     """RNF-07.23: un error inesperado con una ruta del servidor inventada en su mensaje da, por archivo, «Error interno
     del servidor» y, en la carga completa, 500 con ese mismo texto; ninguna respuesta repite la ruta, ni el nombre del
-    archivo, ni el texto de la excepción."""
+    archivo, ni el texto de la excepción.
+
+    Spec 004 (tarea 9a, plan §16.5): la carga iniciada se registra solo si hay al menos un archivo aceptado, así que
+    antes de la segunda parte se restablece el encolado interceptado; lo que se comprueba es lo mismo."""
     from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
     from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
 
@@ -270,12 +273,14 @@ def test_error_inesperado_es_generico(cliente_api, sesion, usuario_gubernamental
     def _falla_al_encolar(*args, **kwargs):
         raise RuntimeError(f"fallo leyendo {secreto}")
 
+    encolado_interceptado = procesar_archivo_celery.delay    # el de la fixture `encoladas`
     monkeypatch.setattr(procesar_archivo_celery, "delay", _falla_al_encolar)
     por_archivo = _cargar(cliente_api, sesion, TEMA, [(f"{PERSONA}.txt", CONTENIDO)])
 
     assert por_archivo.status_code == 200
     assert por_archivo.json()["task_ids"] == [{"error": True, "message": "Error interno del servidor"}]
 
+    monkeypatch.setattr(procesar_archivo_celery, "delay", encolado_interceptado)
     original = ingesta_audit_service.registrar_ingesta
 
     async def _falla_en_la_primera(*args, **kwargs):

@@ -5,6 +5,7 @@
 import { useRef } from 'react';
 import ingestaService from '@/services/ingestaService';
 import Toast from '@/components/ui/CustomAlert';
+import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 
 // Configuración
 const PERSIST_KEY = 'ingesta_files';
@@ -19,7 +20,8 @@ const isTerminal = (status) => TERMINAL_STATES.includes(status?.toLowerCase());
  * Limpiar objetos File para localStorage (no son serializables)
  */
 const sanitizeForStorage = (files) => {
-  return files.map(({ file, ...rest }) => rest);
+  // El aviso de la carga es solo de esta sesión: al restaurar no debe reaparecer.
+  return files.map(({ file, avisoCarga, ...rest }) => rest);
 };
 
 /**
@@ -360,11 +362,6 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         return;
       }
       
-      Toast.info(
-        'Subida iniciada',
-        'Los archivos se están procesando en segundo plano'
-      );
-      
       // Procesar cada expediente
       for (const [expediente, expedienteFiles] of Object.entries(filesByExpediente)) {
         // Marcar como procesando
@@ -378,29 +375,47 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           const archivosReales = expedienteFiles.map(f => f.file);
           const resultado = await ingestaService.subirArchivos(expediente, archivosReales);
           
-          const taskIds = resultado?.task_ids || [];
-          
-          if (taskIds.length !== expedienteFiles.length) {
-            throw new Error(`Número de task_ids (${taskIds.length}) no coincide con archivos (${expedienteFiles.length})`);
+          // La respuesta dice, por posición (desde 1), qué archivos se aceptaron y cuáles se rechazaron y por qué.
+          const tareas = resultado?.aceptados?.tareas;
+          const rechazados = resultado?.rechazados?.archivos;
+          if (!Array.isArray(tareas) || !Array.isArray(rechazados)) {
+            throw new Error('La respuesta de la carga no trae aceptados y rechazados');
           }
-          
-          // Asignar taskId a cada archivo y comenzar polling
+          const tareaPorPosicion = new Map(tareas.map(t => [t.posicion, t.id_tarea]));
+          const motivoPorPosicion = new Map(rechazados.map(r => [r.posicion, r.motivo]));
+
+          // Un aviso por respuesta (por tema), junto al tema; se cierra a mano.
+          const avisoCarga = {
+            id: `${Date.now()}-${expediente}`,
+            tema: expediente,
+            ...armarAvisoCarga(resultado, expedienteFiles.map(f => f.name))
+          };
+
+          // Los aceptados siguen su curso (taskId y polling); los rechazados quedan «rechazado» con su motivo, sin polling
           updateFiles(prev => prev.map(f => {
             const index = expedienteFiles.findIndex(ef => ef.id === f.id);
-            if (index !== -1 && index < taskIds.length) {
-              const taskId = taskIds[index];
-              
-              // Iniciar polling para este archivo
-              setTimeout(() => startPolling(f.id, taskId), 100);
-              
-              return {
-                ...f,
-                fileProcessId: taskId,
-                progress: 10,
-                message: 'En cola...'
-              };
+            if (index === -1) return f;
+            const posicion = index + 1;
+
+            if (motivoPorPosicion.has(posicion)) {
+              return { ...f, status: 'rechazado', progress: 0, message: motivoPorPosicion.get(posicion), fileProcessId: null, avisoCarga };
             }
-            return f;
+
+            const taskId = tareaPorPosicion.get(posicion);
+            if (!taskId) {
+              return { ...f, status: 'fallido', progress: 0, message: 'Error al subir los archivos. Por favor, intente nuevamente.', avisoCarga };
+            }
+
+            // Iniciar polling para este archivo
+            setTimeout(() => startPolling(f.id, taskId), 100);
+
+            return {
+              ...f,
+              fileProcessId: taskId,
+              progress: 10,
+              message: 'En cola...',
+              avisoCarga
+            };
           }));
           
         } catch (error) {

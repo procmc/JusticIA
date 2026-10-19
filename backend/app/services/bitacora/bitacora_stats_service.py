@@ -81,6 +81,7 @@ import logging
 from app.db.models.bitacora import T_Bitacora
 from app.repositories.bitacora_repository import BitacoraRepository
 from app.constants.tipos_accion import TiposAccion, DESCRIPCIONES_TIPOS_ACCION
+from app.services.bitacora.detalle_carga import armar_detalle_carga
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +164,58 @@ class BitacoraStatsService:
             }
     
     
+    def obtener_bitacora_completa(
+        self,
+        db: Session,
+        usuario_id: Optional[str] = None,
+        tipo_accion_id: Optional[int] = None,
+        expediente_numero: Optional[str] = None,
+        fecha_inicio: Optional[datetime] = None,
+        fecha_fin: Optional[datetime] = None,
+        limite: int = 10,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Bitácora completa del Administrador (RF-22.1): lo mismo que `obtener_con_filtros` y, además, el
+        `detalle_carga` listo para mostrar en cada registro de carga de documentos. Los demás registros quedan
+        exactamente como los arma `_expandir_registro`, así que la exportación y los otros consumidores no cambian.
+
+        A diferencia de `obtener_con_filtros`, no traga las excepciones: si la consulta falla, la ruta responde 500
+        genérico y deja el detalle en el registro del servidor, en vez de devolver una página vacía.
+
+        Returns:
+            Dict con: items, total, page, pages, limit, offset (igual que `obtener_con_filtros`)
+        """
+        registros, total_count = self.repo.obtener_con_filtros(
+            db=db,
+            usuario_id=usuario_id,
+            tipo_accion_id=tipo_accion_id,
+            expediente_numero=expediente_numero,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            limite=limite,
+            offset=offset
+        )
+
+        items = []
+        for registro in registros:
+            item = self._expandir_registro(registro)
+            if registro.CN_Id_tipo_accion == TiposAccion.CARGA_DOCUMENTOS:
+                item["detalle_carga"] = armar_detalle_carga(
+                    self.parsear_info_adicional(registro), registro.CF_Fecha_hora
+                )
+            items.append(item)
+
+        return {
+            "items": items,
+            "total": total_count,
+            "page": (offset // limite) + 1 if limite > 0 else 1,
+            "pages": (total_count + limite - 1) // limite if limite > 0 else 1,
+            "limit": limite,
+            "offset": offset
+        }
+
+
     def obtener_por_usuario(
         self,
         db: Session,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
-  Card, CardBody, Button, Input, Spinner, Chip,
+  Card, CardBody, Button, Input, Spinner, Chip, Alert,
   Modal, ModalContent, ModalHeader, ModalBody
 } from '@heroui/react';
 import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX } from 'react-icons/fi';
@@ -10,6 +10,7 @@ import notebookService from '@/services/notebookService';
 import ingestaService from '@/services/ingestaService';
 import Toast from '@/components/ui/CustomAlert';
 import consultaService from '@/services/consultaService';
+import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
   createUserMessage,
@@ -55,6 +56,7 @@ const NotebooksPage = () => {
   const [documentosNotebook, setDocumentosNotebook] = useState([]); // documentos ya persistidos (backend)
   const [eliminandoId, setEliminandoId] = useState(null);
   const pollingRef = useRef(new Set());
+  const [avisoCarga, setAvisoCarga] = useState(null); // aviso fijo de la última carga (RF-05.23); lo cierra el usuario
 
   const formatearTamano = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -109,6 +111,7 @@ const NotebooksPage = () => {
     setArchivosSubiendo([]);
     setArchivosSeleccionados([]);
     setDocumentosNotebook([]);
+    setAvisoCarga(null);
 
     // Restaurar la conversación si ya existía (guardada en sessionStorage
     // la última vez que se salió de este notebook). Si no hay nada
@@ -202,9 +205,11 @@ const NotebooksPage = () => {
     if (!notebookActivo || !archivos || archivos.length === 0) return;
     try {
       const resultado = await ingestaService.subirArchivos(notebookActivo.clave_interna, archivos);
-      const nuevos = archivos.map((file, i) => ({
-        nombre: file.name,
-        taskId: resultado.task_ids[i],
+      // Un aviso por respuesta, con los motivos tal cual; solo los aceptados siguen a procesamiento (sin polling de los rechazados).
+      setAvisoCarga({ id: Date.now(), tema: notebookActivo.nombre, ...armarAvisoCarga(resultado, archivos.map(f => f.name)) });
+      const nuevos = (resultado.aceptados?.tareas || []).map(t => ({
+        nombre: archivos[t.posicion - 1]?.name,
+        taskId: t.id_tarea,
         status: 'procesando',
         progress: 0
       }));
@@ -411,9 +416,28 @@ const NotebooksPage = () => {
                     isLoading={confirmandoSubida}
                     onPress={handleConfirmarSubida}
                   >
-                    Confirmar y subir a "{notebookActivo.nombre}"
+                    Confirmar y subir a &quot;{notebookActivo.nombre}&quot;
                   </Button>
                 </div>
+              )}
+
+              {/* Aviso fijo de la última carga: confirmación y motivo de cada rechazado; se cierra a mano */}
+              {avisoCarga && (
+                <Alert
+                  key={avisoCarga.id}
+                  className="mb-2"
+                  color={avisoCarga.tipo}
+                  variant="flat"
+                  isClosable
+                  onClose={() => setAvisoCarga(null)}
+                  classNames={{ title: 'text-default-800 font-medium break-words', description: 'text-default-700' }}
+                  title={`${avisoCarga.tema}: ${avisoCarga.mensaje}`}
+                  description={avisoCarga.motivos.length > 0 && (
+                    <ul className="list-none space-y-0.5 break-words">
+                      {avisoCarga.motivos.map((motivo, i) => <li key={i}>{motivo}</li>)}
+                    </ul>
+                  )}
+                />
               )}
 
               {/* Documentos ya subidos y procesados — se pueden quitar */}
@@ -465,7 +489,7 @@ const NotebooksPage = () => {
             >
               {arrastrandoImagen && (
                 <div className="absolute inset-0 z-10 bg-blue-50/90 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center pointer-events-none">
-                  <p className="text-blue-700 font-medium">Soltá la imagen para subirla a "{notebookActivo.nombre}"</p>
+                  <p className="text-blue-700 font-medium">Soltá la imagen para subirla a &quot;{notebookActivo.nombre}&quot;</p>
                 </div>
               )}
               <MessageList

@@ -127,7 +127,8 @@ async def obtener_registros(
         }
     """
     try:
-        resultado = bitacora_stats_service.obtener_con_filtros(
+        # Con el detalle de cada registro de carga listo para mostrar (RF-22.1)
+        resultado = bitacora_stats_service.obtener_bitacora_completa(
             db=db,
             usuario_id=usuario,
             tipo_accion_id=tipoAccion,
@@ -137,17 +138,18 @@ async def obtener_registros(
             limite=limite,
             offset=offset
         )
-        
+
         # NOTA: NO se registra la consulta de bitácora para evitar loop infinito
         # (consultar bitácora → registrar consulta → aparece en bitácora → registrar consulta → ...)
-        
+
         return resultado
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo registros de bitácora: {e}")
+
+    except Exception:
+        # El detalle de la falla va al registro del servidor, no a la respuesta (api-conventions)
+        logger.exception("Error obteniendo registros de bitácora")
         raise HTTPException(
             status_code=500,
-            detail=f"Error al obtener registros: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 

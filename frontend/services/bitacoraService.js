@@ -250,7 +250,10 @@ class BitacoraService {
         estado: registro.estado || 'Procesado',
         ip: registro.ip || null,
         navegador: registro.navegador || null,
-        duracion: registro.duracion || null
+        duracion: registro.duracion || null,
+
+        // Detalle listo para mostrar de los registros de carga (RF-22.1); null en el resto
+        detalleCarga: registro.detalle_carga || null
       };
 
       return mapeado;

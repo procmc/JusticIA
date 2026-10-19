@@ -56,6 +56,7 @@ def es_nombre_seguro(texto: str, es_tema: bool) -> bool:
 MENSAJE_TEMA_NO_VALIDO = "El tema indicado no es válido"
 MENSAJE_NOMBRE_NO_VALIDO = "Nombre de archivo no válido"
 MENSAJE_NO_SE_PUDO_GUARDAR = "No se pudo guardar el archivo"
+MENSAJE_ARCHIVO_VACIO = "El archivo está vacío"
 
 
 def validar_tema(tema: str) -> None:
@@ -181,7 +182,7 @@ class FileManagementService:
 
             # Validar que el archivo no esté vacío
             if len(content) == 0:
-                raise HTTPException(status_code=400, detail="El archivo está vacío")
+                raise HTTPException(status_code=400, detail=MENSAJE_ARCHIVO_VACIO)
 
             # Modo exclusivo ("xb"): si otro archivo apareció con ese nombre, no se sobrescribe; falla y no se borra.
             creado = False
@@ -275,7 +276,7 @@ class FileManagementService:
             if os.path.getsize(ubicacion) == 0:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El archivo está vacío"
+                    detail=MENSAJE_ARCHIVO_VACIO
                 )
 
             nombre_archivo = ubicacion.name

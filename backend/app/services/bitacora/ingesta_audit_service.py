@@ -72,9 +72,30 @@ import logging
 
 from app.db.models.bitacora import T_Bitacora
 from app.constants.tipos_accion import TiposAccion
+from app.services.documentos.file_management_service import (
+    MENSAJE_ARCHIVO_VACIO, MENSAJE_NO_SE_PUDO_GUARDAR, MENSAJE_NOMBRE_NO_VALIDO
+)
 from .bitacora_service import BitacoraService
 
 logger = logging.getLogger(__name__)
+
+# Causa clasificada de un rechazo en la carga (RF-05.22, RF-22.1): conjunto cerrado, con los literales de la spec. El
+# motivo nunca repite el nombre del archivo, el tema ni el texto de una excepción (RNF-07.23, RNF-07.24).
+MOTIVO_TEMA_NO_VALIDO = "tema no válido"
+MOTIVO_NOMBRE_NO_VALIDO = "nombre de archivo no válido"
+MOTIVO_ARCHIVO_VACIO = "archivo vacío"
+MOTIVO_NO_SE_PUDO_GUARDAR = "no se pudo guardar el archivo"
+MOTIVO_ERROR_INTERNO = "error interno"
+
+# Aviso genérico que el guardado ya entrega por archivo → su motivo. Lo que no esté aquí es «error interno».
+MOTIVOS_DE_RECHAZO = {
+    MENSAJE_NOMBRE_NO_VALIDO: MOTIVO_NOMBRE_NO_VALIDO,
+    MENSAJE_ARCHIVO_VACIO: MOTIVO_ARCHIVO_VACIO,
+    MENSAJE_NO_SE_PUDO_GUARDAR: MOTIVO_NO_SE_PUDO_GUARDAR,
+}
+
+# Motivos de un fallo del servidor y no de datos que el usuario pueda corregir (`tipo_error` de la fila de rechazo).
+MOTIVOS_DE_FALLO_INTERNO = (MOTIVO_NO_SE_PUDO_GUARDAR, MOTIVO_ERROR_INTERNO)
 
 
 class IngestaAuditService:
@@ -92,7 +113,9 @@ class IngestaAuditService:
         task_id: str,
         fase: str,
         documento_id: Optional[str] = None,
-        error_details: Optional[str] = None
+        error_details: Optional[str] = None,
+        archivos_aceptados: Optional[int] = None,
+        archivos_rechazados: Optional[int] = None
     ) -> Optional[T_Bitacora]:
         """
         Registra eventos de ingesta de documentos en la bitácora.
@@ -106,19 +129,21 @@ class IngestaAuditService:
             fase: Fase del proceso ("inicio", "completado", "cancelado", "error", etc.)
             documento_id: ID del documento procesado (opcional)
             error_details: Detalles del error si fase="error" (opcional)
-            
+            archivos_aceptados: Cuántos archivos de la carga se aceptaron (solo la carga iniciada; opcional)
+            archivos_rechazados: Cuántos se rechazaron; solo se guarda si es mayor que cero (RF-05.22)
+
         Returns:
             T_Bitacora: Registro creado o None si hubo error
         """
         try:
             from app.repositories.expediente_repository import ExpedienteRepository
-            
+
             # Obtener ID del expediente
             expediente_id = None
             exp_obj = ExpedienteRepository().obtener_por_numero(db, expediente_num)
             if exp_obj:
                 expediente_id = exp_obj.CN_Id_expediente
-            
+
             # Construir info adicional
             info = {
                 "task_id": task_id,
@@ -130,7 +155,12 @@ class IngestaAuditService:
                 info["documento_id"] = documento_id
             if error_details:
                 info["error_details"] = error_details
-            
+            # Las filas anteriores no traen estas claves: quien las lea debe omitirlas si faltan.
+            if archivos_aceptados is not None:
+                info["archivos_aceptados"] = archivos_aceptados
+            if archivos_rechazados:
+                info["archivos_rechazados"] = archivos_rechazados
+
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(
                 db=db,
@@ -150,18 +180,22 @@ class IngestaAuditService:
         self,
         db: Session,
         usuario_id: Optional[str],
-        motivo: str
+        motivo: str,
+        tipo_error: str = "validacion"
     ) -> Optional[T_Bitacora]:
         """
-        Registra una carga rechazada (RF-21.20) solo con su motivo clasificado.
+        Registra una carga rechazada (RF-21.20, RF-05.22) solo con su motivo clasificado: una fila por archivo
+        rechazado, o una por la carga completa si el tema no es válido.
 
         No recibe ni guarda el tema ni el nombre del archivo: pueden contener nombres de personas
-        (RNF-07.24, Ley 8968) y el motivo basta para auditar. Se clasifica como error de validación.
+        (RNF-07.24, Ley 8968) y el motivo basta para auditar. Por omisión se clasifica como error de validación.
 
         Args:
             db: Sesión de base de datos
             usuario_id: ID del usuario que cargó
-            motivo: «tema no válido» o «nombre de archivo no válido»
+            motivo: uno de los `MOTIVO_*` («tema no válido», «nombre de archivo no válido», «archivo vacío»,
+                «no se pudo guardar el archivo» o «error interno»)
+            tipo_error: «validacion» (datos que el usuario puede corregir) o «interno» (fallo del servidor)
 
         Returns:
             T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21)
@@ -175,7 +209,7 @@ class IngestaAuditService:
                 info_adicional={
                     "motivo": motivo,
                     "error": "carga rechazada",
-                    "tipo_error": "validacion",
+                    "tipo_error": tipo_error,
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )

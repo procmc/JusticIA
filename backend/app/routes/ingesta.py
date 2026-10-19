@@ -59,9 +59,11 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.documentos.file_management_service import (
-    file_management_service, validar_tema, MENSAJE_NOMBRE_NO_VALIDO
+    file_management_service, validar_tema
 )
-from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
+from app.services.bitacora.ingesta_audit_service import (
+    ingesta_audit_service, MOTIVOS_DE_RECHAZO, MOTIVOS_DE_FALLO_INTERNO, MOTIVO_TEMA_NO_VALIDO, MOTIVO_ERROR_INTERNO
+)
 from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult
@@ -69,6 +71,28 @@ from celery_app import celery_app
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _confirmacion_de_carga(aceptados: int) -> str:
+    """Texto de confirmación de la carga (RF-05.22): cuenta solo los archivos aceptados y, si no hubo ninguno, no dice
+    que se enviaron archivos."""
+    if aceptados == 0:
+        return "No se aceptó ningún archivo. Revise el motivo de cada uno."
+    if aceptados == 1:
+        return "1 archivo enviado a procesamiento"
+    return f"{aceptados} archivos enviados a procesamiento"
+
+
+async def _registrar_rechazo(db: Session, usuario_id: str, rechazados: list, posicion: int, motivo: str) -> None:
+    """Anota el archivo rechazado (su posición y su motivo) y deja su fila de rechazo en la bitácora, sin el nombre ni
+    el tema (RF-05.22, RF-21, RNF-07.24). Si el registro falla, la carga continúa."""
+    rechazados.append({"posicion": posicion, "motivo": motivo})
+    await ingesta_audit_service.registrar_carga_rechazada(
+        db=db,
+        usuario_id=usuario_id,
+        motivo=motivo,
+        tipo_error="interno" if motivo in MOTIVOS_DE_FALLO_INTERNO else "validacion",
+    )
 
 
 # Endpoint principal para consultar progreso de tareas
@@ -185,16 +209,20 @@ async def ingestar_archivos(
         validar_tema(CT_Num_expediente)
     except HTTPException:
         await ingesta_audit_service.registrar_carga_rechazada(
-            db=db, usuario_id=current_user["user_id"], motivo="tema no válido"
+            db=db, usuario_id=current_user["user_id"], motivo=MOTIVO_TEMA_NO_VALIDO
         )
         raise
 
     try:
         # Procesar cada archivo con Celery
         task_ids = []
+        # Además de `task_ids` (uno por archivo, en el orden enviado, que la interfaz consume por posición), se entregan
+        # los aceptados y los rechazados con su posición (desde 1) y su motivo en español (RF-05.22).
+        aceptados = []
+        rechazados = []
         from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
 
-        for file in files:
+        for posicion, file in enumerate(files, start=1):
             try:
                 # Guardar archivo físicamente
                 archivo_info = await file_management_service.guardar_archivo(file, CT_Num_expediente)
@@ -206,35 +234,41 @@ async def ingestar_archivos(
                     current_user["user_id"]  # Pasar usuario que inició la ingesta
                 )
                 task_ids.append(celery_task.id)
+                aceptados.append({"posicion": posicion, "id_tarea": celery_task.id})
 
             except HTTPException as e:
                 # Rechazo de ese archivo (RF-05.20, RF-05.21): su `detail` es un aviso genérico del servicio, se identifica
                 # por su posición en la lista y no lleva el nombre pedido (RNF-07.24).
                 task_ids.append({"error": True, "message": e.detail})
-                if e.detail == MENSAJE_NOMBRE_NO_VALIDO:
-                    await ingesta_audit_service.registrar_carga_rechazada(
-                        db=db, usuario_id=current_user["user_id"], motivo="nombre de archivo no válido"
-                    )
+                await _registrar_rechazo(
+                    db, current_user["user_id"], rechazados, posicion, MOTIVOS_DE_RECHAZO.get(e.detail, MOTIVO_ERROR_INTERNO)
+                )
             except Exception:
                 # El detalle va solo al registro del servidor, sin el nombre del archivo (RNF-07.23, RNF-07.24).
                 logger.exception("Error inesperado al guardar o encolar un archivo")
                 task_ids.append({"error": True, "message": "Error interno del servidor"})
-        
-        # Registrar en bitácora - Ingesta iniciada
-        await ingesta_audit_service.registrar_ingesta(
-            db=db,
-            usuario_id=current_user["user_id"],
-            expediente_num=CT_Num_expediente,
-            filename=f"{len(files)} archivo(s)",
-            task_id=",".join([tid for tid in task_ids if isinstance(tid, str)]),
-            fase="iniciado"
-        )
-        
+                await _registrar_rechazo(db, current_user["user_id"], rechazados, posicion, MOTIVO_ERROR_INTERNO)
+
+        # Registrar en bitácora - Ingesta iniciada, solo si hubo al menos un archivo aceptado y contándolos (RF-05.22)
+        if aceptados:
+            await ingesta_audit_service.registrar_ingesta(
+                db=db,
+                usuario_id=current_user["user_id"],
+                expediente_num=CT_Num_expediente,
+                filename=f"{len(aceptados)} archivo(s)",
+                task_id=",".join([tid for tid in task_ids if isinstance(tid, str)]),
+                fase="iniciado",
+                archivos_aceptados=len(aceptados),
+                archivos_rechazados=len(rechazados)
+            )
+
         return {
-            "message": f"{len(files)} archivos enviados a procesamiento",
+            "message": _confirmacion_de_carga(len(aceptados)),
             "task_ids": task_ids,
             "expediente": CT_Num_expediente,
-            "total_files": len(files)
+            "total_files": len(aceptados),
+            "aceptados": {"cantidad": len(aceptados), "tareas": aceptados},
+            "rechazados": {"cantidad": len(rechazados), "archivos": rechazados},
         }
         
     except Exception:

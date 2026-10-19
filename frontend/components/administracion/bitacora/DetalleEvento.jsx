@@ -36,6 +36,12 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
     }
   };
 
+  // En un registro de carga sin tema en la lista, el «Tema» del detalle (RF-22.1) ocupa su lugar
+  const detalleCarga = registro.detalleCarga;
+  const temaMostrado = registro.expediente
+    || detalleCarga?.datos?.find((dato) => dato.etiqueta === 'Tema')?.valor
+    || null;
+
   return (
     <DrawerGeneral
       titulo={`Detalle del Evento #${registro.id}`}
@@ -98,15 +104,15 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
             <div className="flex flex-col space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Expediente</p>
+                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Tema</p>
               </div>
               <div className="ml-4">
-                {registro.expediente ? (
-                  <code className="text-sm font-mono bg-gray-100 px-3 py-1 rounded text-gray-800">
-                    {registro.expediente}
+                {temaMostrado ? (
+                  <code className="text-sm font-mono bg-gray-100 px-3 py-1 rounded text-gray-800 break-all">
+                    {temaMostrado}
                   </code>
                 ) : (
-                  <span className="text-sm text-gray-400">Sin expediente asociado</span>
+                  <span className="text-sm text-gray-400">Sin tema asociado</span>
                 )}
               </div>
             </div>
@@ -190,13 +196,28 @@ const DetalleEvento = ({ registro, isOpen, onClose }) => {
                 <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Descripción</p>
               </div>
               <div className="ml-4 pl-4 border-l-2 border-gray-200">
-                <p className="text-gray-800 text-base leading-relaxed">
-                  {registro.texto || 'Sin descripción disponible'}
+                <p className="text-gray-800 text-base leading-relaxed break-words">
+                  {detalleCarga?.tipo || registro.texto || 'Sin descripción disponible'}
                 </p>
               </div>
             </div>
 
-            {registro.informacionAdicional && (
+            {detalleCarga?.datos?.length > 0 ? (
+              <div className="flex flex-col space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Datos de la Carga</p>
+                </div>
+                <dl className="ml-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  {detalleCarga.datos.map((dato) => (
+                    <div key={dato.etiqueta} className="flex flex-col min-w-0">
+                      <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{dato.etiqueta}</dt>
+                      <dd className="text-gray-900 text-base break-words">{dato.valor}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : registro.informacionAdicional && (
               <div className="flex flex-col space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-slate-400 rounded-full"></div>

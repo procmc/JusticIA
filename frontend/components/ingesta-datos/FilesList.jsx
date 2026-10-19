@@ -3,7 +3,7 @@
  * Versión simplificada con spinner y botón de cancelar
  */
 import React from 'react';
-import { Card, CardHeader, CardBody, Divider, Chip, Input, Spinner, Button, Tooltip, Progress } from '@heroui/react';
+import { Card, CardHeader, CardBody, Divider, Chip, Input, Spinner, Button, Tooltip, Progress, Alert } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiFolder, FiXCircle } from 'react-icons/fi';
 import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
@@ -16,9 +16,20 @@ const FilesList = ({
   cancelFileProcessing,
   expedienteNumero
 }) => {
+  // Avisos de carga ya cerrados por el usuario (RF-05.23): se cierran a mano, no desaparecen solos.
+  const [avisosCerrados, setAvisosCerrados] = React.useState([]);
+
   if (files.length === 0) {
     return null;
   }
+
+  // Un aviso por respuesta (por tema); todos los archivos de ese tema traen el mismo.
+  const avisos = [];
+  files.forEach((f) => {
+    if (f.avisoCarga && !avisosCerrados.includes(f.avisoCarga.id) && !avisos.some(a => a.id === f.avisoCarga.id)) {
+      avisos.push(f.avisoCarga);
+    }
+  });
 
   return (
     <div className="mb-6" data-files-list>
@@ -28,6 +39,26 @@ const FilesList = ({
         </CardHeader>
         <Divider />
         <CardBody className="p-0">
+          {avisos.length > 0 && (
+            <div className="space-y-2 p-4 pb-2">
+              {avisos.map((aviso) => (
+                <Alert
+                  key={aviso.id}
+                  color={aviso.tipo}
+                  variant="flat"
+                  isClosable
+                  onClose={() => setAvisosCerrados(prev => [...prev, aviso.id])}
+                  classNames={{ title: 'text-default-800 font-medium break-words', description: 'text-default-700' }}
+                  title={`Tema ${aviso.tema}: ${aviso.mensaje}`}
+                  description={aviso.motivos.length > 0 && (
+                    <ul className="list-none space-y-0.5 break-words">
+                      {aviso.motivos.map((motivo, i) => <li key={i}>{motivo}</li>)}
+                    </ul>
+                  )}
+                />
+              ))}
+            </div>
+          )}
           <div className="space-y-0">
             <AnimatePresence>
               {files.map((file) => (
@@ -57,6 +88,7 @@ const FilesList = ({
                           {file.status === 'completado' && 'Completado'}
                           {file.status === 'fallido' && 'Error'}
                           {file.status === 'cancelado' && 'Cancelado'}
+                          {file.status === 'rechazado' && 'Rechazado'}
                         </Chip>
                       </div>
 
@@ -116,7 +148,7 @@ const FilesList = ({
                       )}
 
                       {/* Mensaje de error */}
-                      {(file.status === 'fallido' || file.status === 'cancelado') && file.message && (
+                      {(file.status === 'fallido' || file.status === 'cancelado' || file.status === 'rechazado') && file.message && (
                         <div className="text-xs text-red-600 mt-2">
                           {file.message}
                         </div>
@@ -127,7 +159,7 @@ const FilesList = ({
                   {/* Acciones */}
                   <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
                     {/* Botón de eliminar para archivos pendientes, completados, con error o cancelados */}
-                    {(file.status === 'pendiente' || file.status === 'completado' || file.status === 'fallido' || file.status === 'cancelado') && (
+                    {(file.status === 'pendiente' || file.status === 'completado' || file.status === 'fallido' || file.status === 'cancelado' || file.status === 'rechazado') && (
                       <Tooltip content="Quitar archivo" placement="top">
                         <Button
                           size="sm"
