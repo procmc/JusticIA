@@ -106,7 +106,23 @@ def carpeta_de_pruebas(tmp_path: Path) -> Path:
     return carpeta
 
 
-def un_destino(sql=None, qdrant=None, redis=None, carpeta=None, base=NOMBRE_PRUEBAS, coleccion=NOMBRE_PRUEBAS):
+class ConversacionesDeMentira:
+    """Las conversaciones del chat en memoria: se cuentan y se vacían, como el Redis de mentira."""
+
+    def __init__(self, cantidad=0):
+        self.cantidad = cantidad
+        self.vaciado = 0
+
+    def limpiar(self):
+        self.vaciado += 1
+        self.cantidad = 0
+
+    def contar(self):
+        return self.cantidad
+
+
+def un_destino(sql=None, qdrant=None, redis=None, carpeta=None, base=NOMBRE_PRUEBAS, coleccion=NOMBRE_PRUEBAS,
+               conversaciones=None):
     return datos.Destino(
         base=base if sql is not None else None,
         coleccion=coleccion if qdrant is not None else None,
@@ -116,6 +132,8 @@ def un_destino(sql=None, qdrant=None, redis=None, carpeta=None, base=NOMBRE_PRUE
         qdrant=qdrant,
         limpiar_redis=redis.limpiar if redis is not None else None,
         claves_redis=redis.contar if redis is not None else None,
+        limpiar_conversaciones=conversaciones.limpiar if conversaciones is not None else None,
+        conversaciones=conversaciones.contar if conversaciones is not None else None,
     )
 
 
@@ -430,3 +448,140 @@ def test_comparar_catalogos_detecta_lo_que_falta_o_sobra():
     diferencias = datos.comparar_catalogos(antes, {**antes, "T_Rol": 1, "T_Tipo_accion": 16})
     assert len(diferencias) == 2
     assert "T_Rol" in diferencias[0] and "T_Tipo_accion" in diferencias[1]
+
+
+# --- Temas sin prefijo y conversaciones (spec 004, RA-02.14) ---------------------------------------------------------------
+
+TEMA_HEREDADO = "99-000001-0001-PE"
+TEMA_DE_NOTEBOOK = "NB-7"
+TABLAS_CONTADAS_ENTERAS = ["T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente"]
+
+
+def test_registrar_un_tema_dos_veces_lo_deja_una_sola_vez():
+    """RA-02.14: el registro guarda cada tema sin prefijo una sola vez y en el orden en que se registró."""
+    registro = datos.Registro()
+    registro.registrar_tema(TEMA_HEREDADO)
+    registro.registrar_tema(TEMA_DE_NOTEBOOK)
+    registro.registrar_tema(TEMA_HEREDADO)
+
+    assert registro.temas == [TEMA_HEREDADO, TEMA_DE_NOTEBOOK]
+
+
+def test_limpiar_con_temas_registrados_borra_lo_asociado_a_ellos_y_conserva_el_orden():
+    """RA-02.14: con un tema heredado y un `NB-<id>` registrados, bitácora, enlaces y tema se borran también por esos temas."""
+    sql = SQLSimulado()
+    registro = datos.Registro()
+    registro.registrar_tema(TEMA_HEREDADO)
+    registro.registrar_tema(TEMA_DE_NOTEBOOK)
+
+    datos.limpiar(un_destino(sql), registro)
+
+    assert sql.tablas_borradas == TABLAS_EN_ORDEN_DE_BORRADO
+    por_tabla = {tabla: (sentencia, parametros) for tabla, sentencia, parametros in sql.borrados}
+    for tabla in ("T_Bitacora", "T_Expediente_Documento", "T_Expediente"):
+        sentencia, parametros = por_tabla[tabla]
+        assert ":t0" in sentencia and ":t1" in sentencia
+        assert parametros["t0"] == TEMA_HEREDADO and parametros["t1"] == TEMA_DE_NOTEBOOK
+        assert "WHERE" in sentencia.upper()
+    for tabla in ("T_Notebook", "T_Documento", "T_Usuario"):
+        assert "t0" not in por_tabla[tabla][1]
+    for tabla in CATALOGOS:
+        assert tabla not in por_tabla
+
+
+def test_limpiar_sin_temas_registrados_no_agrega_condiciones_de_temas():
+    """RA-02.14: sin temas registrados la limpieza es la de antes (solo el prefijo `PRUEBA`)."""
+    sql = SQLSimulado()
+    datos.limpiar(un_destino(sql), datos.Registro())
+    for _, sentencia, parametros in sql.borrados:
+        assert ":t0" not in sentencia and "t0" not in parametros
+
+
+def test_limpiar_borra_los_puntos_de_un_tema_registrado_sin_prefijo_y_deja_los_ajenos():
+    """RA-02.14: los puntos de un tema heredado o de `NB-<id>` registrado se borran por su `metadata.numero_expediente`."""
+    qdrant = QdrantDePuntos([
+        PuntoSimulado(1, TEMA_HEREDADO),
+        PuntoSimulado(2, TEMA_DE_NOTEBOOK),
+        PuntoSimulado(3, "99-000002-0001-PE"),  # un tema que esta prueba no creó
+    ])
+    registro = datos.Registro()
+    registro.registrar_tema(TEMA_HEREDADO)
+    registro.registrar_tema(TEMA_DE_NOTEBOOK)
+
+    datos.limpiar(un_destino(qdrant=qdrant), registro)
+
+    assert qdrant.borrados == [{1, 2}]
+    assert [p.id for p in qdrant.puntos] == [3]
+
+
+def test_los_residuos_cuentan_todas_las_filas_de_temas_enlaces_documentos_y_notebooks():
+    """RA-02.14: esas cuatro tablas se cuentan completas (sin filtrar por prefijo); bitácora y usuarios, solo las `PRUEBA`."""
+    sql = SQLSimulado({"T_Expediente": 1, "T_Notebook": 2})
+
+    residuos = datos.contar_residuos(un_destino(sql))
+
+    por_tabla = {tabla: (sentencia, parametros) for tabla, sentencia, parametros in sql.conteos}
+    for tabla in TABLAS_CONTADAS_ENTERAS:
+        assert por_tabla[tabla] == (f"SELECT COUNT(*) FROM {tabla}", {})
+    for tabla in ("T_Bitacora", "T_Usuario"):
+        assert "WHERE" in por_tabla[tabla][0] and por_tabla[tabla][1]["prefijo"] == f"{PREFIJO_DATOS}%"
+    assert residuos.hay and residuos.filas["T_Expediente"] == 1 and residuos.filas["T_Notebook"] == 2
+    assert "T_Expediente: 1" in residuos.texto()
+
+
+def test_las_conversaciones_en_memoria_se_cuentan_se_nombran_y_se_limpian():
+    """RA-02.14: una conversación que quedó en la memoria del chat es un residuo y la limpieza la quita."""
+    conversaciones = ConversacionesDeMentira(cantidad=2)
+
+    residuos = datos.contar_residuos(un_destino(conversaciones=conversaciones))
+
+    assert residuos.hay and residuos.conversaciones == 2 and residuos.total == 2
+    assert "conversaciones del chat en memoria: 2" in residuos.texto()
+
+    datos.limpiar(un_destino(conversaciones=conversaciones), datos.Registro())
+
+    assert conversaciones.vaciado == 1
+    assert datos.contar_residuos(un_destino(conversaciones=conversaciones)).texto() == "ninguno"
+
+
+def test_sin_almacen_de_conversaciones_no_hay_nada_que_contar_ni_limpiar(monkeypatch):
+    """Las unitarias no importan el chat: sin el almacén cargado, contar da cero y limpiar no falla."""
+    monkeypatch.setattr(datos, "_almacen_de_conversaciones", lambda: None)
+
+    assert datos._contar_conversaciones() == 0
+    datos._limpiar_conversaciones()
+
+
+def test_la_limpieza_de_conversaciones_solo_quita_las_de_usuarios_prueba(monkeypatch):
+    """RA-02.14: se quitan las sesiones de usuarios `PRUEBA` (de memoria, metadatos e índice); las de otro usuario quedan."""
+
+    class Metadatos:
+        def __init__(self, usuario):
+            self.user_id = usuario
+
+    class Almacen:
+        def __init__(self):
+            self._store = {
+                "session_PRUEBA000001_1": object(),
+                "session_usuario-real_2": object(),
+                "session_PRUEBA000002_3": object(),  # sin metadatos: el usuario sale de su identificador
+            }
+            self._metadata = {
+                "session_PRUEBA000001_1": Metadatos("PRUEBA000001"),
+                "session_usuario-real_2": Metadatos("usuario-real"),
+            }
+            self._user_sessions = {
+                "PRUEBA000001": ["session_PRUEBA000001_1"],
+                "usuario-real": ["session_usuario-real_2"],
+            }
+
+    almacen = Almacen()
+    monkeypatch.setattr(datos, "_almacen_de_conversaciones", lambda: almacen)
+    assert datos._contar_conversaciones() == 3
+
+    datos._limpiar_conversaciones()
+
+    assert sorted(almacen._store) == ["session_usuario-real_2"]
+    assert sorted(almacen._metadata) == ["session_usuario-real_2"]
+    assert almacen._user_sessions == {"usuario-real": ["session_usuario-real_2"]}
+    assert datos._contar_conversaciones() == 1

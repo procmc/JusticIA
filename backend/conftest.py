@@ -20,8 +20,9 @@ from tests.soporte.proteccion import AbortoPruebas
 from tests.soporte.resumen import calcular_resumen, codigo_salida, texto_resumen
 
 # Fixtures de las piezas simuladas (Celery inmediato, carpeta temporal de archivos...) y de los datos de prueba
-# (usuarios `PRUEBA`, limpieza automática de cada prueba).
-pytest_plugins = ["tests.soporte.simulados", "tests.soporte.datos", "tests.soporte.reloj"]
+# (usuarios `PRUEBA`, limpieza automática de cada prueba) y del soporte de los flujos (encolado interceptado, procesamiento
+# dentro de la prueba y notebook propio; spec 004).
+pytest_plugins = ["tests.soporte.simulados", "tests.soporte.datos", "tests.soporte.reloj", "tests.soporte.flujos"]
 
 
 def pytest_addoption(parser):

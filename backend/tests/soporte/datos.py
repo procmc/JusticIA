@@ -10,8 +10,12 @@
   el prefijo `PRUEBA` (en orden de claves foráneas), puntos de la colección de pruebas, archivos de la carpeta temporal y
   las claves del Redis simulado. NUNCA toca los catálogos de las migraciones (roles, estados, tipos de acción).
   `limpiar` se niega con un destino que no sea el de pruebas (base, colección o carpeta ajenas).
+- Temas heredados (spec 004, RA-02.14): un tema sin prefijo (formato heredado o `NB-<id>` de un notebook) se registra con
+  `Registro.registrar_tema`; la limpieza borra también lo asociado a esos temas (bitácora, enlaces, el tema) y sus puntos, y
+  vacía de la memoria del chat las conversaciones de usuarios `PRUEBA`.
 - Residuos: `contar_residuos` cuenta lo que quedó; el cierre de la sesión (`conftest.py`, `pytest_sessionfinish`) lo ejecuta
-  ANTES de eliminar la colección, la carpeta y la base, y falla la corrida si no da cero.
+  ANTES de eliminar la colección, la carpeta y la base, y falla la corrida si no da cero. Temas, enlaces, documentos y
+  notebooks se cuentan TODOS (la base de pruebas nace vacía), no solo los del prefijo, y se suman las conversaciones en memoria.
 
 Este módulo es también un plugin de pytest (lo declara el `conftest.py` raíz) y nunca importa `app` al cargarse: lo hace
 dentro de las funciones. Las unitarias solo limpian Redis y archivos (no tienen SQL Server ni Qdrant); la integración
@@ -23,6 +27,7 @@ import contextlib
 import itertools
 import os
 import secrets
+import sys
 import tempfile
 import uuid
 from dataclasses import dataclass, field
@@ -65,6 +70,19 @@ TABLAS_DE_PRUEBA = (
     ("T_Expediente", "CT_Num_expediente LIKE :prefijo"),
     ("T_Usuario", "CN_Id_usuario LIKE :prefijo"),
 )
+
+# Tablas cuyo conteo de residuos cuenta TODAS las filas, no solo las del prefijo: la base de pruebas nace vacía y un tema
+# heredado, `NB-<id>` o un documento ingerido no llevan `PRUEBA` (decisión 2 del plan de la spec 004).
+TABLAS_CONTADAS_ENTERAS = ("T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente")
+
+# Lo que además se borra cuando la prueba registró temas sin prefijo (`:t0`, `:t1`... son esos temas). Los documentos no
+# figuran: se borran después de sus enlaces y se reconocen por su nombre `PRUEBA`.
+_IDS_DE_TEMAS_REGISTRADOS = "SELECT CN_Id_expediente FROM T_Expediente WHERE CT_Num_expediente IN ({temas})"
+_CONDICION_POR_TEMAS = {
+    "T_Bitacora": f"CN_Id_expediente IN ({_IDS_DE_TEMAS_REGISTRADOS})",
+    "T_Expediente_Documento": f"CN_Id_expediente IN ({_IDS_DE_TEMAS_REGISTRADOS})",
+    "T_Expediente": "CT_Num_expediente IN ({temas})",
+}
 
 # Estado de la sesión: los catálogos al empezar, y lo que encontró el conteo del cierre.
 _estado: Dict[str, object] = {"catalogos": None, "residuos": None, "conteo_fallido": None}
@@ -184,12 +202,13 @@ def crear_punto(cliente, registro: Optional["Registro"] = None, numero_expedient
 
 
 class Registro:
-    """Lo que creó una prueba: sus usuarios (cédulas), sus puntos (identificadores) y sus archivos (rutas)."""
+    """Lo que creó una prueba: sus usuarios (cédulas), sus puntos (identificadores), sus archivos (rutas) y sus temas sin prefijo."""
 
     def __init__(self):
         self.usuarios: List[str] = []
         self.puntos: List[object] = []
         self.archivos: List[Path] = []
+        self.temas: List[str] = []
 
     def registrar_usuario(self, cedula: str) -> None:
         self.usuarios.append(cedula)
@@ -199,6 +218,11 @@ class Registro:
 
     def registrar_archivo(self, ruta: Path) -> None:
         self.archivos.append(Path(ruta))
+
+    def registrar_tema(self, numero: str) -> None:
+        """Registra un tema que no lleva el prefijo (formato heredado o `NB-<id>`) para que la limpieza lo alcance (RA-02.14)."""
+        if numero not in self.temas:
+            self.temas.append(numero)
 
     def crear_archivo(self, carpeta: Path, nombre: str, contenido: bytes) -> Path:
         """Escribe un archivo inventado DIRECTAMENTE en `carpeta` (no con `guardar_archivo`) y lo registra.
@@ -220,7 +244,8 @@ class Destino:
     """Dónde limpia y cuenta la suite. Cada parte es opcional: las unitarias solo tienen Redis y archivos.
 
     `borrar(sentencia, parametros)` ejecuta un DELETE y `contar(sentencia, parametros)` un SELECT COUNT en la base de
-    pruebas; `qdrant` es un cliente de Qdrant; `limpiar_redis()` y `claves_redis()` vacían y cuentan el Redis simulado.
+    pruebas; `qdrant` es un cliente de Qdrant; `limpiar_redis()` y `claves_redis()` vacían y cuentan el Redis simulado;
+    `limpiar_conversaciones()` y `conversaciones()` hacen lo mismo con las conversaciones del chat que hay en memoria.
     """
 
     base: Optional[str] = None
@@ -231,6 +256,8 @@ class Destino:
     qdrant: object = None
     limpiar_redis: Optional[Callable[[], None]] = None
     claves_redis: Optional[Callable[[], int]] = None
+    limpiar_conversaciones: Optional[Callable[[], None]] = None
+    conversaciones: Optional[Callable[[], int]] = None
 
 
 def _carpeta_de_pruebas(carpeta: Path) -> Path:
@@ -261,8 +288,20 @@ def _parametros(condicion: str) -> dict:
     return parametros
 
 
-def _ids_de_puntos_de_prueba(destino: Destino) -> List[object]:
-    """Identificadores de los puntos cuyo `metadata.numero_expediente` empieza por `PRUEBA`."""
+def _borrado_de(tabla: str, condicion: str, temas: List[str]) -> tuple:
+    """La sentencia de borrado de `tabla` y sus parámetros; con temas registrados, suma lo asociado a ellos (RA-02.14)."""
+    parametros = _parametros(condicion)
+    extra = _CONDICION_POR_TEMAS.get(tabla)
+    if temas and extra:
+        nombres = [f"t{i}" for i in range(len(temas))]
+        parametros.update(dict(zip(nombres, temas)))
+        condicion = f"{condicion} OR " + extra.format(temas=", ".join(f":{nombre}" for nombre in nombres))
+    return f"DELETE FROM {tabla} WHERE {condicion}", parametros
+
+
+def _ids_de_puntos_de_prueba(destino: Destino, temas: Optional[List[str]] = None) -> List[object]:
+    """Identificadores de los puntos cuyo `metadata.numero_expediente` empieza por `PRUEBA` o es un tema registrado."""
+    temas = temas or []
     identificadores, desplazamiento = [], None
     while True:
         puntos, desplazamiento = destino.qdrant.scroll(
@@ -270,14 +309,14 @@ def _ids_de_puntos_de_prueba(destino: Destino) -> List[object]:
         )
         for punto in puntos:
             tema = ((punto.payload or {}).get("metadata") or {}).get("numero_expediente")
-            if isinstance(tema, str) and tema.startswith(PREFIJO_DATOS):
+            if isinstance(tema, str) and (tema.startswith(PREFIJO_DATOS) or tema in temas):
                 identificadores.append(punto.id)
         if desplazamiento is None:
             return identificadores
 
 
 def _borrar_puntos(destino: Destino, registro: Registro) -> None:
-    identificadores = list(dict.fromkeys([*registro.puntos, *_ids_de_puntos_de_prueba(destino)]))
+    identificadores = list(dict.fromkeys([*registro.puntos, *_ids_de_puntos_de_prueba(destino, registro.temas)]))
     if identificadores:
         from qdrant_client.models import PointIdsList
 
@@ -312,12 +351,14 @@ def limpiar(destino: Destino, registro: Registro) -> None:
 
     if destino.borrar is not None:
         for tabla, condicion in TABLAS_DE_PRUEBA:
-            paso(tabla, lambda t=tabla, c=condicion: destino.borrar(f"DELETE FROM {t} WHERE {c}", _parametros(c)))
+            paso(tabla, lambda t=tabla, c=condicion: destino.borrar(*_borrado_de(t, c, registro.temas)))
     if destino.qdrant is not None:
         paso("puntos de la colección de Qdrant", lambda: _borrar_puntos(destino, registro))
     paso("archivos", lambda: [Path(ruta).unlink(missing_ok=True) for ruta in registro.archivos])
     if destino.limpiar_redis is not None:
         paso("claves del Redis simulado", destino.limpiar_redis)
+    if destino.limpiar_conversaciones is not None:
+        paso("conversaciones en memoria", destino.limpiar_conversaciones)
 
     if errores:
         raise AbortoPruebas("No se pudo limpiar por completo lo que creó la prueba: " + "; ".join(errores))
@@ -333,11 +374,12 @@ class Residuos:
     puntos: int = 0
     archivos: List[str] = field(default_factory=list)
     claves_redis: int = 0
+    conversaciones: int = 0
     catalogos: List[str] = field(default_factory=list)
 
     @property
     def total(self) -> int:
-        return sum(self.filas.values()) + self.puntos + len(self.archivos) + self.claves_redis
+        return sum(self.filas.values()) + self.puntos + len(self.archivos) + self.claves_redis + self.conversaciones
 
     @property
     def hay(self) -> bool:
@@ -348,7 +390,7 @@ class Residuos:
         partes: List[str] = []
         filas = [f"{tabla}: {cantidad}" for tabla, cantidad in self.filas.items() if cantidad]
         if filas:
-            partes.append("filas con el prefijo PRUEBA (" + ", ".join(filas) + ")")
+            partes.append("filas de prueba (" + ", ".join(filas) + ")")
         if self.puntos:
             partes.append(f"puntos de la colección de Qdrant: {self.puntos}")
         if self.archivos:
@@ -356,27 +398,35 @@ class Residuos:
             partes.append(f"archivos en la carpeta temporal: {len(self.archivos)} ({nombres})")
         if self.claves_redis:
             partes.append(f"claves del Redis simulado: {self.claves_redis}")
+        if self.conversaciones:
+            partes.append(f"conversaciones del chat en memoria: {self.conversaciones}")
         if self.catalogos:
             partes.append("catálogos de las migraciones alterados (" + "; ".join(self.catalogos) + ")")
         return "; ".join(partes) if partes else "ninguno"
 
 
 def contar_residuos(destino: Destino) -> Residuos:
-    """Cuenta lo que hay en el destino: filas `PRUEBA`, TODOS los puntos de la colección de pruebas (es de uso
-    exclusivo, así que debe estar vacía), los archivos de la carpeta temporal y las claves del Redis simulado."""
+    """Cuenta lo que hay en el destino: filas `PRUEBA` (y TODAS las de temas, enlaces, documentos y notebooks, porque la
+    base nace vacía), TODOS los puntos de la colección de pruebas (es de uso exclusivo, así que debe estar vacía), los
+    archivos de la carpeta temporal, las claves del Redis simulado y las conversaciones del chat en memoria."""
     carpeta = _exigir_destino_de_pruebas(destino)
     residuos = Residuos()
     if destino.contar is not None:
         for tabla, condicion in TABLAS_DE_PRUEBA:
-            residuos.filas[tabla] = int(
-                destino.contar(f"SELECT COUNT(*) FROM {tabla} WHERE {condicion}", _parametros(condicion))
-            )
+            if tabla in TABLAS_CONTADAS_ENTERAS:
+                residuos.filas[tabla] = int(destino.contar(f"SELECT COUNT(*) FROM {tabla}", {}))
+            else:
+                residuos.filas[tabla] = int(
+                    destino.contar(f"SELECT COUNT(*) FROM {tabla} WHERE {condicion}", _parametros(condicion))
+                )
     if destino.qdrant is not None:
         residuos.puntos = int(destino.qdrant.count(collection_name=destino.coleccion, exact=True).count)
     if carpeta is not None and carpeta.is_dir():
         residuos.archivos = sorted(str(ruta) for ruta in carpeta.rglob("*") if ruta.is_file())
     if destino.claves_redis is not None:
         residuos.claves_redis = int(destino.claves_redis())
+    if destino.conversaciones is not None:
+        residuos.conversaciones = int(destino.conversaciones())
     return residuos
 
 
@@ -401,6 +451,49 @@ def catalogos_iniciales(contar: Optional[Callable[[str, dict], int]] = None) -> 
     return _estado["catalogos"]
 
 
+# --- Las conversaciones del chat en memoria ---------------------------------------------------------------------------------
+
+def _almacen_de_conversaciones():
+    """El `ConversationStore` del sistema si ya se importó; si no, `None` (no se importa solo para limpiarlo)."""
+    modulo = sys.modules.get("app.services.RAG.session_store")
+    return getattr(modulo, "conversation_store", None) if modulo is not None else None
+
+
+def _sesiones_en_memoria(almacen) -> List[str]:
+    return sorted({*almacen._store, *almacen._metadata})
+
+
+def _usuario_de_la_sesion(almacen, sesion: str) -> str:
+    """El usuario de una sesión: el de sus metadatos o, si no hay, el que dice su identificador (`session_<usuario>_<hora>`)."""
+    metadatos = almacen._metadata.get(sesion)
+    if metadatos is not None:
+        return str(metadatos.user_id)
+    partes = sesion.split("_")
+    return partes[1] if len(partes) >= 3 else ""
+
+
+def _contar_conversaciones() -> int:
+    almacen = _almacen_de_conversaciones()
+    return len(_sesiones_en_memoria(almacen)) if almacen is not None else 0
+
+
+def _limpiar_conversaciones() -> None:
+    """Quita de la memoria del chat las sesiones de usuarios `PRUEBA` (las de otro usuario quedan para el conteo)."""
+    almacen = _almacen_de_conversaciones()
+    if almacen is None:
+        return
+    for sesion in _sesiones_en_memoria(almacen):
+        usuario = _usuario_de_la_sesion(almacen, sesion)
+        if usuario.startswith(PREFIJO_DATOS):
+            almacen._store.pop(sesion, None)
+            almacen._metadata.pop(sesion, None)
+            sesiones = almacen._user_sessions.get(usuario, [])
+            if sesion in sesiones:
+                sesiones.remove(sesion)
+    for usuario in [u for u in almacen._user_sessions if u.startswith(PREFIJO_DATOS) and not almacen._user_sessions[u]]:
+        del almacen._user_sessions[usuario]
+
+
 # --- El destino real de la sesión -----------------------------------------------------------------------------------------
 
 @contextlib.contextmanager
@@ -410,7 +503,11 @@ def destino_de_la_sesion(servicios: bool) -> Iterator[Destino]:
     `servicios` solo vale en la integración (las unitarias no tienen SQL Server ni Qdrant). La colección entra solo si
     la sesión la creó. Cierra el cliente de Qdrant al salir.
     """
-    destino = Destino(carpeta=simulados.carpeta_temporal_actual())
+    destino = Destino(
+        carpeta=simulados.carpeta_temporal_actual(),
+        limpiar_conversaciones=_limpiar_conversaciones,
+        conversaciones=_contar_conversaciones,
+    )
 
     servidor = simulados._estado["servidor_redis"]
     if servidor is not None:
