@@ -213,7 +213,7 @@ def test_los_catalogos_de_las_migraciones_siguen_completos_tras_crear_y_limpiar(
     assert nombres("SELECT CT_Nombre_estado FROM T_Estado_procesamiento") == {"Pendiente", "Procesado", "Error"}
     assert {"Login", "Logout", "Consulta RAG"} <= nombres("SELECT CT_Nombre_tipo_accion FROM T_Tipo_accion")
     with engine.connect() as conexion:
-        assert conexion.execute(text("SELECT COUNT(*) FROM T_Tipo_accion")).scalar() == 15
+        assert conexion.execute(text("SELECT COUNT(*) FROM T_Tipo_accion")).scalar() == 18  # 15 de siempre + 3 de la spec 004b (RF-21.34)
     assert datos.comparar_catalogos(datos.catalogos_iniciales(), datos.contar_catalogos(destino_de_pruebas.contar)) == []
 
 

@@ -222,7 +222,7 @@ class SimilarityAuditService:
         self,
         db: Session,
         usuario_id: Optional[str],
-        numero_expediente: str,
+        numero_expediente: Optional[str],
         exito: bool = True,
         error: Optional[str] = None,
         resultado: Optional[Dict[str, Any]] = None
@@ -233,7 +233,7 @@ class SimilarityAuditService:
         Args:
             db: Sesión de base de datos
             usuario_id: ID del usuario que solicita el resumen - Opcional para procesos automáticos
-            numero_expediente: Número del expediente a resumir
+            numero_expediente: Número del expediente a resumir; None si no debe registrarse (la clave de un notebook)
             exito: Si la generación fue exitosa o no
             error: Mensaje de error (si hubo error)
             resultado: Datos del resultado (si fue exitoso)
@@ -246,9 +246,10 @@ class SimilarityAuditService:
             
             # Obtener ID del expediente
             expediente_db_id = None
-            exp_obj = ExpedienteRepository().obtener_por_numero(db, numero_expediente)
-            if exp_obj:
-                expediente_db_id = exp_obj.CN_Id_expediente
+            if numero_expediente:
+                exp_obj = ExpedienteRepository().obtener_por_numero(db, numero_expediente)
+                if exp_obj:
+                    expediente_db_id = exp_obj.CN_Id_expediente
             
             # Construir información adicional
             info = {
@@ -259,7 +260,7 @@ class SimilarityAuditService:
             if not exito and error:
                 info["error"] = error
                 info["tipo_error"] = "validacion" if "validación" in error.lower() or "requerido" in error.lower() or "no existe" in error.lower() else "interno"
-                texto_registro = f"Error al generar resumen IA: {numero_expediente} - {error[:150]}"
+                texto_registro = f"Error al generar resumen IA: {numero_expediente or 'tema no registrado'} - {error[:150]}"
             
             # Si fue exitoso, agregar estadísticas del resumen
             elif exito and resultado:
@@ -275,10 +276,10 @@ class SimilarityAuditService:
                     info["total_factores_similitud"] = len(resumen_ia.get("factores_similitud", []))
                     info["tiene_conclusion"] = bool(resumen_ia.get("conclusion"))
                 
-                texto_registro = f"Resumen IA generado para expediente: {numero_expediente}"
+                texto_registro = f"Resumen IA generado para expediente: {numero_expediente or 'tema no registrado'}"
             
             else:
-                texto_registro = f"Resumen IA para expediente: {numero_expediente}"
+                texto_registro = f"Resumen IA para expediente: {numero_expediente or 'tema no registrado'}"
             
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(

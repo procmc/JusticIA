@@ -103,7 +103,7 @@ class RAGAuditService:
         usuario_id: str,
         pregunta: str,
         session_id: str,
-        tipo_consulta: str,  # "general" o "expediente"
+        tipo_consulta: str,  # "general", "expediente" o "notebook"
         expediente_numero: Optional[str] = None,
         tiempo_procesamiento: Optional[float] = None
     ) -> Optional[T_Bitacora]:
@@ -115,8 +115,8 @@ class RAGAuditService:
             usuario_id: ID del usuario (cédula)
             pregunta: Pregunta/consulta completa del usuario
             session_id: ID de la sesión conversacional
-            tipo_consulta: "general" o "expediente"
-            expediente_numero: Número del expediente (solo si tipo_consulta="expediente")
+            tipo_consulta: "general", "expediente" o "notebook"
+            expediente_numero: Número del expediente, o la clave del notebook (solo si tipo_consulta="expediente" o "notebook")
             tiempo_procesamiento: Tiempo en segundos que tomó procesar
             
         Returns:
@@ -127,11 +127,11 @@ class RAGAuditService:
             tipo_accion_id = TiposAccion.CONSULTA_RAG
             
             # Determinar expediente_id y texto según el tipo de consulta
-            if tipo_consulta == "expediente" and expediente_numero:
-                # Para consultas de expediente específico:
+            if tipo_consulta in ("expediente", "notebook") and expediente_numero:
+                # Para consultas de expediente específico o de un notebook propio (su clave es su tema, RF-21.31):
                 # 1. Asociar con el expediente real
-                # 2. Incluir número de expediente en el texto
-                texto = f"Consulta RAG expediente {expediente_numero}: {pregunta}"
+                # 2. Incluir número de expediente o clave del notebook en el texto
+                texto = f"Consulta RAG {tipo_consulta} {expediente_numero}: {pregunta}"
                 
                 # Buscar el expediente en la base de datos
                 expediente = self.expediente_repo.obtener_por_numero(db, expediente_numero)

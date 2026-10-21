@@ -259,6 +259,29 @@ class DocumentoRepository:
         
         return documentos
     
+    def listar_procesados_con_temas(self, db: Session) -> List[tuple]:
+        """
+        Lista los pares (id del documento, tema) de todos los documentos 'Procesado'.
+
+        Un documento unido a varios temas aparece una vez por tema. Es la materia prima de la regla de qué documentos
+        puede ver cada usuario (`NotebookService.ids_documentos_visibles`), que se aplica en la propia búsqueda (RF-17.3).
+        No atrapa errores: si la base falla, quien la usa debe fallar cerrado y no suponer que todo es visible.
+
+        Args:
+            db: Sesión de base de datos
+
+        Returns:
+            List[tuple]: Pares (CN_Id_documento, CT_Num_expediente)
+        """
+        stmt = (
+            select(T_Documento.CN_Id_documento, T_Expediente.CT_Num_expediente)
+            .join(T_Estado_procesamiento, T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado)
+            .join(T_Expediente_Documento, T_Expediente_Documento.c.CN_Id_documento == T_Documento.CN_Id_documento)
+            .join(T_Expediente, T_Expediente.CN_Id_expediente == T_Expediente_Documento.c.CN_Id_expediente)
+            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado")
+        )
+        return [(documento_id, tema) for documento_id, tema in db.execute(stmt).all()]
+
     def obtener_ids_procesados(self, db: Session) -> set:
         """
         Obtiene los IDs de todos los documentos con estado 'Procesado'.

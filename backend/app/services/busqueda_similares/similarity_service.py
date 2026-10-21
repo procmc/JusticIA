@@ -188,7 +188,7 @@ Version:
 
 import logging
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Set
 from langchain_core.documents import Document
 
 from app.schemas.similarity_schemas import (
@@ -205,6 +205,7 @@ from app.llm.llm_service import get_llm
 
 # Importar módulos RAG para consistencia
 from app.services.RAG.retriever import DynamicServIARetriever
+from app.services.notebook_service import NotebookService
 
 # Importar constructor de prompts específico para similarity
 from .similarity_prompt_builder import (
@@ -240,18 +241,27 @@ class SimilarityService:
             self.embeddings_service = await get_embeddings()
         return self.embeddings_service
 
+    async def _documentos_visibles(self, db, usuario_id: Optional[str]) -> Set[int]:
+        """Los documentos que `usuario_id` puede ver, para que ninguna búsqueda traiga lo de un notebook ajeno (RF-17.3). Si
+        el cálculo falla se falla cerrado: sin documentos visibles no se devuelve ninguno."""
+        try:
+            return await NotebookService().ids_documentos_visibles(db, usuario_id)
+        except Exception:
+            logger.exception("No se pudieron calcular los documentos visibles; la búsqueda no devolverá documentos")
+            return set()
+
     async def search_similar_cases(
-        self, request: SimilaritySearchRequest, db=None
+        self, request: SimilaritySearchRequest, db=None, usuario_id: Optional[str] = None
     ) -> RespuestaBusquedaSimilitud:
-        """Busca casos legales similares según el modo especificado."""
+        """Busca casos legales similares según el modo especificado, solo entre los documentos que `usuario_id` puede ver."""
         start_time = time.time()
         
         try:
             if request.modo_busqueda == "descripcion":
-                casos_similares = await self._buscar_por_descripcion(request)
+                casos_similares = await self._buscar_por_descripcion(request, await self._documentos_visibles(db, usuario_id))
                 criterio_busqueda = request.texto_consulta
             else:
-                casos_similares = await self._buscar_por_expediente(request, db)
+                casos_similares = await self._buscar_por_expediente(request, db, usuario_id)
                 criterio_busqueda = request.numero_expediente
 
             end_time = time.time()
@@ -280,7 +290,7 @@ class SimilarityService:
             raise
 
     async def _buscar_por_descripcion(
-        self, request: SimilaritySearchRequest
+        self, request: SimilaritySearchRequest, documentos_visibles: Optional[Set[int]] = None
     ) -> List[Dict[str, Any]]:
         """Busca casos similares por descripción usando LangChain Retriever como RAG."""
         if not request.texto_consulta:
@@ -288,7 +298,8 @@ class SimilarityService:
 
         retriever = DynamicServIARetriever(
             top_k=request.limite or 30,
-            similarity_threshold=request.umbral_similitud if request.umbral_similitud > 0 else 0.3
+            similarity_threshold=request.umbral_similitud if request.umbral_similitud > 0 else 0.3,
+            documentos_visibles=documentos_visibles
         )
         
         docs = await retriever._aget_relevant_documents(request.texto_consulta)
@@ -315,12 +326,17 @@ class SimilarityService:
         )
 
     async def _buscar_por_expediente(
-        self, request: SimilaritySearchRequest, db=None
+        self, request: SimilaritySearchRequest, db=None, usuario_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Busca casos similares por expediente específico usando búsqueda híbrida."""
         expedient_id = request.numero_expediente
         if not expedient_id:
             raise ValueError("numero_expediente es requerido")
+
+        # Un notebook no es un tema de referencia: la clave de uno (propio, ajeno o inexistente) se trata como un tema sin
+        # documentos, sin consultar Qdrant, para que la respuesta no distinga entre ellos (RF-17.31).
+        if await NotebookService().es_tema_de_clave(db, expedient_id):
+            return []
 
         from app.vectorstore import get_vectorstore_backend
 
@@ -328,22 +344,35 @@ class SimilarityService:
             expedient_id=expedient_id,
             top_k=request.limite or 30,
             score_threshold=request.umbral_similitud,
-            db=db  # Pasar db para filtrar por estado
+            db=db,  # Pasar db para filtrar por estado
+            documentos_visibles=await self._documentos_visibles(db, usuario_id)
         )
 
         return await self.documento_retrieval_service.procesar_casos_similares(
             similar_docs
         )
 
-    async def generate_case_summary(self, numero_expediente: str) -> RespuestaGenerarResumen:
-        """Genera un resumen de IA para un expediente específico usando arquitectura RAG."""
+    async def generate_case_summary(
+        self, numero_expediente: str, db=None, usuario_id: Optional[str] = None
+    ) -> RespuestaGenerarResumen:
+        """Genera un resumen de IA para un expediente específico usando arquitectura RAG, solo con los documentos que
+        `usuario_id` puede ver."""
         start_time = time.time()
-        
+        es_clave = await NotebookService().es_tema_de_clave(db, numero_expediente)
+
         try:
+            # La clave de un notebook (propio, ajeno o inexistente; también la grafía que la base guardaría como clave,
+            # RF-17.34) responde como un tema sin documentos: no se busca nada ni se llama al modelo, y no se registra la
+            # clave pedida en el servidor (RF-17.31).
+            if es_clave:
+                raise ValueError(f"No se encontraron documentos para el expediente {numero_expediente}")
+
             logger.info(f"Iniciando generación de resumen para expediente: {numero_expediente}")
             
             # 1. Obtener documentos del expediente (usando DocumentRetriever)
-            docs_expediente = await self.document_retriever.obtener_documentos_expediente(numero_expediente)
+            docs_expediente = await self.document_retriever.obtener_documentos_expediente(
+                numero_expediente, await self._documentos_visibles(db, usuario_id)
+            )
             
             # 2. Crear contexto para el LLM (usando SummaryGenerator)
             contexto_completo = await self.summary_generator.crear_contexto_resumen(docs_expediente)
@@ -367,5 +396,8 @@ class SimilarityService:
             )
             
         except Exception as e:
-            logger.error(f"Error generando resumen para expediente {numero_expediente}: {e}")
+            if es_clave:
+                logger.warning("Resumen IA solicitado con la clave de un notebook; se responde como un tema sin documentos")
+            else:
+                logger.error(f"Error generando resumen para expediente {numero_expediente}: {e}")
             raise

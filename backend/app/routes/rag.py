@@ -57,11 +57,31 @@ from app.services.RAG.session_store import conversation_store
 from app.auth.jwt_auth import require_usuario_judicial
 from app.db.database import get_db
 from app.services.bitacora.rag_audit_service import rag_audit_service
+from app.services.bitacora.notebooks_audit_service import (
+    notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
+)
+from app.services.notebook_service import NotebookService, RecursoNoDisponible, NO_DISPONIBLE
+from app.constants.tipos_accion import TiposAccion
 import logging
 import json
 import time
+import traceback
 
 logger = logging.getLogger(__name__)
+
+
+async def _registrar_intento_de_conversacion(db: Session, current_user: dict) -> None:
+    """Deja en la bitácora el intento de ver, restaurar o eliminar una conversación ajena o inexistente, solo con su motivo y
+    como error de acceso (RF-21.32). Si el registro falla, la respuesta no cambia."""
+    try:
+        await notebooks_audit_service.registrar_intento_fallido(
+            db=db,
+            usuario_id=current_user.get("user_id"),
+            tipo_accion_id=TiposAccion.GESTIONAR_CONVERSACION,
+            motivo=MOTIVO_CONVERSACION_NO_DISPONIBLE
+        )
+    except Exception as audit_error:
+        logger.warning(f"Error en auditoría de conversaciones: {type(audit_error).__name__}")
 
 
 router = APIRouter(prefix="/rag", tags=["RAG - Consultas Inteligentes"])
@@ -109,11 +129,23 @@ async def consulta_con_historial_stream(
         # Usar query directamente (sin validación de seguridad por ahora)
         query_to_use = request.query
         
-        logger.info(f"Consulta con historial - Session: {request.session_id}")
+        # El registro del servidor no lleva la conversación, el tema ni el notebook pedidos: pueden ser de otra persona o una
+        # clave que no es del usuario (RNF-07.24, RF-21.32).
+        logger.info("Consulta con historial")
         logger.info(f"Query: {query_to_use[:100]}...")
-        logger.info(f"Expediente: {request.expediente_number or 'None'}")
-        logger.info(f"Notebook: {request.notebook_id or 'None'}")
         logger.info(f"Usuario: {current_user.get('user_id', 'Unknown')} ({current_user.get('username', 'No email')})")
+
+        # Un tema con forma de clave de notebook se atiende como chat general (RF-11.31). Si la clave no es de un notebook del
+        # usuario (ajena o inexistente: no se distinguen), además de la consulta se deja el intento fallido (RF-21.33).
+        tema_pedido = (request.expediente_number or "").strip()
+        # También lo es el que la base guardaría o igualaría como una clave aunque no tenga su forma (RF-17.34).
+        con_forma_de_clave = await NotebookService().es_tema_de_clave(db, tema_pedido)
+        clasificacion = None
+        if con_forma_de_clave:
+            try:
+                clasificacion = await NotebookService().clasificar_clave(db, tema_pedido, current_user["user_id"])
+            except Exception as clasificacion_error:
+                logger.warning(f"No se pudo clasificar el tema para la bitácora: {type(clasificacion_error).__name__}")
 
         # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
         response = await rag_service.consulta_con_historial_streaming(
@@ -123,18 +155,27 @@ async def consulta_con_historial_stream(
             expediente_filter=request.expediente_number,
             notebook_filter=request.notebook_id,
             usuario_id=current_user["user_id"],
-            http_request=http_request
+            http_request=http_request,
+            usuario_nombre=current_user.get("username"),
+            tema_es_clave=con_forma_de_clave
         )
 
-        # 🔥 AUDITORÍA: Registrar la consulta RAG exitosa
+        # AUDITORÍA: Registrar la consulta RAG exitosa
         end_time = time.time()
         tiempo_procesamiento = round(end_time - start_time, 2)
 
-        # Determinar tipo de consulta
-        if request.expediente_number:
+        # Determinar tipo de consulta, con el mismo orden con que decide el servicio. La clave de un notebook en el tema es
+        # una consulta general, sin la clave (RF-21.33); el chat de un notebook propio (ya comprobado por el servicio) se
+        # registra con alcance de notebook y su clave como tema (RF-21.31).
+        tema_registrable = None
+        if con_forma_de_clave:
+            tipo_consulta = "general"
+        elif tema_pedido:
             tipo_consulta = "expediente"
-        elif request.notebook_id:
+            tema_registrable = request.expediente_number
+        elif request.notebook_id is not None:
             tipo_consulta = "notebook"
+            tema_registrable = f"NB-{request.notebook_id}"
         else:
             tipo_consulta = "general"
         
@@ -146,9 +187,16 @@ async def consulta_con_historial_stream(
                 pregunta=request.query,
                 session_id=request.session_id,
                 tipo_consulta=tipo_consulta,
-                expediente_numero=request.expediente_number,
+                expediente_numero=tema_registrable,
                 tiempo_procesamiento=tiempo_procesamiento
             )
+            if clasificacion is not None and clasificacion.tipo == NO_DISPONIBLE:
+                await notebooks_audit_service.registrar_intento_fallido(
+                    db=db,
+                    usuario_id=current_user.get("user_id"),
+                    tipo_accion_id=TiposAccion.CONSULTA_RAG,
+                    motivo=MOTIVO_NOTEBOOK_NO_DISPONIBLE
+                )
         except Exception as audit_error:
             # Log error pero no fallar la consulta
             logger.warning(f"Error en auditoría RAG: {audit_error}")
@@ -157,6 +205,19 @@ async def consulta_con_historial_stream(
     
     except HTTPException:
         raise
+    except RecursoNoDisponible as no_disponible:
+        # Notebook ajeno, inexistente o con un identificador no numérico (RF-11.32): el mismo 404 para todos, sin llamar al
+        # modelo, y el intento fallido solo con su motivo (RF-21.32). Si el registro falla, la respuesta es la misma.
+        try:
+            await notebooks_audit_service.registrar_intento_fallido(
+                db=db,
+                usuario_id=current_user.get("user_id"),
+                tipo_accion_id=TiposAccion.CONSULTA_RAG,
+                motivo=no_disponible.motivo
+            )
+        except Exception as audit_error:
+            logger.warning(f"Error en auditoría RAG: {type(audit_error).__name__}")
+        raise HTTPException(status_code=404, detail="Notebook no encontrado")
     except Exception as e:
         logger.error(f"Error en consulta con historial: {e}", exc_info=True)
         raise HTTPException(
@@ -199,16 +260,20 @@ async def update_expediente_context(
                 detail="expediente_number es requerido"
             )
         
-        logger.info(f"Actualizando contexto expediente - Session: {request.session_id}")
-        logger.info(f"Expediente: {request.expediente_number}, Acción: {request.action}")
-        
-        # Llamar al nuevo método para actualizar contexto
+        # El registro del servidor no lleva la conversación ni el tema pedidos: pueden ser de otra persona (RF-21.32)
+        logger.info("Actualizando el tema de una conversación")
+
+        # Llamar al nuevo método para actualizar contexto. Si la conversación es de otro usuario, el servicio no la toca, deja el
+        # intento fallido y responde «hecho»: el cuerpo de abajo se arma solo con lo que llegó en la petición, así que es el
+        # mismo que con una conversación inexistente (RNF-07.34).
         success = await rag_service.update_expediente_context(
             session_id=request.session_id,
             expediente_number=request.expediente_number,
-            action=request.action
+            action=request.action,
+            usuario_nombre=current_user.get("username"),
+            usuario_id=current_user.get("user_id")
         )
-        
+
         if success:
             return {
                 "success": True,
@@ -226,10 +291,15 @@ async def update_expediente_context(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error actualizando contexto expediente: {e}", exc_info=True)
+        # Sin el texto de la excepción ni en la respuesta ni en el registro: puede traer rutas internas o lo pedido. El registro
+        # conserva el tipo del error y su traza (archivo y línea) para diagnosticarlo.
+        logger.error(
+            "Error actualizando el tema de la conversación (%s)\n%s",
+            type(e).__name__, "".join(traceback.format_tb(e.__traceback__))
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Error actualizando contexto del expediente: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -282,7 +352,8 @@ async def get_user_conversations(
 @router.get("/conversations/{session_id}")
 async def get_conversation_detail(
     session_id: str,
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_judicial),
+    db: Session = Depends(get_db)
 ):
     """
     Obtiene los detalles completos de una conversación específica,
@@ -298,22 +369,24 @@ async def get_conversation_detail(
                 detail="No se pudo identificar al usuario"
             )
         
+        # El dueño se comprueba ANTES de leer la conversación (RNF-07.6): la de otro usuario y la inexistente dan el mismo 404
+        # y el mismo intento fallido; el 403 de antes revelaba que la conversación existía.
+        if conversation_store.es_propia(session_id, user_id) is not True:
+            await _registrar_intento_de_conversacion(db, current_user)
+            raise HTTPException(
+                status_code=404,
+                detail=f"Conversación {session_id} no encontrada"
+            )
+
         # Obtener detalles de la conversación
         conversation = conversation_store.get_session_detail(session_id)
-        
+
         if not conversation:
             raise HTTPException(
                 status_code=404,
                 detail=f"Conversación {session_id} no encontrada"
             )
-        
-        # Verificar que la conversación pertenece al usuario
-        if conversation.get("user_id") != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="No tienes permiso para acceder a esta conversación"
-            )
-        
+
         logger.info(f"Conversación {session_id} obtenida para usuario {user_id}")
         
         return {
@@ -334,7 +407,8 @@ async def get_conversation_detail(
 @router.delete("/conversations/{session_id}")
 async def delete_conversation(
     session_id: str,
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_judicial),
+    db: Session = Depends(get_db)
 ):
     """
     Elimina una conversación específica del usuario.
@@ -350,9 +424,13 @@ async def delete_conversation(
                 detail="No se pudo identificar al usuario"
             )
         
-        # Eliminar conversación
-        success = conversation_store.delete_session(session_id, user_id)
-        
+        # Eliminar conversación: la de otro usuario y la inexistente dan el mismo 404 y el mismo intento fallido (RNF-07.6)
+        success = False
+        if conversation_store.es_propia(session_id, user_id) is True:
+            success = conversation_store.delete_session(session_id, user_id)
+        else:
+            await _registrar_intento_de_conversacion(db, current_user)
+
         if not success:
             raise HTTPException(
                 status_code=404,
@@ -379,7 +457,8 @@ async def delete_conversation(
 @router.post("/conversations/{session_id}/restore")
 async def restore_conversation(
     session_id: str,
-    current_user: dict = Depends(require_usuario_judicial)
+    current_user: dict = Depends(require_usuario_judicial),
+    db: Session = Depends(get_db)
 ):
     """
     Restaura una conversación desde el archivo JSON.
@@ -395,27 +474,31 @@ async def restore_conversation(
                 detail="No se pudo identificar al usuario"
             )
         
+        # El dueño se comprueba ANTES de cargar nada (RNF-07.6): la de otro usuario y la inexistente dan el mismo 404 y el mismo
+        # intento fallido, y la ajena no llega a cargarse en memoria ni un instante.
+        if conversation_store.es_propia(session_id, user_id) is not True:
+            await _registrar_intento_de_conversacion(db, current_user)
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se pudo restaurar la conversación {session_id}"
+            )
+
         # Intentar cargar la conversación
         success = conversation_store._load_conversation_from_file(session_id)
-        
+
         if not success:
             raise HTTPException(
                 status_code=404,
                 detail=f"No se pudo restaurar la conversación {session_id}"
             )
-        
-        # Verificar que pertenece al usuario
+
         conversation = conversation_store.get_session_detail(session_id)
-        if not conversation or conversation.get("user_id") != user_id:
-            # Eliminar de memoria si no pertenece al usuario
-            if session_id in conversation_store._store:
-                del conversation_store._store[session_id]
-            
+        if not conversation:
             raise HTTPException(
-                status_code=403,
-                detail="No tienes permiso para restaurar esta conversación"
+                status_code=404,
+                detail=f"No se pudo restaurar la conversación {session_id}"
             )
-        
+
         logger.info(f"Conversación {session_id} restaurada para usuario {user_id}")
         
         return {

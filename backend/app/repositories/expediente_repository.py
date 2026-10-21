@@ -53,7 +53,7 @@ See Also:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import cast, literal, select
 from app.db.models.expediente import T_Expediente
 from datetime import datetime
 
@@ -68,6 +68,24 @@ class ExpedienteRepository:
         Ninguno. Todas las operaciones son stateless y reciben la sesión db como parámetro.
     """
     
+    def como_lo_guarda_la_base(self, db: Session, numero_expediente: str) -> str:
+        """
+        El texto tal como lo guardaría el INSERT del ORM (`crear`) en la columna del número de tema (VARCHAR): el parámetro
+        tipado con la columna lo convierte el controlador, que cambia por el carácter «más parecido» los que no existen en la
+        página de códigos (`Ń` queda `N`, el guion U+2010 queda `-`, el signo menos U+2212 queda `–`) y quita los de ancho cero
+        y los combinantes (U+200B, U+FEFF, U+0301…). Es lo mismo que usan `obtener_por_numero` y la intercalación al comparar,
+        así que `NB-<U+200B>5` se guarda exactamente como `NB-5`. Solo hace una consulta de lectura: no guarda nada.
+        """
+        return db.execute(select(literal(numero_expediente, T_Expediente.CT_Num_expediente.type))).scalar()
+
+    def como_lo_convierte_el_servidor(self, db: Session, numero_expediente: str) -> str:
+        """
+        El texto tal como lo convierte SQL Server con un `CAST` a la columna del tema: no es lo que guarda el INSERT (el signo
+        menos U+2212 queda `-` aquí y `–` allá; U+200B queda `?` aquí y desaparece allá), pero se conserva como segunda lectura
+        para tratar como clave lo que cualquiera de las dos conversiones deje con su forma. Solo lectura.
+        """
+        return db.execute(select(cast(literal(numero_expediente), T_Expediente.CT_Num_expediente.type))).scalar()
+
     def obtener_por_numero(self, db: Session, numero_expediente: str) -> Optional[T_Expediente]:
         """
         Busca un expediente por su número.

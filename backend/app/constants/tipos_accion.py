@@ -98,6 +98,11 @@ class TiposAccion:
     CONSULTAR_BITACORA = 14           # Consulta de auditoría
     EXPORTAR_BITACORA = 15            # Exportación de auditoría
 
+    # Notebooks y conversaciones (spec 004b, RF-21.34)
+    CREAR_NOTEBOOK = 16               # Creación de un notebook
+    QUITAR_DOCUMENTO_NOTEBOOK = 17    # Quitar un documento de un notebook
+    GESTIONAR_CONVERSACION = 18       # Ver, restaurar o eliminar una conversación
+
 
 # Mapeo de descripciones para logging
 DESCRIPCIONES_TIPOS_ACCION = {
@@ -116,4 +121,7 @@ DESCRIPCIONES_TIPOS_ACCION = {
     TiposAccion.GENERAR_RESUMEN: "Generar Resumen",
     TiposAccion.CONSULTAR_BITACORA: "Consultar Bitácora",
     TiposAccion.EXPORTAR_BITACORA: "Exportar Bitácora",
+    TiposAccion.CREAR_NOTEBOOK: "Crear Notebook",
+    TiposAccion.QUITAR_DOCUMENTO_NOTEBOOK: "Quitar Documento de Notebook",
+    TiposAccion.GESTIONAR_CONVERSACION: "Gestionar Conversación",
 }

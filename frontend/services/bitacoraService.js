@@ -21,7 +21,7 @@ class BitacoraService {
    * 
    * @param {Object} filtros - Filtros de búsqueda
    * @param {string} filtros.usuario - Nombre o correo de usuario
-   * @param {number} filtros.tipoAccion - ID del tipo de acción (1-15)
+   * @param {number} filtros.tipoAccion - ID del tipo de acción (1-18)
    * @param {string} filtros.expediente - Número de expediente
    * @param {string} filtros.fechaInicio - Fecha inicio ISO
    * @param {string} filtros.fechaFin - Fecha fin ISO
@@ -293,7 +293,10 @@ class BitacoraService {
       12: 'Consulta RAG',
       13: 'Generar Resumen',
       14: 'Consultar Bitácora',
-      15: 'Exportar Bitácora'
+      15: 'Exportar Bitácora',
+      16: 'Crear Notebook',
+      17: 'Quitar Documento de Notebook',
+      18: 'Gestionar Conversación'
     };
     
     return tipos[idTipo] || `Acción ${idTipo}`;

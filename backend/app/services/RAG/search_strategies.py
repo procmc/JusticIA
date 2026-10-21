@@ -56,7 +56,7 @@ Version:
     1.0.0 - Sistema de fallback de 3 niveles
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 from app.config.rag_config import rag_config
 from app.vectorstore import get_vectorstore_backend
@@ -87,7 +87,8 @@ class SearchStrategyManager:
         threshold: float,
         expediente_filter: Optional[str] = None,
         min_results: Optional[int] = None,
-        db = None  # Sesión de BD para filtrar por estado
+        db = None,  # Sesión de BD para filtrar por estado
+        documentos_visibles: Optional[Set[int]] = None  # Solo estos documentos (RF-17.3); None = sin restricción
     ) -> List[Dict[str, Any]]:
 
         self.total_searches += 1
@@ -99,7 +100,7 @@ class SearchStrategyManager:
 
         # Estrategia 1: Búsqueda normal
         logger.info(f"Búsqueda con threshold={threshold:.2f}, top_k={top_k}")
-        results = await backend.search_by_text(query_text, top_k, threshold, expediente_filter, db)
+        results = await backend.search_by_text(query_text, top_k, threshold, expediente_filter, db, documentos_visibles)
         
         if len(results) >= min_results:
             logger.info(f"Búsqueda exitosa: {len(results)} resultados")
@@ -114,7 +115,7 @@ class SearchStrategyManager:
         relaxed_threshold = threshold * self.config.FALLBACK_THRESHOLD_MULTIPLIER
         logger.info(f"Fallback: relajando umbral a {relaxed_threshold:.2f}")
         
-        results = await backend.search_by_text(query_text, top_k, relaxed_threshold, expediente_filter, db)
+        results = await backend.search_by_text(query_text, top_k, relaxed_threshold, expediente_filter, db, documentos_visibles)
         
         if len(results) >= min_results:
             logger.info(f"Fallback exitoso: {len(results)} resultados")
@@ -127,7 +128,8 @@ class SearchStrategyManager:
             self.config.TOP_K_FALLBACK,
             self.config.SIMILARITY_THRESHOLD_FALLBACK,
             expediente_filter,
-            db
+            db,
+            documentos_visibles
         )
         
         if len(results) > 0:

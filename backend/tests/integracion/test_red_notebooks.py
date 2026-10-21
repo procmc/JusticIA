@@ -20,14 +20,16 @@ Spec 004, T13 (RF-19.1, RF-19.2): quitar documentos de un notebook, el error de 
 Los datos son inventados (prefijo `PRUEBA`) y se limpian solos.
 """
 import os
-import uuid
-from dataclasses import dataclass
 
 import pytest
 from sqlalchemy import text
 
 from tests.soporte import entorno
-from tests.soporte.datos import ROL_USUARIO_GUBERNAMENTAL, UsuarioPrueba, crear_usuario
+from tests.integracion.conftest import (
+    RESPUESTA_SIMULADA, Ajeno, _consultar, _consultar_chat, _documento_procesado_en_el_notebook, _pregunta_sobre,
+    _todo_lo_que_recibio_el_modelo,
+)
+from tests.soporte.datos import ROL_USUARIO_GUBERNAMENTAL, crear_usuario
 from tests.soporte.flujos import (
     cargar, contar_puntos, contexto_enviado, crear_notebook, documento_de_prueba, exigir_estado, foto_de_efectos,
     id_del_documento, tema_heredado,
@@ -37,18 +39,6 @@ from tests.soporte.nombres import PREFIJO_DATOS
 # La tarea de ingesta consulta su estado en Celery; en modo inmediato Celery avisa que ese resultado no se guarda en el
 # backend. Es un aviso del propio sistema en un modo que nunca usa en producción (como en `test_red_ingesta.py`).
 pytestmark = pytest.mark.filterwarnings("ignore:Results are not stored in backend:RuntimeWarning")
-
-
-@pytest.fixture
-def sesion(iniciar_sesion, usuario_gubernamental):
-    return iniciar_sesion(usuario_gubernamental)
-
-
-def _consultar(consulta: str, parametros: dict = None) -> list:
-    from app.db.database import engine
-
-    with engine.connect() as conexion:
-        return [tuple(fila) for fila in conexion.execute(text(consulta), parametros or {}).fetchall()]
 
 
 def _puntos_del_tema(tema: str) -> list:
@@ -63,20 +53,6 @@ def _puntos_del_tema(tema: str) -> list:
         return list(puntos)
     finally:
         cliente.close()
-
-
-def _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento, notebook: dict):
-    """Sube un documento de prueba a la clave interna del notebook, lo procesa y devuelve `(documento, id)`."""
-    documento = documento_de_prueba()
-    respuesta = cargar(cliente_api, sesion, notebook["clave_interna"], [(documento.nombre, documento.contenido)])
-    assert respuesta.status_code == 200, f"la carga respondió {respuesta.status_code}"
-    id_tarea = respuesta.json()["task_ids"][0]
-    resultados = procesamiento.procesar()
-    assert resultados[id_tarea].state == "SUCCESS", f"la tarea {id_tarea} terminó en {resultados[id_tarea].state}"
-    id_documento = id_del_documento(documento.nombre)
-    assert id_documento is not None
-    exigir_estado(id_documento, "Procesado")
-    return documento, id_documento
 
 
 # --- RF-17.1: crear y listar --------------------------------------------------------------------------------------------------
@@ -187,72 +163,6 @@ def test_previsualizar_no_procesado(cliente_api, sesion, registro_de_datos, proc
     assert isinstance(detalle, str) and detalle, f"se esperaba un mensaje en español: {detalle!r}"
 
 
-# --- T12: apoyos --------------------------------------------------------------------------------------------------------------
-
-RESPUESTA_SIMULADA = "Respuesta simulada de PRUEBA para el chat del notebook."
-
-
-def _pregunta_sobre(documento) -> str:
-    """Una pregunta que nombra al documento por su número pero sin repetir su frase distintiva ni su nombre de archivo, para
-    comprobar que la frase y el nombre llegaron al modelo desde el contexto y no desde la pregunta."""
-    sufijo = documento.nombre[len(PREFIJO_DATOS) + 1:-len(".txt")]
-    return f"¿Qué dice el documento inventado número {sufijo} sobre la quebrada ficticia {sufijo}?"
-
-
-def _consultar_chat(cliente_api, cabeceras, pregunta: str, **alcance):
-    """Consulta el chat (`notebook_id`, `expediente_number` o general si no hay alcance); la sesión es de un usuario `PRUEBA`."""
-    cuerpo = {"query": pregunta, "session_id": f"session_{PREFIJO_DATOS}chat_{uuid.uuid4().hex[:8]}", **alcance}
-    return cliente_api.post("/rag/consulta-con-historial-stream", json=cuerpo, headers=cabeceras)
-
-
-def _todo_lo_que_recibio_el_modelo(ollama_simulado, *preguntas: str) -> str:
-    """Todo lo que recibió el modelo simulado en la prueba, sin el texto de las preguntas hechas (puede no haber recibido nada)."""
-    recibido = "\n".join(ollama_simulado.preguntas)
-    for pregunta in preguntas:
-        recibido = recibido.replace(pregunta, "")
-    return recibido
-
-
-@dataclass
-class Ajeno:
-    """Un dueño con un notebook que tiene un documento Procesado y una conversación, y otro usuario sin relación con él."""
-
-    dueno: UsuarioPrueba
-    cabeceras_dueno: dict
-    otro: UsuarioPrueba
-    cabeceras_otro: dict
-    notebook: dict
-    documento: object
-    id_documento: int
-    id_inexistente: int
-    sesion_chat: str
-
-
-@pytest.fixture
-def ajeno(cliente_api, sesion, usuario_gubernamental, iniciar_sesion, registro_de_datos, procesamiento_en_prueba):
-    """Escenario de recursos ajenos. La conversación del dueño se crea con el formato de sesión de la interfaz
-    (`session_<correo>_<hora>`) y se quita al terminar, porque su usuario es un correo y no un identificador `PRUEBA`."""
-    from app.services.RAG.session_store import conversation_store
-
-    notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook propio", registro_de_datos)
-    documento, id_documento = _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento_en_prueba, notebook)
-    otro = crear_usuario(ROL_USUARIO_GUBERNAMENTAL, registro_de_datos)
-    id_inexistente = int(_consultar("SELECT COALESCE(MAX(CN_Id_notebook), 0) + 1000000 FROM T_Notebook")[0][0])
-    sesion_chat = f"session_{usuario_gubernamental.correo}_{uuid.uuid4().hex[:8]}"
-    conversation_store.get_session_history(sesion_chat).add_user_message(f"{PREFIJO_DATOS} pregunta del dueño")
-    try:
-        yield Ajeno(
-            dueno=usuario_gubernamental, cabeceras_dueno=sesion, otro=otro, cabeceras_otro=iniciar_sesion(otro),
-            notebook=notebook, documento=documento, id_documento=id_documento, id_inexistente=id_inexistente,
-            sesion_chat=sesion_chat,
-        )
-    finally:
-        conversation_store.delete_session(sesion_chat, usuario_gubernamental.correo)
-        for resto in (sesion_chat, f"session_{otro.correo}_{PREFIJO_DATOS}inexistente"):
-            conversation_store._store.pop(resto, None)
-            conversation_store._metadata.pop(resto, None)
-
-
 # --- RF-11.3: el chat del notebook ------------------------------------------------------------------------------------------
 
 @pytest.mark.requisito("RF-11.3")
@@ -288,18 +198,18 @@ def test_chat_solo_del_notebook(cliente_api, sesion, registro_de_datos, procesam
 
 
 @pytest.mark.requisito("RF-11.3")
-@pytest.mark.xfail(strict=True, reason="RF-11.3 · notebooks")
 @pytest.mark.parametrize("caso", ["ajeno", "inexistente"])
 def test_notebook_ajeno_o_inexistente_sin_contenido(cliente_api, ajeno, ollama_simulado, caso):
     """RF-11.3: si el notebook consultado es ajeno o no existe, el modelo no recibe ninguna frase ni nombre de archivo de
-    ninguna parte, aunque la pregunta nombre el documento del dueño. Hoy `_consulta_notebook_con_historial` cae al chat
-    general (mismo criterio que el tema con formato inválido) y ese recupera el documento del dueño."""
+    ninguna parte, aunque la pregunta nombre el documento del dueño: el chat del notebook responde 404 sin llamar al modelo
+    (RF-11.32, spec 004b T4)."""
     ollama_simulado.responder(RESPUESTA_SIMULADA)
     id_notebook = ajeno.notebook["id"] if caso == "ajeno" else ajeno.id_inexistente
     pregunta = _pregunta_sobre(ajeno.documento)
 
-    _consultar_chat(cliente_api, ajeno.cabeceras_otro, pregunta, notebook_id=str(id_notebook))
+    respuesta = _consultar_chat(cliente_api, ajeno.cabeceras_otro, pregunta, notebook_id=str(id_notebook))
 
+    assert respuesta.status_code == 404
     recibido = _todo_lo_que_recibio_el_modelo(ollama_simulado, pregunta)
     assert ajeno.documento.frase not in recibido, "el modelo recibió una frase de un documento"
     assert ajeno.documento.nombre not in recibido, "el modelo recibió el nombre de un archivo"
@@ -330,7 +240,10 @@ def _alcance_temas_similares(cliente_api, e, ollama_simulado):
     del ollama_simulado
     propia = _buscar_similares(cliente_api, e.cabeceras_dueno, e)
     assert propia.status_code == 200 and e.documento.nombre in propia.text, "control: el dueño no encontró su documento"
-    return _buscar_similares(cliente_api, e.cabeceras_otro, e).text
+    # Solo los resultados: la respuesta repite además el texto consultado (que aquí es la propia frase) en `criterio_busqueda`.
+    ajena = _buscar_similares(cliente_api, e.cabeceras_otro, e)
+    assert ajena.status_code == 200
+    return str(ajena.json()["casos_similares"])
 
 
 def _alcance_descarga(cliente_api, e, ollama_simulado):
@@ -342,16 +255,11 @@ def _alcance_descarga(cliente_api, e, ollama_simulado):
     return ajena.text if ajena.status_code != 200 else ajena.content.decode("utf-8")
 
 
-# Hoy ni el chat (general; el tema `NB-<id>` no pasa la regex del chat por tema y cae al general) ni los temas similares
-# excluyen los notebooks de otros usuarios; la descarga sí (spec 004a).
-_ABIERTO_17_3 = pytest.mark.xfail(strict=True, reason="RF-17.3 · notebooks")
-
-
 @pytest.mark.requisito("RF-17.3")
 @pytest.mark.parametrize("alcance", [
-    pytest.param(_alcance_chat_general, id="chat_general", marks=_ABIERTO_17_3),
-    pytest.param(_alcance_chat_por_tema, id="chat_por_tema", marks=_ABIERTO_17_3),
-    pytest.param(_alcance_temas_similares, id="temas_similares", marks=_ABIERTO_17_3),
+    pytest.param(_alcance_chat_general, id="chat_general"),
+    pytest.param(_alcance_chat_por_tema, id="chat_por_tema"),
+    pytest.param(_alcance_temas_similares, id="temas_similares"),
     pytest.param(_alcance_descarga, id="descarga"),
 ])
 def test_documentos_de_notebook_ajeno_no_se_entregan(cliente_api, ajeno, ollama_simulado, alcance):
@@ -413,17 +321,20 @@ def _como_se_ve(respuesta, e: Ajeno):
     return respuesta.status_code, cuerpo
 
 
+def _sin_bitacora(foto: dict) -> dict:
+    """La foto de efectos sin el conteo de filas de la bitácora (que admite la fila del intento fallido)."""
+    return {**foto, "filas": {tabla: n for tabla, n in foto["filas"].items() if tabla != "T_Bitacora"}}
+
+
 @pytest.mark.requisito("RNF-07.6")
 @pytest.mark.parametrize("operacion", [
     pytest.param(_op_listar, id="listar"),
     pytest.param(_op_previsualizar, id="previsualizar"),
     pytest.param(_op_quitar, id="quitar"),
-    pytest.param(_op_chat, id="chat", marks=pytest.mark.xfail(strict=True, reason="RNF-07.6 · notebooks")),
-    # Las conversaciones distinguen «existe» (403) de «no existe» (404) al ver y al restaurar (ERS, «Estado actual»).
-    pytest.param(_op_ver_conversacion, id="ver_conversacion", marks=pytest.mark.xfail(strict=True, reason="RNF-07.6 · RAG")),
+    pytest.param(_op_chat, id="chat"),
+    pytest.param(_op_ver_conversacion, id="ver_conversacion"),
     pytest.param(_op_eliminar_conversacion, id="eliminar_conversacion"),
-    pytest.param(_op_restaurar_conversacion, id="restaurar_conversacion",
-                 marks=pytest.mark.xfail(strict=True, reason="RNF-07.6 · RAG")),
+    pytest.param(_op_restaurar_conversacion, id="restaurar_conversacion"),
 ])
 def test_recurso_ajeno_da_404_identico(cliente_api, ajeno, correo_simulado, ollama_simulado, operacion):
     """RNF-07.6: pedir un recurso de otro usuario (documentos, chat de un notebook, conversación) da 404 con el mismo código
@@ -432,15 +343,27 @@ def test_recurso_ajeno_da_404_identico(cliente_api, ajeno, correo_simulado, olla
     ollama_simulado.responder(RESPUESTA_SIMULADA)
     antes = foto_de_efectos(correo_simulado)
 
+    marca = int(_consultar("SELECT COALESCE(MAX(CN_Id_bitacora), 0) FROM T_Bitacora")[0][0])
     de_otro = operacion(cliente_api, ajeno, True)
+    marca_inexistente = int(_consultar("SELECT COALESCE(MAX(CN_Id_bitacora), 0) FROM T_Bitacora")[0][0])
     inexistente = operacion(cliente_api, ajeno, False)
 
     assert inexistente.status_code == 404, f"lo inexistente debe dar 404 y dio {inexistente.status_code}"
     assert de_otro.status_code == 404, f"lo ajeno debe dar 404 y dio {de_otro.status_code}"
     assert _como_se_ve(de_otro, ajeno) == _como_se_ve(inexistente, ajeno)
     assert ajeno.documento.frase not in de_otro.text, "la respuesta trajo contenido del documento del dueño"
-    # Sin cambios: nada nuevo en la base, Qdrant ni archivos, y el dueño sigue viendo lo suyo.
-    assert foto_de_efectos(correo_simulado) == antes
+    # Sin cambios: nada nuevo en la base, Qdrant ni archivos, y el dueño sigue viendo lo suyo. La bitácora, igual, salvo el
+    # intento fallido (ajuste D1 de la 004b): una fila por petición, la misma para lo ajeno y lo inexistente.
+    despues = foto_de_efectos(correo_simulado)
+    assert despues["filas"]["T_Bitacora"] - antes["filas"]["T_Bitacora"] == 2, "se esperaba una fila de intento por petición"
+    assert _sin_bitacora(despues) == _sin_bitacora(antes)
+    intentos = [
+        _consultar("SELECT CN_Id_tipo_accion, CT_Texto, CT_Informacion_adicional FROM T_Bitacora WHERE CN_Id_usuario = :u "
+                   "AND CN_Id_bitacora > :d AND CN_Id_bitacora <= :h", {"u": ajeno.otro.cedula, "d": desde, "h": hasta})
+        for desde, hasta in ((marca, marca_inexistente), (marca_inexistente, 10**12))
+    ]
+    assert [len(i) for i in intentos] == [1, 1]
+    assert intentos[0][0][:2] == intentos[1][0][:2] and intentos[0][0][1].startswith("Intento fallido: ")
     lista = cliente_api.get(f"/notebooks/{ajeno.notebook['id']}/documentos", headers=ajeno.cabeceras_dueno)
     assert lista.json() == [{"id": ajeno.id_documento, "nombre_archivo": ajeno.documento.nombre, "estado": "Procesado"}]
     original = cliente_api.get(
@@ -453,13 +376,13 @@ def test_recurso_ajeno_da_404_identico(cliente_api, ajeno, correo_simulado, olla
 # --- RF-17.4: subir a un notebook ajeno ------------------------------------------------------------------------------------------
 
 @pytest.mark.requisito("RF-17.4")
-@pytest.mark.xfail(strict=True, reason="RF-17.4 · notebooks")
 def test_carga_a_notebook_ajeno_da_404(cliente_api, ajeno, correo_simulado, encolado_interceptado):
     """RF-17.4: subir archivos con la clave de un notebook ajeno o inexistente da 404 (el mismo para ambos), sin guardar el
     archivo, encolar la tarea, crear el documento, el tema ni los fragmentos."""
     antes = foto_de_efectos(correo_simulado)
     tareas = len(encolado_interceptado.pendientes)
     intruso = documento_de_prueba()
+    marca = int(_consultar("SELECT COALESCE(MAX(CN_Id_bitacora), 0) FROM T_Bitacora")[0][0])
 
     respuestas = [
         cargar(cliente_api, ajeno.cabeceras_otro, clave, [(intruso.nombre, intruso.contenido)])
@@ -471,7 +394,12 @@ def test_carga_a_notebook_ajeno_da_404(cliente_api, ajeno, correo_simulado, enco
     assert respuestas[0].json() == respuestas[1].json(), "ajeno e inexistente deben responder igual"
     assert len(encolado_interceptado.pendientes) == tareas, "se encoló una tarea"
     assert id_del_documento(intruso.nombre) is None, "se creó el documento"
-    assert foto_de_efectos(correo_simulado) == antes
+    # Base sin cambios salvo la fila del intento fallido de cada petición (RF-21.32).
+    despues = foto_de_efectos(correo_simulado)
+    assert despues["filas"]["T_Bitacora"] - antes["filas"]["T_Bitacora"] == 2
+    assert _sin_bitacora(despues) == _sin_bitacora(antes)
+    nuevas = _consultar("SELECT CT_Texto FROM T_Bitacora WHERE CN_Id_usuario = :u AND CN_Id_bitacora > :m", {"u": ajeno.otro.cedula, "m": marca})
+    assert nuevas == [("Intento fallido: notebook no disponible",)] * 2
 
 
 # --- T13: apoyos de RF-19 ---------------------------------------------------------------------------------------------------
@@ -584,14 +512,11 @@ def _provocar_fallo(monkeypatch, capa: str, nombre: str, id_documento: int) -> d
 
 
 @pytest.mark.requisito("RF-19.2")
-@pytest.mark.xfail(strict=True, reason="RF-19.2 · notebooks")
 @pytest.mark.parametrize("capa", ["fragmentos", "archivo"])
 def test_fallo_al_quitar_y_reintento(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch, capa):
-    """RF-19.2: si falla la eliminación de los fragmentos o la del archivo, la respuesta es un error (no un éxito) con un
-    mensaje en español sin texto de la excepción, el documento sigue listado con sus capas y los demás intactos; un nuevo
-    intento sin el fallo completa la eliminación y termina con éxito. Hoy (ERS, «Estado actual»): un fallo de fragmentos
-    da un 500 sin mensaje (el reintento sí funciona) y un archivo que no se puede borrar se ignora, la fila se elimina y la
-    respuesta es un éxito."""
+    """RF-19.2: si falla la eliminación de los fragmentos o la del archivo, la respuesta es un 500 con el mensaje exacto «No
+    se pudo quitar el documento. Intente de nuevo.» y sin texto de la excepción, el documento sigue listado con sus capas
+    y los demás intactos; un nuevo intento sin el fallo completa la eliminación y termina con éxito (spec 004b, T8)."""
     from fastapi.testclient import TestClient
 
     notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con fallo al quitar", registro_de_datos)
@@ -607,7 +532,7 @@ def test_fallo_al_quitar_y_reintento(cliente_api, sesion, registro_de_datos, pro
 
     primera = sin_relanzar.delete(ruta, headers=sesion)
 
-    assert primera.status_code >= 400, f"se esperaba un error y se recibió {primera.status_code}"
+    assert primera.status_code == 500, f"se esperaba 500 y se recibió {primera.status_code}"
     # Sigue listado hasta que se borren las tres capas; el otro documento no cambia.
     assert _item(objetivo, id_objetivo) in _lista_del_notebook(cliente_api, sesion, notebook)
     assert _tres_capas(clave, objetivo.nombre, id_objetivo)["fila"] == 1
@@ -624,5 +549,27 @@ def test_fallo_al_quitar_y_reintento(cliente_api, sesion, registro_de_datos, pro
         detalle = primera.json().get("detail")
     except ValueError:
         detalle = None
-    assert isinstance(detalle, str) and detalle and detalle != "Internal Server Error", f"se esperaba un mensaje: {primera.text!r}"
+    assert detalle == "No se pudo quitar el documento. Intente de nuevo.", f"se esperaba el mensaje del servidor: {primera.text!r}"
     assert TEXTO_INTERNO not in primera.text and "Traceback" not in primera.text
+
+
+@pytest.mark.requisito("RF-19.2")
+def test_archivo_ya_borrado_es_exito(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba):
+    """RF-19.2: un archivo que ya no existe (borrado a mano) cuenta como eliminado: quitar el documento termina con éxito y
+    deja en cero las tres capas; el otro documento del notebook queda intacto."""
+    from app.services.documentos.file_management_service import file_management_service
+
+    notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con archivo borrado", registro_de_datos)
+    objetivo, id_objetivo = _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento_en_prueba, notebook)
+    otro, id_otro = _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento_en_prueba, notebook)
+    clave = notebook["clave_interna"]
+    capas_otro = _tres_capas(clave, otro.nombre, id_otro)
+    file_management_service.obtener_ruta_archivo(clave, objetivo.nombre).unlink()
+    assert _tres_capas(clave, objetivo.nombre, id_objetivo)["archivo"] is False
+
+    respuesta = cliente_api.delete(f"/notebooks/{notebook['id']}/documentos/{id_objetivo}", headers=sesion)
+
+    assert respuesta.status_code == 200, f"se esperaba 200 y se recibió {respuesta.status_code}"
+    assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_VACIAS
+    assert _lista_del_notebook(cliente_api, sesion, notebook) == [_item(otro, id_otro)]
+    assert _tres_capas(clave, otro.nombre, id_otro) == capas_otro

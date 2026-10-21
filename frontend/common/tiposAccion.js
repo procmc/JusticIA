@@ -18,7 +18,10 @@ export const TIPOS_ACCION = [
   { key: '12', label: 'Consulta RAG' },
   { key: '13', label: 'Generar Resumen' },
   { key: '14', label: 'Consultar Bitácora' },
-  { key: '15', label: 'Exportar Bitácora' }
+  { key: '15', label: 'Exportar Bitácora' },
+  { key: '16', label: 'Crear Notebook' },
+  { key: '17', label: 'Quitar Documento de Notebook' },
+  { key: '18', label: 'Gestionar Conversación' }
 ];
 
 export default TIPOS_ACCION;

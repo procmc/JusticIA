@@ -43,11 +43,11 @@ Version:
     2.0.0 - Único backend vectorial tras el retiro de Milvus
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import logging
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, FilterSelector
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchAny, MatchValue, FilterSelector
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
 
@@ -212,16 +212,24 @@ class QdrantBackend(VectorStoreBackend):
         score_threshold: float = 0.0,
         expediente_filter: Optional[str] = None,
         db=None,
+        documentos_visibles: Optional[Set[int]] = None,
     ) -> List[Dict[str, Any]]:
+        # Sin documentos visibles no hay nada que mostrar: se falla cerrado y ni siquiera se consulta (RF-17.3).
+        if documentos_visibles is not None and not documentos_visibles:
+            return []
+
         vectorstore = await _get_langchain_vectorstore()
 
-        qdrant_filter = None
+        condiciones = []
         if expediente_filter:
             # La key va con el prefijo "metadata." porque LangChain guarda
             # los campos del Document anidados bajo payload["metadata"].
-            qdrant_filter = Filter(
-                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expediente_filter))]
-            )
+            condiciones.append(FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expediente_filter)))
+        if documentos_visibles is not None:
+            # La exclusión de lo ajeno va dentro de la consulta y no después de recuperar: así los `k` resultados son
+            # todos visibles y los fragmentos ajenos mejor puntuados no desplazan a los propios (RF-17.3).
+            condiciones.append(FieldCondition(key="metadata.id_documento", match=MatchAny(any=sorted(documentos_visibles))))
+        qdrant_filter = Filter(must=condiciones) if condiciones else None
 
         results_with_scores = vectorstore.similarity_search_with_score(
             query=query_text, k=top_k, filter=qdrant_filter
@@ -279,15 +287,29 @@ class QdrantBackend(VectorStoreBackend):
         return " ".join(texto_parts)
 
     async def search_similar_expedients(
-        self, expedient_id: str, top_k: int = 20, score_threshold: float = 0.3, db=None
+        self, expedient_id: str, top_k: int = 20, score_threshold: float = 0.3, db=None,
+        documentos_visibles: Optional[Set[int]] = None,
     ) -> List[Dict[str, Any]]:
+        # Sin documentos visibles no hay nada que mostrar: se falla cerrado y ni siquiera se consulta (RF-17.3).
+        if documentos_visibles is not None and not documentos_visibles:
+            return []
+
         client = _get_client()
+
+        # La exclusión de lo ajeno va dentro de ambas consultas, como en `search_by_text`: así los `top_k * 2` vecinos son
+        # todos visibles y los ajenos mejor puntuados no desplazan a los propios; el tema de referencia tampoco incluye
+        # fragmentos que el usuario no puede ver.
+        solo_visibles = None
+        if documentos_visibles is not None:
+            solo_visibles = FieldCondition(key="metadata.id_documento", match=MatchAny(any=sorted(documentos_visibles)))
+
+        condiciones_ref = [FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
+        if solo_visibles is not None:
+            condiciones_ref.append(solo_visibles)
 
         ref_points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
-            scroll_filter=Filter(
-                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
-            ),
+            scroll_filter=Filter(must=condiciones_ref),
             limit=100,
             with_payload=True,
             with_vectors=True,
@@ -308,6 +330,7 @@ class QdrantBackend(VectorStoreBackend):
                 query=vector,
                 limit=top_k * 2,
                 with_payload=True,
+                query_filter=Filter(must=[solo_visibles]) if solo_visibles is not None else None,
             ).points
 
             for hit in hits:
@@ -327,13 +350,19 @@ class QdrantBackend(VectorStoreBackend):
         final_results = _filter_by_processed_status(final_results, db)
         return final_results[:top_k]
 
-    async def get_expedient_documents(self, expedient_id: str) -> List[Document]:
+    async def get_expedient_documents(
+        self, expedient_id: str, documentos_visibles: Optional[Set[int]] = None
+    ) -> List[Document]:
+        # Sin documentos visibles no hay nada que leer: falla cerrado, sin consultar (RF-17.3).
+        if documentos_visibles is not None and not documentos_visibles:
+            return []
+        condiciones = [FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
+        if documentos_visibles is not None:
+            condiciones.append(FieldCondition(key="metadata.id_documento", match=MatchAny(any=sorted(documentos_visibles))))
         client = _get_client()
         points, _ = client.scroll(
             collection_name=QDRANT_COLLECTION_NAME,
-            scroll_filter=Filter(
-                must=[FieldCondition(key="metadata.numero_expediente", match=MatchValue(value=expedient_id))]
-            ),
+            scroll_filter=Filter(must=condiciones),
             limit=1000,
             with_payload=True,
         )

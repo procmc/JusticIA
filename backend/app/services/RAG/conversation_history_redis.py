@@ -154,8 +154,12 @@ class RedisConversationHistory:
         session_id: str,
         user_id: str,
         messages: List[Dict],
-        metadata: Dict
+        metadata: Dict,
+        en_lista: bool = True
     ) -> bool:
+        """Guarda la conversación. `user_id` es el usuario bajo cuyo índice se lista; `metadata` puede traer `dueno` (a quién
+        pertenece, RNF-07.33), que se guarda tal cual solo si existe: las ya guardadas no se reescriben con uno nuevo. Con
+        `en_lista=False` (el chat de un notebook) no entra en el índice de conversaciones del usuario."""
         try:
             # Preparar datos completos
             conversation_data = {
@@ -170,6 +174,10 @@ class RedisConversationHistory:
                 },
                 "messages": messages
             }
+            if metadata.get("dueno") is not None:
+                conversation_data["metadata"]["dueno"] = metadata["dueno"]
+            if not en_lista:
+                conversation_data["metadata"]["en_lista"] = False
             
             # 1. Guardar conversación completa
             conv_key = self._conversation_key(session_id)
@@ -187,19 +195,20 @@ class RedisConversationHistory:
                 ex=60 * 60 * 24 * 30
             )
             
-            # 3. Agregar a índice de usuario (sorted set por timestamp)
-            user_index = self._user_index_key(user_id)
-            timestamp = datetime.fromisoformat(
-                conversation_data["metadata"]["updated_at"]
-            ).timestamp()
-            
-            self.redis_client.zadd(
-                user_index,
-                {session_id: timestamp}
-            )
-            
-            # TTL para índice de usuario
-            self.redis_client.expire(user_index, 60 * 60 * 24 * 30)
+            # 3. Agregar a índice de usuario (sorted set por timestamp); el chat de un notebook no se lista
+            if en_lista:
+                user_index = self._user_index_key(user_id)
+                timestamp = datetime.fromisoformat(
+                    conversation_data["metadata"]["updated_at"]
+                ).timestamp()
+
+                self.redis_client.zadd(
+                    user_index,
+                    {session_id: timestamp}
+                )
+
+                # TTL para índice de usuario
+                self.redis_client.expire(user_index, 60 * 60 * 24 * 30)
             
             logger.info(f"Conversación {session_id} guardada en Redis ({len(messages)} mensajes)")
             return True
@@ -225,6 +234,12 @@ class RedisConversationHistory:
             logger.error(f"Error cargando conversación {session_id} desde Redis: {e}", exc_info=True)
             return None
     
+    def load_metadata(self, session_id: str) -> Optional[Dict]:
+        """Solo los metadatos de una conversación (quién es su dueño), sin leer sus mensajes ni registrar su identificador.
+        Si Redis falla el error sube: sin poder comprobar el dueño no se atiende (falla cerrado), en vez de suponer que no existe."""
+        data = self.redis_client.get(self._metadata_key(session_id))
+        return json.loads(data) if data else None
+
     def get_user_conversations(self, user_id: str, limit: int = 50) -> List[Dict]:
         try:
             user_index = self._user_index_key(user_id)

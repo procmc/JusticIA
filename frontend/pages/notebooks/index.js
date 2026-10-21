@@ -144,6 +144,9 @@ const NotebooksPage = () => {
     const result = await notebookService.eliminarDocumento(notebookActivo.id, documentoId);
     if (result.success) {
       setDocumentosNotebook(prev => prev.filter(d => d.id !== documentoId));
+    } else {
+      // El documento sigue en la lista: el servidor no lo quitó del todo y un nuevo intento completa lo que faltó.
+      Toast.error('Error al quitar el documento', result.message);
     }
     setEliminandoId(null);
   };

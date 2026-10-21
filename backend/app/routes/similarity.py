@@ -72,10 +72,24 @@ from app.schemas.similarity_schemas import (
 from app.services.busqueda_similares.similarity_service import SimilarityService
 from app.services.bitacora.similarity_audit_service import similarity_audit_service
 from app.auth.jwt_auth import require_usuario_judicial
+from app.constants.tipos_accion import TiposAccion
+from app.services.bitacora.notebooks_audit_service import MOTIVO_NOTEBOOK_NO_DISPONIBLE, notebooks_audit_service
+from app.services.notebook_service import NotebookService, PROPIO
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def _registrar_intento_sobre_notebook(db: Session, usuario_id: str, tema: str, tipo_accion_id: int) -> None:
+    """Un tema con forma de clave de notebook que no es uno propio deja el intento fallido «notebook no disponible»
+    (RF-21.33), igual para el ajeno y el inexistente. Si falla, la acción continúa (RF-21)."""
+    try:
+        clasificacion = await NotebookService().clasificar_clave(db, tema, usuario_id)
+        if clasificacion.tipo != PROPIO:
+            await notebooks_audit_service.registrar_intento_fallido(db, usuario_id, tipo_accion_id, MOTIVO_NOTEBOOK_NO_DISPONIBLE)
+    except Exception:
+        logger.warning("No se pudo registrar el intento sobre un notebook no disponible")
 
 @router.post("/search", response_model=RespuestaBusquedaSimilitud)
 async def search_similar_cases(
@@ -134,9 +148,12 @@ async def search_similar_cases(
         - Los resultados están ordenados por score (mayor a menor)
         - El score representa similitud de coseno (0-1)
     """
+    # La clave de un notebook como tema de referencia nunca se registra en la bitácora (RF-21.33).
+    es_clave = data.modo_busqueda == "expediente" and await NotebookService().es_tema_de_clave(db, data.numero_expediente)
+    tema_registrable = None if es_clave else data.numero_expediente
     try:
         similarity_service = SimilarityService()
-        result = await similarity_service.search_similar_cases(data, db)  # Pasar db
+        result = await similarity_service.search_similar_cases(data, db, current_user["user_id"])  # Pasar db
         
         # Registrar búsqueda exitosa en bitácora
         await similarity_audit_service.registrar_busqueda_similares(
@@ -144,7 +161,7 @@ async def search_similar_cases(
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
             texto_consulta=data.texto_consulta,
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             limite=data.limite,
             umbral_similitud=data.umbral_similitud,
             exito=True,
@@ -159,6 +176,9 @@ async def search_similar_cases(
             }
         )
         
+        if es_clave:
+            await _registrar_intento_sobre_notebook(db, current_user["user_id"], data.numero_expediente, TiposAccion.BUSQUEDA_SIMILARES)
+        
         return result
         
     except ValueError as e:
@@ -171,7 +191,7 @@ async def search_similar_cases(
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
             texto_consulta=data.texto_consulta,
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             limite=data.limite,
             umbral_similitud=data.umbral_similitud,
             exito=False,
@@ -193,7 +213,7 @@ async def search_similar_cases(
             usuario_id=current_user["user_id"],
             modo_busqueda=data.modo_busqueda,
             texto_consulta=data.texto_consulta,
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             limite=data.limite,
             umbral_similitud=data.umbral_similitud,
             exito=False,
@@ -213,15 +233,18 @@ async def generate_case_summary(
     current_user: dict = Depends(require_usuario_judicial),
 ) -> RespuestaGenerarResumen:
     """Generar resumen de IA para un expediente específico."""
+    # La clave de un notebook nunca se registra ni se escribe en el servidor, ni propia, ni ajena, ni inexistente (RF-21.33).
+    es_clave = await NotebookService().es_tema_de_clave(db, data.numero_expediente)
+    tema_registrable = None if es_clave else data.numero_expediente
     try:
         similarity_service = SimilarityService()
-        result = await similarity_service.generate_case_summary(data.numero_expediente)
+        result = await similarity_service.generate_case_summary(data.numero_expediente, db, current_user["user_id"])
         
         # Registrar generación de resumen exitosa en bitácora
         await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             exito=True,
             resultado={
                 "total_documentos_analizados": result.total_documentos_analizados,
@@ -239,16 +262,19 @@ async def generate_case_summary(
         
     except ValueError as e:
         # Errores de validación (400 Bad Request)
-        logger.warning(f"Error de validación en resumen: {e}")
+        error_registrable = "No se encontraron documentos para el tema solicitado" if es_clave else str(e)
+        logger.warning(f"Error de validación en resumen: {error_registrable}")
         
         # Registrar error en bitácora
         await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             exito=False,
-            error=str(e)
+            error=error_registrable
         )
+        if es_clave:
+            await _registrar_intento_sobre_notebook(db, current_user["user_id"], data.numero_expediente, TiposAccion.GENERAR_RESUMEN)
         
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -263,7 +289,7 @@ async def generate_case_summary(
         await similarity_audit_service.registrar_resumen_ia(
             db=db,
             usuario_id=current_user["user_id"],
-            numero_expediente=data.numero_expediente,
+            numero_expediente=tema_registrable,
             exito=False,
             error=f"Error interno del servidor: {str(e)}"
         )

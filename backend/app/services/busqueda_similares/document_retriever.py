@@ -90,7 +90,7 @@ Version:
 """
 
 import logging
-from typing import List
+from typing import List, Optional, Set
 from langchain_core.documents import Document
 
 from app.services.RAG.retriever import DynamicServIARetriever
@@ -105,12 +105,16 @@ class DocumentRetriever:
     def __init__(self):
         self.documento_service = DocumentoService()
     
-    async def obtener_documentos_expediente(self, numero_expediente: str) -> List[Document]:
+    async def obtener_documentos_expediente(
+        self, numero_expediente: str, documentos_visibles: Optional[Set[int]] = None
+    ) -> List[Document]:
         """
         Obtiene documentos del expediente usando retriever o fallback a BD.
         
         Args:
             numero_expediente: Número del expediente
+            documentos_visibles: Documentos que el usuario puede ver; ni el retriever ni el respaldo devuelven otros
+                (RF-17.3). None no restringe.
             
         Returns:
             Lista de documentos del expediente
@@ -123,7 +127,8 @@ class DocumentRetriever:
             retriever = DynamicServIARetriever(
                 top_k=50,
                 similarity_threshold=0.2,
-                expediente_filter=numero_expediente
+                expediente_filter=numero_expediente,
+                documentos_visibles=documentos_visibles
             )
             
             query_expediente = f"documentos del expediente {numero_expediente}"
@@ -134,13 +139,15 @@ class DocumentRetriever:
                 return docs_expediente
             else:
                 logger.warning(f"No se encontraron documentos en Qdrant, usando fallback para {numero_expediente}")
-                return await self._obtener_documentos_fallback(numero_expediente)
+                return await self._obtener_documentos_fallback(numero_expediente, documentos_visibles)
                 
         except Exception as e:
             logger.error(f"Error con retriever/Qdrant para expediente {numero_expediente}: {e}")
-            return await self._obtener_documentos_fallback(numero_expediente)
+            return await self._obtener_documentos_fallback(numero_expediente, documentos_visibles)
     
-    async def _obtener_documentos_fallback(self, numero_expediente: str) -> List[Document]:
+    async def _obtener_documentos_fallback(
+        self, numero_expediente: str, documentos_visibles: Optional[Set[int]] = None
+    ) -> List[Document]:
         """
         Estrategia de fallback: obtener documentos directamente de la BD.
         
@@ -165,6 +172,8 @@ class DocumentRetriever:
         # Convertir documentos a formato LangChain Document
         docs = []
         for doc_data in expediente_data["documents"]:
+            if documentos_visibles is not None and doc_data.get("id") not in documentos_visibles:
+                continue
             content = doc_data.get("content_preview", "") or doc_data.get("content", "")
             if content.strip():
                 doc = Document(

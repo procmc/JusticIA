@@ -75,8 +75,8 @@ class NotebookService {
       await httpService.delete(`/notebooks/${notebookId}/documentos/${documentoId}`);
       return { success: true };
     } catch (error) {
-      console.error('Error al eliminar documento del notebook:', error);
-      return { error: true, message: error.message || 'Error al eliminar el documento' };
+      // Sin console.error: el mensaje del servidor (en español) lo muestra la página como aviso (RF-19.30).
+      return { error: true, message: error.message || 'No se pudo quitar el documento. Intente de nuevo.' };
     }
   }
 }

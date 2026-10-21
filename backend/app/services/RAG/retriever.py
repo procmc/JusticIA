@@ -68,7 +68,7 @@ Authors:
 Version:
     2.0.0 - LangChain retriever con fallback
 """
-from typing import List, Optional
+from typing import List, Optional, Set
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
 from app.vectorstore import get_vectorstore_backend
@@ -109,6 +109,7 @@ class DynamicServIARetriever(BaseRetriever):
     similarity_threshold: float = Field(default=rag_config.SIMILARITY_THRESHOLD_GENERAL, description="Umbral de similitud mínimo")
     expediente_filter: Optional[str] = Field(default=None, description="Filtro por expediente específico")
     nombre_visible: Optional[str] = Field(default=None, description="Nombre a mostrar en el header/contexto del LLM en vez de expediente_filter (ej. el nombre real de un notebook)")
+    documentos_visibles: Optional[Set[int]] = Field(default=None, description="Documentos que el usuario puede ver; la búsqueda general se limita a ellos (None = sin restricción)")
 
     def __init__(
         self,
@@ -116,6 +117,7 @@ class DynamicServIARetriever(BaseRetriever):
         similarity_threshold: float = None,  # None = usar valor del config
         expediente_filter: Optional[str] = None,
         nombre_visible: Optional[str] = None,
+        documentos_visibles: Optional[Set[int]] = None,
         **kwargs
     ):
         # Usar valores del config si no se especifican
@@ -129,6 +131,7 @@ class DynamicServIARetriever(BaseRetriever):
         object.__setattr__(self, 'similarity_threshold', similarity_threshold)
         object.__setattr__(self, 'expediente_filter', expediente_filter)
         object.__setattr__(self, 'nombre_visible', nombre_visible)
+        object.__setattr__(self, 'documentos_visibles', documentos_visibles)
         
         logger.info(
             f"DynamicServIARetriever inicializado - "
@@ -164,8 +167,11 @@ class DynamicServIARetriever(BaseRetriever):
         try:
             logger.info(f"Obteniendo documentos del expediente: {expediente_numero}")
             
-            # Obtener documentos completos del expediente
-            docs = await get_vectorstore_backend().get_expedient_documents(expediente_numero)
+            # Obtener documentos completos del expediente; con documentos visibles (resumen IA, temas similares) la lectura
+            # también se limita a ellos, como la búsqueda (RF-17.3). Sin ellos (el chat de un tema o notebook) no restringe.
+            docs = await get_vectorstore_backend().get_expedient_documents(
+                expediente_numero, documentos_visibles=self.documentos_visibles
+            )
             
             if not docs:
                 logger.warning(f"Expediente {expediente_numero}: sin documentos")
@@ -210,7 +216,8 @@ class DynamicServIARetriever(BaseRetriever):
                 query_text=query,
                 top_k=self.top_k,
                 threshold=self.similarity_threshold,
-                expediente_filter=expediente_detectado
+                expediente_filter=expediente_detectado,
+                documentos_visibles=self.documentos_visibles
             )
 
             # Red de seguridad: si el expediente detectado no tiene chunks
@@ -221,7 +228,8 @@ class DynamicServIARetriever(BaseRetriever):
                 results = await search_manager.search_with_fallback(
                     query_text=query,
                     top_k=self.top_k,
-                    threshold=self.similarity_threshold
+                    threshold=self.similarity_threshold,
+                    documentos_visibles=self.documentos_visibles
                 )
 
             if not results:

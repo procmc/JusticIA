@@ -63,6 +63,8 @@ Version:
 """
 from typing import Dict, List, Optional, Callable
 from datetime import datetime
+import re
+import uuid
 import pytz
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -160,10 +162,17 @@ class ConversationMetadata:
         updated_at: datetime,
         title: Optional[str] = None,
         message_count: int = 0,
-        expediente_number: Optional[str] = None
+        expediente_number: Optional[str] = None,
+        dueno: Optional[str] = None,
+        en_lista: bool = True
     ):
         self.session_id = session_id
         self.user_id = user_id
+        # A quién pertenece (RNF-07.33): el usuario autenticado que la creó, nunca deducido del identificador. Las guardadas
+        # antes de esta spec no lo tienen (None) y se siguen leyendo por `user_id` y el tramo del identificador.
+        self.dueno = dueno
+        # El chat de un notebook no entra en la lista de conversaciones del usuario.
+        self.en_lista = en_lista
         self.created_at = created_at
         self.updated_at = updated_at
         self.title = title or "Nueva conversación"
@@ -194,6 +203,10 @@ class ConversationStore:
         
         # Metadatos: {session_id: ConversationMetadata}
         self._metadata: Dict[str, ConversationMetadata] = {}
+
+        # Conversaciones efímeras (RNF-07.31): la que se atiende cuando piden la de otro usuario. Solo en memoria, sin metadatos,
+        # sin índice y sin guardar en Redis; se descartan al terminar la respuesta.
+        self._efimeras: Dict[str, InMemoryChatMessageHistory] = {}
         
         # Cliente Redis para persistencia de historial (OBLIGATORIO)
         try:
@@ -234,11 +247,13 @@ class ConversationStore:
                 formatted_messages.append(msg_dict)
             
             # Guardar en Redis
+            # Se lista bajo su dueño (si lo tiene) y no bajo el usuario que dice el identificador (RNF-07.33).
             success = self._redis_history.save_conversation(
                 session_id=session_id,
-                user_id=metadata.user_id,
+                user_id=metadata.dueno or metadata.user_id,
                 messages=formatted_messages,
-                metadata=metadata.to_dict()
+                metadata={**metadata.to_dict(), "dueno": metadata.dueno},
+                en_lista=metadata.en_lista
             )
             
             if success:
@@ -270,7 +285,9 @@ class ConversationStore:
                 updated_at=datetime.fromisoformat(metadata_dict["updated_at"]),
                 title=metadata_dict.get("title", "Nueva conversación"),
                 message_count=metadata_dict.get("message_count", 0),
-                expediente_number=metadata_dict.get("expediente_number")
+                expediente_number=metadata_dict.get("expediente_number"),
+                dueno=metadata_dict.get("dueno"),
+                en_lista=metadata_dict.get("en_lista", True)
             )
             
             self._metadata[session_id] = metadata
@@ -327,6 +344,10 @@ class ConversationStore:
         - Retorna versión limitada que el LLM consume
         - Límite configurable en rag_config.CHAT_HISTORY_LIMIT
         """
+        if session_id in self._efimeras:
+            # Sin guardar ni indexar nada: su historial vive solo mientras dura la respuesta (RNF-07.31)
+            return LimitedChatMessageHistory(self._efimeras[session_id])
+
         if session_id not in self._store:
             logger.info(f"Sesión {session_id} no está en memoria - intentando cargar...")
             # Intentar cargar desde Redis antes de crear una nueva
@@ -336,11 +357,7 @@ class ConversationStore:
                 
                 # Crear metadatos si no existen
                 if session_id not in self._metadata:
-                    # Extraer user_id del session_id (formato: session_user@example.com_timestamp)
-                    parts = session_id.split('_')
-                    user_id = parts[1] if len(parts) >= 3 else 'unknown'
-                    
-                    self._create_metadata(session_id, user_id)
+                    self._create_metadata(session_id, self._deducir_usuario(session_id))
             else:
                 logger.info(f"Historial cargado desde Redis: {session_id}")
         
@@ -358,15 +375,73 @@ class ConversationStore:
         logger.info(f"Enviando al LLM: {len(limited.messages)} mensajes (límite: {limited.limit})")
         return limited
     
-    def _create_metadata(self, session_id: str, user_id: str) -> ConversationMetadata:
+    @staticmethod
+    def _deducir_usuario(session_id: str) -> str:
+        """El usuario que dice el identificador (formato: session_user@example.com_timestamp). Solo sirve para las
+        conversaciones sin dueño registrado: el dueño de una nueva nunca se deduce de aquí (RNF-07.33)."""
+        parts = session_id.split('_')
+        return parts[1] if len(parts) >= 3 else 'unknown'
+
+    @staticmethod
+    def _tramo_de_usuario(session_id: str) -> Optional[str]:
+        """El tramo de usuario de un identificador guardado antes de esta spec: en el chat general, entre `session_` y el último
+        `_`; en el de un notebook, entre `session_notebook_<número>_` y el último `_`. Es válido aunque el correo tenga `_`."""
+        coincidencia = re.fullmatch(r"session_notebook_[0-9]+_(.+)_[^_]*", session_id) or re.fullmatch(r"session_(.+)_[^_]*", session_id)
+        return coincidencia.group(1) if coincidencia else None
+
+    def es_propia(self, session_id: str, usuario: Optional[str]) -> Optional[bool]:
+        """Si la conversación es del usuario: True, False si es de otro y None si no existe (RNF-07.6, RNF-07.31).
+
+        Solo consulta el dueño en los metadatos (memoria o Redis): no carga la conversación ni lee mensajes, título ni fecha.
+        Con dueño registrado decide únicamente el dueño, aunque el identificador nombre a otro usuario. Las guardadas antes de
+        tener dueño son del usuario de sus metadatos o del tramo de su identificador, completo y exacto. Si Redis falla el error
+        sube (falla cerrado)."""
+        registrados = self._metadata.get(session_id)
+        if registrados is not None:
+            dueno, user_id = registrados.dueno, registrados.user_id
+        else:
+            guardados = self._redis_history.load_metadata(session_id)
+            if guardados is None:
+                return None
+            dueno, user_id = guardados.get("dueno"), guardados.get("user_id")
+        if not usuario:
+            return False
+        if dueno is not None:
+            return dueno == usuario
+        return user_id == usuario or self._tramo_de_usuario(session_id) == usuario
+
+    def crear_conversacion(self, session_id: str, dueno: str, en_lista: bool = True) -> None:
+        """Crea en memoria una conversación nueva cuyo dueño es `dueno` (el usuario autenticado, RNF-07.33). Si ya está en
+        memoria no hace nada; el llamador comprueba antes que no exista (`es_propia` da None)."""
+        if session_id in self._store:
+            return
+        self._store[session_id] = InMemoryChatMessageHistory(session_id)
+        if session_id not in self._metadata:
+            self._create_metadata(session_id, self._deducir_usuario(session_id), dueno=dueno, en_lista=en_lista)
+
+    def crear_efimera(self) -> str:
+        """Una conversación en memoria con identificador nuevo, para atender la petición que pidió la de otro usuario como si
+        fuera nueva (RNF-07.31): no se guarda, no se indexa y no tiene metadatos."""
+        identificador = f"session_efimera_{uuid.uuid4().hex}"
+        self._efimeras[identificador] = InMemoryChatMessageHistory(identificador)
+        return identificador
+
+    def descartar_efimera(self, session_id: str) -> None:
+        self._efimeras.pop(session_id, None)
+
+    def _create_metadata(
+        self, session_id: str, user_id: str, dueno: Optional[str] = None, en_lista: bool = True
+    ) -> ConversationMetadata:
         """Crea metadatos para una nueva sesión"""
         now = get_costa_rica_now()
-        
+
         metadata = ConversationMetadata(
             session_id=session_id,
             user_id=user_id,
             created_at=now,
-            updated_at=now
+            updated_at=now,
+            dueno=dueno,
+            en_lista=en_lista
         )
         
         self._metadata[session_id] = metadata
@@ -495,48 +570,39 @@ class ConversationStore:
     
     def delete_session(self, session_id: str, user_id: str) -> bool:
         """
-        Elimina una sesión de Redis/JSON y memoria.
-        Mantiene validación de permisos.
+        Elimina una sesión de Redis y de memoria, solo si es del usuario (`es_propia`): la de otro o una inexistente
+        devuelven False sin tocar nada ni anotar el identificador.
         """
-        
-        # Si la sesión no está en memoria, intentar cargarla primero
-        if session_id not in self._metadata:
-            logger.info(f"Sesión {session_id} no está en memoria, intentando cargar para validar...")
-            self._load_conversation_from_file(session_id)
-        
-        # Validar que la sesión pertenece al usuario
-        session_belongs_to_user = False
-        
-        if user_id in self._user_sessions and session_id in self._user_sessions[user_id]:
-            session_belongs_to_user = True
-        elif session_id in self._metadata and self._metadata[session_id].user_id == user_id:
-            session_belongs_to_user = True
-        
-        if session_belongs_to_user:
-            # 1. ELIMINAR DE REDIS
-            try:
-                redis_deleted = self._redis_history.delete_conversation(session_id, user_id)
-                if redis_deleted:
-                    logger.info(f"Conversación {session_id} eliminada de Redis")
-            except Exception as e:
-                logger.error(f"Error eliminando de Redis: {e}", exc_info=True)
-            
-            # 2. ELIMINAR DE MEMORIA
-            if session_id in self._store:
-                del self._store[session_id]
-            
-            if session_id in self._metadata:
-                del self._metadata[session_id]
-            
-            if user_id in self._user_sessions and session_id in self._user_sessions[user_id]:
-                self._user_sessions[user_id].remove(session_id)
-            
-            logger.info(f"Sesión {session_id} eliminada completamente (usuario {user_id})")
-            return True
-        
-        logger.warning(f"Intento de eliminar sesión {session_id} falló (usuario: {user_id})")
-        return False
-    
+        if self.es_propia(session_id, user_id) is not True:
+            logger.warning("Intento de eliminar una conversación que no es del usuario o no existe")
+            return False
+
+        # El índice bajo el que se guardó (su dueño, o el usuario de sus metadatos si es anterior a esta spec)
+        guardados = self._redis_history.load_metadata(session_id)
+        en_memoria = self._metadata.get(session_id)
+        if guardados is not None:
+            indice = guardados.get("user_id")
+        else:
+            indice = (en_memoria.dueno or en_memoria.user_id) if en_memoria else user_id
+
+        # 1. ELIMINAR DE REDIS
+        try:
+            redis_deleted = self._redis_history.delete_conversation(session_id, indice)
+            if redis_deleted:
+                logger.info(f"Conversación {session_id} eliminada de Redis")
+        except Exception as e:
+            logger.error(f"Error eliminando de Redis: {e}", exc_info=True)
+
+        # 2. ELIMINAR DE MEMORIA
+        self._store.pop(session_id, None)
+        self._metadata.pop(session_id, None)
+        for sesiones in self._user_sessions.values():
+            if session_id in sesiones:
+                sesiones.remove(session_id)
+
+        logger.info(f"Sesión {session_id} eliminada completamente (usuario {user_id})")
+        return True
+
     def clear_user_sessions(self, user_id: str):
         session_ids = self._user_sessions.get(user_id, []).copy()
         

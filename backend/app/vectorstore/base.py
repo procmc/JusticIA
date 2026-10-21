@@ -39,7 +39,7 @@ Version:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 from langchain_core.documents import Document
 
 class VectorStoreBackend(ABC):
@@ -59,8 +59,12 @@ class VectorStoreBackend(ABC):
         score_threshold: float = 0.0,
         expediente_filter: Optional[str] = None,
         db=None,
+        documentos_visibles: Optional[Set[int]] = None,
     ) -> List[Dict[str, Any]]:
-        """Búsqueda semántica por texto, con filtro opcional por expediente."""
+        """Búsqueda semántica por texto, con filtro opcional por expediente.
+
+        `documentos_visibles` limita la búsqueda, dentro de la propia consulta, a esos documentos (RF-17.3): un conjunto
+        vacío no devuelve nada y `None` no restringe."""
 
     @abstractmethod
     async def get_complete_document_by_chunks(self, document_id: int) -> List[Dict[str, Any]]:
@@ -72,9 +76,13 @@ class VectorStoreBackend(ABC):
 
     @abstractmethod
     async def search_similar_expedients(
-        self, expedient_id: str, top_k: int = 20, score_threshold: float = 0.3, db=None
+        self, expedient_id: str, top_k: int = 20, score_threshold: float = 0.3, db=None,
+        documentos_visibles: Optional[Set[int]] = None,
     ) -> List[Dict[str, Any]]:
-        """Expedientes similares al expediente de referencia."""
+        """Expedientes similares al expediente de referencia.
+
+        `documentos_visibles` limita, dentro de las propias consultas, tanto el tema de referencia como los resultados a
+        esos documentos (RF-17.3): un conjunto vacío no devuelve nada y `None` no restringe."""
 
     @abstractmethod
     async def add_documents(self, documents: List[Document]) -> List[str]:
@@ -85,8 +93,11 @@ class VectorStoreBackend(ABC):
         """Estadísticas de la colección."""
 
     @abstractmethod
-    async def get_expedient_documents(self, expedient_id: str) -> List[Document]:
-        """Todos los documentos LangChain de un expediente."""
+    async def get_expedient_documents(
+        self, expedient_id: str, documentos_visibles: Optional[Set[int]] = None
+    ) -> List[Document]:
+        """Todos los documentos LangChain de un expediente. Con `documentos_visibles`, solo los de esos documentos (conjunto
+        vacío = ninguno, sin consultar); None no restringe."""
 
     @abstractmethod
     async def delete_document_chunks(self, document_id: int) -> None:

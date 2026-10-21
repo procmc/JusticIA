@@ -64,6 +64,8 @@ from app.services.documentos.file_management_service import (
 from app.services.bitacora.ingesta_audit_service import (
     ingesta_audit_service, MOTIVOS_DE_RECHAZO, MOTIVOS_DE_FALLO_INTERNO, MOTIVO_TEMA_NO_VALIDO, MOTIVO_ERROR_INTERNO
 )
+from app.services.bitacora.notebooks_audit_service import notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE
+from app.services.notebook_service import NotebookService, NO_DISPONIBLE, PROPIO
 from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult
@@ -203,6 +205,21 @@ async def ingestar_archivos(
             detail="Debe proporcionar al menos un archivo"
         )
     
+    # Un tema con forma de clave de notebook se comprueba primero, antes de escribir o encolar nada (RF-17.4): si no es la clave
+    # de un notebook del usuario (ajeno, inexistente o con una grafía que no es la canónica) la carga se rechaza con el mismo
+    # 404, sin repetir la clave pedida; si es la suya, en otra grafía, se carga con su clave canónica `NB-<id>`.
+    clasificacion = await NotebookService().clasificar_clave(db, CT_Num_expediente, current_user["user_id"])
+    if clasificacion.tipo == NO_DISPONIBLE:
+        await notebooks_audit_service.registrar_intento_fallido(
+            db=db,
+            usuario_id=current_user["user_id"],
+            tipo_accion_id=TiposAccion.CARGA_DOCUMENTOS,
+            motivo=MOTIVO_NOTEBOOK_NO_DISPONIBLE
+        )
+        raise HTTPException(status_code=404, detail="Notebook no encontrado")
+    if clasificacion.tipo == PROPIO:
+        CT_Num_expediente = clasificacion.notebook.clave_interna
+
     # El tema se comprueba antes de escribir o encolar nada: si no sirve como nombre de carpeta se rechaza la carga
     # completa, sin repetirlo en la respuesta ni en la bitácora (RF-06.20, RF-21.20, RNF-07.24).
     try:

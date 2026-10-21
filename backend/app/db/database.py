@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from starlette.exceptions import HTTPException
 from app.config.config import DATABASE_URL
 from app.utils.enmascarar import enmascarar_correos_en_texto
 import logging
@@ -65,6 +66,13 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except HTTPException as e:
+        # Una respuesta 4xx es una decisión prevista de la ruta (un 404 uniforme, un dato inválido), no un error de la sesión: no se
+        # anota, porque su texto puede repetir lo que el usuario pidió (el identificador de una conversación ajena, RF-21.32).
+        db.rollback()
+        if e.status_code >= 500:
+            logger.error(f"Error en sesión de base de datos: {enmascarar_correos_en_texto(str(e))}")
+        raise e
     except Exception as e:
         # Por aquí pasa también el texto de un HTTPException (p. ej. el 502 del reseteo, que lleva el correo del
         # usuario): se enmascara para que el correo no quede en claro en el registro del servidor (RNF-08.2)
