@@ -2,3 +2,4 @@
 backend/tests/
 backend/conftest.py
 htr/tests/
+frontend/e2e/

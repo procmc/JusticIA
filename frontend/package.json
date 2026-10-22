@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "e2e": "node e2e/ejecutar.mjs",
+    "e2e:apagar": "node e2e/ejecutar.mjs --apagar"
   },
   "dependencies": {
     "@heroui/react": "^2.7.5",
@@ -30,6 +32,7 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.14",
     "postcss": "^8",

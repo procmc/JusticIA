@@ -11,6 +11,11 @@
 
 # next.js
 /.next/
+/.next-e2e/
+
+# playwright (extremo a extremo)
+/test-results/
+/playwright-report/
 /out/
 
 # production
