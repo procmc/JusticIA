@@ -129,12 +129,17 @@ class UsuarioPrueba:
     rol: str
 
 
-def crear_usuario(rol: str, registro: Optional["Registro"] = None) -> UsuarioPrueba:
+def crear_usuario(rol: str, registro: Optional["Registro"] = None, *, contrasena: Optional[str] = None,
+                  temporal: bool = False, estado: str = "Activo") -> UsuarioPrueba:
     """Inserta en la base de pruebas un usuario inventado con el rol indicado y lo devuelve (con su contraseña).
 
     `rol` es `ROL_ADMINISTRADOR` o `ROL_USUARIO_GUBERNAMENTAL`. La cédula es `PRUEBA` + consecutivo (cabe en los 20
     caracteres de la columna), el hash es el del `UsuarioRepository` (bcrypt, igual que el sistema), el estado es
     `Activo` y `CF_Ultimo_acceso` está lleno para que el inicio de sesión no exija cambiar la contraseña.
+
+    Solo la instancia de extremo a extremo usa los parámetros opcionales (spec 005a, RA-02.42): `contrasena` (la genera la
+    suite de Playwright; por omisión se genera una), `temporal` (`CF_Ultimo_acceso = NULL`: obliga a cambiar la contraseña)
+    y `estado` («Activo» o «Inactivo»).
     """
     if rol not in _ETIQUETA_DEL_ROL:
         raise ValueError(f"El rol {rol!r} no es válido: use {ROL_ADMINISTRADOR!r} o {ROL_USUARIO_GUBERNAMENTAL!r}.")
@@ -148,21 +153,21 @@ def crear_usuario(rol: str, registro: Optional["Registro"] = None) -> UsuarioPru
     cedula = f"{PREFIJO_DATOS}{numero:06d}"
     nombre_usuario = f"{PREFIJO_DATOS}_{etiqueta}_{numero}"
     correo = f"prueba{numero}.{etiqueta}@prueba.invalid"
-    contrasena = generar_contrasena()
+    contrasena = Contrasena(contrasena) if contrasena is not None else generar_contrasena()
     hash_de_la_contrasena = UsuarioRepository().pwd_context.hash(str(contrasena))
 
     with SessionLocal() as db:
         id_rol = db.query(T_Rol.CN_Id_rol).filter(T_Rol.CT_Nombre_rol == rol).scalar()
-        id_estado = db.query(T_Estado.CN_Id_estado).filter(T_Estado.CT_Nombre_estado == "Activo").scalar()
+        id_estado = db.query(T_Estado.CN_Id_estado).filter(T_Estado.CT_Nombre_estado == estado).scalar()
         if id_rol is None or id_estado is None:
             raise AbortoPruebas(
                 "Se aborta la suite de pruebas: la base de pruebas no tiene los catálogos de las migraciones "
-                f"(rol {rol!r} o estado 'Activo')."
+                f"(rol {rol!r} o estado {estado!r})."
             )
         db.add(T_Usuario(
             CN_Id_usuario=cedula, CT_Nombre_usuario=nombre_usuario, CT_Nombre=PREFIJO_DATOS, CT_Apellido_uno=etiqueta,
             CT_Correo=correo, CT_Contrasenna=hash_de_la_contrasena, CN_Id_rol=id_rol, CN_Id_estado=id_estado,
-            CF_Ultimo_acceso=datetime.now(),
+            CF_Ultimo_acceso=None if temporal else datetime.now(),
         ))
         db.commit()
 

@@ -31,7 +31,7 @@ from sqlalchemy import text
 from tests.soporte import configuracion
 from tests.soporte.nombres import ESPERA_SERVICIOS_SEGUNDOS, NOMBRE_PRUEBAS
 from tests.soporte.proteccion import (
-    AbortoPruebas, crear_base, crear_coleccion, eliminar_base, eliminar_coleccion, exigir_nombre_pruebas,
+    AbortoPruebas, crear_base, crear_coleccion, eliminar_base, eliminar_coleccion, exigir_nombre_pruebas, nombre_activo,
 )
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[2]
@@ -291,7 +291,7 @@ def cerrar_coleccion(conectar: Optional[Callable] = None) -> None:
     """
     if not _estado["coleccion_creada"]:
         return
-    eliminar_coleccion(NOMBRE_PRUEBAS, conectar or cliente_qdrant)
+    eliminar_coleccion(nombre_activo(), conectar or cliente_qdrant)
     _estado["coleccion_creada"] = False
 
 

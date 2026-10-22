@@ -6,11 +6,17 @@ de DDL: `crear_base` y `eliminar_base` (T4) y `crear_coleccion` y `eliminar_cole
 Todas llaman siempre primero a `exigir_nombre_pruebas`, así que ninguna llega a crear ni a
 eliminar nada que no se llame exactamente como la base o la colección de pruebas.
 
-No hay ningún parámetro ni variable de entorno que desactive la validación.
+No hay ningún parámetro ni variable de entorno que desactive la validación. El nombre que se acepta es el
+«nombre activo»: `servia_pruebas` (pytest) o, solo si el lanzador de la instancia de extremo a extremo lo fija por
+código con `fijar_nombre_activo`, `servia_pruebas_e2e` (spec 005a). Nunca los dos a la vez ni otro distinto.
 """
 from typing import Callable
 
-from tests.soporte.nombres import NOMBRE_PRUEBAS
+from tests.soporte.nombres import NOMBRE_PRUEBAS, NOMBRE_PRUEBAS_E2E
+
+# Los dos únicos nombres que pueden ser el activo; por omisión, el de pytest.
+_NOMBRES_PERMITIDOS = (NOMBRE_PRUEBAS, NOMBRE_PRUEBAS_E2E)
+_activo = {"nombre": NOMBRE_PRUEBAS}
 
 
 class AbortoPruebas(Exception):
@@ -21,17 +27,37 @@ class AbortoPruebas(Exception):
     """
 
 
+def nombre_activo() -> str:
+    """El único nombre de base y colección que esta corrida puede tocar (por omisión, `servia_pruebas`)."""
+    return _activo["nombre"]
+
+
+def fijar_nombre_activo(nombre: object) -> None:
+    """Elige el nombre activo entre los dos fijos (`servia_pruebas` y `servia_pruebas_e2e`); cualquier otro aborta.
+
+    Lo llama el código del lanzador de la instancia, nunca la configuración: no lee variables de entorno, porque la
+    spec 002 prohíbe desactivar o cambiar la protección por configuración. Igualdad exacta, sin mayúsculas ni espacios.
+    """
+    if not isinstance(nombre, str) or nombre not in _NOMBRES_PERMITIDOS:
+        raise AbortoPruebas(
+            f"Se aborta la suite de pruebas: {nombre!r} no es un nombre de pruebas permitido; solo "
+            f"'{NOMBRE_PRUEBAS}' o '{NOMBRE_PRUEBAS_E2E}'."
+        )
+    _activo["nombre"] = nombre
+
+
 def exigir_nombre_pruebas(nombre: object, que: str) -> None:
-    """Aborta si `nombre` no es exactamente el nombre de pruebas.
+    """Aborta si `nombre` no es exactamente el nombre de pruebas activo.
 
     `que` dice qué se está validando («la base de datos», «la colección de Qdrant») para el
     mensaje. Igualdad exacta: no sirven las mayúsculas, un nombre que lo contenga, uno vacío
     ni uno con caracteres de inyección, y tampoco un valor que no sea texto.
     """
-    if not isinstance(nombre, str) or nombre != NOMBRE_PRUEBAS:
+    activo = nombre_activo()
+    if not isinstance(nombre, str) or nombre != activo:
         raise AbortoPruebas(
             f"Se aborta la suite de pruebas: {que} es {nombre!r} y debe ser exactamente "
-            f"'{NOMBRE_PRUEBAS}'. No se abrió ninguna conexión ni se ejecutó ninguna prueba."
+            f"'{activo}'. No se abrió ninguna conexión ni se ejecutó ninguna prueba."
         )
 
 
@@ -46,7 +72,7 @@ def _ejecutar_ddl(conectar: Callable, sentencia: str, accion: str) -> None:
         conexion.execute(sentencia)
     except Exception as error:
         raise AbortoPruebas(
-            f"Se aborta la suite de pruebas: no se pudo {accion} la base de datos '{NOMBRE_PRUEBAS}': {error}"
+            f"Se aborta la suite de pruebas: no se pudo {accion} la base de datos '{nombre_activo()}': {error}"
         ) from error
     finally:
         conexion.close()
@@ -93,7 +119,7 @@ def _operar_en_qdrant(conectar: Callable, operacion: Callable, accion: str) -> N
             cliente.close()
     except Exception as error:
         raise AbortoPruebas(
-            f"Se aborta la suite de pruebas: no se pudo {accion} la colección '{NOMBRE_PRUEBAS}' en Qdrant "
+            f"Se aborta la suite de pruebas: no se pudo {accion} la colección '{nombre_activo()}' en Qdrant "
             f"({type(error).__name__}): {str(error)[:300]}"
         ) from error
 

@@ -8,6 +8,7 @@ services:
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude 'uploads/*' --reload-exclude '*.pyc'"
     ports:
       - "8000:8000"
+      - "127.0.0.1:8100:8100"  # instancia de pruebas de extremo a extremo (spec 005a); solo accesible desde esta máquina
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads

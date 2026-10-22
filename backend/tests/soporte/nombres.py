@@ -7,6 +7,10 @@ Sin importaciones: otros módulos de `tests/soporte/` las usan antes de importar
 # exacta (distingue mayúsculas): ningún otro nombre pasa la protección de `proteccion.py`.
 NOMBRE_PRUEBAS = "servia_pruebas"
 
+# Nombre de la base y de la colección de la instancia de extremo a extremo (spec 005a, RA-02.41). Es el único otro nombre que
+# la protección acepta, y solo si el lanzador de la instancia lo elige por código: `proteccion.fijar_nombre_activo`.
+NOMBRE_PRUEBAS_E2E = "servia_pruebas_e2e"
+
 # Prefijo de los datos que crea una prueba (usuarios, notebooks, archivos); permite encontrarlos
 # y contarlos como residuos (RA-02.7).
 PREFIJO_DATOS = "PRUEBA"
