@@ -22,6 +22,8 @@ Desde la raíz del proyecto:
 - Migraciones: el backend aplica `alembic upgrade head` al iniciar. Nueva migración: `docker compose exec backend alembic revision --autogenerate -m "..."`, y revisar el archivo generado antes de aplicarlo. Estado: `docker compose exec backend alembic current`.
 - Salud: `curl http://localhost:8000/` (API), `curl http://localhost:6333/collections` (Qdrant), `docker compose exec ollama ollama list` (modelos).
 - Pruebas del backend (dentro del contenedor `backend`, con el servidor ya en marcha): todo (unitarias e integración) `docker compose exec backend pytest` · solo unitarias `docker compose exec backend pytest -m unitaria` · solo integración `docker compose exec backend pytest -m integracion` · en orden inverso, para comprobar que ninguna prueba depende de otra `docker compose exec backend pytest --orden-inverso` · las que fallan a propósito, para verificar el resumen y el ciclo de vida, `docker compose exec backend pytest -m infraestructura` (no entran en el comando por omisión y su salida esperada es distinta de cero). Cada corrida crea y elimina la base y la colección `servia_pruebas`; nunca toca los datos de desarrollo.
+- Pruebas de extremo a extremo (desde `frontend/`, con el servidor `backend` en marcha; el `npm run dev` de desarrollo puede seguir activo): `npm run e2e` levanta una instancia aislada (backend en `127.0.0.1:8100`, frontend de pruebas en `127.0.0.1:3100`, base y colección `servia_pruebas_e2e`), corre Playwright en escritorio (1366 px) y en pantalla pequeña (616 px), imprime el resumen (recolectadas, pasan, fallan, fallos esperados, XPASS, preparación, suite, residuos, contraseñas en artefactos) y la apaga. Con argumentos: `npm run e2e -- --grep RF-03.41` o `npm run e2e -- e2e/flujos/acceso.spec.js`. Si una corrida quedó a medias: `npm run e2e:apagar`. El resultado es «CORRECTO» solo con 0 fallos, 0 XPASS, residuos 0 y contraseñas 0.
+- Una corrida completa tarda unos 6 minutos (preparación ~25 s, suite ~5 min; límites 300 s y 600 s). Cada corrida reemplaza la base `servia_pruebas_e2e`; `docker compose restart backend` mata la instancia.
 - Diagramas: `docker run --rm -v "<carpeta>:/data" plantuml/plantuml -tpng "/data/*.puml"`.
 - Sesión SDD: `sdd.cmd` (equivale a `claude --agent coordinator`): el coordinador solo lee y reparte el trabajo entre el planner, el implementer y el reviewer; no tiene terminal ni edita archivos. Para operar (docker, git, editar) usa una sesión normal con `claude`.
 - Herramientas locales de Claude Code: Poppler (`pdftoppm`), para leer los PDF de más de 10 páginas (`winget install oschwartz10612.Poppler`); el navegador para verificar la interfaz es el MCP `chrome-devtools` de `.mcp.json`.
@@ -35,6 +37,10 @@ Desde la raíz del proyecto:
 - Toda acción relevante del usuario se registra en la bitácora mediante el servicio de auditoría de su módulo (`services/bitacora/`); si el registro falla, la acción continúa (RF-21).
 - Frontend: una página nueva va también en `ROUTE_PERMISSIONS` (`middleware.js`) —si no, el middleware la bloquea— y en la navegación (`data/menuitems.js` y las tarjetas de `pages/index.js`).
 - Diagramas: PlantUML con `!pragma layout elk` (líneas rectas, no curvas).
+- Hay dos entornos aislados: `servia_pruebas` (pytest) y `servia_pruebas_e2e` (extremo a extremo). La protección acepta solo esos nombres completos; el extremo a extremo nunca lee ni escribe los datos de desarrollo, y desvía `uploads/` y los avatares a `/tmp/servia_e2e`. Los motores (LLM, HTR, audio, correo, Redis) son simulados y se programan por el control de la instancia (`backend/tests/instancia_e2e/`); no existe en `main`.
+- Las contraseñas de la suite las genera cada corrida y no se escriben ni se muestran. Antes de la búsqueda final, el orquestador (`ocultarContrasenas` en `e2e/ejecutar.mjs`) reemplaza cada contraseña por `[CONTRASEÑA OCULTA]` en los artefactos de texto de `test-results/` (`error-context.md`, json, md, log…) y cuenta las que queden como «contraseñas en artefactos»; no se abre ni se pega en una conversación el contenido de `test-results/`. Las capturas de pantalla en fallo (PNG, `only-on-failure`) no se ocultan ni se buscan: riesgo bajo aceptado (los campos de contraseña muestran puntos); trazas y vídeo están apagados.
+- Cada prueba de Playwright empieza con su requisito (`RF-01.40 · …`) y un fallo del ERS se marca con `fallaEsperada(test, '<requisito> · <módulo>')` tras verlo en rojo.
+- Una página nueva del frontend debe quedar clasificada también en `frontend/e2e/soporte/paginas.js` (la prueba `RA-02.48` falla si falta).
 
 ## Reglas de dominio / trampas conocidas
 
@@ -63,6 +69,9 @@ Desde la raíz del proyecto:
 - WSL2 necesita `memory=12GB` en `.wslconfig`. Si Docker Desktop deja de responder, se reinicia: los contenedores vuelven solos.
 - En Git Bash, `docker run -v` con rutas de Windows requiere `MSYS_NO_PATHCONV=1`.
 - No hay cuenta de correo configurada: los envíos de notificaciones fallan en silencio (pendiente institucional).
+- **Nunca mates procesos por nombre de imagen** (`taskkill /IM node.exe`, `pkill node`): mata el `npm run dev` de desarrollo (puerto 3000). Detén lo tuyo por PID o con `npm run e2e:apagar`, y comprueba con `curl http://localhost:3000/` que desarrollo sigue vivo.
+- En Git Bash, los comandos manuales con rutas del contenedor (`/sys/fs/cgroup/...`, `/tmp/...`) necesitan `MSYS_NO_PATHCONV=1`.
+- `npm run build` con `npm run dev` activo pisa `.next`; el extremo a extremo usa su propia carpeta y no lo afecta.
 
 ## Memoria
 
@@ -84,16 +93,18 @@ Cambios pequeños y enfocados; no reescribas lo que ya funciona. Al terminar, re
 - ✅ **Siempre**: textos en español y vocabulario «tema»; verificar contra el código real antes de afirmar algo; registrar en la bitácora las acciones nuevas de los usuarios.
 - ✅ **Siempre**: escribir primero las pruebas del requisito y, al corregir un error, su prueba de regresión.
 - ✅ **Siempre**: actualizar `MEMORY.md` al terminar cada tarea.
+- ✅ **Siempre**: desde el cierre de la 005a, la «suite completa» de toda tarea que toque el frontend o la API incluye el extremo a extremo (`npm run e2e`, desde `frontend/`), además de `docker compose exec backend pytest`. La evidencia reporta ambas salidas (pasan, fallan, fallos esperados, XPASS, residuos y contraseñas en artefactos). Una tarea que solo toca documentación o el backend sin efecto en la API puede omitir el extremo a extremo si lo justifica.
 - ⚠️ **Pregunta antes**: crear archivos nuevos; cambiar el esquema de la base de datos o crear migraciones; renombrar "expediente" a "tema" en el código o la base de datos (requiere la confirmación del tutor); cambiar prompts, modelos de IA o el `docker-compose.yml`; hacer commit o push; borrar datos de SQL Server, Qdrant o `uploads/`.
 - ❌ **Nunca**: subir credenciales, `.env`, documentos cargados o datos personales (el repositorio `procmc/JusticIA` es público); usar servicios de IA en la nube (RNF-09); incorporar modelos de origen chino (RT-04); `git push --force` ni reescribir el historial.
 
 ## Verificación
 
-Cada requisito se aprueba con pruebas automatizadas (unitarias, de integración y de extremo a extremo) y, además, con la verificación manual de punta a punta (principio 4 de la constitución). La infraestructura de pruebas del backend existe (spec 002); el código heredado todavía tiene poca cobertura (RA-02) y se cubre con specs retroactivas, en el orden de `.claude/rules/testing.md`. El extremo a extremo llega con la spec de la red de seguridad. Los comandos están en «Comandos».
+Cada requisito se aprueba con pruebas automatizadas (unitarias, de integración y de extremo a extremo) y, además, con la verificación manual de punta a punta (principio 4 de la constitución). La infraestructura de pruebas del backend existe (spec 002); el código heredado todavía tiene poca cobertura (RA-02) y se cubre con specs retroactivas, en el orden de `.claude/rules/testing.md`. El extremo a extremo existe desde la spec 005a (Playwright, `npm run e2e`); la 005b completará ingesta, chat y notebooks. Los comandos están en «Comandos».
 
-- Pruebas: la suite completa pasa con `docker compose exec backend pytest`; las pruebas usan un entorno aislado (base y colección `servia_pruebas`) y nunca datos reales: los datos de prueba son inventados, con el prefijo `PRUEBA`, y cada prueba limpia lo que crea.
+- Pruebas: la suite completa es `docker compose exec backend pytest` y, si la tarea toca el frontend o la API, también `npm run e2e` (desde `frontend/`); ambas usan entornos aislados y datos inventados con el prefijo `PRUEBA`, y cada prueba limpia lo que crea. El extremo a extremo ya existe (spec 005a: acceso por rol, menú, cuentas, recuperación de contraseña e Historial; la 005b cubrirá ingesta, chat y notebooks).
+- El MCP `chrome-devtools` usa un perfil propio: Andrés inicia sesión en esa ventana. Con su zoom de 0,9, `emulate` 1229 equivale a 1365 px CSS y 554 a 615 px CSS.
 - Backend: `docker compose ps` sin reinicios, `curl http://localhost:8000/` responde y `docker compose logs backend celery-worker` no muestra errores.
 - Ingesta: cargar un archivo de prueba no sensible y confirmar que queda Procesado y con sus fragmentos en Qdrant.
-- Interfaz: con el navegador (Claude in Chrome o Chrome DevTools MCP) en http://localhost:3000, probar el flujo con los dos roles y revisar la consola. Las credenciales de prueba no se guardan en el repositorio.
+- Interfaz: con el navegador (Claude in Chrome o Chrome DevTools MCP) en http://localhost:3000 sobre el entorno de desarrollo, probar el flujo con los dos roles a 1366 px y a 616 px de ancho, y revisar la consola. Las credenciales de prueba no se guardan en el repositorio, y el agente nunca recibe contraseñas ni códigos: Andrés inicia sesión y los escribe él mismo en el navegador.
 - Frontend: `npm run build` sin errores.
 - Al terminar, limpiar los datos de prueba (documento, fragmentos y archivo).

@@ -102,10 +102,13 @@ permitido+='|git (status|diff|log|show|ls-files|blame|rev-parse|branch --show-cu
 permitido+='|docker (ps|logs|images|stats --no-stream)'
 permitido+='|docker compose (ps|logs|images|top)'
 permitido+='|docker compose exec( -T)? backend (alembic (current|history|heads|check)|pytest)'
+permitido+='|docker compose exec( -T)? backend cat /sys/fs/cgroup/memory\.(current|peak|events|stat)$'
+permitido+='|docker compose exec( -T)? backend python -m tests\.instancia_e2e( --apagar)?'
+permitido+='|docker compose exec -d backend python -m tests\.instancia_e2e'
 permitido+='|docker compose exec( -T)? servidor-htr (python -m )?pytest'
 permitido+='|docker compose exec( -T)? ollama ollama (list|ps)'
 permitido+='|curl|nvidia-smi|pytest|python -m pytest'
-permitido+='|npm (run (build|lint)|test)|npm --prefix [^ ]+ run (build|lint))( |$)'
+permitido+='|npm (run (build|lint|e2e|e2e:apagar)|test)|npm --prefix [^ ]+ run (build|lint|e2e|e2e:apagar))( |$)'
 
 # Número de partes no vacías de los comandos encadenados (&&, ||, ;, |, &).
 total_partes="$(printf '%s\n' "$estructura" | sed -E 's/(&&|\|\||;|\||&)/\n/g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | grep -c .)"

@@ -15,7 +15,7 @@ Principio 4 de la constitución: cada requisito se cubre con pruebas automatizad
 El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso como una spec:
 
 1. **Infraestructura de pruebas del backend**: pytest dentro del contenedor del backend y un entorno aislado (base de datos y colección de Qdrant solo para pruebas). Playwright y el extremo a extremo llegan con el paso 2.
-2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA, y la infraestructura de extremo a extremo.
+2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA, y la infraestructura de extremo a extremo. Hechos (spec 005a): la infraestructura de extremo a extremo y los flujos de acceso; quedan ingesta, chat y notebooks (005b).
 3. **Specs retroactivas por módulo**, por riesgo: autenticación y usuarios, ingesta, RAG y chat, notebooks, temas similares y bitácora.
 4. Después, los «Estado actual» del ERS y las funciones nuevas, con sus pruebas desde el inicio.
 
@@ -28,7 +28,7 @@ El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso 
 
 - **Unitarias**: la lógica del backend (servicios, validaciones, armado de filtros y prompts), con SQL Server, Qdrant, Ollama y Redis simulados.
 - **Integración**: la API contra SQL Server, Qdrant y Tika reales del entorno aislado (Redis simulado): rutas y roles, datos guardados, fragmentos en Qdrant y registro en la bitácora.
-- **Extremo a extremo**: los flujos de la interfaz en el navegador con los dos roles, incluida una pantalla más pequeña (RNF-04), desde la spec de la red de seguridad.
+- **Extremo a extremo**: los flujos de la interfaz en el navegador con los dos roles, incluida una pantalla más pequeña (RNF-04), desde la spec de la red de seguridad. Existe desde la spec 005a: `npm run e2e` (Playwright, instancia aislada `servia_pruebas_e2e`).
 
 ## Cómo se escriben
 
@@ -59,4 +59,4 @@ El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso 
 
 ## Evidencia
 
-Reporta la salida de las pruebas (cuántas pasan, cuántas fallan y cuántas son fallos esperados) y lo que observaste en la verificación manual. Sin evidencia, la tarea no está hecha.
+Reporta la salida de las pruebas (cuántas pasan, cuántas fallan y cuántas son fallos esperados) y la del extremo a extremo cuando la tarea toca el frontend o la API, y lo que observaste en la verificación manual. Sin evidencia, la tarea no está hecha.
