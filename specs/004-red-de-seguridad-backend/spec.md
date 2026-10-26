@@ -1,5 +1,5 @@
 # Spec 004 — Red de seguridad del backend (flujos críticos con pytest)
-Estado: implementada (validada por el reviewer el 19/10/2026); RF-05.23, RF-22.1 y RNF-04.1 implementados, pendientes de la verificación de extremo a extremo (spec 005)
+Estado: implementada (validada por el reviewer el 19/10/2026); RF-05.23 y el aviso de RNF-04.1 verificados de extremo a extremo (spec 005b, 26/10/2026); RF-22.1 y el detalle de RNF-04.1, remitidos a la spec de la bitácora
 
 > Retroactiva (skill `sdd`, «Specs retroactivas»): solo pruebas del backend, sin código de producción, **salvo el bloque F** (correcciones de la interfaz de archivos rechazados, decisión de Andrés del 14/10). La 004a está cerrada y publicada (14/10); la 004 se commitea entera al terminar (Andrés, 14/10). Las debilidades se describen en términos generales y los `xfail` no nombran rutas (D-4).
 
@@ -17,6 +17,7 @@ Historial:
 - 15/10/2026 — Andrés aprueba la spec tras las tres QA; pasa a plan y tareas.
 - 19/10/2026 — T14, corrección editorial: «Tareas estimadas» pasa de 17 a 18 (la 9c se partió en 9c y 9d en tasks.md); el QUÉ no cambia.
 - 19/10/2026 — implementada: validación final APROBADA por el reviewer y cierre aprobado por Andrés; RF-05.23, RF-22.1 y RNF-04.1 implementados, pendientes de la verificación de extremo a extremo (spec 005).
+- 26/10/2026 — mantenimiento tras el cierre de la 005b (Andrés, opción A): se retira la exención temporal de RF-05.23 y del aviso de RNF-04.1, verificados de extremo a extremo (RF-05.40, RNF-04.40); RF-22.1 y el detalle de RNF-04.1 pasan a la spec de la bitácora.
 
 ## Decisiones tomadas (Andrés)
 - **D-1 = A**: las cuatro debilidades de archivos y descargas (lectura y escritura fuera de la carpeta de documentos, estáticos sin sesión, guardado que falla fuera de la carpeta del backend) se corrigieron en la 004a (cerrada el 14/10); aquí sus pruebas **pasan** (no `xfail`) y no se repiten sus regresiones.
@@ -168,7 +169,7 @@ Todas las pruebas son de integración salvo que se diga otra cosa.
 ### F. Correcciones: archivos rechazados (decisión de Andrés, 14/10)
 Única excepción a «sin código de producción»: errores que la 004a dejó pendientes (paso 6 de su plan). Son correcciones (permitidas en el paso 2 de `.claude/rules/testing.md`), no `xfail`. Cada una empieza por su prueba de regresión, vista en rojo con el error actual.
 Decisión C (14/10): los textos que estas pantallas muestran los entrega el sistema ya redactados en español; la pantalla solo los presenta, sin armarlos ni cambiarlos (principio 3). Las integraciones cubren ese contenido.
-**Exención temporal hasta la 005** (la repite el plan): que una pantalla presente tal cual lo que entrega el sistema se puede medir de extremo a extremo; no es solo aspecto visual, así que el principio 4 no la cubre.
+**Exención temporal hasta la 005** (la repite el plan; **retirada el 26/10/2026** para RF-05.23 y el aviso de RNF-04.1, que la 005b verificó; RF-22.1 y el detalle de RNF-04.1 pasan a la spec de la bitácora): que una pantalla presente tal cual lo que entrega el sistema se puede medir de extremo a extremo; no es solo aspecto visual, así que el principio 4 no la cubre.
 - Se acepta solo porque el extremo a extremo llega con la 005 (paso 2 partido, Andrés 07/10) y la 004 no suma dependencias de JavaScript (principio 1).
 - Condición de cierre: la 005 cubre de extremo a extremo RF-05.23, RF-22.1 y RNF-04.1; si no los cubre, no se cierran.
 - Regla de estado (Andrés, 15/10, opción B): la 004 se cierra al terminar la tarea 14. Esos tres quedan «implementados, pendientes de la 005» en las tareas, y en el ERS con un «Estado actual»: «implementado; pendiente la verificación de extremo a extremo (spec 005)».
@@ -196,7 +197,8 @@ Decisión C (14/10): los textos que estas pantallas muestran los entrega el sist
   - Ingesta envía una carga por tema: muestra un aviso por cada respuesta, tal cual, sin sumarlas (sumar obligaría a la pantalla a armar textos; principio 3); cada aviso va junto al tema que el usuario escribió, dato que la pantalla ya tiene.
   - Una imagen pegada o arrastrada sobre el chat del notebook (CU-07 FA-01) con nombre válido es aceptada, con la misma confirmación, y llega a Procesado.
   - *Comprobación automatizada*: integración del contenido que la pantalla presenta, desde Ingesta y desde un notebook: motivos sin el nombre, confirmación con solo los aceptados y, con todos rechazados, sin confirmación de envío. La regresión del conteo se ve en rojo aquí.
-  - *Manual* (exención temporal hasta la 005): en las dos pantallas con la carga mixta de RF-05.22, y pegando o arrastrando una imagen sobre el chat del notebook (CU-07 FA-01), en escritorio y a 616 px de ancho:
+  - *Extremo a extremo*: cubierto por la 005b (RF-05.40, carga mixta y todos rechazados, en Ingesta y en el notebook). La imagen pegada o arrastrada sobre el chat, a la spec de su módulo.
+  - *Manual*: en las dos pantallas con la carga mixta de RF-05.22, y pegando o arrastrando una imagen sobre el chat del notebook (CU-07 FA-01), en escritorio y a 616 px de ancho:
     - aviso con los motivos tal cual, confirmación con los aceptados, rechazados sin «procesando» en las dos pantallas, el aceptado llega a Procesado, consola sin errores; dos temas a la vez en Ingesta → un aviso por tema; todos rechazados → sin aviso de éxito;
     - el Administrador no entra a esas pantallas. Regresión manual: hoy no hay aviso, «Subida iniciada» sale antes de la respuesta y los rechazados quedan «procesando».
 - **RF-22.1** `[NUEVO]` (detalla RF-22 «Detalle» y RF-21 «Contenido del registro»; HU-22; CU-15 FA-01): CUANDO el Administrador consulta la bitácora completa, EL SISTEMA entrega con cada registro de carga (los tipos de la tabla) su detalle listo para mostrar al abrirlo (CU-15 FA-01):
@@ -231,10 +233,10 @@ Decisión C (14/10): los textos que estas pantallas muestran los entrega el sist
     - consulta forzada a fallar → 500 genérico sin el texto inventado de la excepción;
     - el Usuario Gubernamental pide la bitácora completa → 403.
     - Unitaria del armado de la lista por tipo y de la clasificación, con textos inventados en las formas reales: cada regla, conflictos de precedencia (extracción con patrón de conexión; nombre que contiene «vector»), no reconocido y vacío. Regresión: hoy no hay lista; la pantalla muestra la fecha del registro, pero la información adicional de la carga no muestra la causa clasificada y sí datos técnicos; el 500 expone la excepción.
-  - *Manual* (exención temporal hasta la 005): un registro de cada tipo con el Administrador, en escritorio y a 616 px, consola sin errores; encabezado «Tema» (con el tema en la carga iniciada de un tema nuevo); descripción con el nombre del tipo; el Usuario Gubernamental no ve la bitácora completa.
+  - *Manual* (exención temporal; la 005b no lo cubrió en el navegador: su extremo a extremo pasa a la spec de la bitácora): un registro de cada tipo con el Administrador, en escritorio y a 616 px, consola sin errores; encabezado «Tema» (con el tema en la carga iniciada de un tema nuevo); descripción con el nombre del tipo; el Usuario Gubernamental no ve la bitácora completa.
 - **RNF-04.1** (RNF-04): el aviso de RF-05.23 y el detalle de RF-22.1 son legibles, sin elementos superpuestos ni inaccesibles, en escritorio y en una pantalla pequeña de 616 px de ancho (la medida de la 004a).
   - A 616 px cuenta como accesible llegar al aviso y al detalle con desplazamiento horizontal (mismo criterio que la 004a). Rediseñar la tabla queda fuera de alcance.
-  - *Comprobación*: manual en los dos tamaños con los dos roles, consola sin errores. En la 004, exento por aspecto visual (principio 4) y por la exención temporal; su extremo a extremo es condición de cierre en la 005. El contenido lo cubren las integraciones de RF-05.23 y RF-22.1.
+  - *Comprobación*: manual en los dos tamaños con los dos roles, consola sin errores. En la 004, exento por aspecto visual (principio 4). El aviso, verificado de extremo a extremo en escritorio y a 616 px (005b, RNF-04.40); el detalle de RF-22.1, a la spec de la bitácora. El contenido lo cubren las integraciones de RF-05.23 y RF-22.1.
 
 ## Requisitos no funcionales
 - **RNF-09.1** (RNF-09, RT-02): ninguna prueba llama a servicios reales de LLM, HTR, audio ni correo; se usan los simulados de la 002 y su comprobación (RA-02.6).
@@ -279,8 +281,8 @@ Decisión C (14/10): los textos que estas pantallas muestran los entrega el sist
 - `xfail` estricto que pasa hace fallar la corrida: marcar solo tras ver el rojo, con requisito y etiqueta, sin rutas.
 
 ## Criterios de finalización
-- Cada requisito con prueba que pasa o `xfail` estricto etiquetado. Únicas exenciones (justificadas en el plan): calidad real de la cita (RF-11.1, manual), reintento del chat (005) y, en el bloque F, la exención temporal hasta la 005 de la presentación (RF-05.23, RF-22.1, RNF-04.1; su condición de cierre, en el bloque F) más el aspecto visual de RNF-04.1 (principio 4).
-- La 004 se cierra al terminar la tarea 14 (Andrés, 15/10, opción B): RF-05.23, RF-22.1 y RNF-04.1 quedan «implementados, pendientes de la 005», no cerrados.
+- Cada requisito con prueba que pasa o `xfail` estricto etiquetado. Únicas exenciones (justificadas en el plan): calidad real de la cita (RF-11.1, manual), reintento del chat (005) y, en el bloque F, la exención temporal de la presentación de RF-22.1 y del detalle de RNF-04.1 (remitida a la spec de la bitácora) más el aspecto visual de RNF-04.1 (principio 4). La de RF-05.23 y el aviso de RNF-04.1 se retiró el 26/10 (005b).
+- La 004 se cierra al terminar la tarea 14 (Andrés, 15/10, opción B): RF-05.23, RF-22.1 y RNF-04.1 quedan «implementados, pendientes de la 005», no cerrados. Tras la 005b (26/10): RF-05.23 y el aviso de RNF-04.1, cerrados; RF-22.1 y el detalle de RNF-04.1, a la spec de la bitácora.
 - `docker compose exec backend pytest` pasa, también con `--orden-inverso`, con cero residuos y dentro de RA-02.15; se informa cuántos `xfail` quedan (en términos generales).
 - Manual por la API (sin navegador), con datos inventados: subir → Procesado con fragmentos (`metadata.numero_expediente`) → chat con **Ollama real** que cita por nombre de archivo en español → descarga del citado; lo mismo en un notebook, incluido quitar; medir tiempo de los tres inicios fallidos; bitácora de cada paso; limpieza.
 - `docker compose ps` sin reinicios; logs de `backend` y `celery-worker` sin errores nuevos; `uploads/` y nº de claves del Redis de desarrollo sin cambios.

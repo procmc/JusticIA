@@ -36,6 +36,7 @@ Observaciones del Administrador (menores, ajustes gráficos):
 - El pie de página dice «Poder Judicial».
 
 Otros, ya conocidos: la «x» de un documento del notebook quita sin confirmar (RF-19.40); el error de watchfiles «Cannot allocate memory» durante el e2e (el backend siguió respondiendo).
+- (e) Pegar o arrastrar una imagen sobre el chat del notebook (RF-05.23 de la 004, CU-07 FA-01) sigue sin prueba de extremo a extremo y el ERS V1.8 no la menciona: pendiente de la spec de las mejoras del notebook; se añadirá al «Estado actual» de RF-05 en la próxima versión del ERS.
 
 ## 4. Texto propuesto para el ERS V1.8 (decisión 23)
 
@@ -64,15 +65,15 @@ Para la sección «Verificación» de `CLAUDE.md`, reemplazar «el código hered
 
 ## 6. Documentos que actualiza Andrés
 
-- `.claude/rules/testing.md`: pasos 2, 3 y 4 (texto de la sección 5).
-- `CLAUDE.md`: «Verificación» (texto de la sección 5) y el estado de la 005b (el extremo a extremo cubre también ingesta, la cita en el chat general y NotebookServIA; las cifras de la suite).
-- `.claude/skills/sdd/SKILL.md` («Specs retroactivas»), `.claude/agents/planner.md`, `implementer.md`, `coordinator.md`, `.claude/commands/sdd-implement.md` y `sdd-validate.md`: cambiar solo «el código heredado se cubre con specs retroactivas».
+- `.claude/rules/testing.md`: pasos 2, 3 y 4 (texto de la sección 5). HECHO (aplicada por Andrés).
+- `CLAUDE.md`: «Verificación» (texto de la sección 5) y el estado de la 005b (el extremo a extremo cubre también ingesta, la cita en el chat general y NotebookServIA; las cifras de la suite). HECHO (aplicada por Andrés).
+- `.claude/skills/sdd/SKILL.md` («Specs retroactivas»), `.claude/agents/planner.md`, `implementer.md`, `coordinator.md`, `.claude/commands/sdd-implement.md` y `sdd-validate.md`: cambiar solo «el código heredado se cubre con specs retroactivas». HECHO (aplicada por Andrés).
 - `MEMORY.md`: «Próximos pasos» 3 y 4 (decisión 27); ya los dejó actualizados el implementer con el plan del mes, revisar el texto.
-- ERS V1.8 (sección 4), junto con el lote de la 004b (T10: `documentacion_t10.md`).
-- Spec 004: retirar la exención temporal de RF-05.23 y del aviso de RNF-04.1 (spec.md:171, 199, 234, 237, 282) y remitir RF-22.1 a la spec de la bitácora.
-- Spec 005: pasar a «implementada» (005b reducida) tras el veredicto del @reviewer.
+- ERS V1.8 (sección 4), junto con el lote de la 004b (T10: `documentacion_t10.md`). HECHO (26/10): exportado junto con CU V1.5 y Modelo Relacional V1.1, commit `d8ec8da`.
+- Spec 004: retirar la exención temporal de RF-05.23 y del aviso de RNF-04.1 (spec.md:171, 199, 234, 237, 282) y remitir RF-22.1 a la spec de la bitácora. HECHO (26/10, planner): estado, historial, bloque F, RF-05.23, RF-22.1, RNF-04.1 y criterios de finalización.
+- Spec 005: pasar a «implementada» (005b reducida) tras el veredicto del @reviewer. HECHO (26/10, planner): estado e historial con el veredicto APROBADO y las cifras finales.
 - `frontend/e2e/soporte/consola_declarada.js` (líneas 2, 11 y 16): «spec retroactiva de autenticación y usuarios (paso 3…)» pasa a «spec del módulo que lo corrija». Es código de pruebas: lo hace el implementer en una pasada aparte, con las suites. HECHO (26/10; también `red.spec.js:105`).
-- Grafo y mapas: `generar_mapa_pruebas.py` y `graphify update .` (la 005b cambió `document_processor.py`). PARCIAL (26/10): `generar_mapa_pruebas.py` hecho; `graphify update .` bloqueado por el control de aplicaciones de Windows (graphify.exe); `generar_mapa.py` espera al grafo actualizado.
+- Grafo y mapas: `generar_mapa_pruebas.py` y `graphify update .` (la 005b cambió `document_processor.py`). HECHO (26/10): grafo y mapas actualizados con el `python.exe` del entorno de uv, porque Windows bloquea `graphify.exe`.
 - Los datos de desarrollo de la verificación manual ya se limpiaron (opción A): quedan los temas 60004 y 60005 vacíos.
 
 ## 7. Hallazgo: no se puede borrar un tema con bitácora

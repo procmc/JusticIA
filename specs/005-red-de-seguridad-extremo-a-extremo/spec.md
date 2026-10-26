@@ -1,5 +1,5 @@
 # Spec 005 — Red de seguridad de extremo a extremo (flujos en el navegador)
-Estado: 005a implementada; 005b aprobada, en implementación (005b reducida a carga, la cita en el chat y notebooks; aprobada por Andrés (22/10/2026))
+Estado: implementada (005a y 005b). La 005b, reducida a D (carga) y F (notebooks) más la cita de RF-11.40; E (chat), G (bitácora) y la imagen pegada, fuera de alcance y remitidos a la spec de su módulo
 
 > Retroactiva (skill `sdd`, «Specs retroactivas»): pruebas en el navegador escritas contra el ERS, sin cambiar el comportamiento de producción; el control y los simulados del backend viven en una carpeta de apoyo de pruebas, inactiva fuera de la instancia de pruebas (decisión 17). Lo que el sistema no cumple queda como **fallo esperado estricto** con su requisito y se corrige en otra spec.
 
@@ -15,6 +15,7 @@ Historial:
 - 22/10/2026 — Andrés responde las 4 dudas del plan 005b (decisiones 21-24): la cita en el chat general vuelve a la 005b (RF-11.40, solo la cita); limpieza manual por terminal; ERS V1.8 en un solo lote; regla de `plan-005b.md` §13 aprobada.
 - 22/10/2026 — cambio, `plan-005b.md` y `tasks-005b.md` aprobados por Andrés (opción A; fase 3 cerrada), con las resoluciones 25-28. La 005b pasa a implementación.
 - 26/10/2026 — cambio (decisiones 29 y 30 de Andrés): RF-05.40 aclara que el nombre no se repite en la respuesta de la API, no en el aviso; el error de RF-07 hallado en la T2 se corrige en la T3b.
+- 26/10/2026 — 005b implementada: @reviewer APROBADO. Cifras finales: pytest 2028 pasan + 45 xfail; `npm run e2e` 141 = 133 pasan + 8 fallos esperados, 0 XPASS, residuos 0, contraseñas 0. Paso 2 de `.claude/rules/testing.md` cerrado.
 
 ## Contexto y objetivo
 La 004 protege los flujos críticos hasta la API; lo que se ve en el navegador no tiene ninguna prueba automatizada. Esta spec:
