@@ -1,5 +1,5 @@
 # Spec 005 — Red de seguridad de extremo a extremo (flujos en el navegador)
-Estado: 005a implementada (aprobada por Andrés, 22/10/2026); 005b pendiente
+Estado: 005a implementada; 005b aprobada, en implementación (005b reducida a carga, la cita en el chat y notebooks; aprobada por Andrés (22/10/2026))
 
 > Retroactiva (skill `sdd`, «Specs retroactivas»): pruebas en el navegador escritas contra el ERS, sin cambiar el comportamiento de producción; el control y los simulados del backend viven en una carpeta de apoyo de pruebas, inactiva fuera de la instancia de pruebas (decisión 17). Lo que el sistema no cumple queda como **fallo esperado estricto** con su requisito y se corrige en otra spec.
 
@@ -11,31 +11,35 @@ Historial:
 - 21/10/2026 — Andrés (opción B): el plan puede ajustar el límite de 5 min de la preparación con justificación y su aprobación (RA-02.47, decisión 19).
 - 21/10/2026 — aprobada por Andrés (fase 2 cerrada). Fase 3: `plan-005a.md` y `tasks-005a.md`; la 005b, después de validar la 005a.
 - 22/10/2026 — 005a implementada: @reviewer APROBADO (vuelta 1) y aprobación de Andrés (opción A); la 005b sigue pendiente.
+- 22/10/2026 — cambio (decisión 20 de Andrés, por plazo): la 005b se reduce a D (carga) y F (notebooks); E (chat), G (bitácora) y la imagen pegada o arrastrada pasan a «Fuera de alcance de la 005b».
+- 22/10/2026 — Andrés responde las 4 dudas del plan 005b (decisiones 21-24): la cita en el chat general vuelve a la 005b (RF-11.40, solo la cita); limpieza manual por terminal; ERS V1.8 en un solo lote; regla de `plan-005b.md` §13 aprobada.
+- 22/10/2026 — cambio, `plan-005b.md` y `tasks-005b.md` aprobados por Andrés (opción A; fase 3 cerrada), con las resoluciones 25-28. La 005b pasa a implementación.
+- 26/10/2026 — cambio (decisiones 29 y 30 de Andrés): RF-05.40 aclara que el nombre no se repite en la respuesta de la API, no en el aviso; el error de RF-07 hallado en la T2 se corrige en la T3b.
 
 ## Contexto y objetivo
 La 004 protege los flujos críticos hasta la API; lo que se ve en el navegador no tiene ninguna prueba automatizada. Esta spec:
-- prueba en el navegador, con los dos roles, en escritorio y en pantalla pequeña, los flujos críticos: acceso y roles; carga → Procesado → el chat lo cita; NotebookServIA;
-- cierra las exenciones que esperaban a la 005: **E2** de la 003 (cuatro pantallas) y la **presentación del bloque F** de la 004 (RF-05.23, RF-22.1, RNF-04.1);
+- prueba en el navegador, con los dos roles, en escritorio y en pantalla pequeña, los flujos críticos: acceso y roles; carga → Procesado → el chat general lo cita (decisión 21); NotebookServIA;
+- cierra las exenciones que esperaban a la 005: **E2** de la 003 (cuatro pantallas) y, de la **presentación del bloque F** de la 004, RF-05.23 y el aviso de RNF-04.1 (RF-22.1 y el detalle de RNF-04.1 salen de la 005b);
 - crea la infraestructura de extremo a extremo, aislada del entorno de desarrollo y del de pytest.
 
-Al cerrar la 005b queda cerrado el paso 2 y pueden empezar las funciones nuevas y las specs retroactivas por módulo.
+Al cerrar la 005b queda cerrado el paso 2 y pueden empezar las funciones nuevas; por la regla de `plan-005b.md` §13 (aprobada, decisión 24), cada spec nueva prueba el módulo que toca, en lugar de las specs retroactivas por módulo.
 
 ## Trazabilidad
 - ERS V1.7: RF-01, RF-02, RF-03, RF-05, RF-11, RF-12, RF-16, RF-17, RF-18, RF-19, RF-21, RF-22, RNF-04, RNF-07, RNF-09, RA-02. Del ERS V1.8 (borrador de la 004b, sin exportar) sale solo el texto de RF-19.42.
 - CU: CU-01 (p. 1, 4, 8; FA-02, FE-01, FE-02), CU-02, CU-03 (FE-02), CU-04, CU-05, CU-07 (FA-01, FE-05), CU-09 (p. 5-6; FA-05, FE-01, FE-02, FE-03), CU-11, CU-12 (p. 2; FA-01, FE-01), CU-13 (p. 2-4; FA-01, FE-01), CU-15 (FA-01).
 - Pendientes que recoge (el origen va en cada requisito): E2 de la 003; bloque F y «fuera de alcance» de la 004 (permisos por página, menú, panel obligatorio, streaming, RF-16, consola); extremo a extremo de la 004a y la 004b.
-- «Estado actual» que cierra (005b): los tres «pendiente la verificación de extremo a extremo (spec 005)» de RF-05, RF-22 y RNF-04; en RA-02, «El extremo a extremo llega con la spec 005».
+- «Estado actual» que cierra (005b): «pendiente la verificación de extremo a extremo (spec 005)» de RF-05; el de RNF-04 queda solo para el detalle de la bitácora y el de RF-22 sigue abierto (los dos, a la spec de la bitácora); en RA-02, «El extremo a extremo llega con la spec 005».
 
 Numeración: bloque `.40`-`.49` (no usado por ninguna spec anterior).
 
 ## Partición: 005a y 005b
 Un solo documento del QUÉ; dos planes y dos listas de tareas, en orden (decisión 1).
 
-| | 005a (~10 tareas) | 005b (~9 tareas) |
+| | 005a (~10 tareas) | 005b (~6 tareas) |
 |---|---|---|
-| Secciones | A (infraestructura), B (acceso y roles), C (pantallas de E2) | D (carga), E (chat), F (notebooks), G (bitácora) |
+| Secciones | A (infraestructura), B (acceso y roles), C (pantallas de E2) | D (carga y la cita en el chat general), F (notebooks); el resto de E y G, fuera (decisiones 20 y 21) |
 | Entrega | la instancia de pruebas, todos los simulados y el control de RA-02.49 con todas sus capacidades, la lista de páginas (RA-02.48) y el comando con sus límites | solo pruebas; si necesita una capacidad nueva, su plan la agrega sin romper la 005a |
-| Cierra | E2 de la 003 | bloque F de la 004, los tres «Estado actual» y el paso 2 |
+| Cierra | E2 de la 003 | RF-05.23 y el aviso de RNF-04.1 de la 004, el «Estado actual» de RF-05 y el de RA-02, y el paso 2 |
 
 RA-02.45 y RA-02.46 rigen en las dos. La 005b empieza cuando la 005a está validada.
 
@@ -43,8 +47,9 @@ RA-02.45 y RA-02.46 rigen en las dos. La 005b empieza cuando la 005a está valid
 Usuario Gubernamental, Administrador y visitante sin sesión. Las pruebas usan solo usuarios `PRUEBA` que la suite crea. El usuario B `PRUEBA` y los notebooks `PRUEBA 004b A/B` de desarrollo son solo para la verificación manual.
 
 ## Historias de usuario
-- HU-01 (RF-01.43), HU-02 (RF-02.40), HU-03 (RF-03.41), HU-26 (RF-03.41, RF-21.40), HU-05 (RF-05.40), HU-11 (RF-11.40), HU-12 (RF-11.40, cita real), HU-16 (RF-16.40), HU-17 (RF-17.40), HU-18 (RF-18.40), HU-19 (RF-19.40 a RF-19.42), HU-22 (RF-21.40 a RF-21.42, RF-22.40), HU-24 (RF-01.44), HU-25 (RF-02.42, RF-03.40).
-- HU-NUEVA (solo de desarrollo, no va al documento): como desarrollador, quiero que una prueba en el navegador me avise si un cambio rompe el acceso, la carga, el chat o los notebooks tal como los ve el usuario.
+- HU-01 (RF-01.43), HU-02 (RF-02.40), HU-03 (RF-03.41), HU-26 (RF-03.41, RF-21.40), HU-05 (RF-05.40), HU-17 (RF-17.40), HU-18 (RF-18.40), HU-19 (RF-19.40 a RF-19.42), HU-22 (RF-21.40), HU-24 (RF-01.44), HU-25 (RF-02.42, RF-03.40).
+- Salen con E y G: HU-11, HU-12, HU-16 y HU-22 (RF-21.41, RF-21.42, RF-22.40).
+- HU-NUEVA (solo de desarrollo, no va al documento): como desarrollador, quiero que una prueba en el navegador me avise si un cambio rompe el acceso, la carga o los notebooks tal como los ve el usuario.
 
 ## Definiciones
 - **Instancia de pruebas**: un backend y un frontend que la suite levanta en puertos propios sobre un entorno aislado con nombres propios (base y colección `servia_pruebas_e2e`, almacén de archivos temporal, simulados), distinto del de desarrollo y del de pytest (`servia_pruebas`).
@@ -71,7 +76,7 @@ Todas son pruebas de extremo a extremo salvo que se diga otra cosa. Cada flujo c
 - **RA-02.44** `[NUEVO]`: lo que el sistema no cumple se marca como fallo esperado estricto. Si un fallo esperado pasa, la corrida falla y lo nombra.
 - **RA-02.45** `[NUEVO]`: SI durante una prueba aparece en la consola un error o una excepción sin capturar no declarados, ENTONCES la prueba falla y muestra el mensaje. Se consideran declarados:
   - las respuestas 4xx/5xx que la propia prueba provoca (credenciales inválidas, recurso no disponible, fallo programado) y el aviso de carga de recurso que el navegador emite por ellas;
-  - los errores de consola heredados que la interfaz emite en un flujo correcto o en un error provocado (p. ej., al fallar el inicio de sesión o al rechazar un archivo), en una única lista de la suite, cada uno con su motivo y la spec retroactiva que lo corregirá. No son fallos esperados; quitarlos de la lista es parte de esa corrección.
+  - los errores de consola heredados que la interfaz emite en un flujo correcto o en un error provocado (p. ej., al fallar el inicio de sesión o al rechazar un archivo), en una única lista de la suite, cada uno con su motivo y la spec del módulo que lo corrija (decisión 24). No son fallos esperados; quitarlos de la lista es parte de esa corrección.
   - Las advertencias no cuentan.
 - **RA-02.46** `[NUEVO]` (RNF-04): cada flujo se ejecuta en escritorio y a 616 px, solo en Chrome; a 616 px los controles que el flujo usa son accesibles. Los flujos sin diferencia de diseño corren solo en escritorio.
 - **RA-02.47** `[NUEVO]` (RA-01, RA-02): las pruebas duran en total como máximo 10 min y ninguna pasa de 60 s; sin pausas fijas: si un estado no llega, la prueba falla diciendo qué esperaba. Tiene su propio comando; su límite no suma al de RA-02.15.
@@ -130,25 +135,14 @@ Retira E2: el texto exacto ya lo cubren las integraciones de la 003; aquí se pr
 
 ### D. Carga y archivos rechazados (bloque F de la 004) — 005b
 - **RF-05.40** (cierra RF-05.23; CU-07 FA-01, FE-05): con la carga mixta, en Ingesta y en un notebook propio:
-  - aviso con el motivo de cada rechazado tal cual y la confirmación con solo los aceptados; ningún texto con el nombre no válido;
+  - aviso con el motivo de cada rechazado tal cual y la confirmación con solo los aceptados;
+  - la respuesta del sistema a la carga no repite el nombre de ningún archivo rechazado; el aviso de la pantalla sí puede mostrar, junto a cada motivo, el nombre que eligió el usuario, como texto (decisión 29);
   - los rechazados nunca muestran «procesando»; el aceptado llega a Procesado;
-  - ningún aviso de éxito ni de subida iniciada antes de la respuesta; con todos rechazados, ninguno;
-  - una imagen pegada y otra arrastrada sobre el chat del notebook son aceptadas, con la misma confirmación, y llegan a Procesado (HTR simulado).
+  - ningún aviso de éxito ni de subida iniciada antes de la respuesta; con todos rechazados, ninguno.
   - Dos temas en un mismo «Guardar»: solo verificación manual (decisión 13).
-- **RF-22.40** (cierra RF-22.1; CU-15 FA-01): el Administrador abre el detalle de un registro de cada tipo de carga (tabla de RF-22.1 de la 004): nombre visible del tipo, etiquetas en su orden, sin etiquetas vacías, «Expediente», «N/A», «Task» ni datos técnicos; la carga rechazada sin nombre ni tema; encabezado «Tema» o «Sin tema asociado». Las filas las crea el control.
-- **RNF-04.40** (cierra RNF-04.1): a 616 px, el aviso de RF-05.40 y el detalle de RF-22.40 son accesibles y su texto completo es visible al desplazarse. El aspecto visual sigue siendo manual (principio 4).
-
-### E. Chat (RF-11, RF-12, RF-16; CU-09) — 005b
-- **RF-11.40** (RF-11, RF-12; CU-09 p. 5-6): CUANDO el Usuario Gubernamental pregunta (general y acotado a un tema) por un documento Procesado:
-  - con la respuesta retenida, la pantalla muestra las etapas («Procesando consulta», «Analizando documentos», «Generando respuesta») y texto parcial antes del final;
-  - la respuesta muestra el nombre del archivo citado; al pulsarlo descarga el original, idéntico byte a byte;
-  - acotado al tema A, una pregunta por la frase del tema B no cita el archivo de B.
-- **RF-11.41** (RF-11 «Manejo de errores»; CU-09 FE-01): SI el motor no devuelve texto, ENTONCES el sistema reintenta una sola vez mostrando «Reintentando obtener respuesta...» y presenta la respuesta del segundo intento. SI el segundo también llega vacío, ENTONCES muestra un error en la conversación con el control de envío disponible.
-- **RF-11.42** (RF-11; CU-09 FE-03; RF-11.2 de la 004): SI no se puede conectar con el motor, ENTONCES muestra en la conversación «Error de Conexión» con al menos una posible causa, en español y sin el texto de la excepción, y el control de envío queda disponible.
-  - Hoy el mensaje nombra puertos del servidor: no lo prohíbe el ERS, así que no es fallo esperado aquí; queda como hallazgo para la retroactiva de chat (decisión 18).
-- **RF-11.43** (RF-11; CU-09 FA-05): en el chat de un notebook, el campo empieza por «Preguntale algo a "<nombre del notebook>"» (comprobación por prefijo) y las respuestas citan solo documentos de ese notebook (pregunta por la frase de otro notebook del mismo usuario: no lo cita).
-- **RF-16.40** (RF-16; CU-09 FE-02): SI pasan 30 s sin recibir datos (desde el inicio o tras el último fragmento), ENTONCES el control de envío se libera, el texto recibido se conserva y aparece «Se perdió la conexión con el servidor. Intentá de nuevo.». Antes de los 30 s el control sigue bloqueado.
-  - La prueba controla el reloj del navegador solo en esa prueba (decisión 7): no espera 30 s reales.
+- **RF-11.40 (solo la cita)** (RF-11; CU-09 p. 6; decisión 21): CUANDO el Usuario Gubernamental pregunta en el chat general por la frase de un documento que cargó en Ingesta y llegó a Procesado, la respuesta muestra el nombre de ese archivo.
+  - Con el motor simulado; sin etapas, sin descarga y sin acotado a un tema (siguen en «Fuera de alcance de la 005b»). Con Ollama real, solo en la verificación manual.
+- **RNF-04.40** (cierra el aviso de RNF-04.1): a 616 px, el aviso de RF-05.40 es accesible y su texto completo es visible al desplazarse. El aspecto visual sigue siendo manual (principio 4). El detalle de la bitácora sale con RF-22.40.
 
 ### F. NotebookServIA (RF-17..19, RNF-07; CU-11..13) — 005b
 - **RF-17.40** (RF-17; CU-11): CUANDO crea un notebook con nombre (botón o Enter), aparece primero en la lista y se abre con «Subir documentos», su lista y el chat. SI el nombre está vacío, ENTONCES no se crea y la lista no cambia. Otro usuario no lo ve en su lista.
@@ -162,12 +156,8 @@ Retira E2: el texto exacto ya lo cubren las integraciones de la 003; aquí se pr
 - En las pruebas que pulsan la «x» (RF-19.41, RF-19.42, RNF-07.40), si aparece la confirmación, la prueba la acepta.
 - **RNF-07.40** (RNF-07.30 de la 004b): SI una acción del notebook recibe la respuesta uniforme de no disponible (previsualizar o quitar un documento ya quitado desde otra pestaña), ENTONCES la sesión sigue abierta y la pantalla sigue operable. El aviso al quitar es el de RF-19.42; el aviso al previsualizar queda para la retroactiva de notebooks (decisión 12).
 
-### G. Bitácora (RF-21, RF-22) — 005b
-- **RF-21.41** (RF-21.34 de la 004b): «Historial de Actividades» muestra «Crear Notebook», «Quitar Documento de Notebook» y «Gestionar Conversación» con su nombre (no «Acción 16») y su filtro los ofrece y filtra. Las filas las crea el control.
-- **RF-21.42** (RF-21; RF-22): cada prueba ejecuta con un Usuario Gubernamental `PRUEBA` su propio flujo (inicio de sesión, carga, consulta, crear notebook o quitar documento) y luego el Administrador encuentra esa acción en «Historial de Actividades» con su usuario y tipo, sin contraseñas. Ninguna depende de otra.
-
 ## Requisitos no funcionales
-RNF-09.40, RNF-04.40, RNF-07.40 y los de la sección A. Los textos en español (RT-07) se comprueban con los textos exactos de cada requisito.
+RNF-09.40, RNF-04.40 (solo el aviso), RNF-07.40 y los de la sección A. Los textos en español (RT-07) se comprueban con los textos exactos de cada requisito.
 
 ## Casos límite
 - Prueba cortada a la mitad: la siguiente corrida empieza con residuos en cero (RA-02.42).
@@ -176,12 +166,38 @@ RNF-09.40, RNF-04.40, RNF-07.40 y los de la sección A. Los textos en español (
 - Error de consola heredado que se corrige: se quita de la lista declarada (RA-02.45).
 
 ## Fuera de alcance
-- Corregir lo que falle (fallos esperados → specs retroactivas), salvo un ajuste de configuración que la instancia necesite sin cambiar comportamiento (lo justifica el plan).
+- Corregir lo que falle (fallos esperados → la spec del módulo que los toque, decisión 24), salvo un ajuste de configuración que la instancia necesite sin cambiar comportamiento (lo justifica el plan).
 - RF-01.42 con el servidor caído (hoy muestra «Credenciales inválidas»): retroactiva de autenticación (decisión 11). También la inactividad de una hora, la renovación automática y el token aceptado tras cerrar sesión.
 - El aviso al previsualizar un documento no disponible: retroactiva de notebooks.
-- RF-13, RF-14, RF-15, RF-20, RF-23, RF-04 y la exportación de la bitácora: specs retroactivas.
+- RF-13, RF-14, RF-15, RF-20, RF-23, RF-04 y la exportación de la bitácora: la spec del módulo que los toque (decisión 24).
 - RNF-05: Firefox y Edge quedan sin verificar; el ERS no cambia por esta spec.
 - Calidad real de la respuesta y la cita y el modelo real (verificación manual con Ollama); aspecto visual (manual); entrega real al buzón; rendimiento (RNF-01); integración continua.
+- Lo de la sección siguiente.
+
+## Fuera de alcance de la 005b (decisión de Andrés, 22/10/2026, por plazo)
+Pasa a la spec del módulo que lo toque, que escribe primero sus pruebas (regla aprobada, `plan-005b.md` §13, decisión 24). Texto conservado como punto de partida; la numeración `.4x` queda reservada.
+- La 005a no cubre ninguno en la interfaz: solo probó por API las capacidades del control que usarían (motor, filas de bitácora; `capacidades.spec.js`), que siguen disponibles. RF-21.40 (005a) no cambia.
+- Decisiones 7 y 9 (la parte de RF-21.42) y el riesgo del reloj del navegador pasan con sus requisitos.
+
+**Carga sobre el chat → spec de las mejoras del notebook (o de la ingesta):**
+- (antes en RF-05.40) Una imagen pegada y otra arrastrada sobre el chat del notebook son aceptadas, con la misma confirmación, y llegan a Procesado (HTR simulado).
+
+**E. Chat (RF-11, RF-12, RF-16; CU-09) → spec de chat:**
+- **RF-11.40 (resto)** (RF-11, RF-12; CU-09 p. 5-6): CUANDO el Usuario Gubernamental pregunta (general y acotado a un tema) por un documento Procesado:
+  - con la respuesta retenida, la pantalla muestra las etapas («Procesando consulta», «Analizando documentos», «Generando respuesta») y texto parcial antes del final;
+  - al pulsar el nombre del archivo citado descarga el original, idéntico byte a byte (la cita en el chat general queda en la sección D, decisión 21);
+  - acotado al tema A, una pregunta por la frase del tema B no cita el archivo de B.
+- **RF-11.41** (RF-11 «Manejo de errores»; CU-09 FE-01): SI el motor no devuelve texto, ENTONCES el sistema reintenta una sola vez mostrando «Reintentando obtener respuesta...» y presenta la respuesta del segundo intento. SI el segundo también llega vacío, ENTONCES muestra un error en la conversación con el control de envío disponible.
+- **RF-11.42** (RF-11; CU-09 FE-03; RF-11.2 de la 004): SI no se puede conectar con el motor, ENTONCES muestra en la conversación «Error de Conexión» con al menos una posible causa, en español y sin el texto de la excepción, y el control de envío queda disponible.
+  - Hoy el mensaje nombra puertos del servidor: no lo prohíbe el ERS; hallazgo para la spec de chat (decisión 18).
+- **RF-11.43** (RF-11; CU-09 FA-05): en el chat de un notebook, el campo empieza por «Preguntale algo a "<nombre del notebook>"» (comprobación por prefijo) y las respuestas citan solo documentos de ese notebook (pregunta por la frase de otro notebook del mismo usuario: no lo cita). Puede ir en la spec de las mejoras del notebook.
+- **RF-16.40** (RF-16; CU-09 FE-02): SI pasan 30 s sin recibir datos (desde el inicio o tras el último fragmento), ENTONCES el control de envío se libera, el texto recibido se conserva y aparece «Se perdió la conexión con el servidor. Intentá de nuevo.». Antes de los 30 s el control sigue bloqueado.
+  - La prueba controla el reloj del navegador solo en esa prueba (decisión 7): no espera 30 s reales.
+
+**G. Bitácora (RF-21, RF-22) → spec de la bitácora (o la del módulo cuya acción se registre):**
+- **RF-22.40** (cierra RF-22.1; CU-15 FA-01): el Administrador abre el detalle de un registro de cada tipo de carga (tabla de RF-22.1 de la 004): nombre visible del tipo, etiquetas en su orden, sin etiquetas vacías, «Expediente», «N/A», «Task» ni datos técnicos; la carga rechazada sin nombre ni tema; encabezado «Tema» o «Sin tema asociado». Las filas las crea el control. Con él sale la parte del detalle de RNF-04.40 (616 px).
+- **RF-21.41** (RF-21.34 de la 004b): «Historial de Actividades» muestra «Crear Notebook», «Quitar Documento de Notebook» y «Gestionar Conversación» con su nombre (no «Acción 16») y su filtro los ofrece y filtra. Las filas las crea el control.
+- **RF-21.42** (RF-21; RF-22): cada prueba ejecuta con un Usuario Gubernamental `PRUEBA` su propio flujo (inicio de sesión, carga, consulta, crear notebook o quitar documento) y luego el Administrador encuentra esa acción en «Historial de Actividades» con su usuario y tipo, sin contraseñas. Ninguna depende de otra.
 
 ## Decisiones (Andrés, 21/10/2026)
 Restricciones para los planes; los detalles técnicos los fija cada plan.
@@ -207,11 +223,22 @@ Restricciones para los planes; los detalles técnicos los fija cada plan.
 17. (N3 = A) El control de pruebas y los simulados viven en una carpeta de apoyo de pruebas dentro del backend, inactiva salvo con la configuración de la instancia de pruebas; no cambian producción (RA-02.49).
 18. Los puertos que nombra el mensaje de RF-11.42 no son fallo esperado en la 005: hallazgo para la retroactiva de chat.
 19. La preparación tiene un límite de 5 min, que el plan puede ajustar con justificación y la aprobación de Andrés (RA-02.47).
+20. (22/10/2026, por plazo) La 005b se reduce a D y F; E, G y la imagen sobre el chat pasan a la spec de su módulo («Fuera de alcance de la 005b»).
+21. (22/10/2026, duda 1 = A) La cita en el chat general vuelve a la 005b (RF-11.40, solo la cita, sección D): una prueba con el motor simulado y su paso manual con Ollama real. El paso 2 de `.claude/rules/testing.md` conserva «→ el chat lo cita».
+22. (22/10/2026, duda 2 = A) Los datos de la verificación manual en desarrollo se borran al terminar por terminal (⚠️ confirmación del hook), con conteos antes y después en SQL Server, Qdrant y `uploads/`.
+23. (22/10/2026, duda 3 = A) Los cambios al ERS van en la misma V1.8, en un solo lote, si al cerrar la 005b sigue sin exportar.
+24. (22/10/2026, duda 4 = A) Regla de `plan-005b.md` §13 aprobada tal cual: cada spec prueba el módulo que toca, en lugar de las specs retroactivas por módulo.
+25. (22/10/2026, aprobación) RF-11.40 se parte con el mismo número: «solo la cita» en la 005b y «resto» fuera de alcance. No se crea RF-11.44.
+26. (22/10/2026, aprobación) La historia de usuario de la cita (HU-11 o HU-12) se comprueba y se ajusta en la T6, al escribir la documentación.
+27. (22/10/2026, aprobación) `MEMORY.md`: Andrés cambia solo los «Próximos pasos» 3 y 4 por la regla de la decisión 24; las líneas de cierre de cada tarea las siguen escribiendo los agentes.
+28. (22/10/2026, aprobación) Si la V1.8 ya estuviera exportada al cerrar la 005b, se para y se pregunta a Andrés (confirma la decisión 23 y `plan-005b.md` §11).
+29. (26/10/2026, opción A) En RF-05.40, «sin el nombre no válido» se refiere a la respuesta del sistema (la API). El aviso de la pantalla muestra el nombre local junto a cada motivo (RF-05.23); lo escribió el usuario y se muestra como texto, sin ejecutarse.
+30. (26/10/2026, opción A) Excepción a «sin cambiar producción»: el hallazgo de RF-07 de la T2 (al fallar la vectorización el documento queda Pendiente, no Error) se corrige ya, en la tarea T3b, con su prueba de regresión.
 
 ### Riesgos para los planes
 - **Memoria y CPU**: dos procesos del backend en un contenedor (el recargador de desarrollo ya murió por memoria). El plan mide la memoria del contenedor antes y durante la corrida; condición: sin reinicios ni eventos de falta de memoria.
 - **Configuración del frontend de pruebas**: la dirección de la API se fija al compilar; si se toma la de desarrollo, las pruebas tocarían desarrollo (RA-02.41, RNF-09.40).
-- **Reloj del navegador** (RF-16.40): puede adelantar la sesión de NextAuth, los avisos con tiempo y el sondeo de la ingesta. Se instala solo en esa prueba, tras iniciar sesión, y se avanza lo justo para cruzar el plazo de inactividad del streaming (constante `STREAM_INACTIVITY_TIMEOUT_MS`).
+- **Reloj del navegador** (RF-16.40; sale de la 005b con él): puede adelantar la sesión de NextAuth, los avisos con tiempo y el sondeo de la ingesta. Se instala solo en esa prueba, tras iniciar sesión, y se avanza lo justo para cruzar el plazo de inactividad del streaming (constante `STREAM_INACTIVITY_TIMEOUT_MS`).
 - **RF-19.42** depende del ERS V1.8, sin exportar ni visto bueno del tutor: si el texto cambia, cambia la prueba.
 - **Hook de terminal**: `validate-bash.sh` no permite hoy el comando de Playwright ni arrancar el segundo proceso del backend. Lo ajusta Andrés antes de la tarea que lo necesite (los agentes no tocan `.claude/`); ⚠️ «Pregunta antes».
 
@@ -221,9 +248,11 @@ Restricciones para los planes; los detalles técnicos los fija cada plan.
 - Verificación manual de punta a punta con Ollama real y el worker real, los dos roles, escritorio y 616 px; Andrés inicia la sesión y no da contraseñas a los agentes.
 - Documentación al cierre (la edita otro, no el planner):
   - 005a: retirar E2 en las specs 003, 003a y 003b; definición del entorno aislado de la 002 y su mención en `CLAUDE.md` (dos entornos: `servia_pruebas` y `servia_pruebas_e2e`); `CLAUDE.md` («Comandos»: el comando de extremo a extremo); la regla 5b en `CLAUDE.md` y `.claude/rules/testing.md`, si Andrés la aprueba; `graphify-out/mapa_pruebas.md` y su generador, para cubrir las pruebas de extremo a extremo; `MEMORY.md`.
-  - 005b: ERS (quitar los tres «Estado actual» de la 005 en RF-05, RF-22 y RNF-04; RA-02; los requisitos con fallo esperado, a su «Estado actual»); retirar la exención temporal en la 004; `CLAUDE.md` («Verificación») y `.claude/rules/testing.md` (paso 2 cerrado); `MEMORY.md`.
+  - 005b: ERS V1.8, en el mismo lote (decisión 23): quitar el «Estado actual» de la 005 en RF-05; en RNF-04, dejarlo solo para el detalle de la bitácora; en RF-22, remitirlo a la spec de la bitácora; RA-02; los requisitos con fallo esperado, a su «Estado actual». En la 004, retirar la exención temporal de RF-05.23 y del aviso de RNF-04.1 y remitir RF-22.1 a la spec de la bitácora. `.claude/rules/testing.md` (paso 2 cerrado, con «→ el chat lo cita», y la regla aprobada de `plan-005b.md` §13) y los demás documentos que nombran las retroactivas (lista en §13); `MEMORY.md`.
 
 ## Dudas abiertas
-Ninguna sobre los requisitos. Pendientes aparte de la 005a (22/10/2026):
+Ninguna: las dudas 1-4 del plan 005b quedaron resueltas (decisiones 21-24).
+
+Pendientes aparte de la 005a (22/10/2026; el primero lo resuelve la T1 de la 005b):
 - El recuento `contar_residuos_e2e` de `backend/tests/instancia_e2e/control.py:163-171` no tiene reintento: una excepción ahí sale como 500 sin `detail`.
 - La causa real del 500 de `/limpiar` sigue sin confirmarse; si reaparece, revisar `/tmp/servia_e2e/instancia.log`.
