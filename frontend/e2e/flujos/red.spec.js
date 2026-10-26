@@ -1,7 +1,8 @@
 // Pruebas de los fixtures transversales (spec 005a, T4): red (RA-02.41, RNF-09.40), consola (RA-02.45) y 616 px (RA-02.46).
 // Corren en `escritorio` y `pequena`. Cada prueba provoca a propósito lo que el fixture vigila, comprueba que lo detectó y lo
 // descarta; si no lo descartara, el propio fixture la haría fallar al terminar.
-const { test, expect, exigirAccesible } = require('../soporte/fixtures.js');
+const { test, expect, esLocalDelNavegador, exigirAccesible, iniciarSesion } = require('../soporte/fixtures.js');
+const { abrirNotebooks, crearNotebookEnPantalla } = require('../soporte/pantallas.js');
 const { esDeclarado, validarLista, CONSOLA_DECLARADA } = require('../soporte/consola_declarada.js');
 
 test.describe('fixtures transversales', () => {
@@ -48,6 +49,21 @@ test.describe('fixtures transversales', () => {
     consola.descartar();
   });
 
+  test('RA-02.41 · solo el visor de PDF y chrome://resources cuentan como locales: otra extensión o página chrome: es externa', async () => {
+    const visor = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai';
+    expect(esLocalDelNavegador(`${visor}/main.js`)).toBe(true);
+    expect(esLocalDelNavegador('chrome://resources/css/text_defaults.css')).toBe(true);
+    for (const ajena of [
+      'chrome-extension://abcdefghijklmnopabcdefghijklmnop/inyectado.js',
+      `${visor}abcd/main.js`,
+      'chrome://settings/',
+      'chrome://resources.externo/x.js',
+      'http://servia-externo.invalid/prueba',
+    ]) {
+      expect(esLocalDelNavegador(ajena), ajena).toBe(false);
+    }
+  });
+
   test('RA-02.45 · error de consola no declarado: error y excepción cuentan, la advertencia no', async ({ page, consola }) => {
     await page.setContent('<p>PRUEBA</p>');
     await page.evaluate(() => {
@@ -86,7 +102,7 @@ test.describe('fixtures transversales', () => {
     // Los dos errores heredados que la interfaz emite al mostrar un rechazo del servidor están en la lista única, no en cada prueba.
     expect(esDeclarado('Error al cambiar contraseña: AxiosError')).toBe(true);
     expect(esDeclarado('Error al resetear contraseña: Error')).toBe(true);
-    expect(CONSOLA_DECLARADA.every((entrada) => /spec retroactiva/.test(entrada.spec))).toBe(true);
+    expect(CONSOLA_DECLARADA.every((entrada) => /spec del módulo/.test(entrada.spec))).toBe(true);
 
     consola.descartar();
   });
@@ -114,5 +130,44 @@ test.describe('fixtures transversales', () => {
     await exigirAccesible(page.locator('#libre'));
     await expect(exigirAccesible(page.locator('#tapado'), { timeout: 500 })).rejects.toThrow(/está tapado por <div>/);
     await expect(exigirAccesible(page.locator('#fuera'), { timeout: 500 })).rejects.toThrow(/queda fuera de la ventana/);
+  });
+
+  // 005b, T2: los flujos con dos pestañas o dos usuarios no pueden abrir una vía sin vigilar.
+  test('RA-02.41 · RA-02.45 · otra pestaña y otro usuario también quedan vigilados', async ({
+    page, otraPestana, otroUsuario, crearUsuario, red, consola,
+  }) => {
+    const usuario = await crearUsuario('usuario');
+    await iniciarSesion(page, usuario.correo, usuario.contrasena);
+
+    // Otra pestaña del mismo contexto: comparte la sesión y la vigilancia del contexto (red y consola).
+    await abrirNotebooks(otraPestana);
+    expect(red.externas()).toEqual([]);
+    const desdePestana = await otraPestana.evaluate(() => fetch('http://servia-externo.invalid/pestana').then(() => 'salió', () => 'bloqueada'));
+    expect(desdePestana).toBe('bloqueada');
+    await expect.poll(() => red.externas().length).toBe(1);
+    expect(red.externas()[0]).toContain('http://servia-externo.invalid/pestana');
+    consola.descartar(); // el pedido bloqueado también deja su propio error de consola
+    await otraPestana.evaluate(() => console.error('PRUEBA error de la otra pestaña'));
+    await expect.poll(() => consola.pendientes().length).toBe(1);
+    expect(consola.pendientes()[0]).toContain('PRUEBA error de la otra pestaña');
+    red.descartar();
+    consola.descartar();
+
+    // Otro usuario en un contexto nuevo: tiene su propia red y su propia consola, también vigiladas.
+    const { page: paginaAjena, red: redAjena, consola: consolaAjena } = otroUsuario;
+    await abrirNotebooks(paginaAjena);
+    const nombre = `PRUEBA notebook ajeno ${Date.now()}`;
+    await crearNotebookEnPantalla(paginaAjena, nombre);
+    expect(redAjena.externas()).toEqual([]);
+    const desdeAjeno = await paginaAjena.evaluate(() => fetch('http://servia-externo.invalid/ajeno').then(() => 'salió', () => 'bloqueada'));
+    expect(desdeAjeno).toBe('bloqueada');
+    await expect.poll(() => redAjena.externas().length).toBe(1);
+    expect(red.externas()).toEqual([]); // lo del otro contexto no se mezcla con el de la primera pestaña
+    consolaAjena.descartar();
+    await paginaAjena.evaluate(() => console.error('PRUEBA error del otro usuario'));
+    await expect.poll(() => consolaAjena.pendientes().length).toBe(1);
+    expect(consola.pendientes()).toEqual([]);
+    redAjena.descartar();
+    consolaAjena.descartar();
   });
 });

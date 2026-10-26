@@ -3,18 +3,10 @@
 // RF-19.42). Sin navegador: hablan con la API real de la instancia y con el control.
 // El código del correo y las contraseñas nunca se imprimen: las aserciones comparan booleanos, no valores.
 const { test, expect } = require('../soporte/fixtures.js');
-
-async function enviar(control, metodo, ruta, cuerpo, token) {
-  const cabeceras = { 'Content-Type': 'application/json' };
-  if (token) cabeceras.Authorization = `Bearer ${token}`;
-  return fetch(`${control.url}${ruta}`, { method: metodo, headers: cabeceras, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
-}
-
-async function iniciarSesion(control, usuario) {
-  const respuesta = await enviar(control, 'POST', '/auth/login', { email: usuario.correo, password: usuario.contrasena });
-  expect(respuesta.status).toBe(200);
-  return (await respuesta.json()).access_token;
-}
+const {
+  PNG_MINIMO, aleatorio, nuevoTema, enviar, iniciarSesion, documentoDePrueba, cargar, estadoDeLaTarea, esperarTarea,
+  subirYProcesar, textoDeLosEventos, preguntar, abrirConsulta, rutaCitada, notebookConDocumento, crearNotebook, listarDocumentos,
+} = require('../soporte/datos.js');
 
 const solicitar = (control, correo) => enviar(control, 'POST', '/auth/solicitar-recuperacion', { email: correo });
 const verificar = (control, token, codigo) => enviar(control, 'POST', '/auth/verificar-codigo', { token, codigo });
@@ -164,87 +156,7 @@ test.describe('capacidades del control: recuperación y bitácora', () => {
   });
 });
 
-// --- T6: motor, ingesta y notebooks -------------------------------------------------------------------------------------------
-
-// Una imagen PNG válida de 1 × 1: el HTR simulado no la lee, pero la carga la valida por extensión y tipo.
-const PNG_MINIMO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
-
-let consecutivo = 0;
-const aleatorio = () => Math.random().toString(16).slice(2, 10);
-// Un tema en el formato heredado que el chat acotado reconoce hoy.
-const nuevoTema = () => `99-${String(500000 + (consecutivo += 1))}-0001-PE`;
-
-// Un documento de texto inventado con una frase distintiva única (como `documento_de_prueba` de pytest).
-function documentoDePrueba() {
-  const sufijo = aleatorio();
-  const frase = `la quebrada ficticia ${sufijo} desemboca en la laguna inventada de los patos azules`;
-  const texto = `PRUEBA documento inventado número ${sufijo}. Este texto es ficticio y sirve solo para las pruebas automatizadas `
-    + `de ServIA: ${frase}. Describe un expediente imaginario de una oficina que no existe, con fechas, nombres y lugares `
-    + 'inventados, y se repite lo suficiente para formar al menos un fragmento completo cuando el sistema lo divide.';
-  return { nombre: `PRUEBA_${sufijo}.txt`, contenido: Buffer.from(texto, 'utf-8'), frase, tipo: 'text/plain' };
-}
-
-async function cargar(control, token, tema, archivos) {
-  const formulario = new FormData();
-  formulario.append('CT_Num_expediente', tema);
-  for (const archivo of archivos) {
-    formulario.append('files', new Blob([archivo.contenido], { type: archivo.tipo || 'text/plain' }), archivo.nombre);
-  }
-  const respuesta = await fetch(`${control.url}/ingesta/archivos`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formulario,
-  });
-  expect(respuesta.status).toBe(200);
-  const { task_ids: ids } = await respuesta.json();
-  expect(ids.every((id) => typeof id === 'string')).toBe(true);
-  return ids;
-}
-
-const estadoDeLaTarea = async (control, token, id) => (
-  await (await enviar(control, 'GET', `/ingesta/progress/${id}`, undefined, token)).json()
-).status;
-
-const esperarTarea = (control, token, id, esperado) => expect.poll(
-  () => estadoDeLaTarea(control, token, id), { timeout: 30_000, intervals: [100, 250, 500], message: `tarea ${id}` },
-).toBe(esperado);
-
-// Sube un documento de texto al tema y espera a que quede procesado.
-async function subirYProcesar(control, token, tema, documento) {
-  const [id] = await cargar(control, token, tema, [documento]);
-  await esperarTarea(control, token, id, 'completado');
-}
-
-function leerEventos(texto) {
-  return texto.split('\n').filter((linea) => linea.startsWith('data: ')).map((linea) => JSON.parse(linea.slice(6)));
-}
-const textoDeLosEventos = (eventos) => eventos.filter((e) => e.type === 'chunk').map((e) => e.content).join('');
-
-function cuerpoDeChat(usuario, pregunta, { tema, notebook, sesion } = {}) {
-  const cuerpo = { query: pregunta, session_id: sesion || `session_${usuario.cedula}_${aleatorio()}` };
-  if (tema !== undefined) cuerpo.expediente_number = tema;
-  if (notebook !== undefined) cuerpo.notebook_id = String(notebook);
-  return cuerpo;
-}
-
-async function preguntar(control, token, usuario, pregunta, opciones) {
-  const respuesta = await enviar(control, 'POST', '/rag/consulta-con-historial-stream', cuerpoDeChat(usuario, pregunta, opciones), token);
-  expect(respuesta.status).toBe(200);
-  return leerEventos(await respuesta.text());
-}
-
-// Abre la consulta SIN esperar su final y va guardando lo que llega, para ver el texto parcial de una respuesta retenida.
-function abrirConsulta(control, token, usuario, pregunta, opciones) {
-  const visto = { texto: '', terminado: false };
-  const fin = (async () => {
-    const respuesta = await enviar(control, 'POST', '/rag/consulta-con-historial-stream', cuerpoDeChat(usuario, pregunta, opciones), token);
-    visto.estado = respuesta.status;
-    const decodificador = new TextDecoder();
-    for await (const parte of respuesta.body) visto.texto += decodificador.decode(parte, { stream: true });
-    visto.terminado = true;
-  })();
-  return { visto, fin };
-}
-
-const rutaCitada = (tema, documento) => `(uploads/${tema}/${documento.nombre})`;
+// --- T6: motor, ingesta y notebooks (las ayudas de datos están en soporte/datos.js) ---------------------------------------------
 
 test.describe('capacidades del control: motor, ingesta y notebooks', () => {
   test('RA-02.49 · motor cita, retiene, secuencia, falla y no emite', async ({ control, crearUsuario }) => {
@@ -408,19 +320,6 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect((await control.residuos()).filas.T_Documento).toBe(2);
   });
 
-  // Un notebook propio con un documento procesado: devuelve el notebook, el documento y su identificador.
-  async function notebookConDocumento(control, token) {
-    const creacion = await enviar(control, 'POST', '/notebooks', { nombre: `PRUEBA notebook ${aleatorio()}` }, token);
-    expect(creacion.status).toBe(200);
-    const notebook = await creacion.json();
-    const documento = documentoDePrueba();
-    await subirYProcesar(control, token, notebook.clave_interna, documento);
-    const lista = await (await enviar(control, 'GET', `/notebooks/${notebook.id}/documentos`, undefined, token)).json();
-    const fila = lista.find((d) => d.nombre_archivo === documento.nombre);
-    expect(fila?.estado).toBe('Procesado');
-    return { notebook, documento, id: fila.id };
-  }
-
   test('RA-02.49 · vista previa retenida', async ({ control, crearUsuario }) => {
     const dueno = await crearUsuario('usuario');
     const ajeno = await crearUsuario('usuario');
@@ -494,5 +393,49 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect(await control.notebooksEstado()).toEqual({
       retener_vista_previa: false, retener_quitar: false, fallar_quitar: false, esperando_vista_previa: 0, esperando_quitar: 0,
     });
+  });
+
+  test('RA-02.49 · ingesta retiene y falla en la vectorización', async ({ control, crearUsuario }) => {
+    const usuario = await crearUsuario('usuario');
+    const token = await iniciarSesion(control, usuario);
+    const notebook = await crearNotebook(control, token);
+    const lento = documentoDePrueba();
+    const malo = documentoDePrueba();
+    const estadoDe = async (documento) => (
+      (await listarDocumentos(control, token, notebook)).find((d) => d.nombre_archivo === documento.nombre)?.estado
+    );
+
+    // Retenido en la vectorización: el documento YA existe (Pendiente) y la tarea no termina; al liberar, queda Procesado.
+    await control.ingesta({ etapa: 'vectorizacion', retener: [lento.nombre] });
+    const [idLento] = await cargar(control, token, notebook.clave_interna, [lento]);
+    await expect.poll(async () => (await control.ingestaEstado()).esperando, { timeout: 15_000 }).toBe(1);
+    expect(await estadoDe(lento)).toBe('Pendiente');
+    expect(['completado', 'fallido']).not.toContain(await estadoDeLaTarea(control, token, idLento));
+    await control.ingestaLiberar();
+    await esperarTarea(control, token, idLento, 'completado');
+    expect(await estadoDe(lento)).toBe('Procesado');
+
+    // Fallo en la vectorización: la tarea falla, el documento ya estaba registrado y no se vectoriza (sin fragmentos nuevos).
+    // RF-07 (corregido en la T3b): el documento queda en «Error»; antes quedaba en «Pendiente» porque el manejador de
+    // errores llamaba a `update_progress(..., status="error")`, parámetro que no existe.
+    const antes = (await control.residuos()).puntos;
+    await control.ingesta({ etapa: 'vectorizacion', fallar: [malo.nombre] });
+    const [idMalo] = await cargar(control, token, notebook.clave_interna, [malo]);
+    await esperarTarea(control, token, idMalo, 'fallido');
+    expect(await estadoDe(malo)).toBe('Error');
+    expect((await control.residuos()).puntos).toBe(antes);
+
+    // Con la etapa por omisión (extracción) el documento nunca llega a registrarse; una etapa inválida se rechaza.
+    const otro = documentoDePrueba();
+    await control.ingesta({ fallar: [otro.nombre] });
+    const [idOtro] = await cargar(control, token, notebook.clave_interna, [otro]);
+    await esperarTarea(control, token, idOtro, 'fallido');
+    expect(await estadoDe(otro)).toBeUndefined();
+    await expect(control.ingesta({ etapa: 'inventada' })).rejects.toThrow(/400/);
+
+    // La limpieza devuelve la etapa a su valor por omisión.
+    await control.ingesta({ etapa: 'vectorizacion' });
+    await control.limpiar();
+    expect((await control.ingestaEstado()).etapa).toBe('extraccion');
   });
 });

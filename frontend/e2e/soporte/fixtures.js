@@ -31,13 +31,23 @@ function origenesPermitidos() {
   ]);
 }
 
+// El visor de PDF integrado de Chrome (vista previa de RF-18.40) carga recursos propios que no salen a ninguna red
+// (RNF-09.40 sigue intacto). Solo se aceptan esos dos orígenes, completos; cualquier otra extensión o página `chrome:` cuenta
+// como externa. El identificador es el de la extensión «Chrome PDF Viewer», comprobado en lo que el navegador pide.
+const VISOR_PDF_CHROME = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/';
+const RECURSOS_CHROME = 'chrome://resources/';
+function esLocalDelNavegador(url) {
+  return url.startsWith(VISOR_PDF_CHROME) || url.startsWith(RECURSOS_CHROME);
+}
+
 // Bloquea antes de que salga cualquier petición a otro origen y la registra para nombrarla al terminar.
 async function vigilarRed(context) {
   const permitidos = origenesPermitidos();
   const externas = [];
   await context.route('**/*', (route) => {
     const peticion = route.request();
-    if (permitidos.has(new URL(peticion.url()).origin)) return route.continue();
+    const direccion = new URL(peticion.url());
+    if (permitidos.has(direccion.origin) || esLocalDelNavegador(peticion.url())) return route.continue();
     externas.push(`${peticion.method()} ${peticion.url()}`);
     return route.abort('blockedbyclient');
   });
@@ -126,6 +136,33 @@ const test = base.test.extend({
     consola.verificar();
   },
 
+  // Otra pestaña del mismo contexto (005b, RNF-07.40): comparte sesión, red y consola vigiladas, y las redirecciones reescritas.
+  otraPestana: async ({ page }, use) => {
+    const pestana = await page.context().newPage();
+    await reescribirRedirecciones(pestana);
+    await use(pestana);
+    await pestana.close();
+  },
+
+  // Otro usuario Gubernamental en un contexto nuevo (005b, RF-17.40), con sesión iniciada y su propia red y consola vigiladas;
+  // al terminar exige lo mismo que `page`. Devuelve `{ page, usuario, red, consola }`.
+  otroUsuario: async ({ browser, baseURL, viewport, crearUsuario }, use) => {
+    const usuario = await crearUsuario('usuario');
+    const contexto = await browser.newContext({ baseURL, viewport });
+    const red = await vigilarRed(contexto);
+    const consola = vigilarConsola(contexto);
+    const pagina = await contexto.newPage();
+    await reescribirRedirecciones(pagina);
+    await iniciarSesion(pagina, usuario.correo, usuario.contrasena);
+    try {
+      await use({ page: pagina, usuario, red, consola });
+      red.verificar();
+      consola.verificar();
+    } finally {
+      await contexto.close();
+    }
+  },
+
   // Un generador por trabajador: cada contraseña es nueva, derivada de la semilla de la corrida y nunca se escribe.
   generadorContrasenas: [async ({}, use, workerInfo) => {
     await use(crearGenerador(undefined, workerInfo.parallelIndex));
@@ -156,5 +193,5 @@ const test = base.test.extend({
 });
 
 module.exports = {
-  test, expect: base.expect, fallaEsperada, validarAnotacion, exigirAccesible, pulsar, escribir, iniciarSesion,
+  test, expect: base.expect, esLocalDelNavegador, fallaEsperada, validarAnotacion, exigirAccesible, pulsar, escribir, iniciarSesion,
 };

@@ -1,5 +1,5 @@
 // Lista única de errores de consola heredados que la interfaz emite en un flujo correcto o en un error provocado (RA-02.45).
-// Cada entrada lleva el patrón del mensaje, el motivo y la spec retroactiva que lo corregirá. No son fallos esperados:
+// Cada entrada lleva el patrón del mensaje, el motivo y la spec del módulo que lo corregirá. No son fallos esperados:
 // quitar la entrada es parte de esa corrección. Las respuestas 4xx/5xx que provoca la propia prueba no van aquí: las
 // declara cada prueba con `consola.provocado(/…/)`.
 //
@@ -8,12 +8,12 @@ const CONSOLA_DECLARADA = [
   {
     patron: /Error al cambiar contraseña:/,
     motivo: 'la interfaz registra con console.error el rechazo del servidor que ella misma muestra al usuario (CambiarContraseña.jsx:150, authService.js:182)',
-    spec: 'spec retroactiva de autenticación y usuarios (paso 3 de .claude/rules/testing.md)',
+    spec: 'spec del módulo de autenticación y usuarios que lo corrija',
   },
   {
     patron: /Error al resetear contraseña:/,
     motivo: 'la interfaz registra con console.error el fallo del reseteo que ella misma muestra al Administrador (GestionUsuarios.jsx:174, usuarioService.js:168)',
-    spec: 'spec retroactiva de autenticación y usuarios (paso 3 de .claude/rules/testing.md)',
+    spec: 'spec del módulo de autenticación y usuarios que lo corrija',
   },
 ];
 
