@@ -157,7 +157,18 @@ def _destino(contexto: Contexto) -> DestinoE2E:
 @router.get("/residuos")
 def residuos(contexto: Contexto = Depends(_con_token)) -> dict:
     """Lo que hay en el entorno aislado (filas, puntos, archivos, Redis, conversaciones, buzón), sin catálogos ni sembrados."""
-    return simulados_e2e.contar_residuos_e2e(_destino(contexto))
+    destino = _destino(contexto)
+    try:
+        simulados_e2e.exigir_destino_e2e(destino)  # un destino ajeno aborta de inmediato, sin reintentos
+    except AbortoPruebas as aborto:
+        raise HTTPException(status_code=500, detail=str(aborto)[:500])
+    resultado: dict = {}
+    try:
+        # Mismo reintento acotado que `limpiar_todo`: una petición del navegador en vuelo puede causar un interbloqueo pasajero.
+        simulados_e2e._con_reintento(lambda: resultado.update(simulados_e2e.contar_residuos_e2e(destino)), destino)
+    except Exception as error:  # el motivo (en español, sin secretos) llega a quien llamó, no un 500 mudo
+        raise HTTPException(status_code=500, detail=f"{type(error).__name__}: {str(error)[:300]}")
+    return resultado
 
 
 @router.post("/limpiar")
@@ -300,6 +311,7 @@ class CuerpoIngesta(BaseModel):
     htr_falla: bool = False
     audio_texto: Optional[str] = None
     audio_falla: bool = False
+    etapa: str = "extraccion"  # «vectorizacion»: retiene o falla con el documento ya registrado como Pendiente (005b)
 
 
 class CuerpoNotebooks(BaseModel):
@@ -356,7 +368,8 @@ def leer_ingesta(contexto: Contexto = Depends(_con_token)) -> dict:
 def programar_ingesta(cuerpo: CuerpoIngesta, contexto: Contexto = Depends(_con_token)) -> dict:
     """Programa la ingesta en el proceso: fallos y retenciones por nombre, HTR y audio simulados (RF-18.40)."""
     return _programar(_control(contexto, "ingesta"), fallar=cuerpo.fallar, retener=cuerpo.retener, htr_texto=cuerpo.htr_texto,
-                      htr_falla=cuerpo.htr_falla, audio_texto=cuerpo.audio_texto, audio_falla=cuerpo.audio_falla)
+                      htr_falla=cuerpo.htr_falla, audio_texto=cuerpo.audio_texto, audio_falla=cuerpo.audio_falla,
+                      etapa=cuerpo.etapa)
 
 
 @router.post("/ingesta/liberar")

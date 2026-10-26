@@ -762,3 +762,159 @@ def test_motor_programable(tmp_path):
     finally:
         proteccion.fijar_nombre_activo(NOMBRE_PRUEBAS)
     assert orden[0] == "controles" and orden.count("borrar") == 6 and estado.estado()["modo"] == "cita"
+
+
+# --- RA-02.49 (005b, T1): etapa de vectorización de la ingesta y reintento de /residuos -------------------------------------
+
+class _SimuladoDeTexto:
+    """Un HTR o un audio simulado mínimo: lo que `EstadoIngesta.configurar` le pide."""
+
+    def __init__(self):
+        self.texto, self.error, self.llamadas = "texto", None, []
+
+    def responder(self, texto):
+        self.texto, self.error = texto, None
+
+    def fallar(self):
+        self.error = RuntimeError("fallo")
+
+
+def _ingesta_e2e():
+    return simulados_e2e.EstadoIngesta(_SimuladoDeTexto(), _SimuladoDeTexto(), plazo=10)
+
+
+def _vectorizacion_envuelta(ingesta, llamadas):
+    """`store_in_vectorstore` envuelto sobre un original falso que anota cada llamada."""
+
+    async def original(texto, metadatos, CT_Num_expediente, id_expediente, id_documento):
+        llamadas.append(metadatos["nombre_archivo"])
+        return ["id"], 1
+
+    return ingesta.envolver_vectorizacion(original)
+
+
+def _almacenar(envuelta, nombre):
+    import asyncio
+
+    return asyncio.run(envuelta(texto="t", metadatos={"nombre_archivo": nombre}, CT_Num_expediente="PRUEBA-1",
+                                id_expediente=1, id_documento=1))
+
+
+def test_ingesta_retiene_tras_registrar_el_documento():
+    """RA-02.49 (RF-18.40): con `etapa=vectorizacion` el archivo retenido espera al VECTORIZAR (el documento ya existe en la base)
+    y no al extraer su texto; los demás pasan; al liberar continúa."""
+    import asyncio
+
+    ingesta = _ingesta_e2e()
+    llamadas = []
+    envuelta = _vectorizacion_envuelta(ingesta, llamadas)
+    ingesta.configurar(retener=["PRUEBA_a.txt"], etapa="vectorizacion")
+    assert ingesta.estado()["etapa"] == "vectorizacion" and ingesta.estado()["retenida"] is True
+
+    # La extracción no se detiene en esta etapa.
+    async def extraer_original(content, filename, content_type, progress_tracker=None, cancel_check=None):
+        return "texto", {}
+
+    extraer = ingesta.envolver_extraccion(extraer_original)
+    assert asyncio.run(extraer(b"x", "PRUEBA_a.txt", "text/plain")) == ("texto", {})
+    assert ingesta.compuerta.esperando == 0
+
+    # Un archivo que no se retiene vectoriza de inmediato.
+    assert _almacenar(envuelta, "PRUEBA_b.txt") == (["id"], 1) and llamadas == ["PRUEBA_b.txt"]
+
+    # El retenido queda detenido antes de vectorizar y sigue al liberar.
+    hilo, resultado = _en_un_hilo(lambda: _almacenar(envuelta, "PRUEBA_a.txt"))
+    _hasta(lambda: ingesta.compuerta.esperando == 1)
+    assert llamadas == ["PRUEBA_b.txt"] and hilo.is_alive()
+    ingesta.liberar()
+    hilo.join(5)
+    assert not hilo.is_alive() and resultado.get("valor") == (["id"], 1) and llamadas == ["PRUEBA_b.txt", "PRUEBA_a.txt"]
+
+
+def test_ingesta_falla_tras_registrar_queda_en_error():
+    """RA-02.49 (RF-18.40): con `etapa=vectorizacion` el archivo a fallar lanza un error al vectorizar (el sistema lo deja en
+    Error, `document_processor`) sin llamar al original; la extracción no falla; sin `etapa` la 005a no cambia."""
+    import asyncio
+
+    ingesta = _ingesta_e2e()
+    llamadas = []
+    envuelta = _vectorizacion_envuelta(ingesta, llamadas)
+    ingesta.configurar(fallar=["PRUEBA_c.txt"], etapa="vectorizacion")
+
+    async def extraer_original(content, filename, content_type, progress_tracker=None, cancel_check=None):
+        return "texto", {}
+
+    assert asyncio.run(ingesta.envolver_extraccion(extraer_original)(b"x", "PRUEBA_c.txt", "text/plain")) == ("texto", {})
+    with pytest.raises(ValueError) as error:
+        _almacenar(envuelta, "PRUEBA_c.txt")
+    assert "PRUEBA" in str(error.value) and llamadas == []
+    assert _almacenar(envuelta, "PRUEBA_d.txt") == (["id"], 1)
+
+    # Por omisión (extracción): la vectorización no se toca y la extracción sí falla.
+    ingesta.configurar(fallar=["PRUEBA_c.txt"])
+    assert ingesta.estado()["etapa"] == "extraccion"
+    assert _almacenar(envuelta, "PRUEBA_c.txt") == (["id"], 1)
+    with pytest.raises(ValueError):
+        asyncio.run(ingesta.envolver_extraccion(extraer_original)(b"x", "PRUEBA_c.txt", "text/plain"))
+
+    # Restablecer devuelve la etapa de siempre.
+    ingesta.configurar(fallar=["PRUEBA_c.txt"], etapa="vectorizacion")
+    ingesta.restablecer()
+    assert ingesta.estado()["etapa"] == "extraccion"
+
+
+def test_etapa_invalida_400():
+    """RA-02.49: una etapa que no sea `extraccion` ni `vectorizacion` se rechaza con 400 y no cambia la programación."""
+    ingesta = _ingesta_e2e()
+    ingesta.configurar(fallar=["PRUEBA_a.txt"], etapa="vectorizacion")
+    with pytest.raises(ValueError):
+        ingesta.configurar(etapa="otra")
+    assert ingesta.estado()["etapa"] == "vectorizacion" and ingesta.estado()["fallar"] == ["PRUEBA_a.txt"]
+
+    contexto = control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60),
+                                controles=simulados_e2e.Controles(ingesta=ingesta))
+    with pytest.raises(control.HTTPException) as error:
+        control.programar_ingesta(control.CuerpoIngesta(etapa="otra"), contexto)
+    assert error.value.status_code == 400
+    # Con etapa omitida el cuerpo conserva la etapa de la 005a.
+    assert control.programar_ingesta(control.CuerpoIngesta(fallar=["PRUEBA_a.txt"]), contexto)["etapa"] == "extraccion"
+    assert control.programar_ingesta(control.CuerpoIngesta(etapa="vectorizacion"), contexto)["etapa"] == "vectorizacion"
+
+
+def test_residuos_reintenta_un_error_transitorio(tmp_path, monkeypatch, nombre_e2e):
+    """RA-02.42: `/residuos` repite el recuento (como `limpiar_todo`) si falla de forma transitoria, p. ej. un interbloqueo."""
+    destino = _destino_e2e(tmp_path, plazo_reintento=2.0, pausa_reintento=0.01)
+    intentos = []
+    real = simulados_e2e.contar_residuos_e2e
+
+    def inestable(d):
+        intentos.append(1)
+        if len(intentos) < 3:
+            raise RuntimeError("interbloqueo transitorio")
+        return real(d)
+
+    monkeypatch.setattr(simulados_e2e, "contar_residuos_e2e", inestable)
+    contexto = control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60), destino=destino)
+    assert control.residuos(contexto)["total"] == 0 and len(intentos) == 3
+
+
+def test_residuos_500_con_detail(tmp_path, monkeypatch, nombre_e2e):
+    """RA-02.42: si el recuento sigue fallando tras el plazo, `/residuos` responde 500 con el motivo en `detail`; un destino
+    ajeno aborta de inmediato, sin reintentar."""
+    destino = _destino_e2e(tmp_path, plazo_reintento=0.1, pausa_reintento=0.01)
+
+    def roto(d):
+        raise RuntimeError("la base no responde")
+
+    monkeypatch.setattr(simulados_e2e, "contar_residuos_e2e", roto)
+    contexto = control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60), destino=destino)
+    with pytest.raises(control.HTTPException) as error:
+        control.residuos(contexto)
+    assert error.value.status_code == 500 and "la base no responde" in error.value.detail
+
+    monkeypatch.undo()
+    ajeno = _destino_e2e(tmp_path, base="db_ServIA", plazo_reintento=30.0)
+    inicio = time.monotonic()
+    with pytest.raises(control.HTTPException) as error:
+        control.residuos(control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60), destino=ajeno))
+    assert error.value.status_code == 500 and error.value.detail and time.monotonic() - inicio < 5

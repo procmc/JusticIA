@@ -754,10 +754,15 @@ def _validar_nombres(nombres: Sequence[str], que: str) -> List[str]:
     return list(nombres)
 
 
+ETAPAS_DE_INGESTA = ("extraccion", "vectorizacion")
+ETAPA_POR_OMISION = "extraccion"
+
+
 class EstadoIngesta:
     """La ingesta dentro del proceso (RF-18.40): la carga por la API encola en un solo hilo de la propia instancia, sin worker,
     con HTR y audio simulados. Se puede hacer fallar o retener el procesamiento de un archivo por su nombre, en la etapa de
-    extracción del texto (con el progreso ya iniciado y sin documento todavía)."""
+    extracción del texto (con el progreso ya iniciado y sin documento todavía) o, con la etapa `vectorizacion`, justo antes de
+    vectorizar, cuando el documento ya existe en la base como Pendiente (005b, RF-18.40)."""
 
     def __init__(self, htr, audio, plazo: float = PLAZO_RETENCION_SEGUNDOS, esperar_inactiva: float = 60.0):
         self.htr, self.audio = htr, audio
@@ -765,6 +770,7 @@ class EstadoIngesta:
         self.compuerta = Retencion(plazo)
         self.fallar: List[str] = []
         self.retener: List[str] = []
+        self.etapa = ETAPA_POR_OMISION
         self._espera_maxima = esperar_inactiva
         self._condicion = threading.Condition()
         self._pendientes = 0
@@ -773,13 +779,16 @@ class EstadoIngesta:
         self.procesar: Callable[[str, str, dict, str], None] = self._procesar_con_celery
 
     def configurar(self, fallar: Sequence[str] = (), retener: Sequence[str] = (), htr_texto: Optional[str] = None,
-                   htr_falla: bool = False, audio_texto: Optional[str] = None, audio_falla: bool = False) -> None:
+                   htr_falla: bool = False, audio_texto: Optional[str] = None, audio_falla: bool = False,
+                   etapa: str = ETAPA_POR_OMISION) -> None:
         """Reemplaza la programación entera (lo omitido vuelve a su valor por omisión)."""
+        if etapa not in ETAPAS_DE_INGESTA:
+            raise ValueError(f"La etapa debe ser una de: {', '.join(ETAPAS_DE_INGESTA)}")
         fallar, retener = _validar_nombres(fallar, "fallar"), _validar_nombres(retener, "retener")
         for texto in (htr_texto, audio_texto):
             if texto is not None and len(texto) > MAXIMO_TEXTO:
                 raise ValueError(f"Los textos simulados no pueden pasar de {MAXIMO_TEXTO} caracteres")
-        self.fallar, self.retener = fallar, retener
+        self.fallar, self.retener, self.etapa = fallar, retener, etapa
         self.htr.responder(self._htr_texto if htr_texto is None else htr_texto)
         self.audio.responder(self._audio_texto if audio_texto is None else audio_texto)
         if htr_falla:
@@ -815,7 +824,7 @@ class EstadoIngesta:
         self._ejecutor.shutdown(wait=True, cancel_futures=True)
 
     def estado(self) -> dict:
-        return {"fallar": list(self.fallar), "retener": list(self.retener), "retenida": self.compuerta.retenida,
+        return {"fallar": list(self.fallar), "retener": list(self.retener), "etapa": self.etapa, "retenida": self.compuerta.retenida,
                 "esperando": self.compuerta.esperando, "pendientes": self._pendientes,
                 "htr_falla": self.htr.error is not None, "audio_falla": self.audio.error is not None,
                 "htr_llamadas": list(self.htr.llamadas), "audio_llamadas": list(self.audio.llamadas)}
@@ -854,13 +863,29 @@ class EstadoIngesta:
         estado = self
 
         async def extraer(content, filename, content_type, progress_tracker=None, cancel_check=None):
-            if filename in estado.retener:
+            if estado.etapa == "extraccion" and filename in estado.retener:
                 await estado.compuerta.esperar_async()
-            if filename in estado.fallar:
+            if estado.etapa == "extraccion" and filename in estado.fallar:
                 raise ValueError(f"Error extrayendo texto de {filename}: fallo programado por el control de pruebas (PRUEBA)")
             return await original(content, filename, content_type, progress_tracker, cancel_check)
 
         return extraer
+
+    def envolver_vectorizacion(self, original: Callable) -> Callable:
+        """`store_in_vectorstore` del sistema, con la retención y el fallo por nombre de archivo delante cuando la etapa es
+        `vectorizacion`. Ahí el documento ya está en la base como Pendiente; el fallo lo deja en Error como cualquier otro."""
+        estado = self
+
+        async def almacenar(*argumentos, **opciones):
+            metadatos = opciones.get("metadatos") or (argumentos[1] if len(argumentos) > 1 else {})
+            nombre = metadatos.get("nombre_archivo")
+            if estado.etapa == "vectorizacion" and nombre in estado.retener:
+                await estado.compuerta.esperar_async()
+            if estado.etapa == "vectorizacion" and nombre in estado.fallar:
+                raise ValueError(f"Error vectorizando {nombre}: fallo programado por el control de pruebas (PRUEBA)")
+            return await original(*argumentos, **opciones)
+
+        return almacenar
 
 
 class EstadoNotebooks:
@@ -973,5 +998,6 @@ def instalar_controles(piezas: Dict[str, object]) -> Controles:
     # La limpieza programada de cada tarea duerme minutos en un hilo: no se programa (la limpieza total borra el progreso).
     parches.setattr(progress_manager, "schedule_task_cleanup", lambda *argumentos, **opciones: None)
     parches.setattr(document_processor, "extract_text_from_file", ingesta.envolver_extraccion(document_processor.extract_text_from_file))
+    parches.setattr(document_processor, "store_in_vectorstore", ingesta.envolver_vectorizacion(document_processor.store_in_vectorstore))
     notebooks.instalar(notebook_service, parches)
     return Controles(motor=piezas["ollama"].estado, ingesta=ingesta, notebooks=notebooks)
