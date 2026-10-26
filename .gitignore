@@ -44,3 +44,9 @@ antigravity-instructions.md
 .pytest_cache/
 /.env
 /graphify-out/
+
+# Herramientas personales y respaldos locales (no forman parte del producto)
+.claude/skills/caveman/
+.claude/skills/ponytail/
+skills-lock.json
+specs/004-red-de-seguridad-backend/respaldo/
