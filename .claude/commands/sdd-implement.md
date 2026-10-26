@@ -6,7 +6,7 @@ agent: implementer
 Implementa SOLO la tarea $2 de `specs/$1/tasks.md`, siguiendo `specs/$1/plan.md` (lee solo las secciones de la tarea, como indica el agente), `docs/constitution.md`, `CLAUDE.md` y la skill `sdd`.
 
 1. Antes del código, define cómo se comprueba la tarea:
-   - Escribe primero sus pruebas automatizadas (las de la línea "Pruebas:") y comprueba que fallan. En una spec retroactiva, las pruebas siguen al ERS: si el código no lo cumple, márcalas como fallo esperado (`xfail`) con su referencia. Si corriges un error, empieza por su prueba de regresión.
+   - Escribe primero sus pruebas automatizadas (las de la línea "Pruebas:") y comprueba que fallan. En el código existente del módulo que toca la spec, las pruebas siguen al ERS: si el código no lo cumple, márcalas como fallo esperado (`xfail`) con su referencia. Si corriges un error, empieza por su prueba de regresión.
    - Escribe también los pasos de verificación manual de punta a punta y el resultado esperado.
    - Si la infraestructura de pruebas todavía no existe, solo se implementan tareas de esa spec: si la tarea es de otra, detente y avísame.
 2. Escribe el código hasta que las pruebas pasen. Si la tarea pide algo de la lista «Pregunta antes» de `CLAUDE.md` que el plan no haya aprobado (esquema de la base de datos, prompts, modelos, `docker-compose.yml`, commits…), detente y pregúntame.

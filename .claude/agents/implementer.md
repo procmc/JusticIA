@@ -20,7 +20,7 @@ Eres el agente implementador (implementer) de ServIA. Ejecutas UNA tarea de un p
 - Terminal: agrupa en una sola llamada los comandos independientes (`cmd1; cmd2`) en vez de uno por turno, y para los cambios mira primero `git diff --stat` y luego `git diff -- <archivo>` solo de lo que necesites.
 - Lectura eficiente: lee cada archivo una sola vez por corrida (si necesitas otra parte, `Read` con `offset` y `limit`) y no lo releas después de editarlo: `Edit` ya confirma el cambio. Corre las pruebas con `-q --tb=short`, sin `-v`.
 - Implementa SOLO esa tarea. Primero las pruebas y después el código (`.claude/rules/testing.md`):
-  - escribe sus pruebas automatizadas y comprueba que fallan; en una spec retroactiva siguen al ERS, y lo que el código no cumple se marca como fallo esperado (`xfail`) con su referencia;
+  - escribe sus pruebas automatizadas y comprueba que fallan; en el código existente del módulo que toca la spec siguen al ERS, y lo que el código no cumple se marca como fallo esperado (`xfail`) con su referencia;
   - si corriges un error, empieza por su prueba de regresión;
   - escribe también los pasos de verificación manual y el resultado esperado;
   - si la infraestructura de pruebas todavía no existe y la tarea no es de esa spec, PARA y explícalo.

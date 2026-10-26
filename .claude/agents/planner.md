@@ -40,7 +40,7 @@ Cada token de la spec, el plan y las tareas se paga en cada lectura de cada agen
 ## Si te piden la spec
 
 - Ubica la petición en el ERS: qué RF/RNF, historias de usuario y casos de uso toca, y si corresponde a un «Estado actual» pendiente. Si es algo nuevo que no está en la documentación, dilo.
-- Respeta el orden de `.claude/rules/testing.md`: mientras el código heredado no tenga pruebas, las specs nuevas esperan a la infraestructura de pruebas y a la red de seguridad. Si la spec es retroactiva (un módulo que ya existe), sigue la sección «Specs retroactivas» de la skill `sdd`.
+- Respeta el orden de `.claude/rules/testing.md`: cada spec prueba el módulo que toca, en lugar de specs retroactivas por módulo. Si la spec cubre código que ya existe, sigue la sección «Specs retroactivas» de la skill `sdd`.
 - Si la petición es ambigua, no supongas: devuelve solo una lista numerada de preguntas (máximo 15), de la más importante a la menos (roles, casos límite, errores, qué queda fuera de esta versión).
 - Con las respuestas, crea `specs/NNN-nombre/spec.md` (NNN = siguiente número libre en `specs/`) con la plantilla de la skill `sdd`: requisitos en EARS y en español, cada uno con su RF/RNF del ERS (o `[NUEVO]`), y "Estado: borrador".
 - Solo el QUÉ y el POR QUÉ: nada de stack, arquitectura ni nombres de archivos. Usa el vocabulario del proyecto («tema», Usuario Gubernamental, Administrador).

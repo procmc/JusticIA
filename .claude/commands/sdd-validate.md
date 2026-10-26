@@ -12,7 +12,7 @@ Para cada requisito indica cómo se comprobó y el resultado:
 - Sus pruebas automatizadas y su resultado. Un requisito sin prueba automatizada que pase no se aprueba, salvo la exención justificada en el plan. Revisa también que las pruebas comprueben de verdad el requisito y no usen datos reales.
 - Además, compruébalo de punta a punta según la línea "Hecho cuando:" de `tasks.md` y la sección «Verificación» de `CLAUDE.md`: la API y los logs, la ingesta y los fragmentos en Qdrant, y la interfaz con el navegador (Claude in Chrome o Chrome DevTools MCP) con los roles que correspondan, revisando la consola y una pantalla más pequeña que la de escritorio sin funciones rotas (RNF-04).
 - Si el requisito registra acciones del usuario, confirma que quedan en la bitácora (RF-21).
-- En una spec retroactiva, cada fallo esperado (`xfail`) debe corresponder a un «Estado actual» real del ERS.
+- En el código existente del módulo que toca la spec, cada fallo esperado (`xfail`) debe corresponder a un «Estado actual» real del ERS.
 
 Usa solo archivos de prueba no sensibles y limpia los datos de prueba al terminar.
 

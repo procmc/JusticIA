@@ -15,9 +15,9 @@ Principio 4 de la constitución: cada requisito se cubre con pruebas automatizad
 El código heredado no tiene pruebas (RA-02). Se cubre en este orden, cada paso como una spec:
 
 1. **Infraestructura de pruebas del backend**: pytest dentro del contenedor del backend y un entorno aislado (base de datos y colección de Qdrant solo para pruebas). Playwright y el extremo a extremo llegan con el paso 2.
-2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA, y la infraestructura de extremo a extremo. Hechos (spec 005a): la infraestructura de extremo a extremo y los flujos de acceso; quedan ingesta, chat y notebooks (005b).
-3. **Specs retroactivas por módulo**, por riesgo: autenticación y usuarios, ingesta, RAG y chat, notebooks, temas similares y bitácora.
-4. Después, los «Estado actual» del ERS y las funciones nuevas, con sus pruebas desde el inicio.
+2. **Red de seguridad de los flujos críticos**: inicio de sesión y acceso por rol, subir un archivo → Procesado → el chat lo cita, y NotebookServIA, y la infraestructura de extremo a extremo. Hechos (specs 005a y 005b): la infraestructura de extremo a extremo, el acceso, la carga con la cita en el chat general y NotebookServIA; el resto del chat y la bitácora en el navegador, a la spec de su módulo.
+3. **Cada spec prueba el módulo que toca** (sustituye a las specs retroactivas por módulo; decisión de Andrés, 22/10/2026): toda spec nueva o corrección escribe primero las pruebas de lo que cambia y de los requisitos existentes del módulo que modifica, contra el ERS; lo que el código no cumple, como fallo esperado con su referencia. Lo que ninguna spec toque queda como trabajo futuro documentado (su «Estado actual» en el ERS y una línea en `MEMORY.md`).
+4. Con el paso 2 cerrado (spec 005b), empiezan las funciones nuevas y los «Estado actual» del ERS, cada una con sus pruebas desde el inicio según el paso 3.
 
 - No crees pruebas ni dependencias de pruebas por fuera de la spec del paso 1 mientras esta no esté cerrada.
 - Excepción aprobada (05/10): las herramientas de investigación de `htr/`, que no son código del backend, pueden tener su propia suite `pytest`, ejecutada en el contenedor `servidor-htr` (`docker compose exec servidor-htr pytest`), antes de que se cierre el paso 1. Integrar sus resultados al pipeline de ingesta sí espera al paso 2.

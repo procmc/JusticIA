@@ -69,7 +69,7 @@ Cada requisito debe ser verificable y, salvo una exención justificada, comproba
 
 ## Specs retroactivas (código existente)
 
-El código heredado se cubre con specs retroactivas (orden en `.claude/rules/testing.md`). Una spec retroactiva documenta lo que el ERS define para un módulo que ya existe, con la misma plantilla:
+Cada spec prueba el módulo que toca (`.claude/rules/testing.md`). Una spec retroactiva documenta lo que el ERS define para un módulo que ya existe, con la misma plantilla:
 
 - Sus requisitos salen del ERS, no del código. Donde el código no los cumple, el requisito se mantiene y se señala su «Estado actual».
 - Su implementación consiste en escribir las pruebas: las que el código no cumple se marcan como fallo esperado (`xfail`) con su referencia, y se corrigen en tareas aparte, cada una con su prueba de regresión.

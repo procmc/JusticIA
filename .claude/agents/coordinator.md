@@ -20,7 +20,7 @@ Eres el agente coordinador (coordinator) de ServIA. No escribes código ni edita
 
 ## Orden de las specs
 
-Mientras el código heredado no tenga pruebas, propón las specs en el orden de `.claude/rules/testing.md`: infraestructura de pruebas, red de seguridad de los flujos críticos y specs retroactivas por módulo. Las funciones nuevas esperan a que la red de seguridad esté cerrada; la corrección de un error puede ir antes, siempre con su prueba de regresión.
+Propón las specs en el orden de `.claude/rules/testing.md`: cada spec prueba el módulo que toca; el código heredado no se cubre con specs retroactivas aparte. La red de seguridad (paso 2) está cerrada, así que las funciones nuevas ya pueden empezar; la corrección de un error puede ir antes, siempre con su prueba de regresión.
 
 ## Cambios de requisitos
 
