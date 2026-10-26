@@ -523,7 +523,7 @@ async def process_single_file_with_content(
                     
                     # Actualizar progreso con mensaje de cancelación
                     if progress_tracker:
-                        progress_tracker.update_progress(0, "Procesamiento cancelado por el usuario", status="error")
+                        progress_tracker.mark_cancelled("Procesamiento cancelado por el usuario")
                 else:
                     logger.error(f"Error en procesamiento: {str(e)}")
                     nuevo_estado = "Error"
@@ -531,7 +531,7 @@ async def process_single_file_with_content(
                     
                     # Actualizar progreso con mensaje de error
                     if progress_tracker:
-                        progress_tracker.update_progress(0, f"Error: {str(e)[:100]}", status="error")
+                        progress_tracker.mark_failed(f"Error: {str(e)[:100]}")
                 
                 try:
                     # El documento ya existe en BD por el commit temprano

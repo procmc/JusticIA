@@ -428,3 +428,28 @@ def test_documento_queda_en_error(carga_con_fallo):
     id_malo = id_del_documento(carga_con_fallo.malo.nombre)
     assert id_malo is not None, "el fallo de extracción no dejó ningún documento"
     exigir_estado(id_malo, "Error")
+
+
+# --- RF-07 (T3b): el fallo de la vectorización deja el documento en Error --------------------------------------------------
+
+@pytest.mark.requisito("RF-07")
+@pytest.mark.parametrize("motivo", ["falla la vectorizacion", "procesamiento cancelado"], ids=["falla", "cancelacion"])
+def test_falla_la_vectorizacion_el_documento_queda_en_error(
+        motivo, cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
+    """RF-07 (T3b): si falla `store_in_vectorstore` (o la tarea se cancela en ese punto), el documento ya registrado queda en
+    Error. Antes el manejador llamaba a `update_progress(..., status=...)`, que no acepta `status`: el TypeError cortaba el
+    cambio de estado y el documento quedaba en Pendiente."""
+    from app.services.ingesta.file_management import document_processor
+
+    async def vectorizar_falla(*args, **kwargs):
+        raise RuntimeError(f"{motivo} PRUEBA")
+
+    monkeypatch.setattr(document_processor, "store_in_vectorstore", vectorizar_falla)
+    tema = tema_heredado(registro_de_datos)
+    doc = documento_de_prueba()
+    respuesta = cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)])
+    assert respuesta.status_code == 200, f"la carga respondió {respuesta.status_code}"
+    procesamiento_en_prueba.procesar()
+    id_doc = id_del_documento(doc.nombre)
+    assert id_doc is not None, "el documento no se registró antes de la vectorización"
+    exigir_estado(id_doc, "Error")
