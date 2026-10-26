@@ -1,19 +1,19 @@
 # MEMORY.md — ServIA
 
-Historial y detalle de specs cerradas: `docs/memoria_historial.md` (no se lee por defecto; consultarlo solo si la tarea lo necesita). Máx. 100 líneas; sin datos sensibles (repo público). Actualizado: 22/10/2026 (cierre 005a).
+Historial y detalle de specs cerradas: `docs/memoria_historial.md` (no se lee por defecto; consultarlo solo si la tarea lo necesita). Máx. 100 líneas; sin datos sensibles (repo público). Actualizado: 26/10/2026 (005b T6).
 
 ## Estado actual
 
 - Sistema funcionando (8 servicios + frontend npm, GPU 8 GB); rama de trabajo `fase4`. Fases 1-3 de la práctica cerradas; Fase 4 en curso (HTR integrado; manuscrito = limitación aceptada, RF-10).
-- Suite vigente: pytest 2021 pasan, 45 `xfail`, 0 XPASS, sin residuos (~9 min, aceptado); `npm run e2e` 98 pasan + 6 esperados (~4,5 min). `-m infraestructura` aparte: sale con código 1 a propósito.
+- Suite vigente: pytest 2028 pasan, 45 `xfail`, 0 XPASS, sin residuos (~9 min, aceptado); `npm run e2e` 141 = 133 pasan + 8 esperados, residuos 0, contraseñas 0 (suite 520 s de 600 s: vigilar). `-m infraestructura` aparte: sale con código 1 a propósito.
 - Documentos vigentes (`Documentacion/Documentacion_ServIA_2026/`): ERS V1.7, CU V1.4, HU y Procesos V1.2, C4 1.1; resto sin versión. Enviados al tutor el 30/09, revisión pendiente.
 - PDF: `Nombre_V#.#.pdf`, vigente = versión más alta; el Word conserva el mismo nombre y su portada debe coincidir. Los agentes no leen `.docx` (el coordinador pasa la ruta). `Documentacion_Lista/` no se toca.
 
 ## En curso
 
 - **Spec 005a (extremo a extremo)**: aprobada y cerrada (22/10): @reviewer APROBADO en la vuelta 1 y Andrés (opción A). `npm run e2e` 104 = 98 pasan + 6 esperados, residuos 0, contraseñas 0; E2 retirada en 003/003a/003b; entorno aislado doble en la 002. Spec 005: «005a implementada; 005b pendiente». Detalle y hallazgos (a-j): `tasks-005a.md` y `docs/memoria_historial.md`.
-  - Pendientes aparte: `contar_residuos_e2e` (`backend/tests/instancia_e2e/control.py:163-171`) sin reintento (excepción = 500 sin `detail`); causa real del 500 de `/limpiar` sin confirmar (si reaparece, `/tmp/servia_e2e/instancia.log`).
-  - Propuesta de texto para `CLAUDE.md` y la regla 5b: `specs/005-red-de-seguridad-extremo-a-extremo/propuesta_claude_005a.md` (la aplica Andrés).
+  - **005b T1-T6 implementada y validada por @reviewer (APROBADO, 26/10), pendiente de commits** (pasada final hecha: `consola_declarada.js`, `red.spec.js:105`, `carga.spec.js:5`; suites: pytest 2028 + 45 xfail, e2e 141 = 133 + 8 esperados; `graphify update .` bloqueado por el control de aplicaciones de Windows, pendiente; `generar_mapa_pruebas.py` hecho): control con etapa `vectorizacion`; soporte (`datos.js`, `pantallas.js`, fixtures `otraPestana`/`otroUsuario`); `carga.spec.js` (carga mixta, rechazados, cita en el chat general) y `notebooks.spec.js` (crear, cargar, vista previa, quitar); T3b: la vectorización fallida deja el documento en «Error» (`document_processor.py`, Andrés reinicia `backend` y `celery-worker`). Solo RF-19.40 nuevo con `fallaEsperada`; `fixtures.js` deja pasar el visor de PDF de Chrome. Texto para ERS V1.8 y la regla «cada spec prueba el módulo que toca»: `specs/005-.../documentacion_005b.md` (la aplica Andrés). La cita del chat es HU-12. Verificación manual hecha (Ollama real, ambos roles); limpieza de desarrollo hecha (opción A): se borraron Qdrant, notebook 70003, documentos, relaciones y archivos; los temas 60004 y 60005 quedan vacíos a propósito, porque `T_Bitacora.CN_Id_expediente` los referencia (11 filas, clave foránea y RN-01).
+  - Hallazgos nuevos (005b): dos temas en un Guardar dejan todos los pendientes en el último; PDF dañado (falla la extracción) sin fila ni «Error» y con archivo huérfano en `uploads/`; aviso de rechazo con nombre largo se desborda a 616 px; sin aviso de permiso al redirigir a `/?error=unauthorized`; «expediente» en el panel del Administrador y «Poder Judicial» en el pie.
 - **Spec 004b**: T10 pendiente: Andrés pega `documentacion_t10.md` en Word y exporta ERS V1.8 y CU V1.5; falta el visto bueno del tutor.
 - **Spec 004**: pendiente el visto bueno del tutor para RF-11, RF-12, RF-17, RF-20 y una frase de RNF-07 (irá en ERS V1.8).
 - Hallazgos sin `xfail` seguro (004/004b): chat de notebook registrado como «general», `str(e)` en 400/500, 500 en `mi-historial` y `expediente/{n}`, bitácora desfasada 6 h, logout toma el usuario del cuerpo; lista completa en el historial.
@@ -55,9 +55,8 @@ Historial y detalle de specs cerradas: `docs/memoria_historial.md` (no se lee po
 
 ## Próximos pasos
 
-1. Andrés aplica `propuesta_claude_005a.md` en `CLAUDE.md` y `.claude/rules/testing.md`; commits con @committer (push de `fase4`, Andrés).
-2. Plan de la 005b; nombres de las comunidades del grafo (116 de 225, tarea aparte).
-3. Corregir el cambio obligatorio repetido tras la recuperación pública (aclarar antes el ERS); hallazgos (a), (d)-(j) de la 005a para las retroactivas (autenticación y usuarios, bitácora).
-4. Cerrar la T10 de la 004b; luego specs retroactivas por módulo (ingesta, RAG, notebooks…).
-5. Spec de integración de imágenes (RF-09, `/sdd-change`: docTR vs. qantev) tras la red de seguridad; valorar quitar el MCP de graphify con el ahorro medido (`rtk gain`).
-6. Con el tutor: revisión de los 9 documentos, «expediente» → «tema», Nexus.PJ, correo institucional.
+1. Semana 1: cerrar la 005b (veredicto del @reviewer, Andrés aplica `documentacion_005b.md`: ERS V1.8, `testing.md`, `CLAUDE.md`); commits con @committer.
+2. Semanas 2 y 3: spec de la ingesta (hallazgos a, b y de la 005a), spec de las mejoras del notebook (RF-19.40 confirmación) y ajustes gráficos (nombre largo, aviso de permiso, textos «expediente»/«Poder Judicial»), con `/feature`.
+3. Semana 4: documentación y cierre de la práctica; cerrar la T10 de la 004b.
+4. Después: spec de integración de imágenes (RF-09, `/sdd-change`); corregir el cambio obligatorio repetido tras la recuperación; nombres de comunidades del grafo.
+5. Con el tutor: revisión de los 9 documentos, «expediente» → «tema», Nexus.PJ, correo institucional.
