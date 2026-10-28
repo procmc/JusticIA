@@ -90,7 +90,8 @@ async function quitarDocumentoEnPantalla(page, nombre) {
   }
 }
 
-const campoDelTema = (page) => page.getByPlaceholder('02-000744-0164-CI');
+// El campo se identifica por su rótulo «Tema» (RF-06.54): ya no lleva el ejemplo del formato heredado como placeholder.
+const campoDelTema = (page) => page.getByRole('textbox', { name: 'Tema' });
 
 // Abre Ingesta de Datos con la sesión ya iniciada y espera a que el campo del tema esté listo.
 async function abrirIngesta(page) {
@@ -103,11 +104,15 @@ async function abrirIngesta(page) {
 // primero: los archivos toman el tema vigente en el momento de elegirlos.
 async function elegirArchivosEnIngesta(page, tema, archivos) {
   await escribir(campoDelTema(page), tema);
-  await page.locator('input[type="file"]').setInputFiles(
-    archivos.map((a) => ({ name: a.nombre, mimeType: a.tipo || 'text/plain', buffer: a.contenido })),
-  );
+  await agregarArchivosEnIngesta(page, archivos);
   await expect(page.getByRole('button', { name: `Guardar ${archivos.length}` })).toBeVisible();
 }
+
+// Agrega archivos con el selector de la zona de carga SIN tocar el campo del tema: cada uno toma el texto que tenga el campo
+// en ese momento (RF-06.50).
+const agregarArchivosEnIngesta = (page, archivos) => page.locator('input[type="file"]').setInputFiles(
+  archivos.map((a) => ({ name: a.nombre, mimeType: a.tipo || 'text/plain', buffer: a.contenido })),
+);
 
 // «Guardar N» abre el cuadro de confirmación; «Sí, Guardar Archivos» envía la carga.
 async function guardarEnIngesta(page, cantidad) {
@@ -133,6 +138,7 @@ async function preguntarEnElChat(page, pregunta) {
 
 module.exports = {
   abrirNotebooks, crearNotebookEnPantalla, abrirIngesta, elegirArchivosEnIngesta, guardarEnIngesta, filaDeIngesta,
+  campoDelTema, agregarArchivosEnIngesta,
   avisosDeLaPantalla, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
 };

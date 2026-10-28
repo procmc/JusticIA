@@ -112,6 +112,8 @@ test.describe('NotebookServIA: crear y cargar', () => {
     const { valido, vacio, largo } = cargaMixta();
     await abrirNotebooks(page);
     await abrirNotebookDeLaLista(page, notebook.nombre);
+    // RF-10.50: la advertencia de manuscrito junto a «Subir documentos».
+    await expect(page.getByText('Las imágenes deben contener texto impreso o tipeado: la escritura a mano no se reconoce de forma confiable.')).toBeVisible();
     await elegirArchivosEnNotebook(page, [valido, vacio, largo]);
 
     const respuestaEsperada = page.waitForResponse(esCargaDeArchivos);

@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { getAllowedFileExtensions } from '@/utils/ingesta-datos/ingestaUtils';
+import { useState, useCallback, useRef } from 'react';
+import { getAllowedFileExtensions, obtenerTipoArchivo } from '@/utils/ingesta-datos/ingestaUtils';
 import Toast from '@/components/ui/CustomAlert';
 
 /**
@@ -13,7 +13,7 @@ export const useFileUpload = () => {
   
   // Estados simples
   const [uploading, setUploading] = useState(false);
-  const [expedienteNumero, setExpedienteNumero] = useState('');
+  const [expedienteNumero, setExpedienteNumeroEstado] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [filesArray, setFilesArray] = useState([]);
   const [dragActive, setDragActive] = useState(false);
@@ -21,23 +21,24 @@ export const useFileUpload = () => {
   // Configuración
   const allowedTypes = getAllowedFileExtensions();
 
-  // Mantener la referencia sincronizada con el estado
-  useEffect(() => {
-    expedienteRef.current = expedienteNumero;
-  }, [expedienteNumero]);
+  // El campo del tema (llamado `expedienteNumero` por herencia). La referencia se actualiza al mismo tiempo que el estado, para
+  // que agregar archivos justo después de escribir tome el texto actual (RF-06.50).
+  const setExpedienteNumero = useCallback((valor) => {
+    expedienteRef.current = valor;
+    setExpedienteNumeroEstado(valor);
+  }, []);
 
-  // Efecto simple para sincronizar expediente cuando cambia
-  useEffect(() => {
-    const expedienteTrimmed = expedienteNumero.trim();
-    
-    if (expedienteTrimmed) {
-      setFilesArray(prev => prev.map(file => 
-        file.status === 'pendiente' 
-          ? { ...file, expediente: expedienteTrimmed }
-          : file
-      ));
-    }
-  }, [expedienteNumero]); // Solo cuando cambia el expediente
+  // RF-06.50: el tema de cada archivo se fija al agregarlo; cambiar el campo después NO altera los pendientes ya agregados.
+  // Confirmar el campo (Enter o foco perdido) solo da el tema a los pendientes que siguen sin él.
+  const confirmarTema = useCallback(() => {
+    const tema = expedienteRef.current.trim();
+    if (!tema) return;
+    setFilesArray(prev => (
+      prev.some(f => f.status === 'pendiente' && !f.expediente?.trim())
+        ? prev.map(f => (f.status === 'pendiente' && !f.expediente?.trim() ? { ...f, expediente: tema } : f))
+        : prev
+    ));
+  }, []);
 
   // Manejar archivos nuevos (definir ANTES de los handlers que lo usan)
   const handleFiles = useCallback((newFiles) => {
@@ -58,7 +59,7 @@ export const useFileUpload = () => {
           file: file,
           name: file.name,
           size: file.size,
-          type: file.type.startsWith('audio/') ? 'audio' : 'document',
+          type: obtenerTipoArchivo(file.name),
           status: 'pendiente',
           expediente: currentExpediente,
           progress: 0,
@@ -158,9 +159,10 @@ export const useFileUpload = () => {
     setUploading,
     expedienteNumero,
     setExpedienteNumero,
+    confirmarTema,
     showConfirmModal,
     setShowConfirmModal,
-    
+
     // Referencias
     fileInputRef,
     dragZoneRef,

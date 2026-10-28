@@ -130,6 +130,13 @@ class IngestaService {
           await this.sleep(delay);
           continue;
         }
+        // El servidor rechazó el tema del grupo: 400 «El tema indicado no es válido» o 404 de una clave de notebook ajeno o
+        // inexistente (RF-06.52); la pantalla los muestra igual, sin revelar si el notebook existe.
+        if (error.status === 404 || (error.status === 400 && /El tema indicado no es válido/.test(error.message || ''))) {
+          const rechazo = new Error('El tema indicado no es válido');
+          rechazo.temaNoValido = true;
+          throw rechazo;
+        }
         // Para cualquier error restante, propagar un único mensaje genérico
         throw new Error('Error al procesar la ingesta. Intente nuevamente más tarde.');
       }

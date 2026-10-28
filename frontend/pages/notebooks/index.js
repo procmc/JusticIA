@@ -388,6 +388,9 @@ const NotebooksPage = () => {
                   onChange={(e) => handleSeleccionarArchivos(e.target.files)}
                 />
               </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Las imágenes deben contener texto impreso o tipeado: la escritura a mano no se reconoce de forma confiable.
+              </p>
 
               {/* Archivos seleccionados, en revisión antes de subir */}
               {archivosSeleccionados.length > 0 && (

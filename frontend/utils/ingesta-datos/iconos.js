@@ -2,7 +2,7 @@
  * Utilidades centralizadas para iconos de archivos y estados
  * Elimina la duplicación de getFileIcon, getStatusIcon, getStatusColor
  */
-import { FiFile, FiMusic, FiCheck, FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { FiFile, FiMusic, FiImage, FiCheck, FiAlertCircle, FiLoader } from 'react-icons/fi';
 
 // Iconos por tipo de archivo
 export const getFileIcon = (type) => {
@@ -11,6 +11,8 @@ export const getFileIcon = (type) => {
       return <FiFile className="w-6 h-6 text-blue-500" />;
     case 'audio':
       return <FiMusic className="w-6 h-6 text-purple-500" />;
+    case 'image':
+      return <FiImage className="w-6 h-6 text-emerald-500" />;
     default:
       return <FiFile className="w-6 h-6 text-gray-500" />;
   }

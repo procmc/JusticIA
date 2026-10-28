@@ -1,20 +1,22 @@
 /**
- * Componente para el input de expediente y botones de acción
- * Extraído del componente principal sin modificaciones
+ * Campo del tema y botones de acción de Ingesta de Datos.
+ * El tema es de nombre libre: la pantalla solo exige que no esté vacío; las reglas (longitud, caracteres) las aplica el servidor
+ * (RF-06.52). Enter o perder el foco confirma el texto para los archivos que siguen sin tema (RF-06.50).
  */
 import React from 'react';
 import { Button, Input, Tooltip } from '@heroui/react';
 import { FiAlertCircle, FiFolder, FiSave } from 'react-icons/fi';
 import { PiBroomLight } from 'react-icons/pi';
-import { EXPEDIENTE_INPUT_MAX_LENGTH } from '@/utils/validation/expedienteValidator';
 
 const ExpedienteInput = ({
   expedienteNumero,
   setExpedienteNumero,
+  confirmarTema,
   handleSaveClick,
   isButtonDisabled,
   uploading,
   pendingFiles,
+  filesWithoutExpediente,
   files,
   setFiles
 }) => {
@@ -27,46 +29,30 @@ const ExpedienteInput = ({
           {/* Input (crece en desktop con límite) */}
           <div className="flex-1 sm:max-w-md">
             <Input
-              label="Número de Expediente"
+              label="Tema"
               labelPlacement="outside"
-              placeholder="02-000744-0164-CI"
               value={expedienteNumero}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Usar límite del validador unificado (25 chars con margen)
-                if (value.length <= EXPEDIENTE_INPUT_MAX_LENGTH) {
-                  setExpedienteNumero(value);
-                }
+              onChange={(e) => setExpedienteNumero(e.target.value)}
+              onBlur={confirmarTema}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmarTema();
               }}
               startContent={<FiFolder className="w-4 h-4 text-gray-400" />}
-              endContent={
-                <div className="relative group">
-                  {expedienteNumero.length < 17 && expedienteNumero.length > 0 && (
-                    <div className="absolute bottom-full right-0 mb-3 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 border border-gray-700">
-                      <div className="flex items-center gap-1">
-                        <FiAlertCircle className="w-3 h-3 text-orange-400" />
-                        <span>Formato no válido</span>
-                      </div>
-                      <div className="absolute top-full right-3 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-gray-800"></div>
-                    </div>
-                  )}
-                </div>
-              }
               size="md"
               variant="bordered"
               radius="md"
-              color={expedienteNumero.length < 17 && expedienteNumero.length > 0 ? 'danger' : 'primary'}
+              color="primary"
               isRequired
               className="w-full"
             />
           </div>
-          
+
           {/* Botones (fijos en desktop, stack en mobile) */}
           <div className="flex gap-2 sm:flex-shrink-0">
             <Button
               color="primary"
               onPress={handleSaveClick}
-              disabled={isButtonDisabled}
+              isDisabled={isButtonDisabled}
               isLoading={uploading}
               size="md"
               radius="md"
@@ -88,8 +74,8 @@ const ExpedienteInput = ({
             </Button>
 
             {files.length > 0 && (
-              <Tooltip 
-                content="Limpiar lista de archivos y expediente" 
+              <Tooltip
+                content="Limpiar lista de archivos y tema"
                 placement="top"
                 delay={300}
               >
@@ -114,23 +100,15 @@ const ExpedienteInput = ({
         </div>
       </div>
 
-      {/* Explicación del formato (ABAJO) */}
-      <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4 rounded-r-lg">
-        <div className="flex items-start gap-2">
-          <FiAlertCircle className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-              <span className="font-medium">Formato requerido:</span>
-              <code className="text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                YY-NNNNNN-NNNN-XX
-              </code>
-            </div>
-            <p className="text-xs text-gray-600 italic mt-1">
-              * Use el formato oficial del Poder Judicial de Costa Rica
-            </p>
+      {/* Mientras algún pendiente siga sin tema, se dice por qué Guardar está deshabilitado (RF-06.50) */}
+      {filesWithoutExpediente > 0 && (
+        <div className="bg-warning-50 border-l-4 border-warning-400 p-3 sm:p-4 rounded-r-lg" role="status">
+          <div className="flex items-start gap-2">
+            <FiAlertCircle className="w-4 h-4 text-warning-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-gray-700">Indique el tema antes de guardar los archivos.</p>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

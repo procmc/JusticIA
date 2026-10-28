@@ -161,12 +161,11 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           localStatus = status; // Mantener 'fallido' o 'cancelado' tal cual
           localProgress = 0;
           
-          // Mensaje genérico amigable para el usuario (ocultar detalles técnicos)
-          const sanitized = 'No se pudo procesar el archivo. Por favor, intente nuevamente.';
-          
-          // Log del error técnico completo para debugging (solo en consola)
-          console.error(`[Error técnico - ${taskId}]:`, localMessage);
-          
+          // RF-07.50: el servidor entrega el texto fijo con la causa de un conjunto cerrado (RF-07.52). Solo se muestra
+          // si empieza por ese texto; cualquier otro (cancelación, texto técnico) se reemplaza por el texto fijo.
+          const TEXTO_FIJO = 'No se pudo procesar el archivo. Por favor, intente nuevamente.';
+          const sanitized = typeof message === 'string' && message.startsWith(TEXTO_FIJO) ? message : TEXTO_FIJO;
+
           // Obtener nombre del archivo del estado actual
           let fileName = 'Archivo';
           setFiles(prev => {
@@ -320,7 +319,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
       if (filesWithoutExpediente.length > 0) {
         Toast.error(
           'Error de validación',
-          `${filesWithoutExpediente.length} archivo(s) sin número de expediente`
+          `${filesWithoutExpediente.length} archivo(s) sin tema`
         );
         setUploading(false);
         return;
@@ -419,8 +418,18 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
           }));
           
         } catch (error) {
+          // Tema rechazado por el servidor: los archivos del grupo quedan «rechazado» y los demás grupos siguen (RF-06.52)
+          if (error.temaNoValido) {
+            updateFiles(prev => prev.map(f =>
+              expedienteFiles.some(ef => ef.id === f.id)
+                ? { ...f, status: 'rechazado', progress: 0, message: 'El tema indicado no es válido', fileProcessId: null }
+                : f
+            ));
+            continue;
+          }
+
           console.error('Error subiendo archivos:', error);
-          
+
           // Mensaje genérico amigable (ocultar detalles técnicos)
           const sanitized = 'Error al subir los archivos. Por favor, intente nuevamente.';
           

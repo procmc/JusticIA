@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardBody } from '@heroui/react';
-import { validarFormatoExpediente } from '@/utils/ingesta-datos/ingestaUtils';
 
 // Hooks unificados
 import { useFileUpload } from '@/hooks/ingesta-datos/useFileUpload';
@@ -23,6 +22,7 @@ const IngestaDatos = () => {
     setUploading,
     expedienteNumero,
     setExpedienteNumero,
+    confirmarTema,
     showConfirmModal,
     setShowConfirmModal,
 
@@ -35,7 +35,6 @@ const IngestaDatos = () => {
     handleDrop,
     handleChange,
     removeFile,
-    updateFileExpediente,
 
     // Estados calculados
     pendingFiles,
@@ -44,26 +43,12 @@ const IngestaDatos = () => {
     filesWithoutExpediente
   } = useFileUpload();
 
-  // Validar formato solo cuando el usuario intenta guardar
-  const isExpedienteValid = validarFormatoExpediente(expedienteNumero);
-
+  // El tema es de nombre libre: la pantalla solo exige que no falte; el servidor valida el resto (RF-06.52).
   const handleSaveClick = () => {
-    // Validar formato antes de mostrar modal
-    if (!isExpedienteValid) {
-      // Mostrar mensaje de error (puedes usar toast o alert)
-      alert('El formato del expediente no es válido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)');
-      return;
-    }
     setShowConfirmModal(true);
   };
 
   const handleConfirmUpload = () => {
-    // Doble validación antes de subir
-    if (!isExpedienteValid) {
-      alert('El formato del expediente no es válido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)');
-      setShowConfirmModal(false);
-      return;
-    }
     uploadFiles(files);
   };
 
@@ -84,12 +69,10 @@ const IngestaDatos = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Condiciones para deshabilitar el botón
-  // Solo validar longitud mínima (17 chars para YY-NNNNNN-NNNN-XX) mientras escribe, formato completo al guardar
-  const isButtonDisabled = uploading || 
-                          pendingFiles === 0 || 
-                          filesWithoutExpediente > 0 || 
-                          expedienteNumero.trim().length < 17;
+  // Guardar se deshabilita si no hay pendientes o alguno sigue sin tema
+  const isButtonDisabled = uploading ||
+                          pendingFiles === 0 ||
+                          filesWithoutExpediente > 0;
 
   return (
     <div className="p-6 space-y-6 mx-auto">
@@ -108,10 +91,12 @@ const IngestaDatos = () => {
           <ExpedienteInput
             expedienteNumero={expedienteNumero}
             setExpedienteNumero={setExpedienteNumero}
+            confirmarTema={confirmarTema}
             handleSaveClick={handleSaveClick}
             isButtonDisabled={isButtonDisabled}
             uploading={uploading}
             pendingFiles={pendingFiles}
+            filesWithoutExpediente={filesWithoutExpediente}
             files={files}
             setFiles={setFiles}
           />
@@ -119,17 +104,14 @@ const IngestaDatos = () => {
           {/* Lista de archivos cargados */}
           <FilesList
             files={files}
-            updateFileExpediente={updateFileExpediente}
             removeFile={removeFile}
             cancelFileProcessing={cancelFileProcessing}
-            expedienteNumero={expedienteNumero}
           />
 
           {/* Zona de arrastre */}
           <DropZone
             dragZoneRef={dragZoneRef}
             fileInputRef={fileInputRef}
-            isExpedienteValid={isExpedienteValid}
             dragActive={files.dragActive}
             handleDrag={handleDrag}
             handleDrop={handleDrop}
@@ -147,7 +129,6 @@ const IngestaDatos = () => {
         onConfirm={handleConfirmUpload}
         files={files}
         pendingFiles={pendingFiles}
-        expedienteNumero={expedienteNumero}
       />
     </div>
   );

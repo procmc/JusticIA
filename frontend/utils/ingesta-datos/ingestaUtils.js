@@ -7,7 +7,8 @@ import {
 
 export const tiposArchivo = {
   documentos: ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml'],
-  audio: ['.mp3', '.wav', '.m4a', '.ogg']
+  audio: ['.mp3', '.wav', '.m4a', '.ogg'],
+  imagenes: ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
 };
 
 // Obtener tipo de archivo basado en la extensión (unificado)
@@ -15,6 +16,7 @@ export const obtenerTipoArchivo = (nombreArchivo) => {
   const extension = '.' + nombreArchivo.split('.').pop().toLowerCase();
   if (tiposArchivo.documentos.includes(extension)) return 'document';
   if (tiposArchivo.audio.includes(extension)) return 'audio';
+  if (tiposArchivo.imagenes.includes(extension)) return 'image';
   return 'unknown';
 };
 
@@ -29,7 +31,7 @@ export const formatearTamano = (bytes) => {
 
 // Obtener todos los tipos de archivos como array (para input accept)
 export const getAllowedFileExtensions = () => {
-  return [...tiposArchivo.documentos, ...tiposArchivo.audio];
+  return [...tiposArchivo.documentos, ...tiposArchivo.audio, ...tiposArchivo.imagenes];
 };
 
 export const validarFormatoExpediente = (expediente) => {

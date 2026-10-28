@@ -1,17 +1,17 @@
 /**
  * Componente para la zona de arrastre y selección de archivos
  * Actualizado para usar getAllowedFileExtensions de utils
+ * La zona siempre está habilitada: el tema de cada archivo se fija al agregarlo y puede completarse después (RF-06.50).
  */
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiUploadCloud, FiAlertCircle } from 'react-icons/fi';
+import { FiUploadCloud } from 'react-icons/fi';
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import { getAllowedFileExtensions } from '@/utils/ingesta-datos/ingestaUtils';
 
 const DropZone = ({
   dragZoneRef,
   fileInputRef,
-  isExpedienteValid,
   dragActive,
   handleDrag,
   handleDrop,
@@ -24,31 +24,15 @@ const DropZone = ({
     <div
       ref={dragZoneRef}
       className={`relative border-2 border-dashed rounded-2xl p-12 min-h-[300px] text-center transition-all duration-300 ${
-        !isExpedienteValid
-          ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-          : dragActive 
-            ? 'border-blue-500 bg-blue-50 shadow-lg' 
-            : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/50'
+        dragActive
+          ? 'border-blue-500 bg-blue-50 shadow-lg'
+          : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/50'
       }`}
-      onDragEnter={isExpedienteValid ? handleDrag : undefined}
-      onDragLeave={isExpedienteValid ? handleDrag : undefined}
-      onDragOver={isExpedienteValid ? handleDrag : undefined}
-      onDrop={isExpedienteValid ? handleDrop : undefined}
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
     >
-
-      {!isExpedienteValid && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 rounded-2xl z-10">
-          <div className="text-center">
-            <FiAlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-            <p className="text-base font-medium text-gray-700 mb-2">
-              Área bloqueada
-            </p>
-            <p className="text-sm text-gray-500">
-              Ingrese un número de expediente válido para continuar
-            </p>
-          </div>
-        </div>
-      )}
 
       <motion.div
         animate={{ scale: dragActive ? 1.02 : 1 }}
@@ -66,12 +50,8 @@ const DropZone = ({
           <p className="text-gray-500">
             Arrastra y suelta archivos aquí o{' '}
             <button
-              onClick={() => isExpedienteValid && fileInputRef.current?.click()}
-              className={`font-medium underline ${isExpedienteValid
-                ? 'text-blue-600 hover:text-blue-700 cursor-pointer'
-                : 'text-gray-400 cursor-not-allowed'
-                }`}
-              disabled={!isExpedienteValid}
+              onClick={() => fileInputRef.current?.click()}
+              className="font-medium underline text-blue-600 hover:text-blue-700 cursor-pointer"
             >
               examina tu dispositivo
             </button>
@@ -91,7 +71,8 @@ const DropZone = ({
 
         {/* Formatos soportados */}
         <div className="mt-6 space-y-1 text-xs text-gray-500 text-center">
-          <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, HTML, MP3, WAV, M4A, OGG</div>
+          <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, HTML, MP3, WAV, M4A, OGG, JPG, JPEG, PNG, TIF, TIFF, BMP</div>
+          <div>Las imágenes deben contener texto impreso o tipeado: la escritura a mano no se reconoce de forma confiable.</div>
         </div>
       </motion.div>
 

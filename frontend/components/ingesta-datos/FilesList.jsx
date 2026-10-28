@@ -3,18 +3,16 @@
  * Versión simplificada con spinner y botón de cancelar
  */
 import React from 'react';
-import { Card, CardHeader, CardBody, Divider, Chip, Input, Spinner, Button, Tooltip, Progress, Alert } from '@heroui/react';
+import { Card, CardHeader, CardBody, Divider, Chip, Spinner, Button, Tooltip, Progress, Alert } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiFolder, FiXCircle } from 'react-icons/fi';
+import { FiX, FiXCircle } from 'react-icons/fi';
 import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 import { getFileIcon, getStatusColor } from '@/utils/ingesta-datos/iconos';
 
 const FilesList = ({
   files,
-  updateFileExpediente,
   removeFile,
-  cancelFileProcessing,
-  expedienteNumero
+  cancelFileProcessing
 }) => {
   // Avisos de carga ya cerrados por el usuario (RF-05.23): se cierran a mano, no desaparecen solos.
   const [avisosCerrados, setAvisosCerrados] = React.useState([]);
@@ -48,10 +46,15 @@ const FilesList = ({
                   variant="flat"
                   isClosable
                   onClose={() => setAvisosCerrados(prev => [...prev, aviso.id])}
-                  classNames={{ title: 'text-default-800 font-medium break-words', description: 'text-default-700' }}
+                  classNames={{
+                    base: 'min-w-0',
+                    mainWrapper: 'min-w-0',
+                    title: 'text-default-800 font-medium min-w-0 [overflow-wrap:anywhere]',
+                    description: 'text-default-700 min-w-0 [overflow-wrap:anywhere]',
+                  }}
                   title={`Tema ${aviso.tema}: ${aviso.mensaje}`}
                   description={aviso.motivos.length > 0 && (
-                    <ul className="list-none space-y-0.5 break-words">
+                    <ul className="list-none space-y-0.5 min-w-0 [overflow-wrap:anywhere]">
                       {aviso.motivos.map((motivo, i) => <li key={i}>{motivo}</li>)}
                     </ul>
                   )}
@@ -96,26 +99,10 @@ const FilesList = ({
                       <div className="flex items-center space-x-3 text-xs text-gray-500">
                         <span>{formatearTamano(file.size)}</span>
 
-                        {/* Input de expediente (solo si es necesario) */}
-                        {file.status === 'pendiente' && !expedienteNumero?.trim() && !file.expediente?.trim() && (
-                          <Input
-                            size="sm"
-                            placeholder="Núm. expediente"
-                            value={file.expediente || ''}
-                            onChange={(e) => updateFileExpediente(file.id, e.target.value)}
-                            className="w-48"
-                            startContent={<FiFolder className="text-gray-400 w-3 h-3" />}
-                            classNames={{
-                              input: "text-xs",
-                              inputWrapper: "h-8 min-h-8"
-                            }}
-                          />
-                        )}
-
-                        {/* Chip de expediente */}
-                        {(expedienteNumero?.trim() || file.expediente?.trim()) && (
-                          <Chip color="primary" size="sm" variant="flat">
-                            {file.expediente || expedienteNumero}
+                        {/* Tema fijado al agregar el archivo (RF-06.50); sin campo editable por fila */}
+                        {file.expediente?.trim() && (
+                          <Chip color="primary" size="sm" variant="flat" classNames={{ content: 'break-all' }}>
+                            {file.expediente}
                           </Chip>
                         )}
                       </div>

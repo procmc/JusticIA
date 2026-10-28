@@ -248,12 +248,12 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect(sano.filas.T_Documento).toBe(1);
     expect(sano.puntos).toBeGreaterThan(0);
 
-    // Falla por nombre: la tarea termina fallida y no deja documento ni fragmentos nuevos.
+    // Falla por nombre: la tarea termina fallida; deja su documento en Error (RF-07.2) y ningún fragmento nuevo.
     await control.ingesta({ fallar: [malo.nombre] });
     const [idMalo] = await cargar(control, token, tema, [malo]);
     await esperarTarea(control, token, idMalo, 'fallido');
     const tras = await control.residuos();
-    expect(tras.filas.T_Documento).toBe(1);
+    expect(tras.filas.T_Documento).toBe(2);
     expect(tras.puntos).toBe(sano.puntos);
 
     // Retiene por nombre: no termina mientras esté retenido; al liberar, termina bien.
@@ -263,7 +263,7 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect(['completado', 'fallido']).not.toContain(await estadoDeLaTarea(control, token, idLento));
     expect((await control.ingestaLiberar()).retenida).toBe(false);
     await esperarTarea(control, token, idLento, 'completado');
-    expect((await control.residuos()).filas.T_Documento).toBe(2);
+    expect((await control.residuos()).filas.T_Documento).toBe(3);
 
     // Un documento retenido cuando se limpia no deja nada: la limpieza lo suelta, espera a que termine y recién borra.
     const otro = documentoDePrueba();
@@ -303,12 +303,12 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     const citada = textoDeLosEventos(await preguntar(control, token, usuario, 'Qué dice el texto manuscrito sobre la laguna de los patos azules', { tema }));
     expect(citada.includes(rutaCitada(tema, imagen))).toBe(true);
 
-    // Si el HTR falla, la carga de la imagen termina fallida y no queda un documento nuevo.
+    // Si el HTR falla, la carga de la imagen termina fallida y su documento queda en Error (RF-07.2), sin fragmentos nuevos.
     await control.ingesta({ htr_falla: true });
     const otraImagen = { nombre: `PRUEBA_${aleatorio()}.png`, contenido: PNG_MINIMO, tipo: 'image/png' };
     const [idFallida] = await cargar(control, token, tema, [otraImagen]);
     await esperarTarea(control, token, idFallida, 'fallido');
-    expect((await control.residuos()).filas.T_Documento).toBe(1);
+    expect((await control.residuos()).filas.T_Documento).toBe(2);
     expect((await control.ingestaEstado()).htr_llamadas.length).toBe(2);
 
     // Un audio sigue el mismo camino con la transcripción simulada.
@@ -317,7 +317,7 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     const [idAudio] = await cargar(control, token, tema, [audio]);
     await esperarTarea(control, token, idAudio, 'completado');
     expect((await control.ingestaEstado()).audio_llamadas.map((l) => l.nombre)).toEqual([audio.nombre]);
-    expect((await control.residuos()).filas.T_Documento).toBe(2);
+    expect((await control.residuos()).filas.T_Documento).toBe(3);
   });
 
   test('RA-02.49 · vista previa retenida', async ({ control, crearUsuario }) => {
@@ -425,12 +425,13 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect(await estadoDe(malo)).toBe('Error');
     expect((await control.residuos()).puntos).toBe(antes);
 
-    // Con la etapa por omisión (extracción) el documento nunca llega a registrarse; una etapa inválida se rechaza.
+    // Con la etapa por omisión (extracción) el documento ya está registrado y queda en «Error» (RF-07.2; antes nunca llegaba
+    // a registrarse); una etapa inválida se rechaza.
     const otro = documentoDePrueba();
     await control.ingesta({ fallar: [otro.nombre] });
     const [idOtro] = await cargar(control, token, notebook.clave_interna, [otro]);
     await esperarTarea(control, token, idOtro, 'fallido');
-    expect(await estadoDe(otro)).toBeUndefined();
+    expect(await estadoDe(otro)).toBe('Error');
     await expect(control.ingesta({ etapa: 'inventada' })).rejects.toThrow(/400/);
 
     // La limpieza devuelve la etapa a su valor por omisión.
