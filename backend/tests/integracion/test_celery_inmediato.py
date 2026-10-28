@@ -89,4 +89,5 @@ def test_delay_deja_el_estado_de_la_tarea_en_el_redis_simulado_y_propaga_su_erro
     assert len(nuevas) == 1, "la tarea debía crear exactamente un seguimiento en el Redis simulado"
     estado = json.loads(redis_del_progreso.get(nuevas.pop()))
     assert estado["status"] == "fallido"
-    assert ARCHIVO in estado["message"]
+    # RF-07.52: el seguimiento lleva el texto fijo con la causa, no el texto de la excepción ni el nombre del archivo.
+    assert estado["message"] == "No se pudo procesar el archivo. Por favor, intente nuevamente. Causa: error interno."

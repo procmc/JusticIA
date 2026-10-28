@@ -90,7 +90,9 @@ TEMAS_NO_VALIDOS = [
     pytest.param("PRUEBA:flujo", id="B3-dos-puntos"),
     pytest.param("PRUEBA\x00x", id="B4-nul"),
     pytest.param("PRUEBA\nx", id="B4-salto-de-linea"),
-    pytest.param("PRUEBA ", id="B5-espacio-final"),
+    # RF-06.53 (spec 006): un espacio final ya no invalida el tema, porque se recorta antes de validar; lo que queda tras el
+    # recorte (aquí, un punto final) sí se rechaza.
+    pytest.param("PRUEBA . ", id="B5-punto-final-tras-recorte"),
     pytest.param("PRUEBA.", id="B5-punto-final"),
     pytest.param("CON", id="B5-reservado"),
     pytest.param("PRUEBA" + "x" * 55, id="B6-61-caracteres"),

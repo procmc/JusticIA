@@ -89,7 +89,7 @@ import logging
 import json
 import redis
 import os
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Tuple
 from datetime import datetime
 from enum import Enum
 
@@ -119,6 +119,20 @@ class EstadoTarea(Enum):
     COMPLETADO = "completado"
     FALLIDO = "fallido"
     CANCELADO = "cancelado"
+
+
+TEXTO_FIJO_DE_FALLO = "No se pudo procesar el archivo. Por favor, intente nuevamente."
+
+
+def texto_de_fallo(crudo: Optional[str]) -> Tuple[str, str]:
+    """El mensaje que ve el usuario cuando falla el procesamiento y su causa clasificada (RF-07.52).
+
+    Devuelve `(texto fijo + «Causa: <causa>.», causa)`; nunca incluye el texto recibido.
+    """
+    from app.services.bitacora.detalle_carga import clasificar_causa
+
+    causa = clasificar_causa(crudo)
+    return f"{TEXTO_FIJO_DE_FALLO} Causa: {causa}.", causa
 
 
 class ProgressTracker:
@@ -206,6 +220,15 @@ class ProgressTracker:
         self._save_state(state)
         logger.error(f"[{self.task_id}] Error: {error_message}")
         
+    def marcar_fallo(self, crudo: Optional[str]):
+        """Marca la tarea como fallida con el texto fijo de RF-07.52 y la causa clasificada.
+
+        El texto crudo de la excepción (que puede traer rutas del servidor) no llega al seguimiento: quien necesite la
+        causa exacta la lee del log o de la bitácora.
+        """
+        mensaje, causa = texto_de_fallo(crudo)
+        self.mark_failed(mensaje, error_details=causa)
+
     def mark_cancelled(self, message: str = "Tarea cancelada por el usuario"):
         """Marca la tarea como cancelada en Redis."""
         state = self._get_state()
@@ -272,6 +295,19 @@ class ProgressManager:
         logger.info(f"Creado tracker para tarea {task_id} con {total_steps} pasos")
         return tracker
         
+    def recordar_documento(self, task_id: str, documento_id: int) -> None:
+        """Guarda qué documento registró esta tarea, para reconocer su reintento interno (RF-07.51).
+
+        Es una clave aparte del seguimiento: este caduca a la hora y el reintento puede llegar hasta el tiempo de
+        visibilidad de Celery (2 h), así que dura lo mismo que el TTL del gestor (3 h).
+        """
+        redis_client.setex(f"ingesta:documento_de_tarea:{task_id}", self.ttl_seconds, str(documento_id))
+
+    def documento_de_tarea(self, task_id: str) -> Optional[int]:
+        """El id del documento que esta tarea ya registró, o `None` si es su primera ejecución."""
+        valor = redis_client.get(f"ingesta:documento_de_tarea:{task_id}")
+        return int(valor) if valor else None
+
     def get_tracker(self, task_id: str) -> Optional[ProgressTracker]:
         """
         Obtiene un tracker existente.

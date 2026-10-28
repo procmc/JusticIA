@@ -130,38 +130,50 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
             "note": "Resultado de ejecución previa (reintento evitado)"
         }
     
-    # Si no hay tracker pero la tarea ya se ejecutó, verificar en BD
-    db_temp = SessionLocal()
+    tracker = progress_manager.create_tracker(task_id, total_steps=100)
+
+    # RF-07.51: un reintento interno (misma tarea, mismo id) se reconoce por el documento que esa tarea ya registró;
+    # una carga nueva del usuario es otra tarea con otro id y siempre crea su propia fila.
+    id_documento_previo = None
     try:
-        # Verificar si el documento ya existe en BD
-        from app.repositories.documento_repository import DocumentoRepository
-        doc_repo = DocumentoRepository()
-        
-        # Buscar documento con este filename y expediente
-        documento_existente = doc_repo.buscar_por_nombre_y_expediente(
-            db_temp, archivo_data["filename"], CT_Num_expediente
-        )
-        
-        if documento_existente and documento_existente.CN_Estado == "Procesado":
-            logger.warning(f"REINTENTO DETECTADO EN BD: Documento {archivo_data['filename']} ya existe como 'Procesado'")
-            db_temp.close()
+        id_documento_previo = progress_manager.documento_de_tarea(task_id)
+    except Exception as redis_error:
+        logger.warning(f"No se pudo consultar el documento previo de la tarea {task_id}: {redis_error}")
+    if id_documento_previo:
+        db_previo = SessionLocal()
+        try:
+            from app.repositories.documento_repository import DocumentoRepository
+            previo = DocumentoRepository().obtener_por_id(db_previo, id_documento_previo)
+            estado_previo = previo.estado_procesamiento.CT_Nombre_estado if previo and previo.estado_procesamiento else None
+        finally:
+            db_previo.close()
+        if estado_previo == "Procesado":
+            logger.warning(f"REINTENTO DETECTADO: Tarea {task_id} ya dejó el documento {id_documento_previo} Procesado.")
+            tracker.mark_completed("Archivo procesado previamente")
             return {
                 "status": "completado",
                 "progress": 100,
                 "resultado": {
-                    "filename": archivo_data["filename"],
-                    "documento_id": str(documento_existente.CN_Id_documento),
+                    "filename": archivo_data.get("filename", "unknown"),
+                    "documento_id": str(id_documento_previo),
                     "mensaje": "Documento ya procesado previamente",
                     "status": "exitoso",
                 },
                 "note": "Documento ya existe en BD (reintento evitado)"
             }
-    except Exception as e:
-        logger.debug(f"No se pudo verificar documento en BD: {e}")
-    finally:
-        db_temp.close()
-    
-    tracker = progress_manager.create_tracker(task_id, total_steps=100)
+        if estado_previo == "Error":
+            logger.warning(f"REINTENTO DETECTADO: Tarea {task_id} ya dejó el documento {id_documento_previo} en Error.")
+            tracker.marcar_fallo("El documento quedó en Error en un intento anterior")
+            return {
+                "status": "fallido",
+                "progress": 100,
+                "resultado": {
+                    "filename": archivo_data.get("filename", "unknown"),
+                    "documento_id": str(id_documento_previo),
+                    "status": "error",
+                },
+                "note": "Documento en Error (reintento evitado)"
+            }
     
     # Función para verificar si la tarea fue cancelada
     def check_if_cancelled():
@@ -197,15 +209,24 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
         try:
             # Registrar inicio en bitácora
             from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
-            asyncio.run(bitacora_service.registrar_ingesta(
-                db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "inicio"
-            ))
+            try:
+                asyncio.run(bitacora_service.registrar_ingesta(
+                    db, usuario_id, CT_Num_expediente, archivo_data['filename'], task_id, "inicio"
+                ))
+            except Exception as bitacora_error:
+                # RF-21.50: si la bitácora falla, el procesamiento continúa.
+                logger.warning(f"No se pudo registrar el inicio en bitácora: {bitacora_error}")
             
             # Ejecutar la función async de forma síncrona usando asyncio.run()
             # Esto crea un nuevo event loop para esta tarea
             # El tracker se pasa a process_uploaded_files que maneja todo el progreso
+            documento_previo = None
+            if id_documento_previo:
+                from app.repositories.documento_repository import DocumentoRepository
+                documento_previo = DocumentoRepository().obtener_por_id(db, id_documento_previo)
             resultado_completo = asyncio.run(
-                process_uploaded_files([file_obj], CT_Num_expediente, db, usuario_id, tracker, check_if_cancelled)
+                process_uploaded_files([file_obj], CT_Num_expediente, db, usuario_id, tracker, check_if_cancelled,
+                                       documento_previo)
             )
             
             # Verificar cancelación después del procesamiento
@@ -286,7 +307,8 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     except Exception as e:
         error_msg = f"Error crítico procesando {archivo_data['filename']}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        tracker.mark_failed(error_msg, str(e))
+        # RF-07.52: el usuario ve el texto fijo con la causa; el texto crudo queda solo en el log y la bitácora.
+        tracker.marcar_fallo(str(e))
         progress_manager.schedule_task_cleanup(task_id, delay_minutes=2)
         
         # Registrar error en bitácora para auditoría

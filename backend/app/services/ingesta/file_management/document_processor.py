@@ -93,12 +93,13 @@ from app.schemas.schemas import (
     ArchivoSimplificado
 )
 from app.config.file_config import ALLOWED_FILE_TYPES, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
+from app.vectorstore import get_vectorstore_backend
 from app.vectorstore.storage import store_in_vectorstore
 from app.services.expediente_service import ExpedienteService
 from app.services.documentos.file_management_service import file_management_service
 from app.services.transaction_service import TransactionManager
 from app.db.database import get_db
-from ..async_processing.progress_tracker import ProgressTracker
+from ..async_processing.progress_tracker import ProgressTracker, progress_manager
 from ..tika_service import TikaService
 from .text_cleaner import clean_extracted_text, validate_cleaned_text, detect_encoding_problems
 
@@ -108,7 +109,8 @@ async def process_uploaded_files(
     db: Optional[Session] = None, 
     usuario_id: Optional[str] = None,
     progress_tracker: Optional[ProgressTracker] = None, 
-    cancel_check: Optional[callable] = None
+    cancel_check: Optional[callable] = None,
+    documento_previo=None
 ) -> FileProcessingStatus:
     """
     Procesa una lista de archivos subidos para un expediente específico.
@@ -121,6 +123,7 @@ async def process_uploaded_files(
         usuario_id: ID del usuario que inició la ingesta (para bitácora)
         progress_tracker: Tracker para reportar progreso granular
         cancel_check: Función opcional para verificar si se canceló la tarea
+        documento_previo: Documento que una ejecución anterior de la misma tarea ya registró (RF-07.51)
         
     Returns:
         FileProcessingStatus: Estado del procesamiento con detalles
@@ -209,7 +212,8 @@ async def process_uploaded_files(
             temp_filepath = f"uploads/{CT_Num_expediente}/{file.filename}"
             
             result = await process_single_file_with_content(
-                file, content, temp_filepath, CT_Num_expediente, expediente, db, usuario_id, progress_tracker, cancel_check
+                file, content, temp_filepath, CT_Num_expediente, expediente, db, usuario_id, progress_tracker, cancel_check,
+                documento_previo
             )
             archivos_procesados.append(result)
             
@@ -238,7 +242,7 @@ async def process_uploaded_files(
         progress_tracker.mark_completed("Archivo procesado exitosamente")
     elif progress_tracker and archivos_con_error:
         error_msg = archivos_con_error[0].razon if archivos_con_error else "Error desconocido"
-        progress_tracker.mark_failed(f"Error: {error_msg}")
+        progress_tracker.marcar_fallo(error_msg)
     
     return FileProcessingStatus(
         total_archivos=len(files),
@@ -351,7 +355,8 @@ async def process_single_file_with_content(
     db: Optional[Session] = None,
     usuario_id: Optional[str] = None,
     progress_tracker: Optional[ProgressTracker] = None,
-    cancel_check: Optional[callable] = None
+    cancel_check: Optional[callable] = None,
+    documento_previo=None
 ) -> FileUploadResponse:
     """
     Procesa un solo archivo que ya fue guardado en disco.
@@ -367,6 +372,8 @@ async def process_single_file_with_content(
         usuario_id: ID del usuario que inició la ingesta (para bitácora)
         progress_tracker: Tracker de progreso (opcional)
         cancel_check: Función para verificar cancelación (opcional)
+        documento_previo: Documento ya registrado por una ejecución anterior de la misma tarea (RF-07.51): se reutiliza
+            en lugar de crear otra fila.
     """
     file_id = str(uuid.uuid4())
     
@@ -391,22 +398,7 @@ async def process_single_file_with_content(
         detected_type = filetype.guess(content)
         tipo_archivo = detected_type.mime if detected_type else file.content_type or "application/octet-stream"
         
-        # Extraer texto según el tipo
-        texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker, cancel_check)
-        
-        # Verificar cancelación después de extracción
-        if cancel_check:
-            cancel_check()
-        
-        if not texto_extraido.strip():
-            raise ValueError("No se pudo extraer texto del archivo")
-        
-        # Progreso: Texto extraído (45%)
-        if progress_tracker:
-            progress_tracker.update_progress(45, f"Texto extraído: {len(texto_extraido)} caracteres")
-        
         # Inicializar variables
-        ruta_archivo = None
         metadatos = {
             "file_id": file_id,
             "nombre_archivo": file.filename,
@@ -422,35 +414,49 @@ async def process_single_file_with_content(
             expediente_service = ExpedienteService()
             
             try:
-                # Progreso: Creando documento en BD (50%)
+                # RF-07.2: el documento se registra ANTES de extraer el texto, para que un fallo de la extracción
+                # (PDF dañado, sin texto, imagen ilegible, HTR caído) lo deje en «Error» y no sin registro.
+                # Progreso: Creando documento en BD (30%)
                 if progress_tracker:
-                    progress_tracker.update_progress(50, "Registrando documento en base de datos")
+                    progress_tracker.update_progress(30, "Registrando documento en base de datos")
                 
-                # 1. Crear documento en BD con estado "Pendiente" (sin commit)
-                extension = Path(file.filename).suffix.lower()
-                documento_creado = await expediente_service.crear_documento(
-                    db=db,
-                    expediente=expediente,
-                    nombre_archivo=file.filename,
-                    tipo_archivo=extension,
-                    ruta_archivo="",  # Se actualiza después
-                    auto_commit=False  # No hacer commit automático
-                )
-                logger.debug(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
-                
-                # 2. Actualizar la ruta en el documento
-                await expediente_service.actualizar_ruta_documento(
-                    db=db,
-                    documento=documento_creado,
-                    ruta_archivo=filepath,
-                    auto_commit=False
-                )
-                logger.debug(f"Ruta actualizada en documento")
-                
-                # 3. COMMIT TEMPRANO - El documento ahora es visible con estado "Pendiente"
-                db.commit()
-                db.refresh(documento_creado)
-                logger.info(f"Documento guardado con estado 'Pendiente' (ID: {documento_creado.CN_Id_documento}) - Iniciando procesamiento...")
+                if documento_previo is not None:
+                    # RF-07.51: reintento interno de la misma tarea; no se crea otra fila.
+                    documento_creado = documento_previo
+                    logger.info(f"Reintento de la misma tarea: se reutiliza el documento {documento_creado.CN_Id_documento}")
+                else:
+                    # 1. Crear documento en BD con estado "Pendiente" (sin commit)
+                    extension = Path(file.filename).suffix.lower()
+                    documento_creado = await expediente_service.crear_documento(
+                        db=db,
+                        expediente=expediente,
+                        nombre_archivo=file.filename,
+                        tipo_archivo=extension,
+                        ruta_archivo="",  # Se actualiza después
+                        auto_commit=False  # No hacer commit automático
+                    )
+                    logger.debug(f"Documento creado en BD con estado 'Pendiente': {documento_creado.CT_Nombre_archivo}")
+
+                    # 2. Actualizar la ruta en el documento
+                    await expediente_service.actualizar_ruta_documento(
+                        db=db,
+                        documento=documento_creado,
+                        ruta_archivo=filepath,
+                        auto_commit=False
+                    )
+                    logger.debug(f"Ruta actualizada en documento")
+
+                    # 3. COMMIT TEMPRANO - El documento ahora es visible con estado "Pendiente"
+                    db.commit()
+                    db.refresh(documento_creado)
+                    logger.info(f"Documento guardado con estado 'Pendiente' (ID: {documento_creado.CN_Id_documento}) - Iniciando procesamiento...")
+
+                # RF-07.51: se recuerda qué documento registró esta tarea para reconocer su reintento interno.
+                if progress_tracker:
+                    try:
+                        progress_manager.recordar_documento(progress_tracker.task_id, documento_creado.CN_Id_documento)
+                    except Exception as redis_error:
+                        logger.warning(f"No se pudo recordar el documento de la tarea: {redis_error}")
                 
                 # 4. Actualizar metadatos con info de BD
                 metadatos.update({
@@ -458,22 +464,47 @@ async def process_single_file_with_content(
                     "ruta_archivo": filepath
                 })
                 
-                # Progreso: Generando embeddings (60%)
-                if progress_tracker:
-                    progress_tracker.update_progress(60, "Generando embeddings vectoriales")
+                # RF-07.51: si el reintento encuentra ya los fragmentos del documento, no se vectoriza otra vez.
+                ya_vectorizado = False
+                if documento_previo is not None:
+                    fragmentos_previos = await get_vectorstore_backend().get_complete_document_by_chunks(
+                        documento_creado.CN_Id_documento)
+                    ya_vectorizado = len(fragmentos_previos) > 0
+                    texto_extraido = ""
+
+                if ya_vectorizado:
+                    logger.info("El documento ya tiene fragmentos: se omite la extracción y la vectorización")
+                else:
+                    # Extraer el texto según el tipo (ya con el documento registrado)
+                    texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker, cancel_check)
                 
-                # 5. Almacenar en el vectorstore con IDs reales
-                doc_ids, num_chunks = await store_in_vectorstore(
-                    texto=texto_extraido, 
-                    metadatos=metadatos, 
-                    CT_Num_expediente=CT_Num_expediente,
-                    id_expediente=expediente.CN_Id_expediente,  # ID real del expediente
-                    id_documento=documento_creado.CN_Id_documento  # ID real del documento
-                )
-                logger.info(f"Almacenado en vectorstore exitosamente: {num_chunks} chunks")
+                    # Verificar cancelación después de extracción
+                    if cancel_check:
+                        cancel_check()
+                
+                    if not texto_extraido.strip():
+                        raise ValueError("No se pudo extraer texto del archivo")
+                
+                    # Progreso: Texto extraído (45%)
+                    if progress_tracker:
+                        progress_tracker.update_progress(45, f"Texto extraído: {len(texto_extraido)} caracteres")
+                
+                    # Progreso: Generando embeddings (60%)
+                    if progress_tracker:
+                        progress_tracker.update_progress(60, "Generando embeddings vectoriales")
+                
+                    # 5. Almacenar en el vectorstore con IDs reales
+                    doc_ids, num_chunks = await store_in_vectorstore(
+                        texto=texto_extraido, 
+                        metadatos=metadatos, 
+                        CT_Num_expediente=CT_Num_expediente,
+                        id_expediente=expediente.CN_Id_expediente,  # ID real del expediente
+                        id_documento=documento_creado.CN_Id_documento  # ID real del documento
+                    )
+                    logger.info(f"Almacenado en vectorstore exitosamente: {num_chunks} chunks")
                 
                 # Registrar en bitácora el almacenamiento vectorial
-                if usuario_id:
+                if usuario_id and not ya_vectorizado:
                     try:
                         from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as bitacora_service
                         await bitacora_service.registrar_almacenamiento_vectorial(
@@ -531,7 +562,7 @@ async def process_single_file_with_content(
                     
                     # Actualizar progreso con mensaje de error
                     if progress_tracker:
-                        progress_tracker.mark_failed(f"Error: {str(e)[:100]}")
+                        progress_tracker.marcar_fallo(str(e))
                 
                 try:
                     # El documento ya existe en BD por el commit temprano
@@ -561,7 +592,14 @@ async def process_single_file_with_content(
                 raise e
         
         else:
-            # Sin BD disponible - NO almacenar en el vectorstore
+            # Sin BD disponible - NO almacenar en el vectorstore (el texto se extrae igual)
+            texto_extraido = await extract_text_from_file(content, file.filename, tipo_archivo, progress_tracker, cancel_check)
+            if cancel_check:
+                cancel_check()
+            if not texto_extraido.strip():
+                raise ValueError("No se pudo extraer texto del archivo")
+            if progress_tracker:
+                progress_tracker.update_progress(45, f"Texto extraído: {len(texto_extraido)} caracteres")
             logger.warning(f"No se almacena en vectorstore: requiere transacción de BD exitosa")
             metadatos.update({"status": "procesado_sin_bd"})
 

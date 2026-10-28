@@ -573,3 +573,31 @@ def test_archivo_ya_borrado_es_exito(cliente_api, sesion, registro_de_datos, pro
     assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_VACIAS
     assert _lista_del_notebook(cliente_api, sesion, notebook) == [_item(otro, id_otro)]
     assert _tres_capas(clave, otro.nombre, id_otro) == capas_otro
+
+
+# --- RF-07.54: el documento en Error de un notebook se ve y se quita ----------------------------------------------------------
+
+@pytest.mark.requisito("RF-07.54")
+def test_fallo_en_notebook_queda_en_error_y_se_quita(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, htr_simulado):
+    """RF-07.54: el documento de un notebook cuyo procesamiento falla queda listado en Error (con su archivo) y se puede quitar
+    del notebook: tras quitarlo no queda fila, relación, archivo ni fragmentos. Sale de RF-07.2 y de RF-19.1."""
+    htr_simulado.responder("")
+    notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con fallo", registro_de_datos)
+    clave = notebook["clave_interna"]
+    nombre = f"{PREFIJO_DATOS}_{os.urandom(4).hex()}.png"
+    respuesta = cargar(cliente_api, sesion, clave, [(nombre, b"\x89PNG\r\n\x1a\nPRUEBA")])
+    assert respuesta.status_code == 200, f"la carga respondió {respuesta.status_code}"
+    id_tarea = respuesta.json()["task_ids"][0]
+    assert procesamiento_en_prueba.procesar()[id_tarea].state == "FAILURE"
+    id_documento = id_del_documento(nombre)
+    assert id_documento is not None, "el fallo no dejó el documento en el notebook"
+
+    assert _lista_del_notebook(cliente_api, sesion, notebook) == [{"id": id_documento, "nombre_archivo": nombre, "estado": "Error"}]
+    capas = _tres_capas(clave, nombre, id_documento)
+    assert capas["archivo"] and capas["fila"] == 1 and capas["relacion"] == 1 and capas["fragmentos"] == 0
+
+    quitado = cliente_api.delete(f"/notebooks/{notebook['id']}/documentos/{id_documento}", headers=sesion)
+
+    assert quitado.status_code == 200, f"se esperaba 200 y se recibió {quitado.status_code}"
+    assert _tres_capas(clave, nombre, id_documento) == CAPAS_VACIAS
+    assert _lista_del_notebook(cliente_api, sesion, notebook) == []

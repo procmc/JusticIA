@@ -66,6 +66,7 @@ from app.services.bitacora.ingesta_audit_service import (
 )
 from app.services.bitacora.notebooks_audit_service import notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE
 from app.services.notebook_service import NotebookService, NO_DISPONIBLE, PROPIO
+from app.services.expediente_service import ExpedienteService
 from app.constants.tipos_accion import TiposAccion
 import logging
 from celery.result import AsyncResult
@@ -107,7 +108,7 @@ async def consultar_progreso_tarea(
     Consulta el estado y progreso de una tarea Celery.
     Usa ProgressTracker para progreso granular, con fallback a Celery.
     """
-    from app.services.ingesta.async_processing.progress_tracker import progress_manager
+    from app.services.ingesta.async_processing.progress_tracker import progress_manager, texto_de_fallo
     
     # Intentar obtener progreso detallado del ProgressTracker
     progress = progress_manager.get_status(task_id)
@@ -137,11 +138,13 @@ async def consultar_progreso_tarea(
             "ready": True,
         }
     elif result.state == "FAILURE":
+        # RF-07.52: texto fijo con la causa clasificada, nunca el texto de la excepción.
+        mensaje_fijo, _ = texto_de_fallo(str(result.info) if result.info else None)
         return {
             "task_id": task_id,
             "status": "fallido",
             "progress": 0,
-            "message": str(result.info) if result.info else "Error en procesamiento",
+            "message": mensaje_fijo,
             "resultado": None,
             "ready": True,
         }
@@ -205,6 +208,9 @@ async def ingestar_archivos(
             detail="Debe proporcionar al menos un archivo"
         )
     
+    # Los espacios al inicio y al final se quitan antes de toda comprobación (RF-06.53).
+    CT_Num_expediente = CT_Num_expediente.strip()
+
     # Un tema con forma de clave de notebook se comprueba primero, antes de escribir o encolar nada (RF-17.4): si no es la clave
     # de un notebook del usuario (ajeno, inexistente o con una grafía que no es la canónica) la carga se rechaza con el mismo
     # 404, sin repetir la clave pedida; si es la suya, en otra grafía, se carga con su clave canónica `NB-<id>`.
@@ -229,6 +235,12 @@ async def ingestar_archivos(
             db=db, usuario_id=current_user["user_id"], motivo=MOTIVO_TEMA_NO_VALIDO
         )
         raise
+
+    # El tema se resuelve (o se crea) antes de guardar y encolar: uno igual a otro ya registrado salvo mayúsculas usa el nombre
+    # registrado en la carpeta, la base, los metadatos y la bitácora (RF-06.53), también cuando es nuevo y llegan dos grafías
+    # a la vez. La clave de un notebook propio ya viene canónica (`NB-<id>`) y no crea un tema aquí.
+    if clasificacion.tipo != PROPIO:
+        CT_Num_expediente = ExpedienteService().resolver_o_crear_tema(db, CT_Num_expediente)
 
     try:
         # Procesar cada archivo con Celery

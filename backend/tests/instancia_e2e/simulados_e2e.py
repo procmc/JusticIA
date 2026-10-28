@@ -761,7 +761,8 @@ ETAPA_POR_OMISION = "extraccion"
 class EstadoIngesta:
     """La ingesta dentro del proceso (RF-18.40): la carga por la API encola en un solo hilo de la propia instancia, sin worker,
     con HTR y audio simulados. Se puede hacer fallar o retener el procesamiento de un archivo por su nombre, en la etapa de
-    extracción del texto (con el progreso ya iniciado y sin documento todavía) o, con la etapa `vectorizacion`, justo antes de
+    extracción del texto (con el progreso ya iniciado y el documento ya registrado como Pendiente, que el fallo deja en Error:
+    RF-07.2) o, con la etapa `vectorizacion`, justo antes de
     vectorizar, cuando el documento ya existe en la base como Pendiente (005b, RF-18.40)."""
 
     def __init__(self, htr, audio, plazo: float = PLAZO_RETENCION_SEGUNDOS, esperar_inactiva: float = 60.0):

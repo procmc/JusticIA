@@ -368,3 +368,53 @@ def test_imagen_pegada_en_el_notebook_llega_a_procesado(cliente_api, sesion, not
     exigir_estado(id_documento, "Procesado")
     exigir_progreso("PRUEBA-tarea-1", "completado")
     assert contar_puntos(tema) > 0
+
+
+# --- RF-05.51: validación en el servidor al cargar (fallos esperados; D4 = A, R2 = A) -------------------------------------
+
+def _exigir_rechazo_al_cargar(cliente_api, sesion, tema, carpeta_archivos, encolado_interceptado, archivo, tipo="text/plain"):
+    """RF-05.51: el archivo se rechaza al cargar con su motivo, sin guardarlo ni encolarlo."""
+    respuesta = cliente_api.post("/ingesta/archivos", data={"CT_Num_expediente": tema},
+                                 files=[("files", (archivo[0], archivo[1], tipo))], headers=sesion)
+    rechazo = respuesta.status_code >= 400 or (
+        respuesta.json().get("rechazados", {}).get("cantidad") == 1 and respuesta.json()["aceptados"]["cantidad"] == 0)
+    assert rechazo, f"el servidor aceptó el archivo al cargar: {respuesta.status_code} {respuesta.text[:200]}"
+    assert encolado_interceptado.pendientes == [], "el archivo rechazado se encoló"
+    assert _archivos_del_tema(carpeta_archivos, tema) == [], "el archivo rechazado se guardó"
+
+
+@pytest.mark.requisito("RF-05.51")
+@pytest.mark.xfail(strict=True, reason="RF-05.51 · ingesta")
+def test_extension_no_permitida_se_rechaza_al_cargar(cliente_api, sesion, registro_de_datos, carpeta_archivos,
+                                                     encolado_interceptado):
+    """RF-05.51 (extensión): un archivo `.exe` se rechaza al cargar; hoy se acepta y se guarda."""
+    tema = tema_heredado(registro_de_datos)
+    _exigir_rechazo_al_cargar(cliente_api, sesion, tema, carpeta_archivos, encolado_interceptado,
+                              ("PRUEBA_programa.exe", b"PRUEBA contenido"))
+
+
+@pytest.mark.requisito("RF-05.51")
+@pytest.mark.xfail(strict=True, reason="RF-05.51 · ingesta")
+def test_mime_real_no_permitido_se_rechaza_al_cargar(cliente_api, sesion, registro_de_datos, carpeta_archivos,
+                                                     encolado_interceptado):
+    """RF-05.51 (tipo MIME): un ejecutable (cabecera `MZ`) con nombre `.txt` y tipo declarado `text/plain` se rechaza
+    al cargar por su tipo real; hoy se acepta."""
+    tema = tema_heredado(registro_de_datos)
+    _exigir_rechazo_al_cargar(cliente_api, sesion, tema, carpeta_archivos, encolado_interceptado,
+                              ("PRUEBA_disfrazado.txt", b"MZ\x90\x00\x03\x00\x00\x00" + b"\x00" * 64))
+
+
+@pytest.mark.requisito("RF-05.51")
+@pytest.mark.xfail(strict=True, reason="RF-05.51 · ingesta")
+def test_tamano_excedido_se_rechaza_al_cargar(cliente_api, sesion, registro_de_datos, carpeta_archivos,
+                                              encolado_interceptado, monkeypatch):
+    """RF-05.51 (tamaño): un archivo mayor que el límite se rechaza al cargar. El límite de 1 GB se simula reduciéndolo
+    a 10 bytes (sin generar un archivo grande); hoy se acepta y se guarda."""
+    from app.config import file_config
+    from app.services.ingesta.file_management import document_processor
+
+    monkeypatch.setattr(file_config, "MAX_FILE_SIZE", 10)
+    monkeypatch.setattr(document_processor, "MAX_FILE_SIZE", 10)
+    tema = tema_heredado(registro_de_datos)
+    _exigir_rechazo_al_cargar(cliente_api, sesion, tema, carpeta_archivos, encolado_interceptado,
+                              ("PRUEBA_grande.txt", b"PRUEBA contenido que supera los diez bytes"))

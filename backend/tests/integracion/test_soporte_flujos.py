@@ -47,7 +47,8 @@ def test_subir_con_encolado_interceptado(cliente_api, sesion, usuario_gubernamen
 
     despues = foto_de_efectos()
     assert despues["filas"]["T_Documento"] == antes["filas"]["T_Documento"]
-    assert despues["filas"]["T_Expediente"] == antes["filas"]["T_Expediente"]
+    # El tema se crea al cargar (RF-06.53, spec 006 T10): una fila nueva, vacía; ningún documento ni fragmento.
+    assert despues["filas"]["T_Expediente"] == antes["filas"]["T_Expediente"] + 1
     assert despues["puntos"] == antes["puntos"] == 0 and contar_puntos(tema) == 0
     assert len(despues["archivos"]) == len(antes["archivos"]) + 1  # solo el archivo guardado
 

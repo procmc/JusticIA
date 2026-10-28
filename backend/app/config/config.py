@@ -1,8 +1,32 @@
+import logging
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
 load_dotenv()
+
+_logger = logging.getLogger(__name__)
+
+# Variables con las que LangChain enviaría trazas (preguntas, fragmentos, respuestas) a un servicio externo.
+VARIABLES_DE_RASTREO_EXTERNO = ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2")
+
+
+def apagar_rastreo_externo() -> None:
+    """Fuerza a «false» el rastreo externo de LangChain (RNF-09.50, constitución principio 6).
+
+    Se llama al importar este módulo, que usan el backend y el proceso de ingesta, así que el rastreo queda apagado aunque
+    el entorno lo traiga activo o no lo defina. Si venía activo se deja un aviso con los nombres de las variables, nunca
+    con sus valores ni con claves.
+    """
+    activas = [n for n in VARIABLES_DE_RASTREO_EXTERNO if os.environ.get(n, "").strip().lower() in ("true", "1", "yes", "on")]
+    for nombre in VARIABLES_DE_RASTREO_EXTERNO:
+        os.environ[nombre] = "false"
+    if activas:
+        _logger.warning("El rastreo externo de LangChain venía activo (%s) y se apagó: los datos no salen de la infraestructura local.",
+                        ", ".join(activas))
+
+
+apagar_rastreo_externo()
 
 # Configuración Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")

@@ -53,7 +53,7 @@ See Also:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, literal, select
+from sqlalchemy import cast, func, literal, select
 from app.db.models.expediente import T_Expediente
 from datetime import datetime
 
@@ -85,6 +85,15 @@ class ExpedienteRepository:
         para tratar como clave lo que cualquiera de las dos conversiones deje con su forma. Solo lectura.
         """
         return db.execute(select(cast(literal(numero_expediente), T_Expediente.CT_Num_expediente.type))).scalar()
+
+    def obtener_por_nombre_sin_mayusculas(self, db: Session, nombre: str) -> Optional[T_Expediente]:
+        """
+        Busca el tema cuyo nombre es igual al recibido salvo mayúsculas y minúsculas (RF-06.53). Las tildes distinguen temas.
+        Si hay varios heredados que difieren solo en mayúsculas, devuelve el de menor id.
+        """
+        stmt = (select(T_Expediente).where(func.lower(T_Expediente.CT_Num_expediente) == nombre.lower())
+                .order_by(T_Expediente.CN_Id_expediente).limit(1))
+        return db.execute(stmt).scalars().first()
 
     def obtener_por_numero(self, db: Session, numero_expediente: str) -> Optional[T_Expediente]:
         """
@@ -136,6 +145,18 @@ class ExpedienteRepository:
                 db.rollback()
             raise Exception(f"Error creando expediente: {str(e)}")
     
+    def crear_tema(self, db: Session, nombre: str) -> T_Expediente:
+        """
+        Crea el tema y confirma. A diferencia de `crear`, deja pasar el `IntegrityError` de la restricción única
+        (`uq_expediente_num`, intercalación `CI_AS`): quien llama decide qué hacer si otra petición creó antes el mismo tema
+        (RF-06.53). La sesión queda sin deshacer; el rollback es de quien captura el error.
+        """
+        tema = T_Expediente(CT_Num_expediente=nombre, CF_Fecha_creacion=datetime.utcnow())
+        db.add(tema)
+        db.commit()
+        db.refresh(tema)
+        return tema
+
     def buscar_o_crear(self, db: Session, numero_expediente: str, auto_commit: bool = True) -> T_Expediente:
         """
         Busca un expediente existente o crea uno nuevo.

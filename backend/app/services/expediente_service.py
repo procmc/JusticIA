@@ -33,6 +33,7 @@ Note:
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.db.models.expediente import T_Expediente
 from app.db.models.documento import T_Documento
 from app.db.models.estado_procesamiento import T_Estado_procesamiento
@@ -87,6 +88,34 @@ class ExpedienteService:
         
         return estado
     
+    def nombre_de_tema_registrado(self, db: Session, tema: str) -> str:
+        """
+        Devuelve el nombre con el que ya está registrado el tema si existe uno igual salvo mayúsculas y minúsculas; si no,
+        el recibido (RF-06.53). Así un mismo tema no genera dos carpetas ni dos valores en los metadatos de los fragmentos.
+        """
+        registrado = self.expediente_repo.obtener_por_nombre_sin_mayusculas(db, tema)
+        return registrado.CT_Num_expediente if registrado else tema
+
+    def resolver_o_crear_tema(self, db: Session, tema: str) -> str:
+        """
+        Devuelve el nombre registrado del tema, creándolo si no existe (RF-06.53). Se llama al recibir la carga, antes de
+        guardar archivos y encolar, para que dos peticiones con grafías distintas de un tema nuevo compartan un solo nombre
+        en la carpeta, los metadatos, la ruta y la bitácora. Si otra petición lo crea entre la lectura y el alta, la
+        restricción única lo rechaza con `IntegrityError`: se deshace y se usa el nombre del tema que ganó.
+        """
+        registrado = self.expediente_repo.obtener_por_nombre_sin_mayusculas(db, tema)
+        if registrado:
+            return registrado.CT_Num_expediente
+        try:
+            self.expediente_repo.crear_tema(db, tema)
+            return tema
+        except IntegrityError:
+            db.rollback()
+            ganador = self.expediente_repo.obtener_por_nombre_sin_mayusculas(db, tema)
+            if not ganador:
+                raise
+            return ganador.CT_Num_expediente
+
     async def buscar_o_crear_expediente(self, db: Session, numero_expediente: str) -> T_Expediente:
         """
         Lógica de negocio para buscar o crear expediente.

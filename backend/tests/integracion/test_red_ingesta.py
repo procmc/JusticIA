@@ -119,7 +119,7 @@ def test_carga_encolada_un_id_por_archivo(cliente_api, sesion, usuario_gubername
                                           encolado_interceptado):
     """RF-05.1, RF-21.7: dos archivos a un tema dan un identificador por archivo sin esperar al procesamiento, cada uno queda
     guardado en la carpeta temporal de su tema, hay una tarea encolada por archivo y la bitácora registra la carga iniciada
-    con el usuario y el tema; todavía no hay documento, tema ni fragmentos."""
+    con el usuario y el tema; todavía no hay documentos ni fragmentos (el tema sí, vacío: se crea al cargar, RF-06.53)."""
     from app.services.ingesta.async_processing.progress_tracker import progress_manager
 
     tema = tema_heredado(registro_de_datos)
@@ -143,9 +143,10 @@ def test_carga_encolada_un_id_por_archivo(cliente_api, sesion, usuario_gubername
     for ruta, documento in zip(rutas, (uno, otro)):
         assert ruta.is_file() and ruta.read_bytes() == documento.contenido
         assert ruta.parent.name == tema and carpeta_archivos in ruta.parents
-    # Todavía no se procesó nada: ni documentos, ni tema, ni fragmentos, ni seguimiento de progreso.
+    # Todavía no se procesó nada: ni documentos, ni fragmentos, ni seguimiento de progreso. El tema ya existe (se crea al cargar,
+    # RF-06.53) y está vacío (spec 006, T10).
     assert id_del_documento(uno.nombre) is None and id_del_documento(otro.nombre) is None
-    assert _tema(tema) is None and contar_puntos(tema) == 0
+    assert _tema(tema) is not None and _documentos_del_tema(tema) == [] and contar_puntos(tema) == 0
     assert progress_manager.get_status("PRUEBA-tarea-1") is None
     # La fila de carga iniciada, a nombre del usuario y con el tema.
     filas = _filas_de_carga_desde(ultimo_id, usuario_gubernamental.cedula)
@@ -310,6 +311,85 @@ def test_tema_libre_y_chat_acotado(cliente_api, sesion, usuario_gubernamental, r
     assert en_heredado.frase not in contexto, "el chat acotado al tema libre trajo el documento de otro tema"
 
 
+# --- RF-06.53: el tema se normaliza (spec 006, T1) --------------------------------------------------------------------------
+
+@pytest.mark.requisito("RF-06.53")
+def test_tema_normalizado_una_carpeta_y_un_valor(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba,
+                                                 carpeta_archivos):
+    """RF-06.53: «Tema», «tema» y « Tema » son el mismo tema: una fila, una carpeta y un solo valor en los metadatos de los
+    fragmentos (el nombre ya registrado). Las tildes distinguen temas (R5): «Políticas» y «Politicas» son dos."""
+    registrado = _tema_libre(registro_de_datos)
+    en_mayusculas = f"  {registrado.upper()} "
+    con_tilde = f"{PREFIJO_DATOS} Políticas {uuid.uuid4().hex[:8]}"
+    sin_tilde = con_tilde.replace("í", "i")
+    registro_de_datos.registrar_tema(con_tilde)
+    registro_de_datos.registrar_tema(sin_tilde)
+    primero, segundo, tercero, cuarto = (documento_de_prueba() for _ in range(4))
+
+    _subir_y_procesar(cliente_api, sesion, procesamiento_en_prueba, registrado, [primero])
+    # La segunda carga se guarda en la carpeta del nombre registrado (se mira antes de procesar: el procesamiento limpia).
+    respuesta = cargar(cliente_api, sesion, en_mayusculas, [(segundo.nombre, segundo.contenido)])
+    assert respuesta.status_code == 200 and respuesta.json()["expediente"] == registrado
+    carpetas = [c.name for c in (carpeta_archivos / "uploads").iterdir() if c.is_dir() and c.name.casefold() == registrado.casefold()]
+    assert carpetas == [registrado]
+    resultados = procesamiento_en_prueba.procesar()
+    assert all(r.state == "SUCCESS" for r in resultados.values())
+
+    filas = _consultar("SELECT CT_Num_expediente FROM T_Expediente WHERE LOWER(CT_Num_expediente) = :n", {"n": registrado.lower()})
+    assert [f[0] for f in filas] == [registrado]
+    puntos = _puntos_del_tema(registrado)
+    assert {p.payload["metadata"]["nombre_archivo"] for p in puntos} == {primero.nombre, segundo.nombre}
+    assert _puntos_del_tema(registrado.upper()) == []
+    assert [d[1] for d in _documentos_del_tema(registrado)] == [primero.nombre, segundo.nombre]
+
+    _subir_y_procesar(cliente_api, sesion, procesamiento_en_prueba, con_tilde, [tercero])
+    _subir_y_procesar(cliente_api, sesion, procesamiento_en_prueba, sin_tilde, [cuarto])
+    assert _tema(con_tilde) is not None and _tema(sin_tilde) is not None
+    assert _tema(con_tilde)[0] != _tema(sin_tilde)[0]
+    assert [d[1] for d in _documentos_del_tema(con_tilde)] == [tercero.nombre]
+    assert [d[1] for d in _documentos_del_tema(sin_tilde)] == [cuarto.nombre]
+
+
+@pytest.mark.requisito("RF-06.53")
+def test_tema_nuevo_en_dos_grafias_un_solo_nombre(cliente_api, sesion, usuario_gubernamental, registro_de_datos,
+                                                  procesamiento_en_prueba, carpeta_archivos):
+    """RF-06.53 (spec 006, T10): un tema NUEVO enviado en dos grafías («PRUEBA…» y «prueba…») antes de que el Worker procese
+    nada (el orden de un mismo Guardar) queda con un solo nombre, el de la primera petición: una fila, una carpeta, un único
+    valor de `metadata.numero_expediente`, la ruta de ambos documentos y la bitácora con ese nombre."""
+    registrado = f"{PREFIJO_DATOS} Dos Grafias {uuid.uuid4().hex[:8]}"
+    otra_grafia = registrado.lower()
+    registro_de_datos.registrar_tema(registrado)
+    registro_de_datos.registrar_tema(otra_grafia)
+    primero, segundo = documento_de_prueba(), documento_de_prueba()
+    ultimo_id = _ultimo_id_de_bitacora()
+
+    # Dos cargas seguidas, sin procesar entre medio: el Worker aún no ha creado el tema.
+    uno = cargar(cliente_api, sesion, registrado, [(primero.nombre, primero.contenido)])
+    otro = cargar(cliente_api, sesion, otra_grafia, [(segundo.nombre, segundo.contenido)])
+    assert uno.status_code == 200 and otro.status_code == 200
+    assert uno.json()["expediente"] == registrado and otro.json()["expediente"] == registrado
+    carpetas = [c.name for c in (carpeta_archivos / "uploads").iterdir() if c.is_dir() and c.name.casefold() == registrado.casefold()]
+    assert carpetas == [registrado]
+    assert all(p.tema == registrado for p in procesamiento_en_prueba.encolado.pendientes)
+
+    resultados = procesamiento_en_prueba.procesar()
+    assert all(r.state == "SUCCESS" for r in resultados.values())
+
+    filas = _consultar("SELECT CT_Num_expediente FROM T_Expediente WHERE LOWER(CT_Num_expediente) = :n", {"n": registrado.lower()})
+    assert [f[0] for f in filas] == [registrado]
+    puntos = _puntos_del_tema(registrado)
+    assert {p.payload["metadata"]["nombre_archivo"] for p in puntos} == {primero.nombre, segundo.nombre}
+    assert {p.payload["metadata"]["numero_expediente"] for p in puntos} == {registrado}
+    assert _puntos_del_tema(otra_grafia) == []
+    rutas = _consultar(
+        "SELECT d.CT_Ruta_archivo FROM T_Documento d JOIN T_Expediente_Documento ed ON ed.CN_Id_documento = d.CN_Id_documento "
+        "JOIN T_Expediente e ON e.CN_Id_expediente = ed.CN_Id_expediente WHERE e.CT_Num_expediente = :n", {"n": registrado})
+    assert len(rutas) == 2 and all(f"/{registrado}/" in r[0] for r in rutas)
+    temas_en_bitacora = {f["info"]["expediente"] for f in _filas_de_carga_desde(ultimo_id, usuario_gubernamental.cedula)
+                         if "expediente" in f["info"]}
+    assert temas_en_bitacora == {registrado}
+
+
 # --- RF-07.2 y RF-21.7: el fallo de la extracción de un documento no afecta al otro ------------------------------------------
 
 TEXTO_FIJO_DE_FALLO = "No se pudo procesar el archivo. Por favor, intente nuevamente."
@@ -381,10 +461,9 @@ def test_extraccion_que_falla_no_afecta_al_otro(carga_con_fallo):
     assert {p.payload["metadata"]["nombre_archivo"] for p in puntos} == {carga.bueno.nombre}  # ninguno del que falló
 
 
-@pytest.mark.requisito("RF-07.2")
-@pytest.mark.xfail(strict=True, reason="RF-07.2 · ingesta")
+@pytest.mark.requisito("RF-07.52")
 def test_progreso_con_texto_fijo_y_causa(carga_con_fallo):
-    """RF-07.2 (a): el progreso de la tarea que falló informa fallo con el texto fijo «No se pudo procesar el archivo. Por
+    """RF-07.52 (antes RF-07.2 a): el progreso de la tarea que falló informa fallo con el texto fijo «No se pudo procesar el archivo. Por
     favor, intente nuevamente.» y la causa clasificada, sin el texto de la excepción ni rutas del servidor."""
     from app.services.ingesta.async_processing.progress_tracker import progress_manager
 
@@ -421,13 +500,93 @@ def test_fila_de_error_con_la_causa(carga_con_fallo, sesion, usuario_gubernament
 
 
 @pytest.mark.requisito("RF-07.2")
-@pytest.mark.xfail(strict=True, reason="RF-07.2 · ingesta")
 def test_documento_queda_en_error(carga_con_fallo):
-    """RF-07.2: el documento cuya extracción falló queda registrado en estado Error. Hoy el documento se registra después de
-    extraer el texto, así que un fallo de extracción no deja documento."""
+    """RF-07.2: el documento cuya extracción falló queda registrado en estado Error (el documento se registra antes de
+    extraer el texto)."""
     id_malo = id_del_documento(carga_con_fallo.malo.nombre)
     assert id_malo is not None, "el fallo de extracción no dejó ningún documento"
     exigir_estado(id_malo, "Error")
+
+
+def _pdf_sin_texto() -> bytes:
+    """Un PDF válido de una página en blanco, generado en memoria (sin texto que extraer)."""
+    cuerpo = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+              b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>"]
+    salida, posiciones = b"%PDF-1.4\n", []
+    for numero, objeto in enumerate(cuerpo, start=1):
+        posiciones.append(len(salida))
+        salida += f"{numero} 0 obj\n".encode() + objeto + b"\nendobj\n"
+    inicio = len(salida)
+    salida += f"xref\n0 {len(cuerpo) + 1}\n0000000000 65535 f \n".encode()
+    for posicion in posiciones:
+        salida += f"{posicion:010d} 00000 n \n".encode()
+    return salida + f"trailer\n<< /Size {len(cuerpo) + 1} /Root 1 0 R >>\nstartxref\n{inicio}\n%%EOF\n".encode()
+
+
+CONTENIDOS_QUE_FALLAN = {
+    "pdf_danado": ("pdf", b"%PDF-1.4\nPRUEBA contenido danado sin estructura \x00\xff\xfe", None),
+    "pdf_sin_texto": ("pdf", _pdf_sin_texto(), None),
+    "imagen_sin_texto": ("png", b"\x89PNG\r\n\x1a\nPRUEBA", ""),
+    "htr_caido": ("png", b"\x89PNG\r\n\x1a\nPRUEBA", RuntimeError("HTR caido PRUEBA")),
+}
+
+
+@pytest.mark.requisito("RF-07.2")
+@pytest.mark.requisito("RN-01.50")
+@pytest.mark.parametrize("caso", list(CONTENIDOS_QUE_FALLAN))
+def test_documento_queda_en_error_por_causa(caso, cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, htr_simulado):
+    """RF-07.2, RN-01.50: un PDF dañado, un PDF sin texto, una imagen sin texto o un fallo del HTR dejan el documento
+    registrado en Error con su ruta, sin fragmentos, con el archivo todavía en disco (no se borra) y con el progreso en
+    fallo."""
+    extension, contenido, htr = CONTENIDOS_QUE_FALLAN[caso]
+    if isinstance(htr, BaseException):
+        htr_simulado.fallar(htr)
+    elif htr is not None:
+        htr_simulado.responder(htr)
+    tema = tema_heredado(registro_de_datos)
+    nombre = f"{PREFIJO_DATOS}_{uuid.uuid4().hex[:8]}.{extension}"
+    respuesta = cargar(cliente_api, sesion, tema, [(nombre, contenido)])
+    assert respuesta.status_code == 200, f"la carga respondió {respuesta.status_code}"
+    id_tarea = respuesta.json()["task_ids"][0]
+
+    resultados = procesamiento_en_prueba.procesar()
+
+    assert resultados[id_tarea].state == "FAILURE"
+    exigir_progreso(id_tarea, "fallido")
+    id_documento = id_del_documento(nombre)
+    assert id_documento is not None, "el fallo no dejó ningún documento"
+    exigir_estado(id_documento, "Error")
+    assert (id_documento, nombre, "Error") in _documentos_del_tema(tema)
+    ruta = _consultar("SELECT CT_Ruta_archivo FROM T_Documento WHERE CN_Id_documento = :d", {"d": id_documento})[0][0]
+    assert ruta and Path(ruta).name == nombre, f"el documento en Error no conserva la ruta de su archivo: {ruta!r}"
+    from app.services.documentos.file_management_service import file_management_service
+
+    assert file_management_service.obtener_ruta_archivo(tema, nombre) is not None, "el archivo del documento en Error se borró (RN-01)"
+    assert contar_puntos(tema) == 0
+
+
+@pytest.mark.requisito("RF-21.50")
+def test_bitacora_caida_documento_igual_en_error(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
+    """RF-21.50: si el registro en la bitácora falla (también el de inicio), el procesamiento sigue y el documento cuya
+    extracción falla igual queda en Error."""
+    from unittest.mock import AsyncMock
+
+    from app.services.bitacora.ingesta_audit_service import ingesta_audit_service
+
+    tema = tema_heredado(registro_de_datos)
+    nombre = f"{PREFIJO_DATOS}_{uuid.uuid4().hex[:8]}.pdf"
+    respuesta = cargar(cliente_api, sesion, tema, [(nombre, CONTENIDOS_QUE_FALLAN["pdf_danado"][1])])
+    assert respuesta.status_code == 200
+    id_tarea = respuesta.json()["task_ids"][0]
+    monkeypatch.setattr(ingesta_audit_service, "registrar_ingesta", AsyncMock(side_effect=RuntimeError("bitacora caida PRUEBA")))
+
+    resultados = procesamiento_en_prueba.procesar()
+
+    assert resultados[id_tarea].state == "FAILURE"
+    exigir_progreso(id_tarea, "fallido")
+    id_documento = id_del_documento(nombre)
+    assert id_documento is not None, "con la bitácora caída el fallo no dejó ningún documento"
+    exigir_estado(id_documento, "Error")
 
 
 # --- RF-07 (T3b): el fallo de la vectorización deja el documento en Error --------------------------------------------------
@@ -438,7 +597,9 @@ def test_falla_la_vectorizacion_el_documento_queda_en_error(
         motivo, cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
     """RF-07 (T3b): si falla `store_in_vectorstore` (o la tarea se cancela en ese punto), el documento ya registrado queda en
     Error. Antes el manejador llamaba a `update_progress(..., status=...)`, que no acepta `status`: el TypeError cortaba el
-    cambio de estado y el documento quedaba en Pendiente."""
+    cambio de estado y el documento quedaba en Pendiente.
+    NOTA (RF-07.53): el caso `cancelacion` fija hoy que la cancelación deja el documento en Error, lo contrario de lo que
+    dice el ERS; cambiará cuando se corrija la cancelación (ver `test_cancelacion_queda_cancelada`)."""
     from app.services.ingesta.file_management import document_processor
 
     async def vectorizar_falla(*args, **kwargs):
@@ -453,3 +614,134 @@ def test_falla_la_vectorizacion_el_documento_queda_en_error(
     id_doc = id_del_documento(doc.nombre)
     assert id_doc is not None, "el documento no se registró antes de la vectorización"
     exigir_estado(id_doc, "Error")
+
+
+@pytest.mark.requisito("RF-07.53")
+@pytest.mark.xfail(strict=True, reason="RF-07.53 · ingesta")
+def test_cancelacion_queda_cancelada(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
+    """RF-07.53 (CU-07 FA-03): si el usuario cancela el procesamiento en curso (`Terminated`), el documento queda
+    cancelado; hoy queda en Error. Cuando se corrija, cambiará también el caso `cancelacion` de la prueba anterior, que
+    hoy fija lo contrario (cancelación → Error)."""
+    from celery.exceptions import Terminated
+
+    from app.services.ingesta.file_management import document_processor
+
+    async def vectorizar_cancelada(*args, **kwargs):
+        raise Terminated("Tarea cancelada por el usuario PRUEBA")
+
+    monkeypatch.setattr(document_processor, "store_in_vectorstore", vectorizar_cancelada)
+    tema = tema_heredado(registro_de_datos)
+    doc = documento_de_prueba()
+    assert cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)]).status_code == 200
+    procesamiento_en_prueba.procesar()
+    id_doc = id_del_documento(doc.nombre)
+    assert id_doc is not None, "el documento no se registró antes de la cancelación"
+    exigir_estado(id_doc, "Cancelado")
+
+
+# --- RF-07.51: el reintento interno de la misma tarea no duplica filas ni fragmentos ---------------------------------------
+
+def _reejecutar(pendiente):
+    """Vuelve a ejecutar la MISMA tarea (mismo identificador y argumentos), como el reintento interno de Celery tras perder
+    el worker (`task_acks_late`)."""
+    from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
+
+    return procesar_archivo_celery.apply(
+        args=(pendiente.tema, dict(pendiente.archivo_info), pendiente.usuario), task_id=pendiente.id, throw=False)
+
+
+def _olvidar_seguimiento(id_tarea: str) -> None:
+    """Borra el seguimiento de progreso (caduca a la hora; el reintento puede llegar después)."""
+    from app.services.ingesta.async_processing import progress_tracker
+
+    progress_tracker.redis_client.delete(f"task_progress:{id_tarea}")
+
+
+def _poner_estado(id_documento: int, estado: str) -> None:
+    from app.db.database import engine
+
+    with engine.begin() as conexion:
+        conexion.execute(
+            text("UPDATE T_Documento SET CN_Id_estado = (SELECT CN_Id_estado FROM T_Estado_procesamiento "
+                 "WHERE CT_Nombre_estado = :e) WHERE CN_Id_documento = :d"), {"e": estado, "d": id_documento})
+
+
+@pytest.mark.requisito("RF-07.51")
+@pytest.mark.parametrize("situacion", ["procesado", "pendiente_con_fragmentos"])
+def test_reintento_de_la_misma_tarea_una_fila(situacion, cliente_api, sesion, registro_de_datos, procesamiento_en_prueba):
+    """RF-07.51: la misma tarea ejecutada dos veces (aunque su seguimiento ya caducó) deja una sola fila de documento y los
+    mismos fragmentos; si el documento había quedado Pendiente con sus fragmentos, termina Procesado sin vectorizar de nuevo."""
+    tema = tema_heredado(registro_de_datos)
+    doc = documento_de_prueba()
+    respuesta = cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)])
+    assert respuesta.status_code == 200, f"la carga respondió {respuesta.status_code}"
+    id_tarea = respuesta.json()["task_ids"][0]
+    assert procesamiento_en_prueba.procesar()[id_tarea].state == "SUCCESS"
+    id_documento = id_del_documento(doc.nombre)
+    fragmentos = len(_puntos_del_tema(tema))
+    assert fragmentos > 0
+    if situacion == "pendiente_con_fragmentos":
+        _poner_estado(id_documento, "Pendiente")
+    _olvidar_seguimiento(id_tarea)
+
+    reintento = _reejecutar(procesamiento_en_prueba.encolado.pendientes[0])
+
+    assert reintento.state == "SUCCESS", f"el reintento terminó en {reintento.state}: {reintento.result!r}"
+    assert [d[1] for d in _documentos_del_tema(tema)] == [doc.nombre], "el reintento creó otra fila"
+    exigir_estado(id_documento, "Procesado")
+    assert len(_puntos_del_tema(tema)) == fragmentos, "el reintento duplicó los fragmentos"
+
+
+@pytest.mark.requisito("RF-07.51")
+def test_reintento_de_tarea_en_error_no_crea_fila(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
+    """RF-07.51: el reintento de una tarea cuyo documento quedó en Error no crea otra fila: lo deja en Error."""
+    from app.services.ingesta.file_management import document_processor
+
+    async def extraer(*args, **kwargs):
+        raise ValueError("Error extrayendo texto de PRUEBA")
+
+    monkeypatch.setattr(document_processor, "extract_text_from_file", extraer)
+    tema = tema_heredado(registro_de_datos)
+    doc = documento_de_prueba()
+    respuesta = cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)])
+    id_tarea = respuesta.json()["task_ids"][0]
+    assert procesamiento_en_prueba.procesar()[id_tarea].state == "FAILURE"
+    _olvidar_seguimiento(id_tarea)
+
+    _reejecutar(procesamiento_en_prueba.encolado.pendientes[0])
+
+    assert [(d[1], d[2]) for d in _documentos_del_tema(tema)] == [(doc.nombre, "Error")]
+
+
+@pytest.mark.requisito("RF-07.51")
+def test_recarga_tras_error_fila_nueva(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, monkeypatch):
+    """RF-07.51: cuando el usuario vuelve a cargar un archivo que quedó en Error (otra tarea, otro identificador), el sistema
+    crea una fila nueva, la procesa, y conserva la anterior en Error."""
+    from app.services.ingesta.file_management import document_processor
+
+    extraer_original = document_processor.extract_text_from_file
+    fallar = {"activo": True}
+
+    async def extraer(content, filename, *args, **kwargs):
+        if fallar["activo"]:
+            raise ValueError("Error extrayendo texto de PRUEBA")
+        return await extraer_original(content, filename, *args, **kwargs)
+
+    monkeypatch.setattr(document_processor, "extract_text_from_file", extraer)
+    tema = tema_heredado(registro_de_datos)
+    doc = documento_de_prueba()
+    primera = cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)])
+    id_primera = primera.json()["task_ids"][0]
+    assert procesamiento_en_prueba.procesar()[id_primera].state == "FAILURE"
+
+    fallar["activo"] = False
+    segunda = cargar(cliente_api, sesion, tema, [(doc.nombre, doc.contenido)])
+    assert segunda.status_code == 200
+    id_segunda = segunda.json()["task_ids"][0]
+    assert id_segunda != id_primera
+    assert procesamiento_en_prueba.procesar()[id_segunda].state == "SUCCESS"
+
+    documentos = _documentos_del_tema(tema)
+    assert len(documentos) == 2, f"se esperaban dos filas y hay {documentos}"
+    assert sorted(d[2] for d in documentos) == ["Error", "Procesado"]
+    assert len({d[0] for d in documentos}) == 2
