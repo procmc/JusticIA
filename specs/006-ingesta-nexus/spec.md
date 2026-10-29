@@ -1,8 +1,8 @@
 # Spec 006 — Ingesta de los documentos de Nexus
-Estado: implementada (28/10/2026); aprobada (27/10/2026); dudas resueltas (D1-D5, R1-R5, S1-S4, T1-T2, Andrés, 27/10/2026); corrección T10 (CC1-CC2, DD1, Andrés, 28/10/2026)
+Estado: implementada (28/10/2026); aprobada (27/10/2026); dudas resueltas (D1-D5, R1-R5, S1-S4, T1-T2, Andrés, 27/10/2026); corrección T10 (CC1-CC2, DD1, Andrés, 28/10/2026); asistencia operativa en Nexus, la Asamblea Legislativa, el repositorio de CONARE, Kimuk y SINALEVI (KK1-EEE1, Andrés, 28/10/2026)
 
 ## Contexto y objetivo
-- El tutor autorizó por correo cargar documentos de interés general de Nexus. Andrés los descarga a mano (PDF con texto seleccionable, públicos y sin datos personales, lote piloto de 10-30) y los carga con la Ingesta de siempre, como temas.
+- El tutor autorizó por correo cargar documentos de interés general de Nexus. Andrés los descarga a mano o con la asistencia operativa de un agente (KK1, ver «Datos de la verificación manual y carga del piloto»): PDF con texto seleccionable, públicos y sin datos personales salvo la firma del funcionario en su cargo (PP1), lote piloto de 10-30. Él los revisa y los carga con la Ingesta de siempre, como temas (salvo EEE1: la revisión y la carga las hace un agente).
 - ServIA no se entrena: carga (ingesta → fragmentos → Qdrant) y cita (RAG). El chat general ya busca en todo lo procesado (spec 005b); lo usa solo el Usuario Gubernamental (RN-03).
 - Antes del piloto hay que corregir los hallazgos de la 005b en la ingesta: (a) dos temas en un mismo Guardar dejan todo en el último; (b) un PDF que falla en la extracción no queda en Error, no deja fila y deja el archivo huérfano; (c) el aviso de rechazo con nombre largo se desborda a 616 px.
 - Además (D1, D3): Ingesta acepta temas de nombre libre con un campo «Tema», admite imágenes y muestra la advertencia de manuscrito.
@@ -146,12 +146,69 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
   - `PRUEBA 3` (con `prueba 3` en el mismo Guardar) verifica la corrección T10 (DD1); el notebook `PRUEBA 006` verifica RF-07.54 y RF-10.50.
   - Al terminar se quitan sus documentos, fragmentos y archivos (también los del notebook `PRUEBA 006`), solo con la aprobación explícita de Andrés en ese momento.
   - Los temas `PRUEBA`, `PRUEBA 2` y `PRUEBA 3` quedan vacíos como residuo aceptado, anotado como en la 005b (sección 7), porque la bitácora los referencia.
-- Los PDF de Nexus son documentos institucionales reales y **nunca** son datos de prueba: no entran en las pruebas automatizadas ni en el repositorio; solo en `uploads/` (ignorado por git) y Qdrant de desarrollo.
-- Los carga Andrés en desarrollo como paso operativo tras la validación, con RNF-09.50 comprobado. Sin anonimización (públicos y sin datos personales).
+- Los PDF de Nexus son documentos institucionales reales y **nunca** son datos de prueba: no entran en las pruebas automatizadas ni en el repositorio; solo en `~\Documents\ServIA-fuentes\Nexus` (descargas, fuera del repositorio; LL1), `uploads/` (ignorado por git) y Qdrant de desarrollo.
+- Los carga Andrés (salvo EEE1: un agente) en desarrollo como paso operativo tras la validación, con RNF-09.50 comprobado. Sin anonimización (públicos y sin datos personales salvo la firma del funcionario en su cargo, PP1).
+- **Asistencia operativa en Nexus (KK1)**: un agente usa el navegador de Andrés (su ventana y su sesión) para explorar Nexus, explicarle la interfaz y descargar documentos candidatos.
+  - No es una función del producto: ServIA sigue sin conexión, API ni rastreo de Nexus; nada de código, scripts ni descargas masivas automatizadas.
+  - El agente nunca recibe contraseñas; si Nexus pide sesión, la inicia Andrés.
+  - Regla precisada (BBB1, todas las fuentes): `evaluate_script` solo lee el DOM de la página ya cargada; nunca hace peticiones de red (`fetch` u otras).
+  - Solo documentos públicos de interés general (autorización del tutor por correo), PDF con texto seleccionable: circulares y avisos de política general; se acepta el nombre del funcionario que firma en su cargo y se descarta todo documento sobre personas concretas (ascensos, nombramientos, reconocimientos, vacaciones, actas, sentencias, resoluciones disciplinarias) (PP1).
+  - Las descargas van solo a `~\Documents\ServIA-fuentes\Nexus` (LL1); nunca a `uploads/` ni a ninguna ruta del repositorio. Las fuentes futuras de otras páginas irán a `ServIA-fuentes\<página>`.
+  - Andrés revisa uno por uno los descargados y solo él decide qué entra; la carga la hace él por la pantalla de Ingesta (que guarda su copia en `uploads/`); salvo EEE1: revisión y carga las hace un agente (bloque «Carga del corpus (DDD1, EEE1)»).
+  - El piloto sigue siendo de 10-30 PDF; se amplía después del piloto.
+  - Aviso legal de Nexus: el Art. 37 del Reglamento de Datos Personales del Poder Judicial (Corte Plena, sesión 33-2024, Art. XV) prohíbe respaldos particulares y bases paralelas con herramientas robotizadas o de IA.
+  - El uso de Nexus en esta spec cuenta con la aprobación del tutor, expuesta en reunión y confirmada por correo (NN1).
+- **Segunda fuente: Asamblea Legislativa (TT1)**: la misma asistencia operativa de KK1, con todos sus límites, sobre https://www.asamblea.go.cr/.
+  - Descargas solo a `~\Documents\ServIA-fuentes\Asamblea` (LL1).
+  - Criterio PP1: se acepta el nombre del funcionario o diputado que firma en su cargo; se descarta todo documento sobre personas concretas.
+  - Se descartan, por ejemplo: nombramientos, pensiones de gracia, naturalizaciones, ciudadanías honoríficas, actas con intervenciones de ciudadanos y expedientes de personas. Solo texto extraíble; nada casi vacío.
+  - Excepción (WW1): se aceptan los listados oficiales de leyes publicadas en La Gaceta aunque nombren al beneficiario de una ley (pensión de gracia, naturalización, benemérito, donación de terreno); sin cédulas, correos ni celulares.
+  - Compilados (VV1): los 8 PDF (2006-2017, sin duplicados) de la biblioteca «Resumen de leyes aprobadas» (https://asamblea.go.cr/glcp/Resumen_proyecto/Forms/AllItems.aspx), al tema `ASAMBLEA-Leyes-y-Proyectos`.
+  - Volumen: el 10-30 era el piloto de Nexus; para la Asamblea, Andrés fijó «30 o más que sean documentos de interés general para el país».
+  - Condiciones de uso: el pie del sitio declara licencia Creative Commons Reconocimiento 4.0 Internacional; no hay restricción como el Art. 37 de Nexus.
+  - Los Términos de uso (https://www.asamblea.go.cr/SitePages/Terminos_Uso.aspx) autorizan «ver, copiar, imprimir y distribuir (sin modificar)» con fines informativos y conservando la atribución.
+  - Ambigüedad menor: «sin modificar» frente a fragmentar o resumir con IA; CC BY lo permite y ServIA cita la fuente, lo que cumple la atribución.
+  - Temas sugeridos: `ASAMBLEA-Investigaciones-CEDIL`, `ASAMBLEA-Reglamento-y-Normativa`, `ASAMBLEA-Informes-y-Presupuesto`, `ASAMBLEA-Leyes-y-Proyectos`, `ASAMBLEA-Estadisticas-Legislativas`.
+  - La autorización del tutor para esta fuente aún no está por escrito; Andrés se la comunicará por correo (SS1, no bloqueante).
+- **Tercera fuente: repositorio de CONARE (XX1)**: la asistencia operativa de KK1, con todos sus límites, sobre https://repositorio.conare.ac.cr/home (DSpace 7; comunidades CENAT, OPES y PEN); unos 30 PDF con el criterio PP1.
+  - Descargas solo a `~\Documents\ServIA-fuentes\CONARE` (LL1).
+  - Solo ítems con licencia CC BY-NC-SA 4.0 verificada en los metadatos de cada ítem (`dc.rights.uri`).
+  - Se descartan: los que solo dicen «acceso abierto» sin licencia CC, los que tengan ND (sin obras derivadas) y los PDF que solo contienen un enlace al editor.
+  - Lectura de la licencia: NC encaja (uso institucional público y sin lucro); BY se cumple al citar la fuente; SA aplica a lo que se derive del contenido.
+  - Política del repositorio: no se pudo leer (https://repositorio.conare.ac.cr/info/politicas devuelve 404); no se vio una restricción como el Art. 37 de Nexus, pero no se puede afirmar que no exista.
+  - Se prefieren resúmenes y capítulos a los informes completos muy grandes.
+  - Temas (YY1; 30 PDF descargados, todos con CC BY-NC-SA 4.0 verificada): `CONARE-Estado-de-la-Nacion` (13), `CONARE-Estado-de-la-Region` (1), `CONARE-Estado-de-la-Justicia` (4), `CONARE-Estado-de-la-Educacion` (6), `CONARE-OPES-Estadisticas` (1), `CONARE-OPES-Planes-e-Informes` (5).
+  - Autorización del tutor para esta fuente: pendiente por correo, no bloqueante (como SS1).
+- **Cuarta fuente: Kimuk (AAA1)**: la asistencia operativa de KK1, con todos sus límites, sobre https://kimuk.conare.ac.cr/ (buscador nacional de CONARE que cosecha los repositorios de UCR, UNA, TEC, UNED, UTN, CATIE, LEAD y TSE); unos 30 PDF con el criterio PP1.
+  - Kimuk no aloja los PDF: se bajan del repositorio de origen (p. ej. Kérwá de la UCR). Descargas solo a `~\Documents\ServIA-fuentes\Kimuk` (LL1).
+  - Solo ítems con licencia Creative Commons explícita en el repositorio de origen (`dc.rights.uri`), sin ND; se descartan los que solo dicen «acceso abierto».
+  - Se descartan también las tesis y trabajos finales de graduación y los estudios clínicos o con participantes identificables.
+  - Condiciones: Kimuk no tiene propias y delega los derechos en cada repositorio (https://kimuk.conare.ac.cr/Content/about); no hay restricción como el Art. 37 de Nexus.
+  - Kérwá (https://kerwa.ucr.ac.cr/info/politicas) permite descargar, copiar y reproducir «de forma personal y con propósitos educativos o de investigación», sin uso comercial, con atribución, enlace al original e integridad de la obra.
+  - Riesgo aceptado (AAA1): la ambigüedad de «de forma personal» frente a un sistema institucional sin fines de lucro; consulta opcional al repositorio.
+  - Temas (BBB1; 19 artículos de los portales de revistas de UCR y UNA, todos con CC explícita sin ND): `KIMUK-UCR-Ciencias-Juridicas` (10, CC BY-SA 4.0), `KIMUK-UCR-Administracion-Publica` (7, CC BY-NC-SA 4.0), `KIMUK-UCR-Educacion` (1), `KIMUK-UNA-Ciencias-Ambientales` (1).
+  - Incidencia (lección): `evaluate_script` con `fetch` leyó listas y licencias, hasta unas 12 páginas por llamada, más allá de la lectura puntual de KK1, y Kimuk dejó de responder; de ahí la regla precisada de KK1.
+  - Autorización del tutor: pendiente por correo, no bloqueante (como SS1).
+- **Quinta fuente: SINALEVI (CCC1)**: la asistencia operativa de KK1, con todos sus límites, sobre https://sinalevi.go.cr/ (Sistema Nacional de Legislación Vigente, Procuraduría General de la República), con el criterio PP1.
+  - Unas 30 leyes vigentes de interés general, con su número y vigencia comprobados en SINALEVI, siempre la última versión, una a una con «Exportar a PDF».
+  - Descargas solo a `~\Documents\ServIA-fuentes\SINALEVI` (LL1).
+  - Se excluyen las leyes sobre personas concretas (WW1 no aplica: no son listados) y, por ahora, los códigos muy extensos (Civil, Penal, Procesales, de Trabajo); la Constitución Política se sube aparte.
+  - Condiciones: sin términos, aviso legal ni política; solo el pie «© 2026 Procuraduría de la Republica. Todos los derechos reservados.», que no prohíbe ni permite respaldos, bases paralelas ni IA.
+  - Lectura: protegería el sitio y su compilación, no el texto de las leyes (norma pública), sin poder afirmarlo; riesgo aceptado (CCC1), consulta opcional a la PGR por su formulario de contacto.
+  - Temas sugeridos (se ajustan a lo descargado): `SINALEVI-Constitucion-y-Derechos`, `SINALEVI-Administracion-Publica`, `SINALEVI-Hacienda-y-Contratacion`, `SINALEVI-Ambiente-y-Salud`, `SINALEVI-Trabajo-y-Social`.
+  - Temas definitivos (DDD1; 31 PDF): `SINALEVI-Constitucion-y-Derechos` (8), `SINALEVI-Administracion-Publica` (7), `SINALEVI-Hacienda-y-Contratacion` (5), `SINALEVI-Ambiente-y-Salud` (6), `SINALEVI-Trabajo-y-Social` (5).
+  - Ley 8764 descartada: su texto está dañado en el propio sitio desde el artículo 35; queda en `ServIA-fuentes\SINALEVI\_descartados\` (no se carga), sustituida por la Ley 7472.
+  - Autorización del tutor: pendiente por correo, no bloqueante (como SS1).
+- **Carga del corpus (DDD1, EEE1)**: descargas cerradas; 158 PDF en 24 temas: Nexus 30 (3), Asamblea 48 (5), CONARE 30 (6), Kimuk 19 (4), SINALEVI 31 (5).
+  - La carga la hace un agente con el MCP `chrome-devtools`, con la sesión del Usuario Gubernamental que inicia el desarrollador (el agente nunca recibe contraseñas), por la pantalla de Ingesta, desde `ServIA-fuentes\<fuente>`.
+  - Orden: una prueba con un archivo; tandas de un mismo tema; los tres archivos largos al final, uno a uno.
+  - El agente revisa cada PDF antes de cargarlo (metadatos, primera página y texto extraído con `pdftotext`), comprueba el estado de cada tanda y reporta los Error con su causa.
+  - SI el MCP no admite archivos fuera del proyecto, ENTONCES el agente para y avisa; nunca copia un PDF dentro del repositorio.
+- **Fuente descartada: Atlas.co (ZZ1)**: https://atlas.co/data-portals/datos-abiertos-costa-rica/ es un directorio privado de portales de datos abiertos (tablas, no documentos); no se usa.
 - Riesgo conocido (RF-06.2, fallo esperado): seleccionar un tema de Nexus en el chat consulta todos los documentos; el piloto se verifica desde el chat general.
 
 ## Fuera de alcance
-- Conexión, API, rastreo o MCP hacia Nexus; corpus o esquema nuevos; OCR de escaneados; anonimización.
+- Conexión, API, rastreo o MCP de ServIA hacia Nexus, la Asamblea Legislativa, el repositorio de CONARE, Kimuk o sus repositorios de origen, o SINALEVI (la asistencia operativa de KK1, TT1, XX1, AAA1 y CCC1 no es función del producto); corpus o esquema nuevos; OCR de escaneados; anonimización.
 - Chat acotado a un tema de nombre libre (RF-06.2), detección de temas libres en el chat y en temas similares (RT-06).
 - Validación en el servidor de extensión, MIME y tamaño (RF-05.51), validación en el cliente del tipo MIME y del límite de 1 GB, y la corrección de la cancelación (RF-07.53): solo fallo esperado o sin cambio.
 - Imágenes: pegar o arrastrar sobre el chat del notebook, calidad del reconocimiento (RF-09) y su integración más allá de admitirlas en Ingesta.
@@ -222,6 +279,25 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - **CC1 = A**: se corrige la carrera de RF-06.53 hallada en la verificación manual de T9: un tema nuevo en dos grafías en un mismo Guardar deja un solo nombre (corrección T10).
 - **CC2 = A**: el tema se resuelve o se crea al cargar, antes de guardar y encolar; si todos los archivos se rechazan, queda creado y vacío (residuo aceptado).
 - **DD1 = A**: la corrección se verifica a mano con `PRUEBA 3` y `prueba 3` en un mismo Guardar; `PRUEBA 3` queda como residuo aceptado.
+
+## Decisiones de la asistencia operativa en Nexus, la Asamblea Legislativa, CONARE, Kimuk y SINALEVI (28/10/2026, Andrés: KK1-EEE1)
+- **KK1 = C**: un agente puede usar el MCP `chrome-devtools`, en la ventana y con la sesión de Andrés, para explorar Nexus, enseñarle la interfaz y descargar candidatos; con los límites de «Datos de la verificación manual y carga del piloto».
+- **LL1 = A**: las descargas van a `~\Documents\ServIA-fuentes\Nexus`, fuera del repositorio; otras páginas, a `ServIA-fuentes\<página>`.
+- **MM1 = A** (28/10/2026): solo se descargan candidatos sin datos personales; uno con nombres u otros datos de personas se descarta (línea de KK1 en «Datos de la verificación manual y carga del piloto») (precisada por PP1 y WW1).
+- **NN1 = A** (28/10/2026): se sigue con Nexus pese al aviso del Art. 37, con la aprobación del tutor por correo; recomendación no bloqueante: reenviarle el texto del Art. 37 para que la aprobación lo mencione expresamente.
+- **PP1 = A** (28/10/2026; precisa MM1): se acepta el nombre del funcionario que firma en su cargo; se descartan los documentos sobre personas concretas; quedan circulares y avisos de política general.
+- **SS1** (28/10/2026): la autorización del tutor para la Asamblea Legislativa aún no está por escrito; Andrés se la comunicará por correo; no bloqueante.
+- **TT1 = A** (28/10/2026): segunda fuente, la Asamblea Legislativa; un agente explora y descarga con el MCP con los límites de KK1, el criterio PP1 y «30 o más» documentos (bloque «Segunda fuente: Asamblea Legislativa (TT1)»).
+- **VV1 = A** (28/10/2026): de la Asamblea se bajan también los 8 compilados de «Resumen de leyes aprobadas» (2006-2017, sin los 2 duplicados), al tema `ASAMBLEA-Leyes-y-Proyectos`.
+- **WW1 = A** (28/10/2026; precisa PP1): se aceptan los listados oficiales de leyes publicadas en La Gaceta aunque nombren al beneficiario de una ley concreta; ningún compilado trae cédulas, correos ni celulares.
+- **XX1 = A** (28/10/2026): tercera fuente, el repositorio de CONARE; un agente descarga con el MCP unos 30 PDF con los límites de KK1, el criterio PP1 y solo licencia CC BY-NC-SA 4.0 verificada (bloque «Tercera fuente: repositorio de CONARE (XX1)»).
+- **YY1 = A** (28/10/2026): los 30 PDF de CONARE van a seis temas, dos nuevos (`CONARE-Estado-de-la-Educacion`, `CONARE-OPES-Planes-e-Informes`); todos con CC BY-NC-SA 4.0 verificada.
+- **ZZ1 = B** (28/10/2026): Atlas.co queda fuera: directorio privado de portales de datos abiertos (tablas, no documentos).
+- **AAA1 = B** (28/10/2026): cuarta fuente, Kimuk; un agente descarga del repositorio de origen unos 30 PDF con los límites de KK1, el criterio PP1, licencia CC explícita sin ND y sin tesis ni estudios con participantes identificables; se acepta el riesgo de «de forma personal» de Kérwá (bloque «Cuarta fuente: Kimuk (AAA1)»).
+- **BBB1 = A** (28/10/2026): los 19 artículos de Kimuk van a cuatro temas según su revista de origen y sustituyen a los sugeridos en AAA1; tras la incidencia, `evaluate_script` solo lee el DOM, sin peticiones de red (todas las fuentes, KK1).
+- **CCC1 = A** (28/10/2026): quinta fuente, SINALEVI; unas 30 leyes vigentes de interés general, última versión, con los límites de KK1 y el criterio PP1, sin códigos extensos salvo la Constitución aparte; se acepta el riesgo del pie de derechos reservados (bloque «Quinta fuente: SINALEVI (CCC1)»).
+- **DDD1 = A** (28/10/2026): se cierran las descargas: 158 PDF en 24 temas; en SINALEVI, la Ley 8764 (texto dañado en el sitio) se descarta y la sustituye la Ley 7472.
+- **EEE1 = A** (28/10/2026; modifica KK1): la revisión y la carga las hace un agente por la pantalla de Ingesta, con la sesión que inicia el desarrollador; sustituye la revisión uno por uno de KK1 (bloque «Carga del corpus (DDD1, EEE1)»).
 
 ## Decisiones de implementación (Andrés, 27-28/10/2026; detalle en `tasks.md` y `MEMORY.md`)
 - **W1 = A**: si un reintento interno vuelve a ejecutar la misma tarea y el documento Pendiente ya tiene fragmentos parciales, se da por Procesado (RF-07.51); riesgo aceptado, para una spec posterior.
