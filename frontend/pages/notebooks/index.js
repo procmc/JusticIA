@@ -66,7 +66,9 @@ const NotebooksPage = () => {
 
   const handleSeleccionarArchivos = (fileList) => {
     if (!fileList) return;
-    setArchivosSeleccionados(prev => [...prev, ...Array.from(fileList)]);
+    // Se copia antes de vaciar el input: el FileList es vivo y React puede ejecutar la actualización después.
+    const archivos = Array.from(fileList);
+    setArchivosSeleccionados(prev => [...prev, ...archivos]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
