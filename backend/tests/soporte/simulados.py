@@ -460,10 +460,27 @@ def _clase_llm_simulado():
         preguntas: list = Field(default_factory=list)
         llamadas: list = Field(default_factory=list)  # por llamada, el texto de cada mensaje (para medir la entrada)
         error: Optional[BaseException] = None
+        # Retención y cancelación de la generación en streaming (spec 007, T6; RF-16.60/62): con `retener()` el motor no
+        # entrega ningún texto hasta `liberar()`, como un Ollama cargando el modelo o atendiendo otra consulta.
+        puerta: Optional[object] = None
+        en_curso: int = 0  # generaciones en streaming iniciadas y aún no terminadas ni canceladas
+        cancelaciones: int = 0  # veces que quien consumía canceló la generación (el motor deja de generar)
+        retener_tras: int = 0  # cuántos trozos de texto entrega antes de esperar a `liberar()` (0: espera antes del primero)
+        entregados: int = 0  # trozos de texto entregados en total (para saber cuándo ya salió el primero)
 
         @property
         def _llm_type(self) -> str:
             return "ollama-simulado"
+
+        def retener(self, tras: int = 0) -> None:
+            """Desde ahora, la generación en streaming espera a `liberar()` después de entregar `tras` trozos de texto."""
+            self.retener_tras = tras
+            self.puerta = asyncio.Event()
+
+        def liberar(self) -> None:
+            """Libera el texto retenido (y el de las consultas siguientes, hasta otro `retener()`)."""
+            if self.puerta is not None:
+                self.puerta.set()
 
         def responder(self, texto: str) -> None:
             """Define la respuesta (y quita un fallo definido antes)."""
@@ -488,6 +505,29 @@ def _clase_llm_simulado():
             self._registrar(messages)
             for trozo in _trozos(self.respuesta):
                 yield ChatGenerationChunk(message=AIMessageChunk(content=trozo))
+
+        async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
+            """Streaming asíncrono con retención y registro de la cancelación. Sin `retener()` se comporta como antes (delega en
+            `_stream` por la implementación base), de modo que quien sobrescribe `_stream` (el motor programable de la instancia
+            e2e) conserva su comportamiento."""
+            self.en_curso += 1
+            try:
+                if self.puerta is None:
+                    async for trozo in super()._astream(messages, stop=stop, run_manager=run_manager, **kwargs):
+                        yield trozo
+                else:
+                    self._registrar(messages)
+                    for numero, trozo in enumerate(_trozos(self.respuesta)):
+                        if numero == self.retener_tras:
+                            await self.puerta.wait()
+                        self.entregados += 1
+                        yield ChatGenerationChunk(message=AIMessageChunk(content=trozo))
+                        await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                self.cancelaciones += 1
+                raise
+            finally:
+                self.en_curso -= 1
 
     _estado["clase_llm"] = LLMSimulado
     return LLMSimulado

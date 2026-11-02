@@ -146,6 +146,14 @@ class LimitedChatMessageHistory(BaseChatMessageHistory):
         if self.save_callback:
             self.save_callback(self.full_history.session_id)
     
+    def add_messages(self, messages) -> None:
+        """Guarda varios mensajes (la pregunta y la respuesta de un turno) y persiste una sola vez, al final: un turno nunca
+        queda guardado a medias en Redis (RF-11.68)."""
+        for message in messages:
+            self.full_history.add_message(message)
+        if self.save_callback:
+            self.save_callback(self.full_history.session_id)
+
     def clear(self) -> None:
         """Limpia el historial completo"""
         self.full_history.clear()

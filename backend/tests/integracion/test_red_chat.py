@@ -154,7 +154,7 @@ def test_eventos_hasta_el_final(cliente_api, sesion, usuario_gubernamental, regi
     tipos = _tipos(eventos)
     assert tipos.count("chunk") >= 2, "se esperaban varios fragmentos (streaming), no una sola entrega"
     assert tipos[-1] == "done" and tipos.count("done") == 1 and eventos[-1]["done"] is True
-    assert set(tipos) == {"chunk", "done"}, f"no se esperaban otros eventos: {tipos}"
+    assert set(tipos) == {"etapa", "chunk", "done"}, f"no se esperaban otros eventos: {tipos}"  # T6: las etapas (RF-11.64)
     assert all(e["done"] is False for e in eventos[:-1])
     assert "".join(e["content"] for e in eventos if e["type"] == "chunk").strip() == RESPUESTA_SIMULADA
 

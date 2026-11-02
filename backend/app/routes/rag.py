@@ -55,7 +55,7 @@ from sqlalchemy.orm import Session
 from app.services.RAG.rag_chain_service import get_rag_service
 from app.services.RAG.session_store import conversation_store
 from app.auth.jwt_auth import require_usuario_judicial
-from app.db.database import get_db
+from app.db.database import get_db, SessionLocal
 from app.services.bitacora.rag_audit_service import rag_audit_service
 from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
@@ -147,26 +147,9 @@ async def consulta_con_historial_stream(
             except Exception as clasificacion_error:
                 logger.warning(f"No se pudo clasificar el tema para la bitácora: {type(clasificacion_error).__name__}")
 
-        # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
-        response = await rag_service.consulta_con_historial_streaming(
-            pregunta=query_to_use,
-            session_id=request.session_id,
-            top_k=request.top_k,
-            expediente_filter=request.expediente_number,
-            notebook_filter=request.notebook_id,
-            usuario_id=current_user["user_id"],
-            http_request=http_request,
-            usuario_nombre=current_user.get("username"),
-            tema_es_clave=con_forma_de_clave
-        )
-
-        # AUDITORÍA: Registrar la consulta RAG exitosa
-        end_time = time.time()
-        tiempo_procesamiento = round(end_time - start_time, 2)
-
-        # Determinar tipo de consulta, con el mismo orden con que decide el servicio. La clave de un notebook en el tema es
-        # una consulta general, sin la clave (RF-21.33); el chat de un notebook propio (ya comprobado por el servicio) se
-        # registra con alcance de notebook y su clave como tema (RF-21.31).
+        # Tipo de consulta, con el mismo orden con que decide el servicio. La clave de un notebook en el tema es una consulta
+        # general, sin la clave (RF-21.33); el chat de un notebook propio (ya comprobado por el servicio) se registra con
+        # alcance de notebook y su clave como tema (RF-21.31).
         tema_registrable = None
         if con_forma_de_clave:
             tipo_consulta = "general"
@@ -178,29 +161,52 @@ async def consulta_con_historial_stream(
             tema_registrable = f"NB-{request.notebook_id}"
         else:
             tipo_consulta = "general"
-        
-        # Registrar en bitácora (async pero sin esperar para no afectar performance)
-        try:
-            await rag_audit_service.registrar_consulta_rag(
-                db=db,
-                usuario_id=current_user.get("user_id"),  # Usar cédula en lugar de email
-                pregunta=request.query,
-                session_id=request.session_id,
-                tipo_consulta=tipo_consulta,
-                expediente_numero=tema_registrable,
-                tiempo_procesamiento=tiempo_procesamiento
-            )
-            if clasificacion is not None and clasificacion.tipo == NO_DISPONIBLE:
+
+        usuario_id = current_user.get("user_id")
+
+        async def registrar_turno(motivo: Optional[str]) -> None:
+            """RF-21.60: la consulta se registra cuando el turno termina (con su motivo si no terminó bien), no al crear la
+            respuesta. La sesión de base de datos de la petición ya se cerró al empezar el envío, así que abre la suya."""
+            tiempo_procesamiento = round(time.time() - start_time, 2)
+            with SessionLocal() as db_turno:
+                await rag_audit_service.registrar_consulta_rag(
+                    db=db_turno,
+                    usuario_id=usuario_id,
+                    pregunta=request.query,
+                    session_id=request.session_id,
+                    tipo_consulta=tipo_consulta,
+                    expediente_numero=tema_registrable,
+                    tiempo_procesamiento=tiempo_procesamiento,
+                    motivo=motivo
+                )
+
+        # Llamar al nuevo método con gestión de historial (pasando http_request para detectar desconexión)
+        response = await rag_service.consulta_con_historial_streaming(
+            pregunta=query_to_use,
+            session_id=request.session_id,
+            top_k=request.top_k,
+            expediente_filter=request.expediente_number,
+            notebook_filter=request.notebook_id,
+            usuario_id=current_user["user_id"],
+            http_request=http_request,
+            usuario_nombre=current_user.get("username"),
+            tema_es_clave=con_forma_de_clave,
+            registrar=registrar_turno
+        )
+
+        # El intento sobre una clave de notebook ajena es otro evento: se registra al recibir la petición, no al terminar el turno
+        if clasificacion is not None and clasificacion.tipo == NO_DISPONIBLE:
+            try:
                 await notebooks_audit_service.registrar_intento_fallido(
                     db=db,
                     usuario_id=current_user.get("user_id"),
                     tipo_accion_id=TiposAccion.CONSULTA_RAG,
                     motivo=MOTIVO_NOTEBOOK_NO_DISPONIBLE
                 )
-        except Exception as audit_error:
-            # Log error pero no fallar la consulta
-            logger.warning(f"Error en auditoría RAG: {audit_error}")
-        
+            except Exception as audit_error:
+                # Log error pero no fallar la consulta
+                logger.warning(f"Error en auditoría RAG: {audit_error}")
+
         return response
     
     except HTTPException:

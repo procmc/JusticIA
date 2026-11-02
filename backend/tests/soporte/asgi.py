@@ -43,9 +43,17 @@ class RespuestaAsgi:
 class Llamada:
     """Una llamada en curso: `respuesta` (futuro de `RespuestaAsgi`) y `tarea` (la aplicación entera, tareas posteriores incluidas)."""
 
-    def __init__(self, respuesta: "asyncio.Future[RespuestaAsgi]", tarea: "asyncio.Task[None]"):
+    def __init__(self, respuesta: "asyncio.Future[RespuestaAsgi]", tarea: "asyncio.Task[None]",
+                 desconexion: Optional[asyncio.Event] = None):
         self.respuesta = respuesta
         self.tarea = tarea
+        self._desconexion = desconexion
+
+    def desconectar(self) -> None:
+        """El cliente cierra la conexión (cierra la pestaña) aunque la respuesta no haya terminado: la aplicación recibe
+        `http.disconnect` en su próxima lectura, como la entrega un servidor real (spec 007, T6; RF-16.62)."""
+        if self._desconexion is not None:
+            self._desconexion.set()
 
     def __repr__(self) -> str:
         return f"Llamada(respondida={self.respuesta.done()}, terminada={self.tarea.done()})"
@@ -95,13 +103,22 @@ def llamar(
 
     respuesta: "asyncio.Future[RespuestaAsgi]" = bucle.create_future()
     respuesta_completa = asyncio.Event()
+    desconexion = asyncio.Event()
     estado: Dict[str, Any] = {"entregado": False, "codigo": None, "cabeceras": [], "trozos": []}
 
     async def recibir() -> dict:
         if not estado["entregado"]:
             estado["entregado"] = True
             return {"type": "http.request", "body": cuerpo, "more_body": False}
-        await respuesta_completa.wait()  # como un servidor: la desconexión se avisa cuando la respuesta ya se envió
+        if desconexion.is_set() or respuesta_completa.is_set():
+            return {"type": "http.disconnect"}  # sin suspenderse: así consulta `Request.is_disconnected` bajo un servidor real
+        # Como un servidor: la desconexión se avisa cuando la respuesta ya se envió o cuando la prueba desconecta al cliente.
+        esperas = [asyncio.ensure_future(respuesta_completa.wait()), asyncio.ensure_future(desconexion.wait())]
+        try:
+            await asyncio.wait(esperas, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for espera in esperas:
+                espera.cancel()
         return {"type": "http.disconnect"}
 
     async def enviar(mensaje: dict) -> None:
@@ -131,4 +148,4 @@ def llamar(
             respuesta.set_exception(RuntimeError("La aplicación terminó sin enviar una respuesta completa."))
             respuesta.exception()
 
-    return Llamada(respuesta, bucle.create_task(ejecutar()))
+    return Llamada(respuesta, bucle.create_task(ejecutar()), desconexion)

@@ -105,7 +105,8 @@ class RAGAuditService:
         session_id: str,
         tipo_consulta: str,  # "general", "expediente" o "notebook"
         expediente_numero: Optional[str] = None,
-        tiempo_procesamiento: Optional[float] = None
+        tiempo_procesamiento: Optional[float] = None,
+        motivo: Optional[str] = None
     ) -> Optional[T_Bitacora]:
         """
         Registra una consulta RAG (general o por expediente específico).
@@ -118,6 +119,8 @@ class RAGAuditService:
             tipo_consulta: "general", "expediente" o "notebook"
             expediente_numero: Número del expediente, o la clave del notebook (solo si tipo_consulta="expediente" o "notebook")
             tiempo_procesamiento: Tiempo en segundos que tomó procesar
+            motivo: Solo si el turno no terminó bien (RF-21.60): «pregunta demasiado larga», «tiempo máximo agotado» o
+                «error del motor»; queda en la información adicional. Un turno terminado no lleva motivo.
             
         Returns:
             T_Bitacora: Registro creado o None si hubo error
@@ -162,6 +165,9 @@ class RAGAuditService:
             
             if tiempo_procesamiento is not None:
                 info_adicional["tiempo_procesamiento_segundos"] = tiempo_procesamiento
+
+            if motivo:
+                info_adicional["motivo"] = motivo
             
             # Registrar usando el servicio base
             return await self.bitacora_service.registrar(

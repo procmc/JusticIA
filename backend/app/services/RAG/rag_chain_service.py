@@ -158,6 +158,25 @@ class RAGChainService:
         finally:
             conversation_store.descartar_efimera(session_id)
 
+    @staticmethod
+    def _respuesta_en_flujo(chain, input_dict, config, http_request, session_id: str, registrar):
+        """La respuesta SSE de un turno de cualquiera de los tres chats. El orquestador (`stream_chain_response`) guarda el
+        historial y llama a `registrar` solo si corresponde (RF-11.68, RF-21.60); el título de la conversación se genera
+        únicamente si el turno terminó bien."""
+        return StreamingResponse(
+            stream_chain_response(
+                chain, input_dict, config, http_request, registrar=registrar,
+                al_terminar=lambda: conversation_store.auto_generate_title(session_id)
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
     async def _notebook_del_chat(self, notebook_id: str, usuario_id: Optional[str]):
         """El notebook propio que pide el chat de NotebookServIA. Si es ajeno, inexistente o no es un identificador numérico
         canónico lanza `RecursoNoDisponible` (RF-11.32): el llamador responde 404 uniforme sin llamar al modelo. Si la base
@@ -186,8 +205,10 @@ class RAGChainService:
         usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None,
         usuario_nombre: Optional[str] = None,
-        tema_es_clave: bool = False
+        tema_es_clave: bool = False,
+        registrar=None
     ):
+        # `registrar`: lo que arma el router para dejar el turno en la bitácora al terminar (RF-21.60).
         # `tema_es_clave`: la ruta ya comprobó con la base que el tema, sin tener forma de clave, se guardaría o igualaría como
         # la de un notebook (RF-17.34); el servicio no abre su propia sesión para ello.
         # 0. El notebook se comprueba ANTES de leer o modificar cualquier cosa, incluida la conversación (RF-11.32): uno
@@ -202,7 +223,7 @@ class RAGChainService:
         )
         try:
             respuesta = await self._despachar_consulta(
-                pregunta, session_id, top_k, expediente_filter, notebook, usuario_id, http_request, tema_es_clave
+                pregunta, session_id, top_k, expediente_filter, notebook, usuario_id, http_request, tema_es_clave, registrar
             )
         except BaseException:
             if es_efimera:
@@ -223,7 +244,8 @@ class RAGChainService:
         notebook,
         usuario_id: Optional[str],
         http_request: Optional[Request],
-        tema_es_clave: bool = False
+        tema_es_clave: bool = False,
+        registrar=None
     ):
         # 1. Actualizar la información de la conversación
         conversation_store.update_metadata(session_id)
@@ -239,7 +261,8 @@ class RAGChainService:
                 session_id=session_id,
                 top_k=top_k,
                 usuario_id=usuario_id,
-                http_request=http_request
+                http_request=http_request,
+                registrar=registrar
             )
         elif expediente_filter and expediente_filter.strip():
             # → VA AL FLUJO DE EXPEDIENTE ESPECÍFICO
@@ -250,7 +273,8 @@ class RAGChainService:
                 expediente_numero=expediente_filter.strip(),
                 usuario_id=usuario_id,
                 http_request=http_request,
-                top_k=top_k
+                top_k=top_k,
+                registrar=registrar
             )
         elif notebook is not None:
             # → VA AL FLUJO DE NOTEBOOK ESPECÍFICO (NotebookServIA), con el notebook propio ya comprobado
@@ -261,7 +285,8 @@ class RAGChainService:
                 notebook=notebook,
                 usuario_id=usuario_id,
                 http_request=http_request,
-                top_k=top_k
+                top_k=top_k,
+                registrar=registrar
             )
         else:
             logger.info(f"FLUJO: GENERAL CON HISTORIAL")
@@ -271,7 +296,8 @@ class RAGChainService:
                 session_id=session_id,
                 top_k=top_k,
                 usuario_id=usuario_id,
-                http_request=http_request
+                http_request=http_request,
+                registrar=registrar
             )
     
     # Consulta general con historial
@@ -281,7 +307,8 @@ class RAGChainService:
         session_id: str,
         top_k: Optional[int] = None,
         usuario_id: Optional[str] = None,
-        http_request: Optional[Request] = None
+        http_request: Optional[Request] = None,
+        registrar=None
     ):
         # RF-11.65: la solicitud puede pedir menos fragmentos que el servidor, nunca más; ausente o ≤ 0 usa el del servidor
         top_k = cantidad_a_recuperar(top_k)
@@ -311,36 +338,7 @@ class RAGChainService:
             "input": pregunta
         }
         
-        # Streaming response
-        async def event_generator():
-            try:
-                logger.info(f"Iniciando streaming para session: {session_id}")
-                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
-                    yield chunk
-                
-                logger.info(f"Streaming finalizado para session: {session_id}")
-                # Auto-generar título si es el primer mensaje
-                conversation_store.auto_generate_title(session_id)
-                
-            except Exception as e:
-                logger.error(f"Error en streaming con historial: {e}", exc_info=True)
-                error_data = {
-                    "type": "error",
-                    "content": f"Error al procesar la consulta: {str(e)}",
-                    "done": True
-                }
-                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
-        
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
     
     # Consulta de expediente específico con historial
     async def _consulta_expediente_con_historial(
@@ -350,7 +348,8 @@ class RAGChainService:
         expediente_numero: str,
         usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None,
-        top_k: Optional[int] = None
+        top_k: Optional[int] = None,
+        registrar=None
     ):
         logger.info(f"Expediente con historial - Número: {expediente_numero}")
         
@@ -364,7 +363,8 @@ class RAGChainService:
                 session_id=session_id,
                 top_k=top_k,
                 usuario_id=usuario_id,
-                http_request=http_request
+                http_request=http_request,
+                registrar=registrar
             )
         
         # Actualizar la información de la conversación
@@ -405,37 +405,7 @@ class RAGChainService:
             "input": pregunta
         }
         
-        # Streaming response
-        async def event_generator():
-            try:
-                logger.info(f"Iniciando streaming para expediente: {expediente_numero}, session: {session_id}")
-                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
-                    yield chunk # Envía cada pedacito al frontend
-                
-                logger.info(f"Streaming finalizado para expediente: {expediente_numero}, session: {session_id}")
-                # Cuando termina, genera título automático
-                conversation_store.auto_generate_title(session_id)
-                 
-            except Exception as e:
-                logger.error(f"Error en streaming expediente con historial: {e}", exc_info=True)
-                # Si algo sale mal, envía error
-                error_data = {
-                    "type": "error",
-                    "content": f"Error al procesar la consulta del expediente: {str(e)}",
-                    "done": True
-                }
-                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
-        
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
     
     # Consulta de notebook específico con historial (NotebookServIA)
     async def _consulta_notebook_con_historial(
@@ -445,7 +415,8 @@ class RAGChainService:
         notebook,
         usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None,
-        top_k: Optional[int] = None
+        top_k: Optional[int] = None,
+        registrar=None
     ):
         """Chat acotado a un notebook propio. `notebook` ya fue comprobado como del usuario en `consulta_con_historial_streaming`
         (RF-11.32), que además actualizó la conversación: aquí no se vuelve a buscar ni a tocar nada."""
@@ -495,34 +466,7 @@ class RAGChainService:
             "input": pregunta_para_llm
         }
 
-        async def event_generator():
-            try:
-                logger.info(f"🚀 Iniciando streaming para notebook: {nombre_notebook}, session: {session_id}")
-                async for chunk in stream_chain_response(chain, input_dict, config, http_request):
-                    yield chunk
-
-                logger.info(f"✅ Streaming finalizado para notebook: {nombre_notebook}, session: {session_id}")
-                conversation_store.auto_generate_title(session_id)
-
-            except Exception as e:
-                logger.error(f"Error en streaming notebook con historial: {e}", exc_info=True)
-                error_data = {
-                    "type": "error",
-                    "content": f"Error al procesar la consulta del notebook: {str(e)}",
-                    "done": True
-                }
-                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
 
     # Actualizar contexto de expediente en la sesión
     async def update_expediente_context(
