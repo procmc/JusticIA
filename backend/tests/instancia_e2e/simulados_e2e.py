@@ -16,7 +16,7 @@ import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
@@ -957,18 +957,112 @@ class EstadoNotebooks:
         parches.setattr(servicio, "quitar_documento", quitar_documento)
 
 
+TIPOS_DE_EVENTO_DEL_CHAT = ("etapa", "vida", "chunk", "error", "done")
+PATRON_EVENTO_DESCONOCIDO = re.compile(r"^[a-z][a-z_]{0,39}$")
+MAXIMO_TIEMPO_CHAT_SEGUNDOS = 3600.0
+
+
+class EstadoChat:
+    """El turno del chat programable (spec 007, T8; RF-11.64, RF-11.67, RF-16.40, RF-16.60, RF-16.62).
+
+    Lo que programa, solo en la instancia (en `main` nada de esto existe):
+    - la señal de vida y el tope del turno: reemplaza el nombre `CONFIGURACION` de `general_chains` (el orquestador lo lee en cada
+      turno) por una copia con esos dos valores; la configuración compartida del presupuesto y del motor no se toca;
+    - `mudo`: la respuesta HTTP no emite ni un evento hasta `liberar` (envuelve el orquestador en `rag_chain_service`);
+    - `pausa_entre_etapas`: el turno se detiene entre la primera y la segunda etapa (envuelve `get_llm` de `general_chains`, que se
+      pide justo en ese punto);
+    - `evento_desconocido`: un evento SSE de ese tipo se inyecta tras el primer dato del turno.
+    Cada `configurar` reemplaza la programación entera; `restablecer` devuelve todo a la configuración real.
+    """
+
+    def __init__(self, plazo: float = PLAZO_RETENCION_SEGUNDOS):
+        self.muda = Retencion(plazo)
+        self.pausa = Retencion(plazo)
+        self._modulo: Any = None
+        self._parches: Any = None
+        self._base: Any = None
+        self._vida = self._tope = 0.0
+        self.mudo = self.pausa_entre_etapas = False
+        self.evento_desconocido: Optional[str] = None
+
+    def instalar(self, general_chains, rag_chain_service, parches: "pytest.MonkeyPatch") -> None:
+        """Envuelve el orquestador y `get_llm` y guarda la configuración real. Parchea el módulo, no la clase."""
+        self._modulo, self._parches, self._base = general_chains, parches, general_chains.CONFIGURACION
+        self._vida, self._tope = self._base.senal_de_vida_segundos, self._base.tiempo_maximo_segundos
+        parches.setattr(general_chains, "get_llm", self.envolver_llm(general_chains.get_llm))
+        parches.setattr(rag_chain_service, "stream_chain_response", self.envolver_turno(rag_chain_service.stream_chain_response))
+
+    def envolver_llm(self, original: Callable) -> Callable:
+        async def obtener_llm():
+            await self.pausa.esperar_async()
+            return await original()
+
+        return obtener_llm
+
+    def envolver_turno(self, original: Callable) -> Callable:
+        async def turno(*argumentos, **opciones):
+            await self.muda.esperar_async()
+            interno = original(*argumentos, **opciones)
+            primero = True
+            try:
+                async for linea in interno:
+                    yield linea
+                    if primero:
+                        primero = False
+                        if self.evento_desconocido:
+                            yield self._modulo._evento(self.evento_desconocido, "PRUEBA", False)
+            finally:
+                await interno.aclose()  # si el cliente se va, el orquestador también cancela su turno
+
+        return turno
+
+    def configurar(self, senal_de_vida_segundos: Optional[float] = None, tiempo_maximo_segundos: Optional[float] = None,
+                   mudo: bool = False, pausa_entre_etapas: bool = False, evento_desconocido: Optional[str] = None) -> None:
+        """Reemplaza la programación entera; lo omitido vuelve a la configuración. `ValueError` con el motivo si algo no sirve."""
+        vida = self._base.senal_de_vida_segundos if senal_de_vida_segundos is None else float(senal_de_vida_segundos)
+        tope = self._base.tiempo_maximo_segundos if tiempo_maximo_segundos is None else float(tiempo_maximo_segundos)
+        if vida <= 0 or tope <= 0:
+            raise ValueError("La señal de vida y el tope deben ser mayores que 0")
+        if tope > MAXIMO_TIEMPO_CHAT_SEGUNDOS:
+            raise ValueError(f"El tope no puede pasar de {MAXIMO_TIEMPO_CHAT_SEGUNDOS:.0f} segundos")
+        if vida >= tope:
+            raise ValueError("La señal de vida debe ser menor que el tope")
+        if evento_desconocido is not None and (
+                not PATRON_EVENTO_DESCONOCIDO.match(evento_desconocido) or evento_desconocido in TIPOS_DE_EVENTO_DEL_CHAT):
+            raise ValueError("El evento desconocido debe ser un tipo en minúsculas (letras y guion bajo) que el chat no use")
+        self._vida, self._tope = vida, tope
+        self._parches.setattr(self._modulo, "CONFIGURACION",
+                              replace(self._base, senal_de_vida_segundos=vida, tiempo_maximo_segundos=tope))
+        self.mudo, self.pausa_entre_etapas, self.evento_desconocido = bool(mudo), bool(pausa_entre_etapas), evento_desconocido
+        for compuerta, cerrada in ((self.muda, self.mudo), (self.pausa, self.pausa_entre_etapas)):
+            compuerta.retener() if cerrada else compuerta.liberar()
+
+    def liberar(self) -> None:
+        self.muda.liberar()
+        self.pausa.liberar()
+
+    def restablecer(self) -> None:
+        self.configurar()
+
+    def estado(self) -> dict:
+        return {"senal_de_vida_segundos": self._vida, "tiempo_maximo_segundos": self._tope, "mudo": self.mudo,
+                "pausa_entre_etapas": self.pausa_entre_etapas, "evento_desconocido": self.evento_desconocido,
+                "retenida": self.muda.retenida or self.pausa.retenida, "esperando": self.muda.esperando + self.pausa.esperando}
+
+
 @dataclass
 class Controles:
-    """Los tres controles de la T6 juntos: lo que la limpieza total restablece y lo que el router del control consulta."""
+    """Los controles juntos (T6 y T8): lo que la limpieza total restablece y lo que el router del control consulta."""
 
     motor: Optional[EstadoMotor] = None
     ingesta: Optional[EstadoIngesta] = None
     notebooks: Optional[EstadoNotebooks] = None
+    chat: Optional[EstadoChat] = None
 
     def restablecer(self) -> None:
         """Libera todo lo retenido y deja cada control como recién arrancado; un paso que falla no impide los demás."""
         errores = []
-        for nombre, pieza in (("motor", self.motor), ("notebooks", self.notebooks), ("ingesta", self.ingesta)):
+        for nombre, pieza in (("motor", self.motor), ("notebooks", self.notebooks), ("ingesta", self.ingesta), ("chat", self.chat)):
             if pieza is None:
                 continue
             try:
@@ -982,6 +1076,8 @@ class Controles:
         """Al apagar la instancia: nada queda retenido y el hilo de la ingesta termina (si no, el proceso no podría salir)."""
         if self.motor is not None:
             self.motor.liberar()
+        if self.chat is not None:
+            self.chat.liberar()
         if self.notebooks is not None:
             self.notebooks.liberar()
         if self.ingesta is not None:
@@ -997,6 +1093,7 @@ def instalar_controles(piezas: Dict[str, object]) -> Controles:
     from celery_app import celery_app
 
     from app.routes.notebooks import notebook_service
+    from app.services.RAG import general_chains, rag_chain_service
     from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
     from app.services.ingesta.async_processing.progress_tracker import progress_manager
     from app.services.ingesta.file_management import document_processor
@@ -1012,4 +1109,6 @@ def instalar_controles(piezas: Dict[str, object]) -> Controles:
     parches.setattr(document_processor, "extract_text_from_file", ingesta.envolver_extraccion(document_processor.extract_text_from_file))
     parches.setattr(document_processor, "store_in_vectorstore", ingesta.envolver_vectorizacion(document_processor.store_in_vectorstore))
     notebooks.instalar(notebook_service, parches)
-    return Controles(motor=piezas["ollama"].estado, ingesta=ingesta, notebooks=notebooks)
+    chat = EstadoChat()
+    chat.instalar(general_chains, rag_chain_service, parches)
+    return Controles(motor=piezas["ollama"].estado, ingesta=ingesta, notebooks=notebooks, chat=chat)

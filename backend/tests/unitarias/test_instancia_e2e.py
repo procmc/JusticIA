@@ -892,6 +892,149 @@ def test_etapa_invalida_400():
     assert control.programar_ingesta(control.CuerpoIngesta(etapa="vectorizacion"), contexto)["etapa"] == "vectorizacion"
 
 
+# --- RA-02.49 (007, T8): el chat programable (señal de vida, tope, mudo, pausa entre etapas, evento desconocido) ------------
+
+def _chat_e2e(**opciones):
+    return simulados_e2e.EstadoChat(**opciones)
+
+
+def test_chat_programable_valida_y_se_restablece(monkeypatch):
+    """RA-02.49 (RF-16.60, RF-16.62): la señal de vida y el tope se programan SOLO en la instancia (la configuración real queda
+    intacta), lo inválido se rechaza sin cambiar nada y `restablecer` devuelve los valores de la configuración."""
+    from app.config.contexto_config import CONFIGURACION
+    from app.services.RAG import general_chains, rag_chain_service
+
+    chat = _chat_e2e()
+    chat.instalar(general_chains, rag_chain_service, monkeypatch)
+    base = (CONFIGURACION.senal_de_vida_segundos, CONFIGURACION.tiempo_maximo_segundos)
+    assert chat.estado()["senal_de_vida_segundos"] == base[0] and chat.estado()["tiempo_maximo_segundos"] == base[1]
+
+    chat.configurar(senal_de_vida_segundos=0.5, tiempo_maximo_segundos=3)
+    assert (general_chains.CONFIGURACION.senal_de_vida_segundos, general_chains.CONFIGURACION.tiempo_maximo_segundos) == (0.5, 3)
+    assert chat.estado()["senal_de_vida_segundos"] == 0.5 and chat.estado()["tiempo_maximo_segundos"] == 3
+    # El valor de la configuración compartida (presupuesto, llamada al motor) no se toca.
+    assert (CONFIGURACION.senal_de_vida_segundos, CONFIGURACION.tiempo_maximo_segundos) == base
+
+    for malo in ({"senal_de_vida_segundos": 0}, {"tiempo_maximo_segundos": -1}, {"senal_de_vida_segundos": 5, "tiempo_maximo_segundos": 5},
+                 {"tiempo_maximo_segundos": 4000}, {"evento_desconocido": ""}, {"evento_desconocido": "chunk"},
+                 {"evento_desconocido": "done"}, {"evento_desconocido": "Con Espacios"}):
+        with pytest.raises(ValueError):
+            chat.configurar(**malo)
+    assert chat.estado()["senal_de_vida_segundos"] == 0.5  # lo rechazado no cambia nada
+
+    # Cada POST reemplaza la programación entera: lo omitido vuelve a la configuración.
+    chat.configurar(mudo=True, pausa_entre_etapas=True, evento_desconocido="prueba_inventado")
+    estado = chat.estado()
+    assert estado["senal_de_vida_segundos"] == base[0] and estado["mudo"] and estado["pausa_entre_etapas"]
+    assert estado["evento_desconocido"] == "prueba_inventado" and estado["retenida"] is True
+
+    chat.restablecer()
+    assert chat.estado() == {"senal_de_vida_segundos": base[0], "tiempo_maximo_segundos": base[1], "mudo": False,
+                             "pausa_entre_etapas": False, "evento_desconocido": None, "retenida": False, "esperando": 0}
+    assert general_chains.CONFIGURACION == CONFIGURACION
+
+
+def test_chat_programable_mudo_pausa_y_evento_desconocido(monkeypatch):
+    """RA-02.49 (RF-11.64, RF-11.67, RF-16.40): el modo mudo no deja salir ningún dato hasta liberar, la pausa detiene el turno
+    entre la primera y la segunda etapa, y el evento desconocido se inyecta tras el primer dato sin alterar los demás."""
+    import asyncio
+
+    from app.services.RAG import general_chains, rag_chain_service
+
+    chat = _chat_e2e(plazo=10)
+    chat.instalar(general_chains, rag_chain_service, monkeypatch)
+
+    async def original(*argumentos, **opciones):
+        for linea in ("etapa1", "etapa2", "chunk"):
+            yield linea
+
+    async def modelo():
+        return "llm"
+
+    turno, obtener_llm = chat.envolver_turno(original), chat.envolver_llm(modelo)
+
+    async def esperando(cantidad):
+        for _ in range(500):
+            if chat.estado()["esperando"] == cantidad:
+                return
+            await asyncio.sleep(0.01)
+        raise AssertionError("la espera no llegó a tiempo")
+
+    async def recorrer(recibido):
+        async for linea in turno():
+            recibido.append(linea)
+
+    async def escenario():
+        # Sin programar, el turno pasa tal cual y el modelo se entrega de una vez.
+        recibido = []
+        await recorrer(recibido)
+        assert recibido == ["etapa1", "etapa2", "chunk"] and await obtener_llm() == "llm"
+
+        # Mudo: nada sale hasta liberar.
+        chat.configurar(mudo=True)
+        recibido = []
+        tarea = asyncio.ensure_future(recorrer(recibido))
+        await esperando(1)
+        assert recibido == [] and not tarea.done() and chat.estado()["retenida"] is True
+        await asyncio.to_thread(chat.liberar)
+        await tarea
+        assert recibido == ["etapa1", "etapa2", "chunk"] and chat.estado()["retenida"] is False
+
+        # Pausa entre etapas: el modelo (que se pide entre la primera y la segunda etapa) espera hasta liberar.
+        chat.configurar(pausa_entre_etapas=True)
+        pedido = asyncio.ensure_future(obtener_llm())
+        await esperando(1)
+        assert not pedido.done()
+        await asyncio.to_thread(chat.liberar)
+        assert await pedido == "llm"
+
+        # Evento desconocido: una sola vez y tras el primer dato.
+        chat.configurar(evento_desconocido="prueba_inventado")
+        recibido = []
+        await recorrer(recibido)
+        assert recibido[0] == "etapa1" and '"type": "prueba_inventado"' in recibido[1] and '"done": false' in recibido[1]
+        assert recibido[2:] == ["etapa2", "chunk"]
+
+    asyncio.run(escenario())
+
+    # El plazo corta una retención olvidada.
+    corto = _chat_e2e(plazo=0.05)
+    corto.instalar(general_chains, rag_chain_service, monkeypatch)
+    corto.configurar(mudo=True)
+    assert asyncio.run(corto.envolver_llm(modelo)()) == "llm"  # la pausa no estaba programada: no espera
+    asyncio.run(asyncio.wait_for(_primero(corto.envolver_turno(original)), 5))
+
+
+async def _primero(turno):
+    return [linea async for linea in turno()]
+
+
+def test_chat_programable_en_el_control_y_la_limpieza(monkeypatch):
+    """RA-02.49: las rutas del control validan (400), piden el control montado (503), devuelven el estado y la limpieza total
+    restablece el chat junto con los demás controles."""
+    from app.services.RAG import general_chains, rag_chain_service
+
+    chat = _chat_e2e()
+    chat.instalar(general_chains, rag_chain_service, monkeypatch)
+    controles = simulados_e2e.Controles(chat=chat)
+    contexto = control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60), controles=controles)
+    assert control.programar_chat(control.CuerpoChat(senal_de_vida_segundos=1, tiempo_maximo_segundos=4, mudo=True), contexto)["mudo"]
+    assert control.leer_chat(contexto)["tiempo_maximo_segundos"] == 4
+    assert control.liberar_chat(contexto)["retenida"] is False
+    with pytest.raises(control.HTTPException) as error:
+        control.programar_chat(control.CuerpoChat(senal_de_vida_segundos=9, tiempo_maximo_segundos=2), contexto)
+    assert error.value.status_code == 400
+    with pytest.raises(control.HTTPException) as error:
+        control.leer_chat(control.Contexto(token="t", apagar=lambda: None, vigilante=Vigilante(60), controles=simulados_e2e.Controles()))
+    assert error.value.status_code == 503
+    rutas = {(metodo, ruta.path) for ruta in control.router.routes for metodo in ruta.methods}
+    assert {("GET", "/pruebas-e2e/chat"), ("POST", "/pruebas-e2e/chat"), ("POST", "/pruebas-e2e/chat/liberar")} <= rutas
+
+    chat.configurar(senal_de_vida_segundos=1, tiempo_maximo_segundos=4, pausa_entre_etapas=True)
+    controles.restablecer()
+    assert chat.estado()["pausa_entre_etapas"] is False and chat.estado()["tiempo_maximo_segundos"] != 4
+
+
 def test_residuos_reintenta_un_error_transitorio(tmp_path, monkeypatch, nombre_e2e):
     """RA-02.42: `/residuos` repite el recuento (como `limpiar_todo`) si falla de forma transitoria, p. ej. un interbloqueo."""
     destino = _destino_e2e(tmp_path, plazo_reintento=2.0, pausa_reintento=0.01)

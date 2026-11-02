@@ -5,7 +5,7 @@
 const { test, expect } = require('../soporte/fixtures.js');
 const {
   PNG_MINIMO, aleatorio, nuevoTema, enviar, iniciarSesion, documentoDePrueba, cargar, estadoDeLaTarea, esperarTarea,
-  subirYProcesar, textoDeLosEventos, preguntar, abrirConsulta, rutaCitada, notebookConDocumento, crearNotebook, listarDocumentos,
+  subirYProcesar, leerEventos, textoDeLosEventos, preguntar, abrirConsulta, rutaCitada, notebookConDocumento, crearNotebook, listarDocumentos,
 } = require('../soporte/datos.js');
 
 const solicitar = (control, correo) => enviar(control, 'POST', '/auth/solicitar-recuperacion', { email: correo });
@@ -438,5 +438,105 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     await control.ingesta({ etapa: 'vectorizacion' });
     await control.limpiar();
     expect((await control.ingestaEstado()).etapa).toBe('extraccion');
+  });
+});
+
+// Spec 007, T8 (RA-02.49): lo que la 007 necesita programar del chat (señal de vida, tope, servidor mudo, pausa entre etapas
+// y evento desconocido). Sin navegador y con tiempos de segundos: la suite no se alarga.
+test.describe('capacidades del control: chat (spec 007)', () => {
+  const tipos = (eventos) => eventos.map((e) => e.type);
+  const PREGUNTA = '¿Qué dice el documento de PRUEBA?';
+
+  test('RA-02.49 · señal de vida y tope programados, y la limpieza los restablece', async ({ control, crearUsuario }) => {
+    const usuario = await crearUsuario('usuario');
+    const token = await iniciarSesion(control, usuario);
+    const base = await control.chatEstado();
+    expect(base.mudo).toBe(false);
+
+    // Motor retenido sin emitir nada: con vida a 1 s y tope a 3 s llegan señales de vida y, al vencer, el error del tope.
+    await control.chat({ senal_de_vida_segundos: 1, tiempo_maximo_segundos: 3 });
+    expect(await control.chatEstado()).toMatchObject({ senal_de_vida_segundos: 1, tiempo_maximo_segundos: 3 });
+    await control.motor({ modo: 'sin_datos' });
+    const inicio = Date.now();
+    const eventos = await preguntar(control, token, usuario, PREGUNTA);
+    expect(Date.now() - inicio).toBeLessThan(20_000);
+    expect(tipos(eventos).filter((t) => t === 'vida').length).toBeGreaterThanOrEqual(1);
+    expect(tipos(eventos).slice(0, 3)).toEqual(['etapa', 'etapa', 'etapa']);
+    const ultimo = eventos[eventos.length - 1];
+    expect(ultimo.type).toBe('error');
+    expect(ultimo.content).toContain('tardó demasiado');
+    expect(tipos(eventos)).not.toContain('chunk');
+
+    // Programación inválida.
+    await expect(control.chat({ senal_de_vida_segundos: 0 })).rejects.toThrow(/400/);
+    await expect(control.chat({ senal_de_vida_segundos: 5, tiempo_maximo_segundos: 5 })).rejects.toThrow(/400/);
+    await expect(control.chat({ evento_desconocido: 'chunk' })).rejects.toThrow(/400/);
+    const sinToken = await fetch(`${control.url}/pruebas-e2e/chat`, { headers: { 'X-Control-Pruebas': 'token-incorrecto' } });
+    expect(sinToken.status).toBe(403);
+
+    // La limpieza devuelve la señal de vida y el tope de la configuración.
+    await control.chat({ senal_de_vida_segundos: 1, tiempo_maximo_segundos: 3 });
+    await control.limpiar();
+    expect(await control.chatEstado()).toEqual(base);
+  });
+
+  test('RA-02.49 · servidor mudo: no sale ningún dato hasta liberar', async ({ control, crearUsuario }) => {
+    const usuario = await crearUsuario('usuario');
+    const token = await iniciarSesion(control, usuario);
+    await control.chat({ mudo: true });
+    const consulta = abrirConsulta(control, token, usuario, PREGUNTA);
+    await expect.poll(async () => (await control.chatEstado()).esperando, { timeout: 15_000 }).toBe(1);
+    expect(consulta.visto.texto).toBe('');
+    expect(consulta.visto.terminado).toBe(false);
+    expect((await control.chatLiberar()).retenida).toBe(false);
+    await consulta.fin;
+    const eventos = leerEventos(consulta.visto.texto);
+    expect(tipos(eventos).slice(0, 3)).toEqual(['etapa', 'etapa', 'etapa']);
+    expect(tipos(eventos)[tipos(eventos).length - 1]).toBe('done');
+
+    await control.chat({ mudo: true });
+    await control.limpiar();
+    expect(await control.chatEstado()).toMatchObject({ mudo: false, retenida: false, esperando: 0 });
+  });
+
+  test('RA-02.49 · pausa entre etapas: la segunda etapa espera a que se libere', async ({ control, crearUsuario }) => {
+    const usuario = await crearUsuario('usuario');
+    const token = await iniciarSesion(control, usuario);
+    await control.chat({ pausa_entre_etapas: true });
+    const consulta = abrirConsulta(control, token, usuario, PREGUNTA);
+    await expect.poll(async () => (await control.chatEstado()).esperando, { timeout: 15_000 }).toBe(1);
+    await expect.poll(() => consulta.visto.texto.includes('Procesando consulta'), { timeout: 10_000 }).toBe(true);
+    expect(consulta.visto.texto.includes('Analizando documentos')).toBe(false);
+    expect(consulta.visto.terminado).toBe(false);
+    await control.chatLiberar();
+    await consulta.fin;
+    const eventos = leerEventos(consulta.visto.texto);
+    expect(eventos.filter((e) => e.type === 'etapa').map((e) => e.content)).toEqual([
+      'Procesando consulta', 'Analizando documentos', 'Generando respuesta',
+    ]);
+    expect(tipos(eventos)).toContain('chunk');
+    expect(tipos(eventos)[tipos(eventos).length - 1]).toBe('done');
+
+    await control.chat({ pausa_entre_etapas: true });
+    await control.limpiar();
+    expect(await control.chatEstado()).toMatchObject({ pausa_entre_etapas: false, retenida: false, esperando: 0 });
+  });
+
+  test('RA-02.49 · evento desconocido tras el primer dato, sin alterar los demás', async ({ control, crearUsuario }) => {
+    const usuario = await crearUsuario('usuario');
+    const token = await iniciarSesion(control, usuario);
+    await control.chat({ evento_desconocido: 'prueba_inventado' });
+    const eventos = await preguntar(control, token, usuario, PREGUNTA);
+    const lista = tipos(eventos);
+    expect(lista.filter((t) => t === 'prueba_inventado').length).toBe(1);
+    expect(lista.slice(0, 2)).toEqual(['etapa', 'prueba_inventado']);
+    expect(lista.filter((t) => t === 'etapa').length).toBe(3);
+    expect(lista).toContain('chunk');
+    expect(lista[lista.length - 1]).toBe('done');
+
+    await control.limpiar();
+    expect((await control.chatEstado()).evento_desconocido).toBeNull();
+    const sin = await preguntar(control, token, usuario, PREGUNTA);
+    expect(tipos(sin)).not.toContain('prueba_inventado');
   });
 });

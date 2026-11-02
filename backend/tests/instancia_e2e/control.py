@@ -359,6 +359,37 @@ def liberar_motor(contexto: Contexto = Depends(_con_token)) -> dict:
     return motor.estado()
 
 
+class CuerpoChat(BaseModel):
+    """Programa el turno del chat (spec 007, T8): señal de vida y tope en segundos (omitidos: los de la configuración), servidor
+    mudo, pausa entre la primera y la segunda etapa, y el tipo de un evento desconocido que se inyecta tras el primer dato."""
+
+    senal_de_vida_segundos: Optional[float] = None
+    tiempo_maximo_segundos: Optional[float] = None
+    mudo: bool = False
+    pausa_entre_etapas: bool = False
+    evento_desconocido: Optional[str] = None
+
+
+@router.get("/chat")
+def leer_chat(contexto: Contexto = Depends(_con_token)) -> dict:
+    return _control(contexto, "chat").estado()
+
+
+@router.post("/chat")
+def programar_chat(cuerpo: CuerpoChat, contexto: Contexto = Depends(_con_token)) -> dict:
+    """Programa el turno del chat (RF-11.64, RF-11.67, RF-16.40, RF-16.60, RF-16.62)."""
+    return _programar(_control(contexto, "chat"), senal_de_vida_segundos=cuerpo.senal_de_vida_segundos,
+                      tiempo_maximo_segundos=cuerpo.tiempo_maximo_segundos, mudo=cuerpo.mudo,
+                      pausa_entre_etapas=cuerpo.pausa_entre_etapas, evento_desconocido=cuerpo.evento_desconocido)
+
+
+@router.post("/chat/liberar")
+def liberar_chat(contexto: Contexto = Depends(_con_token)) -> dict:
+    chat = _control(contexto, "chat")
+    chat.liberar()
+    return chat.estado()
+
+
 @router.get("/ingesta")
 def leer_ingesta(contexto: Contexto = Depends(_con_token)) -> dict:
     return _control(contexto, "ingesta").estado()
