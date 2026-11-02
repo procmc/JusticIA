@@ -375,7 +375,7 @@ class SimilarityService:
             )
             
             # 2. Crear contexto para el LLM (usando SummaryGenerator)
-            contexto_completo = await self.summary_generator.crear_contexto_resumen(docs_expediente)
+            contexto_completo = await self.summary_generator.crear_contexto_resumen(docs_expediente, numero_expediente)
             
             # 3. Generar respuesta con LLM con reintentos (usando SummaryGenerator)
             respuesta_content = await self.summary_generator.generar_respuesta_llm(

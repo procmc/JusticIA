@@ -498,3 +498,118 @@ def test_guarda_pregunta_y_respuesta(chat, monkeypatch, ollama_simulado):
     assert [type(m).__name__ for m in sesion.messages[-2:]] == ["HumanMessage", "AIMessage"]
     assert sesion.messages[-2].content == "Pregunta de PRUEBA"
     assert sesion.messages[-1].content == "Respuesta de PRUEBA."
+
+
+# --- T7 (spec 007, bloque E): resumen con IA de Temas Similares dentro del presupuesto (RF-20.60, RF-20.61, RF-20.62) ---------
+
+TEMA_RESUMEN = "PRUEBA-resumen-tema"
+RESPUESTA_RESUMEN = (
+    '{"resumen": "' + "Resumen inventado de PRUEBA. " * 10 + '", "palabras_clave": ["a"], '
+    '"factores_similitud": ["b"], "conclusion": "Conclusión inventada de PRUEBA."}'
+)
+
+
+def _chunks_resumen(tamanos_por_documento, desordenar=True):
+    """Fragmentos `Document` de un tema `PRUEBA`: una lista de tamaños por documento. El texto de cada uno empieza con una
+    marca única y sigue con letras sin espacios, así el formateador lo deja idéntico (solo colapsa espacios)."""
+    from langchain_core.documents import Document
+
+    docs = []
+    for d, tamanos in enumerate(tamanos_por_documento):
+        grupo = []
+        for i, largo in enumerate(tamanos):
+            marca = f"MARCA{d}x{i:02d}x"
+            grupo.append(Document(
+                page_content=marca + "y" * (largo - len(marca)),
+                metadata={"id_documento": 100 + d, "nombre_archivo": f"PRUEBA_resumen_{d}.pdf", "indice_chunk": i,
+                          "numero_expediente": TEMA_RESUMEN, "pagina_inicio": 1, "pagina_fin": 2, "tipo_archivo": 1},
+            ))
+        docs.extend(reversed(grupo) if desordenar else grupo)
+    return docs
+
+
+def _resumir(docs, ollama_simulado, monkeypatch):
+    """Corre el resumen como el servicio (contexto y luego el motor con reintentos) y devuelve la entrada de cada llamada."""
+    import asyncio
+
+    from app.services.busqueda_similares import summary_generator as sg
+
+    async def sin_espera(self, intento):
+        return None
+
+    monkeypatch.setattr(sg.SummaryGenerator, "_esperar_antes_reintentar", sin_espera)
+    ollama_simulado.responder(RESPUESTA_RESUMEN)
+    generador = sg.SummaryGenerator()
+
+    async def correr():
+        contexto = await generador.crear_contexto_resumen(docs, numero_expediente=TEMA_RESUMEN)
+        await generador.generar_respuesta_llm(contexto, TEMA_RESUMEN)
+        return contexto
+
+    contexto = asyncio.run(correr())
+    return contexto, ["\n".join(llamada) for llamada in ollama_simulado.llamadas]
+
+
+def test_resumen_dentro_del_presupuesto(monkeypatch, ollama_simulado):
+    """RF-20.60 · un tema con más de 20 fragmentos de 7.000 caracteres: la entrada de la llamada al motor no supera el presupuesto."""
+    docs = _chunks_resumen([[7000] * 9, [7000] * 9, [7000] * 9])
+    _, entradas = _resumir(docs, ollama_simulado, monkeypatch)
+    assert entradas, "el motor no recibió ninguna llamada"
+    for entrada in entradas:
+        assert pc.tokens(entrada) <= P, f"una llamada de {pc.tokens(entrada)} tokens (presupuesto {P})"
+
+
+def test_resumen_fragmentos_enteros_en_orden(monkeypatch, ollama_simulado):
+    """RF-20.61 · lo que no cabe se omite entero y se prueba el siguiente: ningún fragmento cortado, el orden actual
+    (por documento y número de fragmento), sin pasar de los primeros 20 y dentro del presupuesto."""
+    # 2 documentos de 11 fragmentos (22 en total): grandes, con algunos pequeños detrás de otros que no caben.
+    tamanos = [[7000, 7000, 300, 7000, 7000, 7000, 400, 7000, 7000, 7000, 7000], [7000, 300, 7000, 7000, 7000, 7000, 7000, 7000, 7000, 7000, 7000]]
+    docs = _chunks_resumen(tamanos)
+    contexto, entradas = _resumir(docs, ollama_simulado, monkeypatch)
+
+    primeros_20 = docs[:20]
+    esperado = sorted(primeros_20, key=lambda d: (d.metadata["id_documento"], d.metadata["indice_chunk"]))
+    posiciones = [(d, contexto.find(d.page_content)) for d in esperado]
+    incluidos = [(d, p) for d, p in posiciones if p >= 0]
+    omitidos = [d for d, p in posiciones if p < 0]
+    assert omitidos, "el tema de prueba debía exceder el presupuesto"
+    assert [p for _, p in incluidos] == sorted(p for _, p in incluidos), "los fragmentos no van en el orden actual"
+    for d in docs[20:]:
+        assert d.page_content[:12] not in contexto, "entró un fragmento posterior a los 20 primeros"
+    for d in primeros_20:  # ninguno cortado: la marca de un fragmento sin su texto entero no puede aparecer
+        marca = d.page_content[:10]
+        assert (marca in contexto) == (d.page_content in contexto), f"el fragmento {marca} quedó cortado"
+    primero_omitido = min(esperado.index(d) for d in omitidos)
+    assert any(esperado.index(d) > primero_omitido for d, _ in incluidos), "tras omitir uno no se probó el siguiente"
+    for entrada in entradas:
+        assert pc.tokens(entrada) <= P
+
+
+def test_tema_corto_completo(monkeypatch, ollama_simulado):
+    """RF-20.61 · un tema que cabe entero entra completo y sin texto nuevo: el contexto es el que producía el formateador."""
+    from app.services.RAG.chunk_context_builder import format_documents_by_chunks
+
+    docs = _chunks_resumen([[900, 800], [700]])
+    contexto, entradas = _resumir(docs, ollama_simulado, monkeypatch)
+    for d in docs:
+        assert d.page_content in contexto
+    assert contexto == format_documents_by_chunks(docs, max_docs=20, max_chars_per_chunk=7000)
+    assert len(entradas) == 1 and contexto in entradas[0]
+
+
+def test_instrucciones_solas_no_llama(monkeypatch, ollama_simulado):
+    """RF-20.62 · si las instrucciones del resumen superan por sí solas el presupuesto: error, sin llamar al motor."""
+    import asyncio
+    import dataclasses
+
+    from app.services.busqueda_similares import summary_generator as sg
+
+    monkeypatch.setattr(sg, "CONFIGURACION", dataclasses.replace(CFG, ventana=CFG.reserva + 100), raising=False)
+    generador = sg.SummaryGenerator()
+    docs = _chunks_resumen([[900]])
+    # No es un ValueError: la ruta responde 400 a esos; RF-20.62 pide el error interno (500).
+    with pytest.raises(RuntimeError):
+        asyncio.run(generador.crear_contexto_resumen(docs, numero_expediente=TEMA_RESUMEN))
+    with pytest.raises(RuntimeError):
+        asyncio.run(generador.generar_respuesta_llm("contexto de PRUEBA", TEMA_RESUMEN))
+    assert ollama_simulado.llamadas == []

@@ -181,3 +181,18 @@ def create_similarity_search_context(docs, max_docs: int = 15, max_chars_per_doc
         max_docs=max_docs,
         max_chars_per_chunk=max_chars_per_doc
     )
+
+
+def create_similarity_summary_context(docs, max_docs: int, max_tokens: int) -> str:
+    """
+    Contexto del resumen con IA dentro de un tope de tokens (spec 007, RF-20.60 y RF-20.61): el mismo orden y formato que
+    `create_similarity_search_context`, pero con los chunks enteros que quepan (ninguno se corta).
+
+    Args:
+        docs: Lista de documentos LangChain con metadata de Qdrant
+        max_docs: Máximo número de chunks totales (20 en el resumen)
+        max_tokens: Tokens que quedan para el contexto tras las instrucciones
+    """
+    from app.services.RAG.chunk_context_builder import format_documents_within_budget
+
+    return format_documents_within_budget(docs=docs, max_docs=max_docs, max_tokens=max_tokens)

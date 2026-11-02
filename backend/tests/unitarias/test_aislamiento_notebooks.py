@@ -422,7 +422,7 @@ def servicio_similares(monkeypatch):
     monkeypatch.setattr(modulo.SimilarityService, "_documentos_visibles", _visibles)
     servicio = modulo.SimilarityService()
 
-    async def _contexto(docs):
+    async def _contexto(docs, numero_expediente=""):
         registro["llm"] += 1
         return ""
 

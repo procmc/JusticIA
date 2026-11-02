@@ -341,3 +341,34 @@ def test_bitacora_por_turno(chat, caso, cliente_api, sesion, usuario_gubernament
     assert len(registros) == 1, f"se esperaba un registro por turno y hay {len(registros)}"
     assert registros[0].get("motivo") == MOTIVO_DEL_CASO[caso]
     assert registros[0]["tipo_consulta"] == {"general": "general", "tema": "expediente", "notebook": "notebook"}[chat]
+
+
+# --- T7 (resumen con IA de Temas Similares; RF-20.62) ---------------------------------------------------------------------------
+
+@pytest.mark.requisito("RF-20.62")
+def test_resumen_500_literal(cliente_api, sesion, usuario_gubernamental, registro_de_datos, procesamiento_en_prueba, ollama_simulado,
+                             monkeypatch):
+    """RF-20.62 · si las instrucciones del resumen superan por sí solas el presupuesto, el servidor responde 500 con el texto de
+    siempre, el motor no recibe ninguna llamada y la bitácora registra el resumen fallido como hoy (RF-21)."""
+    from app.config.contexto_config import CONFIGURACION
+    from app.constants.tipos_accion import TiposAccion
+    from app.services.busqueda_similares import summary_generator
+
+    documento = _documento_largo()
+    clave, _ = _alcance_con_documento("tema", cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, documento)
+    # Una ventana de reserva + 100 deja un presupuesto de 100 tokens: las instrucciones del resumen no caben.
+    monkeypatch.setattr(summary_generator, "CONFIGURACION",
+                        dataclasses.replace(CONFIGURACION, ventana=CONFIGURACION.reserva + 100), raising=False)
+    desde = _ultimo_id_de_bitacora()
+
+    respuesta = cliente_api.post("/similarity/generate-summary", headers=sesion, json={"numero_expediente": clave})
+
+    assert respuesta.status_code == 500
+    assert respuesta.json() == {"detail": "Error interno del servidor al generar el resumen"}
+    assert ollama_simulado.llamadas == [], "el motor recibió una llamada con las instrucciones fuera del presupuesto"
+    filas = _consultar(
+        "SELECT CT_Informacion_adicional FROM T_Bitacora WHERE CN_Id_bitacora > :d AND CN_Id_tipo_accion = :t AND CN_Id_usuario = :u",
+        {"d": desde, "t": TiposAccion.GENERAR_RESUMEN, "u": usuario_gubernamental.cedula},
+    )
+    assert len(filas) == 1, f"se esperaba un registro del resumen fallido y hay {len(filas)}"
+    assert json.loads(filas[0][0])["error"].startswith("Error interno del servidor")

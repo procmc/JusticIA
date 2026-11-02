@@ -79,6 +79,12 @@ from langchain_core.documents import Document
 from collections import defaultdict
 import re
 
+from app.config.contexto_config import CONFIGURACION, ConfiguracionContexto
+from app.services.RAG.presupuesto_contexto import tokens
+
+# Largo máximo de chunk que equivale a «no cortar»: el límite de _clean_chunk_content nunca se alcanza.
+_SIN_CORTE = 10 ** 9
+
 
 def format_documents_by_chunks(
     docs: List[Document], 
@@ -107,6 +113,52 @@ def format_documents_by_chunks(
     
     # Paso 3: Formatear contexto estructurado
     return _format_grouped_documents(docs_by_file, max_chars_per_chunk)
+
+
+def format_documents_within_budget(
+    docs: List[Document],
+    max_docs: int,
+    max_tokens: int,
+    cfg: ConfiguracionContexto = CONFIGURACION,
+) -> str:
+    """
+    Como `format_documents_by_chunks` (mismo orden y mismo formato), pero sin cortar ningún chunk y con un tope de tokens
+    (spec 007, RF-20.60/20.61): recorre los chunks en el orden actual (por documento y número de chunk) y el que no cabe
+    entero, con el encabezado de su documento si es el primero que se incluye, se omite y se prueba el siguiente.
+
+    Cada pieza (encabezado global, de documento y chunk) se cuenta por separado y se redondea hacia arriba, y el encabezado
+    se estima con los números más largos posibles, de modo que el texto devuelto nunca supera `max_tokens`.
+    """
+    if not docs:
+        return "No hay información disponible."
+
+    docs_by_file = _group_chunks_by_document(docs[:max_docs])
+    _sort_chunks_within_documents(docs_by_file)
+
+    total_chunks = sum(len(chunks) for chunks in docs_by_file.values())
+    libre = max_tokens - tokens(_format_global_header(len(docs_by_file), total_chunks), cfg)
+
+    incluidos = []  # (chunks incluidos, metadata) por documento con al menos un chunk
+    for chunks in docs_by_file.values():
+        metadata = _extract_document_metadata(chunks[0])
+        mayor = max(c.metadata.get("indice_chunk", 0) for c in chunks) + 1
+        encabezado = tokens(_format_document_header(len(incluidos) + 1, metadata, f"{mayor}-{mayor}"), cfg)
+        elegidos = []
+        for chunk in chunks:
+            texto = _format_single_chunk(chunk, metadata['es_audio'], _SIN_CORTE)
+            costo = tokens(texto, cfg) + (0 if elegidos else encabezado)
+            if costo <= libre:
+                libre -= costo
+                elegidos.append(chunk)
+        if elegidos:
+            incluidos.append((elegidos, metadata))
+
+    partes = []
+    for contador, (elegidos, metadata) in enumerate(incluidos, start=1):
+        partes.append(_format_document_header(contador, metadata, _calculate_chunk_range(elegidos)))
+        for chunk in elegidos:
+            partes.append(_format_single_chunk(chunk, metadata['es_audio'], _SIN_CORTE))
+    return _format_global_header(len(incluidos), sum(len(e) for e, _ in incluidos)) + "".join(partes)
 
 
 def _group_chunks_by_document(docs: List[Document]) -> dict:

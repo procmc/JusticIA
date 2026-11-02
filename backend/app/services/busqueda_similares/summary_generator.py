@@ -149,13 +149,22 @@ import asyncio
 from typing import List
 from langchain_core.documents import Document
 
+from app.config.contexto_config import CONFIGURACION
 from app.llm.llm_service import get_llm
+from app.services.RAG.presupuesto_contexto import tokens
 from .similarity_prompt_builder import (
     create_similarity_summary_prompt,
-    create_similarity_search_context
+    create_similarity_summary_context,
 )
 
 logger = logging.getLogger(__name__)
+
+MAX_FRAGMENTOS_RESUMEN = 20
+
+
+class InstruccionesFueraDelPresupuesto(RuntimeError):
+    """Las instrucciones del resumen no caben por sí solas en el presupuesto (RF-20.62). No es un ValueError a propósito:
+    la ruta responde 400 a esos y aquí corresponde el error interno (500)."""
 
 
 class SummaryGenerator:
@@ -166,27 +175,41 @@ class SummaryGenerator:
     TIEMPO_ESPERA_BASE = 2  # segundos
     MIN_LONGITUD_RESPUESTA = 200
     
-    async def crear_contexto_resumen(self, docs_expediente: List[Document]) -> str:
+    @staticmethod
+    def _tokens_de_instrucciones(numero_expediente: str) -> int:
+        """Tokens de las instrucciones del resumen (el prompt sin contexto); si solas superan el presupuesto, no se llama al
+        motor (RF-20.62)."""
+        instrucciones = tokens(create_similarity_summary_prompt("", numero_expediente), CONFIGURACION)
+        if instrucciones > CONFIGURACION.presupuesto:
+            raise InstruccionesFueraDelPresupuesto(
+                f"Las instrucciones del resumen ({instrucciones} tokens) superan el presupuesto ({CONFIGURACION.presupuesto})"
+            )
+        return instrucciones
+
+    async def crear_contexto_resumen(self, docs_expediente: List[Document], numero_expediente: str = "") -> str:
         """
-        Crea el contexto optimizado para documentos legales.
+        Crea el contexto optimizado para documentos legales, dentro del presupuesto de la llamada al motor (RF-20.60).
         
         Args:
             docs_expediente: Lista de documentos del expediente
+            numero_expediente: Tema que se resume (las instrucciones lo incluyen y ocupan parte del presupuesto)
             
         Returns:
-            Contexto formateado como string
+            Contexto formateado como string: los chunks enteros que caben, en el orden de siempre (RF-20.61)
             
         Raises:
             ValueError: Si no hay documentos o el contexto es muy corto
+            InstruccionesFueraDelPresupuesto: Si las instrucciones solas superan el presupuesto (RF-20.62)
         """
         if not docs_expediente:
             raise ValueError("No se encontraron documentos para el expediente")
         
+        instrucciones = self._tokens_de_instrucciones(numero_expediente)
         try:
-            contexto_completo = create_similarity_search_context(
-                docs_expediente, 
-                max_docs=20,
-                max_chars_per_doc=7000
+            contexto_completo = create_similarity_summary_context(
+                docs_expediente,
+                max_docs=MAX_FRAGMENTOS_RESUMEN,
+                max_tokens=CONFIGURACION.presupuesto - instrucciones
             )
             
             if len(contexto_completo) < 100:
@@ -212,7 +235,14 @@ class SummaryGenerator:
             
         Raises:
             ValueError: Si todos los intentos fallan
+            InstruccionesFueraDelPresupuesto: Si la entrada supera el presupuesto (RF-20.60, RF-20.62)
         """
+        # La misma entrada sirve a los tres intentos: se comprueba una vez, antes de llamar al motor.
+        entrada = tokens(create_similarity_summary_prompt(contexto_completo, numero_expediente), CONFIGURACION)
+        if entrada > CONFIGURACION.presupuesto:
+            raise InstruccionesFueraDelPresupuesto(
+                f"La entrada del resumen ({entrada} tokens) supera el presupuesto ({CONFIGURACION.presupuesto})"
+            )
         for intento in range(1, self.MAX_INTENTOS + 1):
             try:
                 logger.info(f"Intento {intento}/{self.MAX_INTENTOS} de generación")
