@@ -90,6 +90,9 @@ from app.utils.expediente_validator import extraer_expediente_de_texto
 
 logger = logging.getLogger(__name__)
 
+# Umbral de la búsqueda por relevancia de un tema o notebook (RF-11.69, D-13): el puntaje coseno no baja de -1, así que nada se descarta
+SIN_UMBRAL = -1.0
+
 
 class DynamicServIARetriever(BaseRetriever):
     """
@@ -110,6 +113,7 @@ class DynamicServIARetriever(BaseRetriever):
     expediente_filter: Optional[str] = Field(default=None, description="Filtro por expediente específico")
     nombre_visible: Optional[str] = Field(default=None, description="Nombre a mostrar en el header/contexto del LLM en vez de expediente_filter (ej. el nombre real de un notebook)")
     documentos_visibles: Optional[Set[int]] = Field(default=None, description="Documentos que el usuario puede ver; la búsqueda general se limita a ellos (None = sin restricción)")
+    por_relevancia: bool = Field(default=False, description="Con expediente_filter: busca por relevancia, sin umbral (chat de un tema o notebook, RF-11.69) en vez de leer todo el tema (resumen)")
 
     def __init__(
         self,
@@ -118,6 +122,7 @@ class DynamicServIARetriever(BaseRetriever):
         expediente_filter: Optional[str] = None,
         nombre_visible: Optional[str] = None,
         documentos_visibles: Optional[Set[int]] = None,
+        por_relevancia: bool = False,
         **kwargs
     ):
         # Usar valores del config si no se especifican
@@ -132,7 +137,8 @@ class DynamicServIARetriever(BaseRetriever):
         object.__setattr__(self, 'expediente_filter', expediente_filter)
         object.__setattr__(self, 'nombre_visible', nombre_visible)
         object.__setattr__(self, 'documentos_visibles', documentos_visibles)
-        
+        object.__setattr__(self, 'por_relevancia', por_relevancia)
+
         logger.info(
             f"DynamicServIARetriever inicializado - "
             f"top_k={top_k}, threshold={similarity_threshold}, "
@@ -144,6 +150,8 @@ class DynamicServIARetriever(BaseRetriever):
             # FLUJO 1: Expediente específico (filtro explícito)
             if self.expediente_filter:
                 logger.info(f"Búsqueda en expediente: {self.expediente_filter}")
+                if self.por_relevancia:
+                    return await self._get_relevant_in_expediente(query, self.expediente_filter)
                 docs = await self._get_expediente_documents(self.expediente_filter)
                 logger.debug(f"Expediente: {len(docs)} documentos recuperados")
                 return docs
@@ -162,8 +170,42 @@ class DynamicServIARetriever(BaseRetriever):
             logger.error(f"Error en retriever: {e}", exc_info=True)
             return []
     
+    async def _get_relevant_in_expediente(self, query: str, expediente_numero: str) -> List[Document]:
+        """Chat de un tema o notebook (RF-11.69): los `top_k` fragmentos más relevantes para la consulta, restringidos al tema.
+
+        Sin umbral de similitud: una pregunta general sobre el tema también recibe fragmentos. El orden es el de la relevancia.
+        """
+        try:
+            resultados = await get_vectorstore_backend().search_by_text(
+                query, self.top_k, SIN_UMBRAL, expediente_numero, None, self.documentos_visibles
+            )
+            documentos = []
+            for r in resultados[:max(self.top_k, 0)]:
+                meta = r.get("metadata") or {}
+                tema = self.nombre_visible or r.get("expedient_id") or expediente_numero
+                documentos.append(Document(
+                    page_content=fix_encoding_issues(r.get("content_preview", "")),
+                    metadata={
+                        # "expediente_numero" es la clave que lee document_formatter.a_fragmento para el tema del encabezado
+                        "expediente_numero": tema,
+                        "numero_expediente": expediente_numero,
+                        "nombre_archivo": r.get("document_name") or "",
+                        "archivo": r.get("document_name") or "",
+                        "indice_chunk": meta.get("indice_chunk", 0),
+                        "tipo_documento": meta.get("tipo_documento", ""),
+                        "ruta_archivo": (meta.get("meta") or {}).get("ruta_archivo", ""),
+                        "pagina_inicio": meta.get("pagina_inicio"),
+                        "pagina_fin": meta.get("pagina_fin"),
+                    },
+                ))
+            logger.info(f"Tema {expediente_numero}: {len(documentos)} fragmentos recuperados por relevancia")
+            return documentos
+        except Exception as e:
+            logger.error(f"Error buscando por relevancia en {expediente_numero}: {e}", exc_info=True)
+            return []
+
     async def _get_expediente_documents(self, expediente_numero: str) -> List[Document]:
-        """Obtiene todos los documentos de un expediente específico con limpieza de encoding."""
+        """Lee todos los documentos de un expediente con limpieza de encoding (el resumen; el chat usa `_get_relevant_in_expediente`)."""
         try:
             logger.info(f"Obteniendo documentos del expediente: {expediente_numero}")
             

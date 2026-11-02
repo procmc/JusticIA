@@ -375,17 +375,14 @@ class RAGChainService:
         
         # Crear retriever configurado para expediente específico con config centralizado (RF-11.65)
         top_k = cantidad_a_recuperar(top_k)
+        # Por relevancia y sin umbral (RF-11.69, D-13)
         retriever = DynamicServIARetriever(
             top_k=top_k,
-            similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
-            expediente_filter=expediente_numero
+            expediente_filter=expediente_numero,
+            por_relevancia=True
         )
-        
-        logger.info(
-            f"DynamicServIARetriever creado para expediente {expediente_numero} "
-            f"(top_k: {top_k}, "
-            f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
-        )
+
+        logger.info(f"DynamicServIARetriever creado para expediente {expediente_numero} (top_k: {top_k}, por relevancia)")
         
         # Crear chain especializada para expedientes
         chain = await create_expediente_specific_chain(
@@ -457,21 +454,17 @@ class RAGChainService:
         clave_interna = notebook.clave_interna  # ej. "NB-7" — clave de agrupación en Qdrant
         nombre_notebook = notebook.CT_Nombre
 
-        # Reutiliza el mismo retriever/filtro híbrido de Qdrant que expediente
-        # (expediente_filter es agnóstico al significado del string — Ciclo 3)
+        # Reutiliza el mismo retriever que el tema (expediente_filter es agnóstico al significado del string — Ciclo 3):
+        # por relevancia y sin umbral dentro del notebook (RF-11.69, D-13)
         top_k = cantidad_a_recuperar(top_k)
         retriever = DynamicServIARetriever(
             top_k=top_k,
-            similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
             expediente_filter=clave_interna,
-            nombre_visible=nombre_notebook
+            nombre_visible=nombre_notebook,
+            por_relevancia=True
         )
 
-        logger.info(
-            f"DynamicServIARetriever creado para notebook '{nombre_notebook}' ({clave_interna}) "
-            f"(top_k: {top_k}, "
-            f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
-        )
+        logger.info(f"DynamicServIARetriever creado para notebook '{nombre_notebook}' ({clave_interna}) (top_k: {top_k}, por relevancia)")
 
         # Última vía contra el rechazo del modelo a reconocer imágenes
         # (5 refuerzos de prompt fallaron igual): reformular la pregunta

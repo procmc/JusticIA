@@ -239,8 +239,11 @@ def _recuperador_falso_cls():
         documentos: list
         top_k: Optional[int] = None
         recibidos: Any = None
+        consultas: Any = None  # el texto con el que el flujo busca (T5b: la pregunta reformulada)
 
         async def _aget_relevant_documents(self, query, **kwargs):
+            if self.consultas is not None:
+                self.consultas.append(query)
             return self.documentos if self.top_k is None else self.documentos[: max(self.top_k, 0)]
 
         def _get_relevant_documents(self, query, **kwargs):
@@ -316,7 +319,7 @@ def _con_recuperador_falso(monkeypatch, servicio, documentos: list) -> list:
     creados: list = []
 
     def fabrica(**kwargs):
-        recuperador = clase(documentos=documentos, top_k=kwargs.get("top_k"), recibidos=kwargs)
+        recuperador = clase(documentos=documentos, top_k=kwargs.get("top_k"), recibidos=kwargs, consultas=[])
         creados.append(recuperador)
         return recuperador
 
@@ -377,7 +380,8 @@ class _AlmacenFalso:
         from app.config.rag_config import rag_config
 
         self.pedidos.append(top_k)
-        if threshold != rag_config.SIMILARITY_THRESHOLD_FALLBACK:
+        # El tema y el notebook buscan por relevancia, sin umbral (RF-11.69, T5b); el general solo recibe con el de respaldo
+        if threshold != rag_config.SIMILARITY_THRESHOLD_FALLBACK and not expediente_filter:
             return []
         return [
             {"id": str(i), "expedient_id": self.tema, "document_name": f"PRUEBA_{i}.pdf",
@@ -403,6 +407,86 @@ def test_respaldo_no_supera(chat, solicitud, maximo, monkeypatch, ollama_simulad
     turno = _consultar(chat, servicio, sesion, ollama_simulado, solicitud=solicitud)
     assert 1 <= len(turno.marcas()) <= maximo
     assert all(p <= maximo for p in almacen.pedidos), f"se pidió más de {maximo}: {almacen.pedidos}"
+
+
+# --- T5b: relevancia sin umbral y reformulación en el tema y el notebook (RF-11.69, RF-11.66) -----------------------------------
+
+class _AlmacenRelevancia:
+    """Qdrant simulado: registra cada búsqueda (consulta, cantidad, umbral y filtro) y devuelve siempre `k` resultados de
+    puntaje bajo, para ver que el chat no descarta nada por umbral."""
+
+    def __init__(self, tema: str):
+        self.tema, self.busquedas, self.lecturas = tema, [], 0
+
+    async def search_by_text(self, query_text, top_k, threshold, expediente_filter=None, db=None, documentos_visibles=None):
+        self.busquedas.append({"consulta": query_text, "top_k": top_k, "umbral": threshold, "filtro": expediente_filter})
+        return [
+            {"id": str(i), "expedient_id": expediente_filter, "document_name": f"PRUEBA_{i}.pdf",
+             "content_preview": f"MARCA{i:02d} texto", "similarity_score": 0.01,
+             "metadata": {"indice_chunk": i, "pagina_inicio": 1, "pagina_fin": 2,
+                          "meta": {"ruta_archivo": f"uploads/{self.tema}/PRUEBA_{i}.pdf"}}}
+            for i in range(top_k)
+        ]
+
+    async def get_expedient_documents(self, expedient_id, documentos_visibles=None):
+        self.lecturas += 1
+        return []
+
+
+@pytest.mark.parametrize("chat", ["tema", "notebook"])
+def test_tema_y_notebook_sin_umbral(chat, monkeypatch, ollama_simulado):
+    """RF-11.69 · el chat por tema y el del notebook buscan por relevancia, filtrados por su tema o `NB-<id>`, SIN umbral de
+    similitud y con la cantidad configurada; ya no leen el tema por número (esa lectura queda para el resumen)."""
+    from app.services.RAG import retriever
+
+    servicio, sesion = _preparar(monkeypatch, ollama_simulado)
+    almacen = _AlmacenRelevancia(_tema_de(chat))
+    monkeypatch.setattr(retriever, "get_vectorstore_backend", lambda: almacen)
+    turno = _consultar(chat, servicio, sesion, ollama_simulado)
+    clave = TEMA_FORMA_JUDICIAL if chat == "tema" else "NB-7"
+    assert len(almacen.busquedas) == 1, f"se esperaba una búsqueda: {almacen.busquedas}"
+    busqueda = almacen.busquedas[0]
+    assert busqueda["filtro"] == clave and busqueda["top_k"] == 8
+    assert busqueda["umbral"] <= 0, f"la búsqueda del chat llevó umbral {busqueda['umbral']}"
+    assert almacen.lecturas == 0, "el chat leyó el tema por número en lugar de buscar por relevancia"
+    assert len(turno.marcas()) == 8, "los fragmentos de puntaje bajo no llegaron al motor"
+    if chat == "notebook":
+        assert f"Tema: {NOMBRE_NOTEBOOK}" in turno.respuesta  # el nombre visible, no la clave interna
+
+
+@pytest.mark.parametrize("chat", ["tema", "notebook"])
+def test_flujo_reformula_con_dos_mensajes(chat, monkeypatch, ollama_simulado):
+    """RF-11.66 · con historial, el tema y el notebook reformulan con la instrucción única y los 2 últimos mensajes, buscan con la
+    reformulada y responden a la pregunta del usuario. (El nombre lleva `flujo` porque `test_reformula_con_dos_mensajes` ya
+    existe, de T3, para el cálculo.)"""
+    from app.services.RAG.prompts import INSTRUCCION_REFORMULACION
+
+    servicio, sesion = _preparar(monkeypatch, ollama_simulado, historial=4)
+    creados = _con_recuperador_falso(monkeypatch, servicio, _documentos(3, 100, _tema_de(chat)))
+    pregunta = "¿Y qué más dice?"
+    _consultar(chat, servicio, sesion, ollama_simulado, pregunta=pregunta)
+    llamadas = ollama_simulado.llamadas
+    assert len(llamadas) == 2, f"se esperaban la reformulación y la respuesta: {len(llamadas)} llamadas"
+    reformulacion, respuesta = llamadas
+    assert reformulacion[0] == INSTRUCCION_REFORMULACION
+    assert [m[:3] for m in reformulacion[1:-1]] == ["H02", "H03"] and reformulacion[-1] == pregunta
+    assert creados[0].consultas == ["Respuesta de PRUEBA."], "la búsqueda no usó la pregunta reformulada"
+    assert respuesta[-1] == pregunta
+
+
+def test_notebook_reformula_la_adaptada(monkeypatch, ollama_simulado):
+    """RF-11.66 · en el notebook, la que se reformula y se responde es la pregunta ya adaptada por `reformular_referencia_imagen`."""
+    from app.services.RAG.prompts.notebook_prompt import reformular_referencia_imagen
+
+    pregunta = "¿Qué dice la imagen sobre el contrato?"
+    adaptada = reformular_referencia_imagen(pregunta)
+    assert adaptada != pregunta
+    servicio, sesion = _preparar(monkeypatch, ollama_simulado, historial=2)
+    creados = _con_recuperador_falso(monkeypatch, servicio, _documentos(3, 100, NOMBRE_NOTEBOOK))
+    _consultar("notebook", servicio, sesion, ollama_simulado, pregunta=pregunta)
+    reformulacion, respuesta = ollama_simulado.llamadas
+    assert reformulacion[-1] == adaptada and respuesta[-1] == adaptada
+    assert creados[0].consultas == ["Respuesta de PRUEBA."]
 
 
 @pytest.mark.parametrize("chat", CHATS)

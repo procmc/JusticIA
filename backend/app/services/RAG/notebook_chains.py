@@ -23,9 +23,9 @@ async def create_notebook_specific_chain(
     nombre_notebook: str,
     with_history: bool = True
 ) -> CadenaArmada:
-    """Crea la cadena del chat de un notebook (sin reformulación: la pregunta no se usa para buscar hasta T5b)."""
+    """Crea la cadena del chat de un notebook: con historial, reformula la pregunta (ya adaptada) para buscar (RF-11.66)."""
     logger.info("Cadena del notebook '%s' creada (con historial: %s)", nombre_notebook, with_history)
     return CadenaArmada(
         CHAT_NOTEBOOK, instrucciones_notebook(nombre_notebook), retriever,
-        historial_de=get_session_history_func() if with_history else None,
+        historial_de=get_session_history_func() if with_history else None, reformula=True,
     )
