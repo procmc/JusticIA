@@ -42,12 +42,11 @@ from app.config.config import (
     LLM_TEMPERATURE,
     LLM_KEEP_ALIVE,
     LLM_REQUEST_TIMEOUT,
-    LLM_NUM_CTX,
-    LLM_NUM_PREDICT,
     LLM_TOP_K,
     LLM_TOP_P,
     LLM_REPEAT_PENALTY,
 )
+from app.config.contexto_config import CONFIGURACION
 from fastapi.responses import StreamingResponse
 
 # Singleton LLM
@@ -95,10 +94,10 @@ async def get_llm():
                 # campos directos de ChatOllama, no se leen desde model_kwargs.
                 # Pasarlos anidados en model_kwargs hace que se ignoren en
                 # silencio y el modelo corra con la ventana de contexto por
-                # defecto de Ollama (mucho menor a LLM_NUM_CTX), truncando
+                # defecto de Ollama (mucho menor a la ventana configurada), truncando
                 # el prompt en conversaciones con contexto largo.
-                num_ctx=LLM_NUM_CTX,
-                num_predict=LLM_NUM_PREDICT,
+                num_ctx=CONFIGURACION.ventana,
+                num_predict=CONFIGURACION.reserva,
                 top_k=LLM_TOP_K,
                 top_p=LLM_TOP_P,
                 repeat_penalty=LLM_REPEAT_PENALTY,

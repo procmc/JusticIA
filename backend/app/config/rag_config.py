@@ -8,7 +8,7 @@ Propósito:
     - Centralizar configuración RAG para consistencia en todo el sistema
     - Documentar valores optimizados y el razonamiento detrás de cada uno
     - Facilitar ajuste fino sin modificar código de múltiples archivos
-    - Prevenir context overflow en el LLM (gpt-oss:20b con 32k tokens)
+    - Prevenir context overflow en el LLM (llama3.1:8b con ventana de 8.192 tokens)
 
 Parámetros principales:
     1. **Umbrales de similitud**: Filtran chunks por relevancia semántica
@@ -29,14 +29,8 @@ Arquitectura RAG:
     Generación de respuesta
     ```
 
-Optimización para gpt-oss:20b:
-    - Context window: 32,768 tokens (LLM_NUM_CTX)
-    - Presupuesto de tokens:
-        * Sistema + instrucciones: ~2k tokens
-        * Historial conversacional: ~3-5k tokens
-        * Chunks recuperados: 15-25k tokens
-        * Respuesta generada: ~2-4k tokens
-        * **Total**: ~28-32k tokens (margen seguro)
+Contexto: la ventana (8.192), la reserva de respuesta (1.024) y la cantidad de fragmentos por consulta
+(8) salen de `app.config.contexto_config`, la configuración única validada al arrancar (spec 007).
 
 Historial del ajuste de parámetros:
     **Umbrales:**
@@ -60,11 +54,11 @@ Example:
     
     # Usar configuración en búsqueda
     threshold = rag_config.SIMILARITY_THRESHOLD_GENERAL  # 0.20
-    top_k = rag_config.TOP_K_GENERAL  # 15
+    top_k = rag_config.TOP_K_GENERAL  # 8
     
     # Configuración para expediente específico
     threshold = rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE  # 0.18
-    top_k = rag_config.TOP_K_EXPEDIENTE  # 10
+    top_k = rag_config.TOP_K_EXPEDIENTE  # 8
     
     # Límite de historial
     historial_limitado = mensajes[-rag_config.CHAT_HISTORY_LIMIT:]
@@ -83,13 +77,15 @@ See Also:
     - app.vectorstore.retriever: Implementa recuperación con estos parámetros
 """
 
+from app.config.contexto_config import CONFIGURACION
+
 
 class RAGConfig:
     """
     Configuración unificada del sistema RAG.
     
     Todos los parámetros están optimizados para:
-        - Modelo LLM: gpt-oss:20b (32k context window)
+        - Modelo LLM: llama3.1:8b (ventana de 8.192 tokens)
         - Modelo embeddings: BGE-M3-ES-Legal
         - Vectorstore: Qdrant con búsqueda de similitud coseno
     """
@@ -145,51 +141,15 @@ class RAGConfig:
     # TOP-K (CANTIDAD DE RESULTADOS)
     # ========================================
     
-    TOP_K_GENERAL = 15
-    """Cantidad de chunks para búsquedas generales.
-    
-    Optimizado para gpt-oss:20b con LLM_NUM_CTX=32768:
-    - Cada chunk: ~7,000 caracteres (~1,750 tokens promedio)
-    - TOP_K=15: ~26.2k tokens de chunks
-    - + Sistema + historial + respuesta = ~32.5k tokens total
-    
-    SEGURO para búsquedas generales porque:
-    - Los chunks provienen de múltiples expedientes diferentes
-    - Mayor diversidad = chunks más cortos en promedio
-    - Menor probabilidad de chunks excepcionalmente largos
-    
-    Proporciona buen balance entre contexto amplio y estabilidad.
-    """
-    
-    TOP_K_EXPEDIENTE = 10
-    """Cantidad de chunks para expediente específico.
-    
-    Optimizado para MÁXIMA ESTABILIDAD con documentos extensos (LLM_NUM_CTX=32768):
-    - TOP_K=10: ~17.5k tokens de chunks (promedio)
-    - Peor caso (chunks muy largos): ~25k tokens
-    - + Sistema + historial + respuesta = ~29k tokens total
-    - **Margen de seguridad: 3-7k tokens**
-    
-    REDUCIDO a 10 (vs 12 o 15) para GARANTIZAR estabilidad cuando:
-    - Expediente tiene múltiples documentos de 50-100+ páginas
-    - Todos los chunks del expediente son excepcionalmente largos
-    - Historial conversacional es extenso (muchas preguntas previas)
-    
-    BALANCE ÓPTIMO:
-    - Suficiente contexto para análisis profundo del expediente
-    - Margen amplio previene errores "reduce tokens" incluso en casos extremos
-    - Enfoque en los 10 chunks MÁS relevantes = mejor calidad de respuesta
-    
-    NOTA: 10 chunks de un expediente extenso ya contiene información muy valiosa.
-    La calidad de la respuesta depende más de la RELEVANCIA que de la CANTIDAD.
-    """
-    
-    TOP_K_FALLBACK = 10
-    """Cantidad para estrategia de fallback.
-    
-    Mismo valor que expediente para mantener consistencia y máxima seguridad.
-    """
-    
+    TOP_K_GENERAL = CONFIGURACION.fragmentos_por_consulta
+    """Fragmentos recuperados en el chat general (RF-11.65): 8 por omisión, configurable en el servidor."""
+
+    TOP_K_EXPEDIENTE = CONFIGURACION.fragmentos_por_consulta
+    """Fragmentos recuperados en el chat por tema y en el notebook (RF-11.65)."""
+
+    TOP_K_FALLBACK = CONFIGURACION.fragmentos_por_consulta
+    """Fragmentos de la búsqueda de respaldo (RF-11.65)."""
+
     # ========================================
     # FALLBACK
     # ========================================

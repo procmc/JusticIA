@@ -71,8 +71,16 @@ JWT_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(JWT_EXPIRE
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "10m")
 LLM_REQUEST_TIMEOUT = int(os.getenv("LLM_REQUEST_TIMEOUT", "600"))
-LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "2048"))
-LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1024"))
+# Contexto del chat: se leen sin convertir y los valida una sola vez `contexto_config`
+# (un valor no numérico o incoherente no tumba el arranque; ver RF-08.62). Por omisión: 8192/1024.
+ENTORNO_CONTEXTO = {
+    nombre: os.getenv(nombre)
+    for nombre in (
+        "LLM_NUM_CTX", "LLM_NUM_PREDICT", "CHAT_CARACTERES_POR_TOKEN", "CHAT_FRAGMENTOS_POR_CONSULTA",
+        "FRAGMENTO_TAMANO_MAXIMO", "FRAGMENTO_SOLAPAMIENTO", "CHAT_SENAL_DE_VIDA_SEGUNDOS",
+        "CHAT_TIEMPO_MAXIMO_SEGUNDOS",
+    )
+}
 LLM_TOP_K = int(os.getenv("LLM_TOP_K", "40"))
 LLM_TOP_P = float(os.getenv("LLM_TOP_P", "0.95"))
 LLM_REPEAT_PENALTY = float(os.getenv("LLM_REPEAT_PENALTY", "1.1"))
