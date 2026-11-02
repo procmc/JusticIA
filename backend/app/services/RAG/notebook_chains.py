@@ -1,29 +1,19 @@
 """
-Chain especializada para análisis de un notebook específico (NotebookServIA).
+Chat acotado a un notebook (NotebookServIA): aporta sus instrucciones y arma la cadena de `general_chains`.
 
-Calcada de expediente_chains.py — misma estructura (retrieval chain +
-FormattedRetriever + historial), pero usa el prompt genérico de
-notebook_prompt.py en vez del prompt judicial.
+La lista de archivos del notebook sale de los fragmentos enviados en esa llamada (spec 007, RF-12.62), sin una
+búsqueda aparte.
 
 Ver también:
-    * app.services.rag.prompts.notebook_prompt: Prompt especializado
-    * app.services.rag.expediente_chains: Chain equivalente para expedientes
-
-Authors:
-    ServIA Team
-
-Version:
-    1.0.0
+    * app.services.RAG.general_chains: `CadenaArmada` y `stream_chain_response`
+    * app.services.RAG.prompts.notebook_prompt: `instrucciones_notebook`
 """
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.runnables.history import RunnableWithMessageHistory
 import logging
 
-from app.llm.llm_service import get_llm
+from .general_chains import CadenaArmada
+from .presupuesto_contexto import CHAT_NOTEBOOK
+from .prompts import instrucciones_notebook
 from .session_store import get_session_history_func
-from .prompts import get_notebook_prompt, DOCUMENT_PROMPT
-from .formatted_retriever import FormattedRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -31,48 +21,11 @@ logger = logging.getLogger(__name__)
 async def create_notebook_specific_chain(
     retriever,
     nombre_notebook: str,
-    with_history: bool = True,
-    pregunta: str = "",
-    archivos_disponibles: list | None = None
-):
-    """Crea una chain especializada para análisis de un notebook específico.
-
-    Args:
-        pregunta: La pregunta de este turno. Se pasa al prompt para que
-            agregue el recordatorio reforzado contra negar imágenes solo
-            cuando la pregunta menciona un archivo de ese tipo.
-        archivos_disponibles: Nombres reales de los archivos del notebook,
-            para que el prompt los liste explícitamente (ver
-            notebook_prompt.get_notebook_system_prompt).
-    """
-    llm = await get_llm()
-
-    formatted_retriever = FormattedRetriever(retriever)
-
-    NOTEBOOK_PROMPT = get_notebook_prompt(nombre_notebook, pregunta, archivos_disponibles)
-
-    question_answer_chain = create_stuff_documents_chain(
-        llm=llm,
-        prompt=NOTEBOOK_PROMPT,
-        document_prompt=DOCUMENT_PROMPT
+    with_history: bool = True
+) -> CadenaArmada:
+    """Crea la cadena del chat de un notebook (sin reformulación: la pregunta no se usa para buscar hasta T5b)."""
+    logger.info("Cadena del notebook '%s' creada (con historial: %s)", nombre_notebook, with_history)
+    return CadenaArmada(
+        CHAT_NOTEBOOK, instrucciones_notebook(nombre_notebook), retriever,
+        historial_de=get_session_history_func() if with_history else None,
     )
-
-    rag_chain = create_retrieval_chain(
-        formatted_retriever,
-        question_answer_chain,
-    )
-
-    if with_history:
-        conversational_rag_chain = RunnableWithMessageHistory(
-            rag_chain,
-            get_session_history_func(),
-            input_messages_key="input",
-            history_messages_key="chat_history",
-            output_messages_key="answer",
-        )
-
-        logger.info(f"Chain notebook '{nombre_notebook}' con historial creado")
-        return conversational_rag_chain
-
-    logger.info(f"Chain notebook '{nombre_notebook}' creado")
-    return rag_chain

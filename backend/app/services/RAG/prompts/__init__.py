@@ -1,16 +1,13 @@
-"""Módulo de prompts para el sistema RAG de JusticBot.
-Cada tipo de prompt está en su propio archivo para facilitar el mantenimiento.
-"""
+"""Instrucciones de los chats de ServIA (spec 007): un texto plano por chat y uno de reformulación."""
 
-from .contextualize_prompt import CONTEXTUALIZE_Q_PROMPT
-from .answer_prompt import ANSWER_PROMPT, DOCUMENT_PROMPT
-from .expediente_prompt import get_expediente_prompt
-from .notebook_prompt import get_notebook_prompt
+from .contextualize_prompt import INSTRUCCION_REFORMULACION
+from .answer_prompt import INSTRUCCIONES_GENERAL
+from .expediente_prompt import instrucciones_tema
+from .notebook_prompt import instrucciones_notebook
 
 __all__ = [
-    'CONTEXTUALIZE_Q_PROMPT',
-    'ANSWER_PROMPT',
-    'DOCUMENT_PROMPT',
-    'get_expediente_prompt',
-    'get_notebook_prompt',
+    'INSTRUCCION_REFORMULACION',
+    'INSTRUCCIONES_GENERAL',
+    'instrucciones_tema',
+    'instrucciones_notebook',
 ]

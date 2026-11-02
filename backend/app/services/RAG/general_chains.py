@@ -1,148 +1,118 @@
 """
-Chains conversacionales de LangChain para consultas generales.
+Armado y transmisión de la respuesta del chat (los tres chats: general, por tema y notebook).
 
-Implementa el pipeline completo de RAG conversacional:
-1. Contextualización de pregunta con historial
-2. Recuperación de documentos relevantes
-3. Generación de respuesta con LLM
-4. Streaming de respuesta token por token
+Desde la spec 007 no se usan las cadenas de LangChain (`create_stuff_documents_chain`, `RunnableWithMessageHistory`):
+cada llamada al motor se arma explícitamente con `presupuesto_contexto`, para que la entrada nunca supere el
+presupuesto, cada fragmento aparezca una sola vez y las instrucciones y la pregunta vayan siempre completas.
 
-Componentes de la chain:
-    * History-aware retriever: Reformula pregunta con contexto
-    * Stuff documents chain: Combina documentos en contexto único
-    * Retrieval chain: Pipeline completo de recuperación + generación
-    * RunnableWithMessageHistory: Añade gestión de historial
+Flujo de un turno (`CadenaArmada.astream`):
+    1. Lee el historial de la sesión.
+    2. Chat general con historial: reformula la pregunta con los 2 últimos mensajes (RF-11.66) para buscar.
+    3. Recupera los fragmentos y los pasa a `Fragmento` (encabezado con archivo, tema y ruta; RF-12.60).
+    4. `armar_respuesta` reparte el presupuesto entre historial y fragmentos y arma
+       `[Sistema(instrucciones + lista? + fragmentos), *historial, Humano(pregunta)]`.
+    5. Transmite la respuesta del motor y, al terminar, guarda la pregunta y la respuesta en el historial.
 
-Prompts utilizados:
-    * CONTEXTUALIZE_Q_PROMPT: Reformulación con expansión semántica
-    * ANSWER_PROMPT: Generación de respuestas con JusticBot
-    * DOCUMENT_PROMPT: Formato de documentos para el LLM
-
-Streaming:
-    * Server-Sent Events (SSE) para respuestas en tiempo real
-    * Detección de desconexión del cliente
-    * Mensajes fallback si respuesta vacía
-    * Señal de finalización automática
-
-Flujo de ejecución:
-    1. Usuario envía pregunta + session_id
-    2. Reformulación con historial (contextualize)
-    3. Búsqueda vectorial en Qdrant (retriever)
-    4. Formateo de documentos (FormattedRetriever)
-    5. Generación con LLM (streaming)
-    6. SSE al frontend chunk por chunk
-
-Example:
-    >>> from app.services.rag.general_chains import create_conversational_rag_chain, stream_chain_response
-    >>> 
-    >>> # Crear chain conversacional
-    >>> chain = await create_conversational_rag_chain(
-    ...     retriever=retriever,
-    ...     with_history=True
-    ... )
-    >>> 
-    >>> # Streaming de respuesta
-    >>> async for chunk in stream_chain_response(
-    ...     chain=chain,
-    ...     input_dict={"input": "¿Qué es la prescripción?"},
-    ...     config={"configurable": {"session_id": session_id}}
-    ... ):
-    ...     print(chunk, end="", flush=True)
-
-Note:
-    * La chain retorna dict con clave "answer" en streaming
-    * FormattedRetriever añade metadata visible en documentos
-    * Detección de desconexión evita generación innecesaria
-    * Fallback automático si LLM retorna respuesta vacía
+`stream_chain_response` convierte ese flujo en eventos SSE (`chunk`, `done`, `error`) y detecta la desconexión.
 
 Ver también:
-    * app.services.rag.prompts: Definición de prompts
-    * app.services.rag.formatted_retriever: Formateo de documentos
-    * app.llm.llm_service: Servicio de LLM
-
-Authors:
-    Roger Calderón Urbina
-    Yeslin Chinchilla Ruiz
-
-Version:
-    2.0.0 - LangChain con streaming SSE
+    * app.services.RAG.presupuesto_contexto: presupuesto y armado
+    * app.services.RAG.prompts: textos de instrucciones
+    * app.llm.llm_service: servicio del motor
 """
-from typing import Dict, Any
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.documents import Document
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.runnables.history import RunnableWithMessageHistory
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 import logging
 import json
 
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+
 from app.llm.llm_service import get_llm
+from . import presupuesto_contexto as pc
+from .document_formatter import a_fragmento
+from .prompts import INSTRUCCION_REFORMULACION, INSTRUCCIONES_GENERAL
 from .session_store import get_session_history_func
-from .formatted_retriever import FormattedRetriever
-from .prompts import (
-    CONTEXTUALIZE_Q_PROMPT,
-    ANSWER_PROMPT,
-    DOCUMENT_PROMPT
-)
 
 logger = logging.getLogger(__name__)
+
+
+class CadenaArmada:
+    """Un turno de chat: reformula (solo el general), recupera, arma la entrada dentro del presupuesto y transmite.
+
+    Tiene `astream` como las cadenas de LangChain, así que `stream_chain_response` la consume igual.
+    """
+
+    def __init__(
+        self,
+        chat: str,
+        instrucciones: str,
+        retriever,
+        historial_de: Optional[Callable] = None,
+        reformula: bool = False,
+    ):
+        self.chat = chat
+        self.instrucciones = instrucciones
+        self.retriever = retriever
+        self.historial_de = historial_de  # None: sin historial (ni lectura ni guardado)
+        self.reformula = reformula
+
+    async def _reformular(self, llm, pregunta: str, previos: List[BaseMessage]) -> str:
+        """RF-11.66: la pregunta autónoma para buscar, con los 2 últimos mensajes que caben; sin ninguno no hay llamada."""
+        textos = [str(m.content) for m in previos]
+        elegidos = pc.mensajes_para_reformular(INSTRUCCION_REFORMULACION, pregunta, textos)
+        if not elegidos:
+            return pregunta
+        mensajes = [SystemMessage(content=INSTRUCCION_REFORMULACION), *previos[len(previos) - len(elegidos):],
+                    HumanMessage(content=pregunta)]
+        resultado = await llm.ainvoke(mensajes)
+        reformulada = str(getattr(resultado, "content", "") or "").strip()
+        logger.info("Pregunta reformulada para buscar (%s -> %s caracteres)", len(pregunta), len(reformulada))
+        return reformulada or pregunta
+
+    async def astream(self, input_dict: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> AsyncIterator[dict]:
+        pregunta = input_dict["input"]
+        historia = None
+        previos: List[BaseMessage] = []
+        if self.historial_de is not None:
+            session_id = ((config or {}).get("configurable") or {}).get("session_id")
+            historia = self.historial_de(session_id)
+            previos = list(historia.messages)
+
+        llm = await get_llm()
+        consulta = await self._reformular(llm, pregunta, previos) if (self.reformula and previos) else pregunta
+
+        documentos = await self.retriever.ainvoke(consulta)
+        fragmentos = [a_fragmento(d) for d in documentos]
+        entrada = pc.armar_respuesta(
+            self.chat, self.instrucciones, pregunta, [str(m.content) for m in previos], fragmentos
+        )
+        enviados = previos[len(previos) - len(entrada.historial):] if entrada.historial else []
+        mensajes = [SystemMessage(content=entrada.sistema), *enviados, HumanMessage(content=pregunta)]
+        logger.info(
+            "Entrada armada (%s): %s fragmentos de %s recuperados, %s mensajes de historial, ~%s tokens",
+            self.chat, len(entrada.fragmentos), len(fragmentos), len(enviados), entrada.tokens_total,
+        )
+
+        texto = []
+        async for trozo in llm.astream(mensajes):
+            contenido = getattr(trozo, "content", trozo)
+            if contenido:
+                texto.append(contenido if isinstance(contenido, str) else str(contenido))
+                yield {"answer": texto[-1]}
+
+        if historia is not None:
+            historia.add_messages([HumanMessage(content=pregunta), AIMessage(content="".join(texto))])
 
 
 async def create_conversational_rag_chain(
     retriever,
     with_history: bool = True,
     session_config_key: str = "configurable"
-):
-    """Crea una chain RAG conversacional completa con historial para consultas generales."""
-    llm = await get_llm()
-    
-    # Envolver el retriever con FormattedRetriever para agregar metadata visible
-    formatted_retriever = FormattedRetriever(retriever)
-    
-    history_aware_retriever = create_history_aware_retriever(
-        llm=llm,
-        retriever=formatted_retriever,
-        prompt=CONTEXTUALIZE_Q_PROMPT,
+) -> CadenaArmada:
+    """Chat general (RF-11.65/66): reformula con el historial, recupera y responde con las instrucciones generales."""
+    return CadenaArmada(
+        pc.CHAT_GENERAL, INSTRUCCIONES_GENERAL, retriever,
+        historial_de=get_session_history_func() if with_history else None, reformula=True,
     )
-    
-    question_answer_chain = create_stuff_documents_chain(
-        llm=llm,
-        prompt=ANSWER_PROMPT,
-        document_prompt=DOCUMENT_PROMPT
-    )
-    
-    rag_chain = create_retrieval_chain(
-        history_aware_retriever,
-        question_answer_chain,
-    )
-    
-    # Debug: interceptar el chain para ver el contexto enviado
-    async def debug_context_wrapper(input_dict):
-        """Wrapper para logging del contexto antes de enviarlo al LLM."""
-        if "context" in input_dict:
-            context = input_dict["context"]
-            if isinstance(context, list):
-                total_chars = sum(len(doc.page_content) for doc in context)
-                logger.info(f"Contexto enviado al LLM: {len(context)} docs, {total_chars} chars (~{total_chars // 4} tokens)")
-                # Log de los primeros 200 chars del primer doc para debugging
-                if context:
-                    logger.debug(f"Primer doc (preview): {context[0].page_content[:200]}...")
-        return input_dict
-    
-    
-    if with_history:
-        conversational_rag_chain = RunnableWithMessageHistory(
-            rag_chain,
-            get_session_history_func(),
-            input_messages_key="input",
-            history_messages_key="chat_history",
-            output_messages_key="answer",
-        )
-        
-        return conversational_rag_chain
-    
-    return rag_chain
 
 
 async def stream_chain_response(chain, input_dict: Dict[str, Any], config: Dict[str, Any], http_request=None):

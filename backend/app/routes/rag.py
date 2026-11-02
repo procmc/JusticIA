@@ -43,7 +43,7 @@ Example:
 Note:
     - session_id identifica la conversación única del usuario
     - expediente_number es opcional (None = búsqueda general)
-    - top_k limita la cantidad de documentos recuperados (max 30)
+    - top_k limita la cantidad de fragmentos recuperados: pide menos que el servidor, nunca más (RF-11.65)
     - Requiere autenticación JWT (usuario judicial)
 """
 
@@ -90,7 +90,7 @@ class ConsultaConHistorialRequest(BaseModel):
     """Request para consultas con gestión de historial por session_id"""
     query: str
     session_id: str
-    top_k: int = 15
+    top_k: Optional[int] = None  # RF-11.65: ausente o ≤ 0 usa el valor del servidor; nunca más que él
     expediente_number: Optional[str] = None  # Opcional, para consultas de expediente específico
     notebook_id: Optional[str] = None  # Opcional, para consultas acotadas a un notebook (NotebookServIA)
 
@@ -151,7 +151,7 @@ async def consulta_con_historial_stream(
         response = await rag_service.consulta_con_historial_streaming(
             pregunta=query_to_use,
             session_id=request.session_id,
-            top_k=min(request.top_k, 30),
+            top_k=request.top_k,
             expediente_filter=request.expediente_number,
             notebook_filter=request.notebook_id,
             usuario_id=current_user["user_id"],

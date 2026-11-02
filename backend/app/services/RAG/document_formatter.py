@@ -1,124 +1,36 @@
 """
-Funciones de formateo de metadata de documentos para el LLM.
+Paso de los documentos recuperados a fragmentos del armado (spec 007, RF-12.60).
 
-Formatea metadata de documentos en Markdown legible que el LLM puede interpretar.
-Añade información contextual sobre expediente, archivo, páginas, tipo y ruta.
-
-Formato de salida:
-    **Expediente:** 24-000123-0001-PE | **Archivo:** demanda.pdf | **Pág:** 1-3
-    **Tipo:** Demanda
-    **Ruta:** uploads/24-000123-0001-PE/demanda.pdf
-    ---
-    [Contenido del documento...]
-    ---
-
-Metadata extraída:
-    * expediente_numero: Número de expediente
-    * archivo/ruta_archivo: Nombre del documento
-    * pagina_inicio/pagina_fin: Rango de páginas
-    * tipo_documento: Tipo de documento judicial
-    * ruta_archivo: Ruta para descarga
-
-Funciones:
-    * format_document_with_metadata: Formatea un documento individual
-    * create_expediente_header: Crea header visual de expediente
-
-Example:
-    >>> from app.services.rag.document_formatter import format_document_with_metadata
-    >>> from langchain_core.documents import Document
-    >>> 
-    >>> doc = Document(
-    ...     page_content="Contenido del documento...",
-    ...     metadata={
-    ...         "expediente_numero": "24-000123-0001-PE",
-    ...         "ruta_archivo": "uploads/24-000123-0001-PE/demanda.pdf",
-    ...         "pagina_inicio": 1,
-    ...         "pagina_fin": 3,
-    ...         "tipo_documento": "Demanda"
-    ...     }
-    ... )
-    >>> formatted = format_document_with_metadata(doc)
-    >>> print(formatted)
-
-Note:
-    * Usa Markdown para mejor legibilidad del LLM
-    * Separa header con --- para delimitar contenido
-    * Extrae nombre de archivo desde ruta si disponible
-    * Maneja casos donde metadata está incompleta
+Cada documento de LangChain que devuelve el recuperador (general, por tema o notebook) se convierte en un
+`Fragmento` con su archivo, tema, ruta de descarga y páginas. El encabezado que ve el motor lo escribe
+`presupuesto_contexto.encabezado` (sin encabezados de grupo por tema).
 
 Ver también:
-    * app.services.rag.formatted_retriever: Usa estas funciones
-
-Authors:
-    ServIA Team
-
-Version:
-    1.0.0 - Formateo de metadata en Markdown
+    * app.services.RAG.presupuesto_contexto: `Fragmento` y `encabezado`
+    * app.services.RAG.general_chains: quien lo usa
 """
 from langchain_core.documents import Document
 
-def format_document_with_metadata(doc: Document) -> str:
-    """
-    Formatea documento con metadata visible en Markdown.
-    
-    Args:
-        doc: Documento de LangChain con metadata.
-    
-    Returns:
-        String con metadata formateada + contenido original.
-    """
-    metadata = doc.metadata
-    
-    # Extraer información de páginas si existe
-    pagina_inicio = metadata.get("pagina_inicio")
-    pagina_fin = metadata.get("pagina_fin")
-    
-    if pagina_inicio and pagina_fin:
-        if pagina_inicio == pagina_fin:
-            paginas_str = f" | **Pág:** {pagina_inicio}"
-        else:
-            paginas_str = f" | **Págs:** {pagina_inicio}-{pagina_fin}"
+from .presupuesto_contexto import Fragmento
+
+# El motor nunca ve la imagen, solo el texto que reconoció el servicio de HTR: el encabezado lo avisa.
+EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
+
+
+def a_fragmento(doc: Document) -> Fragmento:
+    """Convierte un documento recuperado en un `Fragmento` (el nombre del archivo sale de la ruta si la hay)."""
+    metadata = doc.metadata or {}
+    ruta = (metadata.get("ruta_archivo") or "").strip()
+    if ruta:
+        archivo = ruta.split("/")[-1]
     else:
-        paginas_str = ""
-    
-    # Tipo de documento (si existe)
-    tipo_doc = metadata.get("tipo_documento", "").strip()
-    tipo_doc_str = f"**Tipo:** {tipo_doc}\n" if tipo_doc else ""
-    
-    # Ruta del archivo (si existe)
-    ruta_archivo = metadata.get("ruta_archivo", "").strip()
-    ruta_str = f"**Ruta:** {ruta_archivo}\n" if ruta_archivo else ""
-    
-    # Usar el nombre real del archivo desde la ruta si está disponible
-    if ruta_archivo:
-        nombre_real_archivo = ruta_archivo.split('/')[-1]
-        archivo_mostrar = nombre_real_archivo
-    else:
-        archivo_mostrar = metadata.get('archivo', 'N/A')
-
-    # Si el archivo de origen es una imagen, marcarlo explícitamente: el LLM
-    # nunca ve la imagen, solo el texto ya reconocido por el servicio de HTR.
-    # Sin esta nota, el modelo tiende a negar poder "leer" el contenido aunque
-    # lo tenga delante, por su entrenamiento como modelo de solo texto.
-    extensiones_imagen = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
-    es_imagen = archivo_mostrar.lower().endswith(extensiones_imagen)
-    origen_str = "**Origen:** documento escaneado, ya transcrito automáticamente a texto\n" if es_imagen else ""
-
-    # Construir header con metadata
-    header = (
-        f"\n**Expediente:** {metadata.get('expediente_numero', 'N/A')} | "
-        f"**Archivo:** {archivo_mostrar}{paginas_str}\n"
-        f"{tipo_doc_str}"
-        f"{origen_str}"
-        f"{ruta_str}"
-        f"---\n"
-    )
-    
-    return f"{header}{doc.page_content}\n---\n"
-
-def create_expediente_header(expediente_numero: str, num_docs: int) -> str:
-    return (
-        f"\n{'='*80}\n"
-        f"EXPEDIENTE: {expediente_numero} ({num_docs} documentos)\n"
-        f"{'='*80}\n"
+        archivo = metadata.get("nombre_archivo") or metadata.get("archivo") or "N/A"
+    return Fragmento(
+        texto=doc.page_content,
+        archivo=archivo,
+        tema=str(metadata.get("expediente_numero") or metadata.get("numero_expediente") or "N/A"),
+        ruta=ruta,
+        pagina_inicio=metadata.get("pagina_inicio") or None,
+        pagina_fin=metadata.get("pagina_fin") or None,
+        es_imagen=archivo.lower().endswith(EXTENSIONES_IMAGEN),
     )

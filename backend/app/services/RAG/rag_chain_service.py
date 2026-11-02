@@ -44,7 +44,7 @@ Example:
 Note:
     * Singleton: Una instancia global compartida (get_rag_service)
     * Config centralizada: Parámetros en app.config.rag_config
-    * top_k máximo: 15 documentos para evitar overflow de contexto
+    * top_k: la solicitud puede pedir menos fragmentos que el servidor, nunca más (RF-11.65)
     * Formato expediente: YY-NNNNNN-NNNN-XX (validación con regex)
 
 Ver también:
@@ -73,6 +73,7 @@ from .expediente_chains import create_expediente_specific_chain
 from .notebook_chains import create_notebook_specific_chain
 from .prompts.notebook_prompt import reformular_referencia_imagen
 from .session_store import conversation_store
+from .presupuesto_contexto import cantidad_a_recuperar
 from app.services.notebook_service import NotebookService, RecursoNoDisponible, forma_de_clave
 from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
@@ -179,7 +180,7 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        top_k: int = 15,
+        top_k: Optional[int] = None,
         expediente_filter: Optional[str] = None,
         notebook_filter: Optional[str] = None,
         usuario_id: Optional[str] = None,
@@ -217,7 +218,7 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        top_k: int,
+        top_k: Optional[int],
         expediente_filter: Optional[str],
         notebook,
         usuario_id: Optional[str],
@@ -248,7 +249,8 @@ class RAGChainService:
                 session_id=session_id,
                 expediente_numero=expediente_filter.strip(),
                 usuario_id=usuario_id,
-                http_request=http_request
+                http_request=http_request,
+                top_k=top_k
             )
         elif notebook is not None:
             # → VA AL FLUJO DE NOTEBOOK ESPECÍFICO (NotebookServIA), con el notebook propio ya comprobado
@@ -258,7 +260,8 @@ class RAGChainService:
                 session_id=session_id,
                 notebook=notebook,
                 usuario_id=usuario_id,
-                http_request=http_request
+                http_request=http_request,
+                top_k=top_k
             )
         else:
             logger.info(f"FLUJO: GENERAL CON HISTORIAL")
@@ -276,20 +279,12 @@ class RAGChainService:
         self,
         pregunta: str,
         session_id: str,
-        top_k: int = 15,
+        top_k: Optional[int] = None,
         usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None
     ):
-        # Usar valor del config si no se especifica
-        if top_k is None:
-            top_k = rag_config.TOP_K_GENERAL
-        
-        # IMPORTANTE: Limitar top_k máximo para evitar sobrecarga del LLM
-        # Con gpt-oss:20b (32K ctx), máximo recomendado es ~15 documentos
-        MAX_TOP_K = 15
-        if top_k > MAX_TOP_K:
-            logger.warning(f"top_k={top_k} excede el máximo recomendado. Ajustando a {MAX_TOP_K}")
-            top_k = MAX_TOP_K
+        # RF-11.65: la solicitud puede pedir menos fragmentos que el servidor, nunca más; ausente o ≤ 0 usa el del servidor
+        top_k = cantidad_a_recuperar(top_k)
         
         # Crear buscador con configuración centralizada; solo ve los documentos del usuario y los de temas generales (RF-17.3)
         retriever = DynamicServIARetriever(
@@ -354,7 +349,8 @@ class RAGChainService:
         session_id: str,
         expediente_numero: str,
         usuario_id: Optional[str] = None,
-        http_request: Optional[Request] = None
+        http_request: Optional[Request] = None,
+        top_k: Optional[int] = None
     ):
         logger.info(f"Expediente con historial - Número: {expediente_numero}")
         
@@ -366,7 +362,7 @@ class RAGChainService:
             return await self._consulta_general_con_historial(
                 pregunta=pregunta,
                 session_id=session_id,
-                top_k=15,  # Usar valor por defecto
+                top_k=top_k,
                 usuario_id=usuario_id,
                 http_request=http_request
             )
@@ -377,16 +373,17 @@ class RAGChainService:
             expediente_number=expediente_numero
         )
         
-        # Crear retriever configurado para expediente específico con config centralizado
+        # Crear retriever configurado para expediente específico con config centralizado (RF-11.65)
+        top_k = cantidad_a_recuperar(top_k)
         retriever = DynamicServIARetriever(
-            top_k=rag_config.TOP_K_EXPEDIENTE,
+            top_k=top_k,
             similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
             expediente_filter=expediente_numero
         )
         
         logger.info(
             f"DynamicServIARetriever creado para expediente {expediente_numero} "
-            f"(top_k: {rag_config.TOP_K_EXPEDIENTE}, "
+            f"(top_k: {top_k}, "
             f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
         )
         
@@ -450,7 +447,8 @@ class RAGChainService:
         session_id: str,
         notebook,
         usuario_id: Optional[str] = None,
-        http_request: Optional[Request] = None
+        http_request: Optional[Request] = None,
+        top_k: Optional[int] = None
     ):
         """Chat acotado a un notebook propio. `notebook` ya fue comprobado como del usuario en `consulta_con_historial_streaming`
         (RF-11.32), que además actualizó la conversación: aquí no se vuelve a buscar ni a tocar nada."""
@@ -461,8 +459,9 @@ class RAGChainService:
 
         # Reutiliza el mismo retriever/filtro híbrido de Qdrant que expediente
         # (expediente_filter es agnóstico al significado del string — Ciclo 3)
+        top_k = cantidad_a_recuperar(top_k)
         retriever = DynamicServIARetriever(
-            top_k=rag_config.TOP_K_EXPEDIENTE,
+            top_k=top_k,
             similarity_threshold=rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE,
             expediente_filter=clave_interna,
             nombre_visible=nombre_notebook
@@ -470,7 +469,7 @@ class RAGChainService:
 
         logger.info(
             f"DynamicServIARetriever creado para notebook '{nombre_notebook}' ({clave_interna}) "
-            f"(top_k: {rag_config.TOP_K_EXPEDIENTE}, "
+            f"(top_k: {top_k}, "
             f"threshold: {rag_config.SIMILARITY_THRESHOLD_EXPEDIENTE})"
         )
 
@@ -484,29 +483,11 @@ class RAGChainService:
         if pregunta_para_llm != pregunta:
             logger.info(f"Pregunta reformulada para evitar el rechazo a imágenes: {pregunta!r} -> {pregunta_para_llm!r}")
 
-        # Nombres reales de los archivos del notebook, para que el prompt
-        # los liste explícitamente (ver get_notebook_system_prompt). Sin
-        # esto, preguntas vagas ("el documento que subí", "el archivo
-        # agregado") seguían negando el archivo aunque el contexto ya lo
-        # tuviera. Consulta barata: es el mismo filtro por metadata que
-        # ya usa la chain, no una búsqueda semántica nueva.
-        # metadata usa 'nombre_archivo' en la práctica (aunque metadata_fields.py
-        # documenta 'archivo' como canónico) — mismo fallback defensivo que ya
-        # usa chunk_context_builder.py para esta misma inconsistencia.
-        docs_del_notebook = await retriever._aget_relevant_documents(pregunta_para_llm)
-        archivos_disponibles = [
-            d.metadata.get('nombre_archivo') or d.metadata.get('archivo')
-            for d in docs_del_notebook
-            if d.metadata.get('nombre_archivo') or d.metadata.get('archivo')
-        ]
-
         # Crear chain especializada para notebooks (prompt genérico, no judicial)
         chain = await create_notebook_specific_chain(
             retriever=retriever,
             nombre_notebook=nombre_notebook,
-            with_history=True,
-            pregunta=pregunta_para_llm,
-            archivos_disponibles=archivos_disponibles
+            with_history=True
         )
 
         logger.info(f"Chain notebook creada")

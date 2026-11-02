@@ -666,6 +666,17 @@ def test_motor_programable(tmp_path):
     )
     assert simulados_e2e.documentos_del_contexto(formateado) == [
         "uploads/99-000009-0001-PE/PRUEBA_tres.txt", "uploads/NB-8/PRUEBA_cuatro.png"]
+    # El encabezado del armado de la spec 007 (T5) también se reconoce: con ruta, sin ruta y sin confundir la del fragmento siguiente.
+    armado = (
+        "[Fragmento 1] Archivo: PRUEBA_cinco.txt | Tema: 99-000009-0001-PE | Págs.: 1-2\n"
+        "Ruta: /app/uploads/99-000009-0001-PE/PRUEBA_cinco.txt\ntexto\n\n"
+        "[Fragmento 2] Archivo: PRUEBA_seis.png | Tema: NB-8\n"
+        "Origen: documento escaneado, ya transcrito automáticamente a texto\n"
+        "Ruta: \ntexto\n\n"
+        "[Fragmento 3] Archivo: PRUEBA_siete.txt | Tema: NB-8\nRuta: /app/uploads/NB-8/PRUEBA_siete.txt\ntexto\n"
+    )
+    assert simulados_e2e.documentos_del_contexto(armado) == [
+        "uploads/99-000009-0001-PE/PRUEBA_cinco.txt", "uploads/NB-8/PRUEBA_seis.png", "uploads/NB-8/PRUEBA_siete.txt"]
     # El streaming entrega el mismo texto, en fragmentos.
     fragmentos = [pieza.content for pieza in motor.stream(_mensajes(CONTEXTO_CON_DOS_ARCHIVOS))]
     assert len(fragmentos) > 1 and "".join(fragmentos) == respuesta

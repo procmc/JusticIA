@@ -596,7 +596,14 @@ _ENCABEZADO_FORMATEADO = re.compile(
     r"\*\*Expediente:\*\*[ \t]*(?P<tema>[^|\n]+?)[ \t]*\|[ \t]*\*\*Archivo:\*\*[ \t]*(?P<archivo>[^|\n]+?)[ \t]*(?:\||$)", re.MULTILINE)
 _ENCABEZADO_CONSTRUIDO = re.compile(r"^Archivo:[ \t]*(?P<archivo>.+?)[ \t]*\r?\nExpediente:[ \t]*(?P<tema>.+?)[ \t]*$", re.MULTILINE)
 _RUTA_DEL_ARCHIVO = re.compile(r"\*\*Ruta:\*\*[ \t]*(?P<ruta>\S[^\n]*)")
-_MARCA_DE_REFORMULACION = "experto en reformular preguntas legales"  # el prompt que reescribe la pregunta con el historial
+# El encabezado del armado de la spec 007 (`presupuesto_contexto.encabezado`): «[Fragmento n] Archivo: x | Tema: y | ...» y, en
+# sus líneas siguientes, «Ruta: ...».
+_ENCABEZADO_ARMADO = re.compile(
+    r"^\[Fragmento \d+\][ \t]*Archivo:[ \t]*(?P<archivo>[^|\n]+?)[ \t]*\|[ \t]*Tema:[ \t]*(?P<tema>[^|\n]+?)[ \t]*(?:\||$)", re.MULTILINE)
+_RUTA_DEL_ARMADO = re.compile(r"^Ruta:[ \t]*(?P<ruta>\S[^\n]*)", re.MULTILINE)
+# Los textos que reescriben la pregunta con el historial: el anterior y el de la spec 007 (`INSTRUCCION_REFORMULACION`).
+_MARCAS_DE_REFORMULACION = ("experto en reformular preguntas legales",
+                            "Reescribe la última pregunta del usuario como una consulta de búsqueda autónoma")
 RESPUESTA_SIN_CITAS = "No encontré información en los documentos recuperados (respuesta simulada del motor de pruebas)."
 
 
@@ -609,6 +616,10 @@ def documentos_del_contexto(contexto: str) -> List[str]:
         hallados.append((coincidencia.start(), coincidencia["tema"], coincidencia["archivo"], ruta["ruta"].strip() if ruta else ""))
     for coincidencia in _ENCABEZADO_CONSTRUIDO.finditer(contexto):
         hallados.append((coincidencia.start(), coincidencia["tema"], coincidencia["archivo"], ""))
+    for coincidencia in _ENCABEZADO_ARMADO.finditer(contexto):
+        cercano = contexto[coincidencia.end():coincidencia.end() + 400].split("[Fragmento ")[0]
+        ruta = _RUTA_DEL_ARMADO.search(cercano)
+        hallados.append((coincidencia.start(), coincidencia["tema"], coincidencia["archivo"], ruta["ruta"].strip() if ruta else ""))
     rutas: List[str] = []
     for _, tema, archivo, ruta in sorted(hallados):
         publica = ruta[ruta.index("uploads/"):] if "uploads/" in ruta else f"uploads/{tema}/{archivo}"
@@ -690,7 +701,7 @@ class EstadoMotor:
     def decidir(self, mensajes) -> Decision:
         """El texto y la retención de esta consulta; lanza `ConnectionError` si toca fallar por conexión."""
         completo = "\n".join(str(m.content) for m in mensajes)
-        if _MARCA_DE_REFORMULACION in completo:
+        if any(marca in completo for marca in _MARCAS_DE_REFORMULACION):
             return Decision(str(mensajes[-1].content))
         with self._candado:
             self.consultas += 1

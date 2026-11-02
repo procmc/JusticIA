@@ -58,13 +58,13 @@ Example:
     >>> print(contexto)
 
 Note:
-    * Usado por versiones antiguas de RAG (pre-FormattedRetriever)
-    * FormattedRetriever es el approach actual
+    * Usado por versiones antiguas de RAG y por el resumen y los temas similares
+    * El chat usa el armado de presupuesto_contexto (spec 007)
     * Se mantiene para compatibilidad con código legacy
     * max_chars_per_chunk: 800 por defecto
 
 Ver también:
-    * app.services.rag.formatted_retriever: Approach moderno
+    * app.services.rag.presupuesto_contexto: Armado actual del chat
     * app.services.rag.document_formatter: Formateo actual
 
 Authors:

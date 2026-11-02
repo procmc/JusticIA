@@ -7,13 +7,13 @@ inclu cuando el threshold inicial es muy restrictivo.
 Estrategias de fallback:
     1. Búsqueda normal: threshold y top_k configurados
     2. Threshold relajado: threshold * multiplier (ej: 0.30 → 0.15)
-    3. Threshold mínimo: threshold mínimo global con top_k aumentado
+    3. Threshold mínimo: threshold mínimo global, sin pedir más que top_k
 
 Configuración:
     * ENABLE_FALLBACK: Habilitar/deshabilitar fallback (rag_config)
     * FALLBACK_THRESHOLD_MULTIPLIER: Factor de relajación (0.5 = mitad)
     * SIMILARITY_THRESHOLD_FALLBACK: Threshold mínimo absoluto (0.10)
-    * TOP_K_FALLBACK: Número de docs en fallback final (30)
+    * TOP_K_FALLBACK: Número de docs en fallback final (tope; nunca más que top_k)
     * MIN_RESULTS_THRESHOLD: Mínimo de resultados aceptables (3)
 
 Flujo de fallback:
@@ -125,7 +125,7 @@ class SearchStrategyManager:
         logger.info(f"Fallback final: umbral mínimo {self.config.SIMILARITY_THRESHOLD_FALLBACK}")
         results = await backend.search_by_text(
             query_text,
-            self.config.TOP_K_FALLBACK,
+            min(self.config.TOP_K_FALLBACK, top_k),  # RF-11.65: el respaldo no pide más que la consulta
             self.config.SIMILARITY_THRESHOLD_FALLBACK,
             expediente_filter,
             db,

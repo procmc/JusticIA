@@ -458,6 +458,7 @@ def _clase_llm_simulado():
 
         respuesta: str = "Respuesta simulada del modelo."
         preguntas: list = Field(default_factory=list)
+        llamadas: list = Field(default_factory=list)  # por llamada, el texto de cada mensaje (para medir la entrada)
         error: Optional[BaseException] = None
 
         @property
@@ -475,6 +476,7 @@ def _clase_llm_simulado():
 
         def _registrar(self, mensajes) -> None:
             self.preguntas.append("\n".join(str(m.content) for m in mensajes))
+            self.llamadas.append([str(m.content) for m in mensajes])
             if self.error is not None:
                 raise self.error
 
