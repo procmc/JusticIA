@@ -375,10 +375,9 @@ class QdrantBackend(VectorStoreBackend):
             content = p.payload.get("page_content", "")
             if content and content.strip():
                 metadata = {
-                    # "expediente_numero" es la key que espera FormattedRetriever/
-                    # document_formatter.py para armar el header y el contexto del
-                    # LLM — sin esta key el header sale "EXPEDIENTE: N/A" aunque
-                    # haya documentos reales, y confunde al modelo.
+                    # "expediente_numero" es la key que lee document_formatter.a_fragmento
+                    # para el tema del encabezado — sin ella el encabezado sale con
+                    # "Tema: N/A" aunque haya documentos reales, y confunde al modelo.
                     "expediente_numero": meta.get("numero_expediente", expedient_id),
                     "numero_expediente": meta.get("numero_expediente", expedient_id),
                     "id_expediente": meta.get("numero_expediente", expedient_id),
@@ -387,6 +386,8 @@ class QdrantBackend(VectorStoreBackend):
                     "indice_chunk": meta.get("indice_chunk", 0),
                     "tipo_documento": meta.get("tipo_documento", ""),
                     "ruta_archivo": (meta.get("meta") or {}).get("ruta_archivo", ""),
+                    "pagina_inicio": meta.get("pagina_inicio"),
+                    "pagina_fin": meta.get("pagina_fin"),
                 }
                 langchain_docs.append(Document(page_content=content, metadata=metadata))
 

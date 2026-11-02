@@ -84,6 +84,7 @@ import time
 from typing import List, Dict, Any
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from app.config.contexto_config import CONFIGURACION
 from app.config.file_config import FILE_TYPE_CODES
 from app.vectorstore import get_vectorstore_backend
 from pathlib import Path
@@ -136,20 +137,23 @@ async def store_in_vectorstore(
         >>> print(f"{num_chunks} chunks almacenados")
 
     Note:
-        * Chunks de 7000 chars con overlap de 500
-        * Estimación de páginas: 2500 caracteres por página
+        * Tamaño y solapamiento de `contexto_config.CONFIGURACION` (por omisión 1500 y 200)
+        * Estimación de páginas: 2500 caracteres por página, desde la posición real en el texto
         * Metadata "meta" es JSON flexible para extensibilidad
         * Timestamps en epoch milliseconds
     """
+    # Tamaño y solapamiento salen de la configuración única del contexto (RF-08.60), no de números fijos aquí.
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=7000,
-        chunk_overlap=500,    # Mayor overlap para mantener continuidad
+        chunk_size=CONFIGURACION.fragmento_tamano_maximo,
+        chunk_overlap=CONFIGURACION.fragmento_solapamiento,
         length_function=len,
-        separators=["\n\n", "\n", ". ", " ", ""]  # Separadores en orden de preferencia
+        separators=["\n\n", "\n", ". ", " ", ""],  # Separadores en orden de preferencia
+        add_start_index=True,  # posición real de cada fragmento en el texto original (RF-08.61)
     )
 
-    # Dividir el texto en chunks
-    chunks = text_splitter.split_text(texto)
+    # Dividir el texto en chunks, con la posición de inicio de cada uno
+    fragmentos = text_splitter.create_documents([texto])
+    chunks = [f.page_content for f in fragmentos]
     print(f"Documento dividido en {len(chunks)} chunks para LangChain")
 
     # Preparar metadatos comunes
@@ -164,11 +168,11 @@ async def store_in_vectorstore(
     langchain_documents = []
 
     for i, chunk_text in enumerate(chunks):
-        # Calcular páginas aproximadas para este chunk
-        inicio_char = i * (7000 - 500)  # chunk_size menos overlap
-        fin_char = inicio_char + len(chunk_text)
+        # Páginas por la posición real del primer y último carácter del fragmento (RF-08.61)
+        inicio_char = fragmentos[i].metadata["start_index"]
+        fin_char = inicio_char + max(len(chunk_text) - 1, 0)
 
-        pagina_inicio = max(1, (inicio_char // caracteres_por_pagina) + 1)
+        pagina_inicio = (inicio_char // caracteres_por_pagina) + 1
         pagina_fin = max(pagina_inicio, (fin_char // caracteres_por_pagina) + 1)
 
         # Metadatos específicos del chunk para LangChain
