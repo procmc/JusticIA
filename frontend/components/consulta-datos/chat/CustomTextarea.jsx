@@ -244,6 +244,7 @@ const CustomTextarea = ({
           isDisabled={(!value.trim() && !isLoading) || disabled}
           size="lg"
           isIconOnly
+          aria-label={isLoading ? 'Detener respuesta' : 'Enviar mensaje'}
           className={`w-12 h-12 rounded-xl transition-all duration-300 ${
             isLoading
               ? 'bg-gradient-to-r from-primario to-azulOscuro hover:from-primario/90 hover:to-azulOscuro/90 text-white shadow-lg hover:shadow-xl hover:scale-105'

@@ -971,6 +971,8 @@ class EstadoChat:
     - `mudo`: la respuesta HTTP no emite ni un evento hasta `liberar` (envuelve el orquestador en `rag_chain_service`);
     - `pausa_entre_etapas`: el turno se detiene entre la primera y la segunda etapa (envuelve `get_llm` de `general_chains`, que se
       pide justo en ese punto);
+    - `pausa_antes_de_generar`: el turno se detiene entre la segunda y la tercera etapa (retiene el evento SSE de «Generando
+      respuesta» en el orquestador envuelto); permite ver la segunda, que de otro modo dura un instante;
     - `evento_desconocido`: un evento SSE de ese tipo se inyecta tras el primer dato del turno.
     Cada `configurar` reemplaza la programación entera; `restablecer` devuelve todo a la configuración real.
     """
@@ -978,11 +980,12 @@ class EstadoChat:
     def __init__(self, plazo: float = PLAZO_RETENCION_SEGUNDOS):
         self.muda = Retencion(plazo)
         self.pausa = Retencion(plazo)
+        self.pausa_generar = Retencion(plazo)
         self._modulo: Any = None
         self._parches: Any = None
         self._base: Any = None
         self._vida = self._tope = 0.0
-        self.mudo = self.pausa_entre_etapas = False
+        self.mudo = self.pausa_entre_etapas = self.pausa_antes_de_generar = False
         self.evento_desconocido: Optional[str] = None
 
     def instalar(self, general_chains, rag_chain_service, parches: "pytest.MonkeyPatch") -> None:
@@ -1006,6 +1009,8 @@ class EstadoChat:
             primero = True
             try:
                 async for linea in interno:
+                    if self._modulo.ETAPA_GENERANDO in linea and '"type": "etapa"' in linea:
+                        await self.pausa_generar.esperar_async()
                     yield linea
                     if primero:
                         primero = False
@@ -1017,7 +1022,8 @@ class EstadoChat:
         return turno
 
     def configurar(self, senal_de_vida_segundos: Optional[float] = None, tiempo_maximo_segundos: Optional[float] = None,
-                   mudo: bool = False, pausa_entre_etapas: bool = False, evento_desconocido: Optional[str] = None) -> None:
+                   mudo: bool = False, pausa_entre_etapas: bool = False, pausa_antes_de_generar: bool = False,
+                   evento_desconocido: Optional[str] = None) -> None:
         """Reemplaza la programación entera; lo omitido vuelve a la configuración. `ValueError` con el motivo si algo no sirve."""
         vida = self._base.senal_de_vida_segundos if senal_de_vida_segundos is None else float(senal_de_vida_segundos)
         tope = self._base.tiempo_maximo_segundos if tiempo_maximo_segundos is None else float(tiempo_maximo_segundos)
@@ -1034,20 +1040,25 @@ class EstadoChat:
         self._parches.setattr(self._modulo, "CONFIGURACION",
                               replace(self._base, senal_de_vida_segundos=vida, tiempo_maximo_segundos=tope))
         self.mudo, self.pausa_entre_etapas, self.evento_desconocido = bool(mudo), bool(pausa_entre_etapas), evento_desconocido
-        for compuerta, cerrada in ((self.muda, self.mudo), (self.pausa, self.pausa_entre_etapas)):
+        self.pausa_antes_de_generar = bool(pausa_antes_de_generar)
+        for compuerta, cerrada in ((self.muda, self.mudo), (self.pausa, self.pausa_entre_etapas),
+                                   (self.pausa_generar, self.pausa_antes_de_generar)):
             compuerta.retener() if cerrada else compuerta.liberar()
 
     def liberar(self) -> None:
         self.muda.liberar()
         self.pausa.liberar()
+        self.pausa_generar.liberar()
 
     def restablecer(self) -> None:
         self.configurar()
 
     def estado(self) -> dict:
         return {"senal_de_vida_segundos": self._vida, "tiempo_maximo_segundos": self._tope, "mudo": self.mudo,
-                "pausa_entre_etapas": self.pausa_entre_etapas, "evento_desconocido": self.evento_desconocido,
-                "retenida": self.muda.retenida or self.pausa.retenida, "esperando": self.muda.esperando + self.pausa.esperando}
+                "pausa_entre_etapas": self.pausa_entre_etapas, "pausa_antes_de_generar": self.pausa_antes_de_generar,
+                "evento_desconocido": self.evento_desconocido,
+                "retenida": self.muda.retenida or self.pausa.retenida or self.pausa_generar.retenida,
+                "esperando": self.muda.esperando + self.pausa.esperando + self.pausa_generar.esperando}
 
 
 @dataclass

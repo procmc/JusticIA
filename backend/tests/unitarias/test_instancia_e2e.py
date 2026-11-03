@@ -930,7 +930,8 @@ def test_chat_programable_valida_y_se_restablece(monkeypatch):
 
     chat.restablecer()
     assert chat.estado() == {"senal_de_vida_segundos": base[0], "tiempo_maximo_segundos": base[1], "mudo": False,
-                             "pausa_entre_etapas": False, "evento_desconocido": None, "retenida": False, "esperando": 0}
+                             "pausa_entre_etapas": False, "pausa_antes_de_generar": False, "evento_desconocido": None,
+                             "retenida": False, "esperando": 0}
     assert general_chains.CONFIGURACION == CONFIGURACION
 
 
@@ -987,6 +988,28 @@ def test_chat_programable_mudo_pausa_y_evento_desconocido(monkeypatch):
         assert not pedido.done()
         await asyncio.to_thread(chat.liberar)
         assert await pedido == "llm"
+
+        # Pausa antes de generar: el evento de la tercera etapa espera hasta liberar; los anteriores salen sin esperar.
+        async def con_etapas(*argumentos, **opciones):
+            for tipo, contenido in (("etapa", "Procesando consulta"), ("etapa", "Analizando documentos"),
+                                    ("etapa", general_chains.ETAPA_GENERANDO), ("chunk", "hola")):
+                yield general_chains._evento(tipo, contenido, False)
+
+        chat.configurar(pausa_antes_de_generar=True)
+        assert chat.estado()["pausa_antes_de_generar"] is True and chat.estado()["retenida"] is True
+        recibido = []
+
+        async def recorrer_etapas():
+            async for linea in chat.envolver_turno(con_etapas)():
+                recibido.append(linea)
+
+        tarea = asyncio.ensure_future(recorrer_etapas())
+        await esperando(1)
+        assert len(recibido) == 2 and "Analizando documentos" in recibido[1] and not tarea.done()
+        # Reprogramar sin la pausa (como hace la prueba entre etapas) también suelta el turno.
+        chat.configurar()
+        await tarea
+        assert len(recibido) == 4 and general_chains.ETAPA_GENERANDO in recibido[2]
 
         # Evento desconocido: una sola vez y tras el primer dato.
         chat.configurar(evento_desconocido="prueba_inventado")

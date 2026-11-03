@@ -159,7 +159,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
             )}
             {isStreaming && !isUser && !message.text && (
               <div className="w-full">
-                <TypingIndicator compact={true} />
+                <TypingIndicator compact={true} etapa={message.etapa} />
               </div>
             )}
           </div>

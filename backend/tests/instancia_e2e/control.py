@@ -367,6 +367,7 @@ class CuerpoChat(BaseModel):
     tiempo_maximo_segundos: Optional[float] = None
     mudo: bool = False
     pausa_entre_etapas: bool = False
+    pausa_antes_de_generar: bool = False
     evento_desconocido: Optional[str] = None
 
 
@@ -380,7 +381,8 @@ def programar_chat(cuerpo: CuerpoChat, contexto: Contexto = Depends(_con_token))
     """Programa el turno del chat (RF-11.64, RF-11.67, RF-16.40, RF-16.60, RF-16.62)."""
     return _programar(_control(contexto, "chat"), senal_de_vida_segundos=cuerpo.senal_de_vida_segundos,
                       tiempo_maximo_segundos=cuerpo.tiempo_maximo_segundos, mudo=cuerpo.mudo,
-                      pausa_entre_etapas=cuerpo.pausa_entre_etapas, evento_desconocido=cuerpo.evento_desconocido)
+                      pausa_entre_etapas=cuerpo.pausa_entre_etapas, pausa_antes_de_generar=cuerpo.pausa_antes_de_generar,
+                      evento_desconocido=cuerpo.evento_desconocido)
 
 
 @router.post("/chat/liberar")

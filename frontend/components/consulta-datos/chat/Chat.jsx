@@ -202,7 +202,9 @@ const ConsultaChat = ({ initialMode }) => {
           callbacks.onError,
           null,
           sessionId,
-          searchScope === 'expediente' ? consultedExpediente : null
+          searchScope === 'expediente' ? consultedExpediente : null,
+          null,
+          callbacks.alRecibir
         );
       };
 
@@ -226,7 +228,9 @@ const ConsultaChat = ({ initialMode }) => {
         callbacks.onError,
         null,
         sessionId,
-        searchScope === 'expediente' ? consultedExpediente : null
+        searchScope === 'expediente' ? consultedExpediente : null,
+        null,
+        callbacks.alRecibir
       );
 
     } catch (error) {

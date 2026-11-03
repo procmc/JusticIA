@@ -1,29 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Avatar } from '@heroui/react';
 
-const TypingIndicator = ({ showAvatar = true, compact = false }) => {
-  const [currentPhase, setCurrentPhase] = useState(0);
-  const phases = ['Analizando documentos', 'Procesando consulta', 'Generando respuesta'];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentPhase(prev => (prev + 1) % phases.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [phases.length]);
-
+// `etapa` es el texto que informa el servidor (RF-11.64). Antes de la primera etapa solo se ven los puntos.
+const TypingIndicator = ({ showAvatar = true, compact = false, etapa = '' }) => {
   // Versión compacta para usar dentro de MessageBubble
   if (compact) {
     return (
-      <div className="inline-flex flex-col items-start gap-2">
+      <div className="inline-flex flex-col items-start gap-2" role="status" data-testid="indicador-de-etapa">
         <div className="flex gap-1.5">
           <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse-formal delay-0"></div>
           <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse-formal delay-300"></div>
           <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse-formal delay-600"></div>
         </div>
-        <span className="text-xs text-gray-600 font-medium">
-          {phases[currentPhase]}...
-        </span>
+        {etapa && (
+          <span className="text-xs text-gray-600 font-medium">
+            {etapa}...
+          </span>
+        )}
         
         <style jsx>{`
           @keyframes pulse-formal {
@@ -72,9 +65,11 @@ const TypingIndicator = ({ showAvatar = true, compact = false }) => {
                 <div className="w-2.5 h-2.5 rounded-full bg-gray-500 animate-professional-pulse delay-800"></div>
               </div>
               
-              <span className="text-sm font-medium text-gray-700">
-                {phases[currentPhase]}...
-              </span>
+              {etapa && (
+                <span className="text-sm font-medium text-gray-700">
+                  {etapa}...
+                </span>
+              )}
               
               <div className="ml-auto">
                 <div className="flex gap-1">

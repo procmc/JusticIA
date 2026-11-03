@@ -94,8 +94,11 @@ class ConsultaService {
    * @param {number|null} [topK=null] - Número de documentos a recuperar (null = usar config según tipo)
    * @param {string|null} [sessionId=null] - ID único de sesión para gestión de historial (requerido)
    * @param {string|null} [expedienteNumber=null] - Número de expediente judicial (opcional, para contexto específico)
+   * @param {string|null} [notebookId=null] - Notebook consultado (NotebookServIA)
+   * @param {{onEtapa?: Function, onActividad?: Function}} [alRecibir={}] - onEtapa(texto) al llegar cada etapa; onActividad() con
+   *   cualquier dato del servidor (RF-11.64, RF-16.60)
    * @throws {Error} Si query está vacío o sessionId no se proporciona
-   * 
+   *
    * @example
    * ```javascript
    * let respuesta = '';
@@ -120,7 +123,7 @@ class ConsultaService {
    * 
    * @note El backend maneja reformulación automática de preguntas ambiguas usando el historial
    */
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null, notebookId = null) {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null, notebookId = null, alRecibir = {}) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
       this.abortController.abort();
@@ -200,9 +203,15 @@ class ConsultaService {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                
+
+                // Cualquier dato del servidor (también la señal de vida y los tipos desconocidos) reinicia el
+                // plazo de inactividad (RF-16.60).
+                alRecibir.onActividad?.();
+
                 if (data.type === 'start') {
                   // Streaming iniciado
+                } else if (data.type === 'etapa') {
+                  alRecibir.onEtapa?.(data.content);
                 } else if (data.type === 'chunk' && data.content) {
                   onChunk(data.content);
                 } else if (data.type === 'done') {
@@ -212,13 +221,17 @@ class ConsultaService {
                   }
                   return;
                 } else if (data.type === 'error') {
-                  onError?.(new Error(data.content));
+                  // `deServidor` distingue el aviso que envía el servidor (RF-11.62, RF-16.62) de un fallo local.
+                  const errorDelServidor = new Error(data.content);
+                  errorDelServidor.deServidor = true;
+                  onError?.(errorDelServidor);
                   return;
                 }
               } catch (parseError) {
                 // Fallback para formato de texto plano (compatibilidad)
                 const data = line.slice(6);
-                
+                alRecibir.onActividad?.();
+
                 if (data === '[DONE]') {
                   if (!completed) {
                     onComplete?.();

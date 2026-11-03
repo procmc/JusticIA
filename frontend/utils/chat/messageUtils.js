@@ -168,13 +168,22 @@ export const markMessageAsCanceled = (message) => {
  * diferencia de createErrorMessage(), conserva el texto parcial que ya
  * había llegado antes del corte en vez de reemplazarlo.
  */
-export const markMessageAsConnectionLost = (message) => {
+export const markMessageAsConnectionLost = (message) => (
+  markMessageWithNotice(message, 'Se perdió la conexión con el servidor. Intente de nuevo.')
+);
+
+/**
+ * Agrega un aviso de error al mensaje conservando el texto ya recibido (RF-11.67) y quita
+ * la etapa visible. Sirve para el aviso de conexión perdida, el de pregunta larga y el del tope.
+ */
+export const markMessageWithNotice = (message, notice) => {
   const currentText = message.text || '';
   return {
     ...message,
+    etapa: undefined,
     text: currentText.trim()
-      ? currentText + '\n\n---\n\n*Se perdió la conexión con el servidor. Intentá de nuevo.*'
-      : '*Se perdió la conexión con el servidor. Intentá de nuevo.*',
+      ? `${currentText}\n\n---\n\n*${notice}*`
+      : `*${notice}*`,
     timestamp: formatearSoloHoraCostaRica(new Date()),
     isError: true
   };
@@ -211,7 +220,11 @@ export const createErrorMessage = (error) => {
 // CALLBACKS DE STREAMING
 // ============================================
 
-// Si un stream se queda en silencio (ni chunk, ni done, ni error) por más
+// Los errores del motor llegan con este texto del servidor: no se muestran tal cual (RF-11.67 los deja fuera de alcance).
+const PREFIJO_ERROR_DEL_MOTOR = 'Error al procesar la consulta';
+
+// Si un stream se queda en silencio (ningún dato del servidor: ni etapa, ni señal de
+// vida, ni chunk, ni done, ni error) por más
 // de esto, se da por perdida la conexión y se libera el estado solo. Ver
 // doc 26 §3.9: un corte abrupto (crash de Docker, wifi) no dispara ni
 // onComplete ni onError -- reader.read() del fetch se queda esperando una
@@ -267,6 +280,29 @@ export const createStreamingCallbacks = (
   // total desde el inicio de la consulta), también debe liberarse solo.
   resetInactivityTimer();
 
+  const isActiveRequest = () => (
+    currentRequestRef.current?.active && currentRequestRef.current?.id === requestId
+  );
+
+  // Cualquier dato del stream (etapa, señal de vida, tipo desconocido) cuenta como actividad (RF-16.60).
+  const onActividad = () => {
+    if (isActiveRequest()) resetInactivityTimer();
+  };
+
+  // La etapa que informa el servidor sustituye a la animación hasta que llega el primer texto (RF-11.64).
+  const onEtapa = (etapa) => {
+    if (isActiveRequest()) {
+      resetInactivityTimer();
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages];
+        if (updatedMessages[messageIndex]) {
+          updatedMessages[messageIndex] = { ...updatedMessages[messageIndex], etapa };
+        }
+        return updatedMessages;
+      });
+    }
+  };
+
   const onChunk = (chunk) => {
     // Verificar que esta request siga siendo la activa
     if (currentRequestRef.current?.active && currentRequestRef.current?.id === requestId) {
@@ -276,6 +312,7 @@ export const createStreamingCallbacks = (
         if (updatedMessages[messageIndex]) {
           updatedMessages[messageIndex] = {
             ...updatedMessages[messageIndex],
+            etapa: undefined,
             text: (updatedMessages[messageIndex].text || '') + chunk
           };
         }
@@ -363,7 +400,7 @@ export const createStreamingCallbacks = (
           }
           
           // Respuesta exitosa o ya reintentamos
-          updatedMessages[messageIndex] = assignTimestamp(updatedMessages[messageIndex]);
+          updatedMessages[messageIndex] = assignTimestamp({ ...updatedMessages[messageIndex], etapa: undefined });
         }
         return updatedMessages;
       });
@@ -380,15 +417,26 @@ export const createStreamingCallbacks = (
 
       setMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
-        if (updatedMessages[messageIndex]) {
-          updatedMessages[messageIndex] = createErrorMessage(error);
+        const actual = updatedMessages[messageIndex];
+        if (actual) {
+          // RF-11.67: se conserva el texto recibido. El aviso del servidor (pregunta larga, tope) se muestra tal cual;
+          // el error del motor y los fallos locales, con el texto genérico de siempre.
+          const avisoDelServidor = error?.deServidor && !String(error.message).startsWith(PREFIJO_ERROR_DEL_MOTOR);
+          const generico = createErrorMessage(error);
+          if (avisoDelServidor) {
+            updatedMessages[messageIndex] = markMessageWithNotice(actual, error.message);
+          } else if ((actual.text || '').trim()) {
+            updatedMessages[messageIndex] = markMessageWithNotice(actual, generico.text);
+          } else {
+            updatedMessages[messageIndex] = generico;
+          }
         }
         return updatedMessages;
       });
     }
   };
 
-  return { onChunk, onComplete, onError };
+  return { onChunk, onComplete, onError, onEtapa, onActividad, alRecibir: { onEtapa, onActividad } };
 };
 
 // ============================================

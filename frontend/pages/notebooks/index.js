@@ -286,7 +286,7 @@ const NotebooksPage = () => {
 
     const retryFunction = () => consultaService.consultaGeneralStreaming(
       query, callbacks.onChunk, callbacks.onComplete, callbacks.onError,
-      null, sessionId, null, String(notebookActivo.id)
+      null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir
     );
 
     const callbacks = createStreamingCallbacks(
@@ -298,7 +298,7 @@ const NotebooksPage = () => {
     try {
       await consultaService.consultaGeneralStreaming(
         query, callbacks.onChunk, callbacks.onComplete, callbacks.onError,
-        null, sessionId, null, String(notebookActivo.id)
+        null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir
       );
     } catch (error) {
       setStreamingMessageIndex(null);

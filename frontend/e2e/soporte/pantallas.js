@@ -126,12 +126,18 @@ const filaDeIngesta = (page, nombre) => page.locator('[data-files-list] div.bord
 // Los avisos de la pantalla (toast y avisos de carga) llevan `role="alert"`; se excluye el anunciador de rutas de Next.
 const avisosDeLaPantalla = (page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
 
-// Abre el chat general (sin acotar a un tema) y envía la pregunta con Enter; cada prueba espera lo que debe aparecer.
-async function preguntarEnElChat(page, pregunta) {
+// Abre el chat general (sin acotar a un tema) y devuelve su campo de pregunta, listo para escribir.
+async function abrirChatGeneral(page) {
   await page.goto('/consulta-datos/chat');
   const campo = page.getByPlaceholder('¿En qué puedo ayudarte hoy?...');
   await expect(campo).toBeVisible();
   await ocultarMenuSiTapa(page);
+  return campo;
+}
+
+// Abre el chat general y envía la pregunta con Enter; cada prueba espera lo que debe aparecer.
+async function preguntarEnElChat(page, pregunta) {
+  const campo = await abrirChatGeneral(page);
   await escribir(campo, pregunta);
   await campo.press('Enter');
 }
@@ -139,6 +145,6 @@ async function preguntarEnElChat(page, pregunta) {
 module.exports = {
   abrirNotebooks, crearNotebookEnPantalla, abrirIngesta, elegirArchivosEnIngesta, guardarEnIngesta, filaDeIngesta,
   campoDelTema, agregarArchivosEnIngesta,
-  avisosDeLaPantalla, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
+  avisosDeLaPantalla, abrirChatGeneral, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
 };

@@ -58,7 +58,7 @@ function crearControl({ url = process.env.E2E_URL_API, token = process.env.E2E_T
     motor: (cuerpo = {}) => llamar('POST', '/motor', cuerpo),
     motorEstado: () => llamar('GET', '/motor'),
     motorLiberar: () => llamar('POST', '/motor/liberar'),
-    // Chat (spec 007, T8): `senal_de_vida_segundos`, `tiempo_maximo_segundos`, `mudo`, `pausa_entre_etapas`, `evento_desconocido`.
+    // Chat (spec 007, T8): `senal_de_vida_segundos`, `tiempo_maximo_segundos`, `mudo`, `pausa_entre_etapas`, `pausa_antes_de_generar`, `evento_desconocido`.
     chat: (cuerpo = {}) => llamar('POST', '/chat', cuerpo),
     chatEstado: () => llamar('GET', '/chat'),
     chatLiberar: () => llamar('POST', '/chat/liberar'),
