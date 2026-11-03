@@ -1,5 +1,5 @@
 # Spec 007 — Contexto y señales del chat (corrección)
-Estado: aprobada (29/10/2026). Alcance aprobado (JJJ1 = A); P1-P9, P-A a P-H, D1, Q1-Q4, R1-R5, P-α, P-β, Q-A, Q-B y D-2 resueltas. Cambio tras el plan (P-1 a P-5, RF-11.69) confirmado por Andrés (29/10/2026).
+Estado: implementada (03/11/2026; T0-T12 hechas, falta la verificación manual de T13, la validación y la aprobación de Andrés); aprobada (29/10/2026). Alcance aprobado (JJJ1 = A); P1-P9, P-A a P-H, D1, Q1-Q4, R1-R5, P-α, P-β, Q-A, Q-B y D-2 resueltas. Cambio tras el plan (P-1 a P-5, RF-11.69) confirmado por Andrés (29/10/2026).
 
 ## Contexto y objetivo
 - En el piloto de la 006 (30 PDF de Nexus: 27 Procesado, 3 Error) el chat general nunca mostró respuesta. Diagnóstico comprobado (solo lectura, 28-29/10/2026):

@@ -228,7 +228,8 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - `pytest` y `--orden-inverso`: 0 fallos, 0 XPASS, sin residuos. `npm run e2e`: «CORRECTO» dentro del presupuesto.
 - Verificación manual en desarrollo, en escritorio y a 616 px, con los temas `PRUEBA` y `PRUEBA 2` (y `PRUEBA 3` para T10): dos temas en un Guardar, un tema nuevo en dos grafías con un solo nombre, un PDF dañado en Error con su causa, una PNG Procesada, el aviso largo sin desborde, la advertencia en Ingesta y en el notebook; fila en SQL Server, Qdrant y bitácora; el Administrador no entra en Ingesta.
 - Limpieza hecha con la aprobación de Andrés y los temas `PRUEBA`, `PRUEBA 2` y `PRUEBA 3` vacíos anotados como residuo aceptado.
-- Paso operativo de Andrés tras la validación: piloto de Nexus cargado, cada PDF Procesado o en Error con su causa, y el chat general cita al menos uno.
+- Paso operativo de Andrés tras la validación (salvo EEE1: la carga la hace un agente con la sesión de Andrés): piloto de Nexus cargado, cada PDF Procesado o en Error con su causa, y el chat general cita al menos uno.
+  - Resultado del piloto (29/10/2026) y su corrección en la spec 007 (03/11/2026): 30 PDF de Nexus, 27 Procesado y 3 Error (SC 182, 183 y 177); el chat general no mostraba respuesta (causa en la spec 007). Nexus se re-fragmentó (27 documentos, de 48 a 179 fragmentos, máximo 1.498 caracteres) y las tres circulares se recargaron por Ingesta con fila nueva (Procesado; las anteriores siguen en Error, RF-07.51).
 - Texto propuesto para el ERS y el CU (sección siguiente) entregado a Andrés; `MEMORY.md` actualizado.
 
 ## Texto propuesto para el ERS y el CU (lo aplica Andrés en la entrega de la semana 4)

@@ -192,7 +192,7 @@ Pasa a la spec del módulo que lo toque, que escribe primero sus pruebas (regla 
 - **RF-11.42** (RF-11; CU-09 FE-03; RF-11.2 de la 004): SI no se puede conectar con el motor, ENTONCES muestra en la conversación «Error de Conexión» con al menos una posible causa, en español y sin el texto de la excepción, y el control de envío queda disponible.
   - Hoy el mensaje nombra puertos del servidor: no lo prohíbe el ERS; hallazgo para la spec de chat (decisión 18).
 - **RF-11.43** (RF-11; CU-09 FA-05): en el chat de un notebook, el campo empieza por «Preguntale algo a "<nombre del notebook>"» (comprobación por prefijo) y las respuestas citan solo documentos de ese notebook (pregunta por la frase de otro notebook del mismo usuario: no lo cita). Puede ir en la spec de las mejoras del notebook.
-- **RF-16.40** (RF-16; CU-09 FE-02): SI pasan 30 s sin recibir datos (desde el inicio o tras el último fragmento), ENTONCES el control de envío se libera, el texto recibido se conserva y aparece «Se perdió la conexión con el servidor. Intentá de nuevo.». Antes de los 30 s el control sigue bloqueado.
+- **RF-16.40** (RF-16; CU-09 FE-02): SI pasan 30 s sin recibir datos (desde el inicio o tras el último dato), ENTONCES el control de envío se libera, el texto recibido se conserva y aparece «Se perdió la conexión con el servidor. Intente de nuevo.». Antes de los 30 s el control sigue bloqueado.
   - La prueba controla el reloj del navegador solo en esa prueba (decisión 7): no espera 30 s reales.
 
 **G. Bitácora (RF-21, RF-22) → spec de la bitácora (o la del módulo cuya acción se registre):**
