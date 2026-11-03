@@ -282,6 +282,30 @@ class DocumentoRepository:
         )
         return [(documento_id, tema) for documento_id, tema in db.execute(stmt).all()]
 
+    def listar_procesados_de_temas(self, db: Session, temas: List[str]) -> List[tuple]:
+        """
+        Lista los documentos 'Procesado' unidos a los temas indicados (re-fragmentado, RF-08.63).
+
+        Un documento unido a varios de los temas aparece una vez por tema. Solo lee.
+
+        Args:
+            db: Sesión de base de datos
+            temas: Números de tema (CT_Num_expediente)
+
+        Returns:
+            List[tuple]: (CN_Id_documento, CT_Nombre_archivo, CT_Num_expediente, CN_Id_expediente), por tema y documento
+        """
+        stmt = (
+            select(T_Documento.CN_Id_documento, T_Documento.CT_Nombre_archivo,
+                   T_Expediente.CT_Num_expediente, T_Expediente.CN_Id_expediente)
+            .join(T_Estado_procesamiento, T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado)
+            .join(T_Expediente_Documento, T_Expediente_Documento.c.CN_Id_documento == T_Documento.CN_Id_documento)
+            .join(T_Expediente, T_Expediente.CN_Id_expediente == T_Expediente_Documento.c.CN_Id_expediente)
+            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado", T_Expediente.CT_Num_expediente.in_(temas))
+            .order_by(T_Expediente.CT_Num_expediente, T_Documento.CN_Id_documento)
+        )
+        return [tuple(fila) for fila in db.execute(stmt).all()]
+
     def obtener_ids_procesados(self, db: Session) -> set:
         """
         Obtiene los IDs de todos los documentos con estado 'Procesado'.

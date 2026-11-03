@@ -47,7 +47,7 @@ from typing import List, Dict, Any, Optional, Set
 import logging
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchAny, MatchValue, FilterSelector
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchAny, MatchValue, FilterSelector, PointIdsList
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.documents import Document
 
@@ -192,9 +192,32 @@ class QdrantBackend(VectorStoreBackend):
             if hit.score >= score_threshold
         ]
 
-    async def add_documents(self, documents: List[Document]) -> List[str]:
+    async def add_documents(self, documents: List[Document], ids: Optional[List[str]] = None) -> List[str]:
         vectorstore = await _get_langchain_vectorstore()
+        if ids is not None:
+            return vectorstore.add_documents(documents, ids=ids)
         return vectorstore.add_documents(documents)
+
+    async def listar_puntos_de_documento(self, document_id: int) -> List[Dict[str, Any]]:
+        """Todos los puntos de un documento (paginado), con id, texto y metadata anidada."""
+        client = _get_client()
+        filtro = Filter(must=[FieldCondition(key="metadata.id_documento", match=MatchValue(value=document_id))])
+        puntos, siguiente = [], None
+        while True:
+            lote, siguiente = client.scroll(
+                collection_name=QDRANT_COLLECTION_NAME, scroll_filter=filtro, with_payload=True,
+                limit=256, offset=siguiente,
+            )
+            puntos.extend({"id": str(p.id), "page_content": p.payload.get("page_content", ""),
+                           "metadata": p.payload.get("metadata", {}) or {}} for p in lote)
+            if siguiente is None:
+                return puntos
+
+    async def borrar_por_ids(self, ids: List[str]) -> None:
+        """Borra solo los puntos con esos identificadores."""
+        if not ids:
+            return
+        _get_client().delete(collection_name=QDRANT_COLLECTION_NAME, points_selector=PointIdsList(points=list(ids)))
 
     async def get_stats(self) -> Dict[str, Any]:
         client = _get_client()

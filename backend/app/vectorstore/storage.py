@@ -94,7 +94,10 @@ async def store_in_vectorstore(
     metadatos: dict,
     CT_Num_expediente: str,
     id_expediente: int,  # ID real de la BD
-    id_documento: int    # ID real de la BD
+    id_documento: int,   # ID real de la BD
+    ids_propios: bool = False,
+    fecha_carga: int | None = None,
+    fecha_expediente_creacion: int | None = None,
 ) -> tuple[list, int]:
     """
     Almacena documento en el backend vectorial activo con chunking y embeddings automáticos.
@@ -115,6 +118,9 @@ async def store_in_vectorstore(
         CT_Num_expediente: Número de expediente formato YY-NNNNNN-NNNN-XX.
         id_expediente: ID del expediente en T_Expediente (FK).
         id_documento: ID del documento en T_Documento (FK).
+        ids_propios: Si es True, el identificador de cada punto es su `id_chunk` (así quien llama conoce los ids antes
+            de insertar y puede borrarlos si algo falla; re-fragmentado, RF-08.63).
+        fecha_carga / fecha_expediente_creacion: Fechas originales (epoch ms) a conservar; sin ellas, las de ahora.
 
     Returns:
         tuple[list, int]: (Lista de IDs asignados, Número de chunks creados)
@@ -183,11 +189,11 @@ async def store_in_vectorstore(
             # Referencias a BD transaccional
             "id_expediente": id_expediente,
             "numero_expediente": CT_Num_expediente,
-            "fecha_expediente_creacion": timestamp_ms,
+            "fecha_expediente_creacion": fecha_expediente_creacion if fecha_expediente_creacion is not None else timestamp_ms,
             "id_documento": id_documento,
             "nombre_archivo": metadatos["nombre_archivo"],
             "tipo_archivo": tipo_archivo_codigo,
-            "fecha_carga": timestamp_ms,
+            "fecha_carga": fecha_carga if fecha_carga is not None else timestamp_ms,
 
             # Info del chunk
             "indice_chunk": i,
@@ -215,7 +221,11 @@ async def store_in_vectorstore(
 
     # El backend activo (Qdrant) maneja embeddings automáticamente
     if langchain_documents:
-        doc_ids = await get_vectorstore_backend().add_documents(langchain_documents)
+        if ids_propios:
+            doc_ids = await get_vectorstore_backend().add_documents(
+                langchain_documents, ids=[d.metadata["id_chunk"] for d in langchain_documents])
+        else:
+            doc_ids = await get_vectorstore_backend().add_documents(langchain_documents)
         print(f"{len(doc_ids)} chunks almacenados para {metadatos['nombre_archivo']}")
         return doc_ids, len(chunks)  # Retornar IDs y número de chunks
 

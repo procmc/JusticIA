@@ -85,8 +85,8 @@ class VectorStoreBackend(ABC):
         esos documentos (RF-17.3): un conjunto vacío no devuelve nada y `None` no restringe."""
 
     @abstractmethod
-    async def add_documents(self, documents: List[Document]) -> List[str]:
-        """Almacena documentos con embeddings automáticos."""
+    async def add_documents(self, documents: List[Document], ids: Optional[List[str]] = None) -> List[str]:
+        """Almacena documentos con embeddings automáticos. Con `ids`, cada punto lleva el identificador indicado."""
 
     @abstractmethod
     async def get_stats(self) -> Dict[str, Any]:
@@ -102,3 +102,11 @@ class VectorStoreBackend(ABC):
     @abstractmethod
     async def delete_document_chunks(self, document_id: int) -> None:
         """Elimina todos los chunks de un documento (por id_documento)."""
+
+    async def listar_puntos_de_documento(self, document_id: int) -> List[Dict[str, Any]]:
+        """Todos los puntos de un documento, con su identificador, su texto y su metadata (re-fragmentado, RF-08.63)."""
+        raise NotImplementedError
+
+    async def borrar_por_ids(self, ids: List[str]) -> None:
+        """Borra solo los puntos con esos identificadores (re-fragmentado, RF-08.63)."""
+        raise NotImplementedError
