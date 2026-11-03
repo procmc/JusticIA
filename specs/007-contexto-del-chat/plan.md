@@ -88,7 +88,7 @@ Modificados (pruebas y frontend):
 |---|---|---|
 | `LLM_NUM_CTX` (existe) | 8192 | Ventana enviada en cada llamada y base del presupuesto |
 | `LLM_NUM_PREDICT` (existe) | 1024 | Reserva de respuesta |
-| `CHAT_CARACTERES_POR_TOKEN` | 3.5 | Conteo (Q-B) |
+| `CHAT_CARACTERES_POR_TOKEN` | 2.9 | Conteo (Q-B; 3.5 hasta el 03/11/2026) |
 | `CHAT_FRAGMENTOS_POR_CONSULTA` | 8 | Recuperación y tope por solicitud |
 | `FRAGMENTO_TAMANO_MAXIMO` / `FRAGMENTO_SOLAPAMIENTO` | 1500 / 200 | Fragmentación |
 | `CHAT_SENAL_DE_VIDA_SEGUNDOS` | 10 | Intervalo de la señal de vida |
@@ -102,7 +102,7 @@ Modificados (pruebas y frontend):
 
 ## 5. Presupuesto y armado (RF-11.60-62, RF-11.65-66, RF-12.60, RF-12.62)
 - `tokens(texto) = ceil(len(texto) / caracteres_por_token)`, por pieza; la suma de piezas redondeadas es prudente (≥ el total).
-- `espacio_minimo(chat) = tokens(" " * (tamaño + 500 [+ 300 en el notebook]))` = 572 / 658 por omisión.
+- `espacio_minimo(chat) = tokens(" " * (tamaño + 500 [+ 300 en el notebook]))` = 690 / 794 por omisión (572 / 658 con el 3,5 anterior).
 - Encabezado de cada fragmento enviado (RF-12.60), en lugar de los encabezados de grupo:
   ```
   [Fragmento n] Archivo: <nombre> | Tema: <tema o nombre del notebook> | Págs.: a-b
@@ -152,11 +152,12 @@ recuperar(chat, p_busqueda, k):
 
 ## 6. Textos de instrucciones nuevos (⚠️ prompts; RF-12.61, RF-11.66)
 - Sustituyen a los de §2. Se insertan con reemplazo de texto (no `ChatPromptTemplate`): un nombre con llaves ya no rompe el armado.
-- Tamaños estimados (la prueba de T4 los mide de verdad); máximo de RF-12.61: ~5.000 caracteres (1.433 tokens):
-  - general ≈ 2.300 caracteres (~660 tokens);
-  - tema ≈ 2.950 + 2 × 60 del tema ≈ 3.070 (~880 tokens);
-  - notebook ≈ 3.100 + 3 × 255 del nombre ≈ 3.870 (~1.110 tokens), más el título de la lista;
-  - reformulación ≈ 750 (~215 tokens), menor que cualquiera de las tres.
+- Tamaños estimados (la prueba de T4 los mide de verdad); máximo de RF-12.61: ~4.150 caracteres (1.433 tokens a 2,9; eran ~5.000 a 3,5):
+  - general ≈ 2.300 caracteres (~794 tokens);
+  - tema ≈ 2.950 + 2 × 60 del tema ≈ 3.070 (~1.059 tokens);
+  - notebook ≈ 3.100 + 3 × 255 del nombre ≈ 3.870 (~1.335 tokens), más el título de la lista;
+  - reformulación ≈ 750 (~259 tokens), menor que cualquiera de las tres.
+  - Medidos en T4 y recalculados a 2,9: general 1.977 car. (682 tok), tema 2.284 (788), notebook 2.923 (1.008), reformulación 767 (265): siguen ≤ 1.433.
 - Cambios de fondo respecto de hoy (D-5): «JusticBot» pasa a «asistente de ServIA»; se quita la restricción a temas jurídicos; ante otro idioma responde en español en vez de negarse; el notebook pierde el recordatorio dinámico de imágenes (sus reglas quedan fijas en IMÁGENES).
 - El texto del resumen (`similarity_prompt_builder.py:113-158`) no cambia.
 
@@ -399,6 +400,7 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 - **Sin caché de prefijos**: con `keep_alive: 0` el modelo se descarga tras cada llamada, así la siguiente evalúa la entrada entera y `prompt_eval_count` cuenta todo, plantilla incluida.
 - Comprobación en la versión instalada (primera prueba): `GET /api/version` se imprime; la misma entrada dos veces con `keep_alive: 0` da el mismo conteo. Si no, PARAR y preguntar.
 - Casos: reformulación y respuesta de los tres chats (P-1 = C) y el resumen; cada uno con texto narrativo y **denso** (números, siglas, tablas), con las entradas máximas (15 × 7.000, 20 mensajes, tema largo).
+- El denso se recalibra a ~2,9 caracteres/token, la densidad del fragmento real más denso de Nexus (2,91), no a un caso sintético más extremo (el anterior rendía ~2,4, por debajo de todo documento medido).
 - Falla si `prompt_eval_count > 7.168`, si es 4.098 con estimado mayor, o si el real supera al estimado. Esto último: PARAR y preguntar (Q-B).
 - Duración estimada: ~15 min (carga del modelo en cada llamada). GPU libre: sin HTR en uso.
 
@@ -470,10 +472,14 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 - **R2 = A** (RF-21.60): sin tipo nuevo ni migración. **R4 = A** (RF-08.61): el texto extraído no trae páginas reales.
 - **R5 = B** (RF-11.62): una respuesta sin espacio para ningún fragmento no podría citar la fuente.
 - **D-2 = A** (RF-21.60): el error del motor se registra con el motivo «error del motor»; es un fallo del sistema y no una decisión del usuario, y el Administrador debe verlo (descartado: no registrarlo, como la desconexión).
-- **P-α = A** (Definiciones, RF-11.61-62, RF-08.62): encabezado estimado en 500 caracteres fijos; espacio mínimo de fragmento 2.000 caracteres (~572 tokens).
+- **P-α = A** (Definiciones, RF-11.61-62, RF-08.62): encabezado estimado en 500 caracteres fijos; espacio mínimo de fragmento 2.000 caracteres (~690 tokens a 2,9; ~572 a 3,5).
 - **P-β = A**: los textos para la documentación van al plan (última tarea); mientras no exista, se guardan en el Anexo.
 - **Q-A = A** (Casos límite, RF-11.62): sin fragmento que quepa, la respuesta dice que el contexto no alcanza; caso residual, porque Nexus se re-fragmenta (RF-08.63).
 - **Q-B = A** (Conteo, CF-1): caracteres por token configurables (3,5 por omisión); si CF-1 lo contradice, se para y se pregunta en vez de ajustar a ciegas.
+  - **Resuelta (03/11/2026, decisión «A» de Andrés): por omisión 2,9** y el denso de CF-1 recalibrado a ~2,9.
+  - CF-1 con 3,5: narrativo cubierto (+1,5 % a +6 %); denso superado, y sobre 8.192 el motor recortó en silencio a 4.098.
+  - 48 fragmentos de Nexus (solo lectura): media 3,61, mín. 2,91, p10 3,20 (Avisos-Corte 3,14/3,02; Circulares-DE 3,50/3,20; Circulares-SC 3,80/2,91).
+  - Peor grupo real de 8: 4.595 tokens reales frente a 4.141 estimados (−11 %), coherente con H1 de T5 (7.580 y 7.174 > 7.168).
 - Tras el plan (29/10/2026): **P-1 = C** (RF-11.66, RF-11.69): CU-09 p. 5 y p. 8 y el «orden de relevancia» de RF-11.61 en los tres chats. **P-2 = A** (RF-16.62): el reintento no se toca. **P-3 = A** (RF-08.62, D-9). **P-4 = A**: los 128 PDF en T13. Coordinador: `.env.example` con el motor local en T13 (RNF-09.60).
 - Revisión QA 3 (redacción del planner, sin cambio de diseño): M1 línea de la lista en 300 caracteres fijos (alternativa descartada: suponer que la cubren los 500 del encabezado); B1 todos los valores por omisión (descartado: solo el incoherente, que admite mezclas incoherentes) y cantidad ≤ 0 → la del servidor (descartado: rechazar la solicitud con un mensaje nuevo); B3 matriz e2e en RNF-04.60; B4 «Mensaje» por separado, como ya cuenta el historial.
 
@@ -517,7 +523,7 @@ La **primera** se aprobó con la spec y Andrés la aplica antes de la corrida re
 #### ERS y CU
 - **RF-08**: «El tamaño máximo de los fragmentos (por omisión 1.500 caracteres), su solapamiento (200) y la cantidad recuperada por consulta (8, que una solicitud solo puede reducir) son configurables. Cada fragmento guarda su página estimada de inicio y de fin. Un documento puede volver a fragmentarse sin perder su registro ni su archivo. Una configuración incoherente se sustituye entera por los valores por omisión.» `[NUEVO]` (RF-08.60-63, RF-11.65).
 - **RF-11**: «La entrada de cada llamada al modelo se ajusta a su ventana (8.192 tokens, 1.024 reservados para la respuesta): las instrucciones (máximo 20 %) y la pregunta nunca se recortan; el historial ocupa como máximo el 20 % con los mensajes más recientes, y los fragmentos el resto, enteros y por relevancia, hasta 8 (pueden caber menos si el historial o los fragmentos son largos). La reformulación usa los 2 últimos mensajes. Una pregunta que no deja espacio para un fragmento se rechaza con un mensaje. Solo se guardan los turnos terminados.» `[NUEVO]` (RF-11.60-68, RF-12.61-62).
-  - Precisar que las etapas las emite el servidor en los tres chats (RF-11.64) y que la estimación de caracteres por token es configurable (por omisión 3,5).
+  - Precisar que las etapas las emite el servidor en los tres chats (RF-11.64) y que la estimación de caracteres por token es configurable (por omisión 2,9, para cubrir el texto real más denso medido).
 - **RF-16**: Reglas: «El período se reinicia con cada dato recibido del servidor (texto, etapa o señal de vida, que el servidor envía al menos cada 10 s). Una consulta que supera 180 s se detiene con el aviso "La consulta tardó demasiado. Intente de nuevo."». Salida: «Se perdió la conexión con el servidor. Intente de nuevo.» (RF-16.60-62).
 - **RF-21**: «La consulta se registra al terminar la respuesta. Una pregunta rechazada por demasiado larga, una consulta detenida por el tope de tiempo o una que termina en error del modelo se registran como consulta, con su motivo en la información adicional. Una consulta abandonada por el usuario no se registra.» (RF-21.60).
 - **RF-20**: «La entrada del resumen se ajusta a la ventana del modelo (7.168 tokens de entrada); sus instrucciones nunca se recortan y los fragmentos van enteros.» (RF-20.60-62).

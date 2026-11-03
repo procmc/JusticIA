@@ -28,13 +28,15 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
 - **Ventana**: 8.192 tokens de entrada más salida por llamada al motor. Sin ventana explícita, el motor usa 4.096.
 - **Reserva de respuesta**: 1.024 tokens. **Presupuesto de entrada**: ventana menos reserva = **7.168 tokens**.
 - **Entrada**: todo lo que recibe el motor en una llamada (instrucciones, fragmentos con sus encabezados, historial con sus marcas de rol y separadores, pregunta y cualquier otro contenido).
-- **Conteo**: estimación prudente de caracteres por token, **configurable en el servidor, por omisión 3,5** (medido: 3,67 en circulares), para ajustarla sin tocar código (Q-B).
+- **Conteo**: estimación prudente de caracteres por token, **configurable en el servidor, por omisión 2,9**, para ajustarla sin tocar código (Q-B).
+  - Por qué 2,9 (medición del 03/11/2026 con los 48 fragmentos de Nexus): media 3,61, p10 3,20, **mínimo 2,91**. El 3,5 anterior (3,67 medido antes en circulares) subestimaba un 11 % el peor grupo real de 8 fragmentos.
+  - El motor recorta en silencio (solo un aviso en su registro) la entrada que supera la ventana; por eso el valor cubre el texto real más denso medido, no la media.
   - Un solo estimador: el que usa el código es el que usan las unitarias. Solo CF-1 y la verificación manual lo contrastan con el motor.
-  - Los tokens de plantilla del modelo (cabeceras de rol y de turno que agrega el motor) no se cuentan aparte: los absorbe el margen entre el 3,5 y lo medido, no la reserva de respuesta. CF-1 lo comprueba, porque el conteo real los incluye.
+  - Los tokens de plantilla del modelo (cabeceras de rol y de turno, ~11 por llamada) no se cuentan aparte ni salen de la reserva de respuesta: los absorbe el margen entre el 2,9 y lo medido (≥ 8 % con el texto real habitual; ~25 tokens con el presupuesto lleno del fragmento más denso). CF-1 lo comprueba, porque el conteo real los incluye.
 - **Instrucciones**: el texto fijo de cada llamada (en el notebook, incluidas las reglas sobre imágenes). La lista de archivos del notebook no es instrucción: ver RF-12.62.
 - **Pregunta**: la que escribe el usuario, que es la que recibe la llamada de respuesta (la reformulada solo sirve para buscar). En el notebook, la que se envía tras adaptar las referencias a imágenes.
-- **Espacio mínimo de fragmento**: tamaño máximo de fragmento configurado (RF-08.60) más una estimación fija de 500 caracteres de encabezado (P-α), con el conteo (por omisión 2.000 caracteres ≈ 572 tokens).
-  - En el notebook suma además una estimación fija de **300 caracteres** de la línea de su archivo en la lista (RF-12.62; cubre un nombre de hasta 255): por omisión 2.300 caracteres ≈ 658 tokens (M1).
+- **Espacio mínimo de fragmento**: tamaño máximo de fragmento configurado (RF-08.60) más una estimación fija de 500 caracteres de encabezado (P-α), con el conteo (por omisión 2.000 caracteres ≈ 690 tokens).
+  - En el notebook suma además una estimación fija de **300 caracteres** de la línea de su archivo en la lista (RF-12.62; cubre un nombre de hasta 255): por omisión 2.300 caracteres ≈ 794 tokens (M1).
 - **Mensaje**: cada pregunta del usuario y cada respuesta del asistente se cuentan por separado, como ya guarda y limita el historial (hoy 20 mensajes = 10 turnos). «Los 2 últimos mensajes» son, en un historial normal, la última pregunta y su respuesta.
 - **Página**: estimación de 2.500 caracteres por página del texto original, desde el carácter 0.
 - **Dato del stream**: cualquier evento del servidor en una consulta: texto, etapa, señal de vida, fin o error.
@@ -75,7 +77,7 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
 - **RF-12.60** (RF-12; HU-12): EL SISTEMA incluye en el encabezado de cada fragmento enviado su nombre de archivo, su tema y su ruta de descarga, y ningún nombre ni ruta de un fragmento omitido aparece en la entrada.
   - Así el enlace de descarga solo puede apuntar a archivos de fragmentos enviados.
   - *Prueba*: unitaria sobre la entrada capturada; RF-11.40 (cita descargable en el chat general, e2e) sigue pasando.
-- **RF-12.61** (RF-12; P3, P-C) `[NUEVO]`: EL SISTEMA usa **tres textos de instrucciones** (general, tema, notebook), cada uno de **≤ 20 % del presupuesto** (~1.430 tokens, ~5.000 caracteres), en español neutro sin voseo, con todas las reglas de RF-12:
+- **RF-12.61** (RF-12; P3, P-C) `[NUEVO]`: EL SISTEMA usa **tres textos de instrucciones** (general, tema, notebook), cada uno de **≤ 20 % del presupuesto** (~1.430 tokens, ~4.150 caracteres), en español neutro sin voseo, con todas las reglas de RF-12:
   - responder solo con los fragmentos enviados, sin conocimiento general; decir cuando el contexto no alcanza;
   - citar el archivo de origen de cada afirmación relevante, sin inventar nombres ni atribuir a otro documento;
   - pedir aclaración ante una referencia ambigua a un documento; responder en español.
@@ -208,6 +210,7 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
 - `pytest` y `--orden-inverso`: 0 fallos, 0 XPASS, sin `xfail` nuevos. `npm run e2e`: «CORRECTO» dentro del presupuesto e2e.
 - **CF-1. Prueba contra el motor real** (antes RNF-01.61; RF-11.60, RF-20.60; Q1): fuera del comando por omisión de pytest (marcador propio excluido, como `infraestructura`); el plan fija marcador y comando.
   - Cubre, con las entradas más grandes que arma el sistema (15 fragmentos largos, 20 mensajes, tema largo), la reformulación y la respuesta de los tres chats y el resumen, con un texto narrativo y otro **denso** (números, siglas, tablas).
+  - El denso se calibra a la densidad del texto real más denso medido (~2,9 caracteres/token), no a un caso sintético más extremo (el anterior rendía ~2,4).
   - Las unitarias verifican el presupuesto con el mismo estimador que usa el código; solo CF-1, corrida a mano, lo contrasta con el motor.
   - Por llamada lee el conteo real de entrada del motor (incluye los tokens de plantilla) y falla si hay recorte (conteo > 7.168, o 4.098 con una entrada estimada mayor) o si el conteo real supera el estimado.
   - SI el conteo real supera al estimado (p. ej. con el texto denso), ENTONCES se para y se pregunta a Andrés (Q-B); el ajuste posible es la configuración de caracteres por token, sin tocar código.
