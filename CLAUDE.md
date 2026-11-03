@@ -62,7 +62,7 @@ Desde la raíz del proyecto:
 - `T_Documento` se une a los temas por la tabla intermedia `T_Expediente_Documento`; la columna `T_Documento.CN_Id_expediente` no existe.
 - Un notebook usa como tema su clave interna `NB-<id>` (`clave_interna`).
 - `CF_Ultimo_acceso = NULL` obliga a cambiar la contraseña temporal al iniciar sesión.
-- Ningún registro se elimina físicamente (RN-01, RNF-10); las únicas excepciones son quitar un documento de un notebook (borra sus fragmentos en Qdrant, el archivo y la fila) y los datos de prueba que la propia suite crea y borra al terminar sus pruebas.
+- Ningún registro se elimina físicamente (RN-01, RNF-10); las únicas excepciones son quitar un documento de un notebook (borra sus fragmentos en Qdrant, el archivo y la fila), el procedimiento de re-fragmentado de la spec 007, solo en una lista explícita de temas aprobada por Andrés (reemplaza los fragmentos en Qdrant: inserta los nuevos antes de borrar los anteriores y conserva el documento, su fila y su archivo), y los datos de prueba que la propia suite crea y borra al terminar sus pruebas.
 
 **Infraestructura**:
 - El LLM y el HTR comparten una GPU de 8 GB, y cada uno libera la memoria de video tras 2 minutos sin uso. Antes de experimentos de GPU en `htr/`, detener Ollama.
