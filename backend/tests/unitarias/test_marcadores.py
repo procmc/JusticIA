@@ -65,9 +65,9 @@ def test_marcador_por_ruta_falla_con_una_ruta_ajena(ruta):
 
 
 def test_pytest_ini_excluye_infraestructura_por_omision():
-    """RA-02.1: `-m "not infraestructura"` en `addopts` deja ese marcador fuera de «todo»."""
+    """RA-02.1: `-m "not infraestructura and not motor_real"` en `addopts` deja esos marcadores fuera de «todo»."""
     addopts = _leer_pytest_ini().get("addopts", "")
-    assert '-m "not infraestructura"' in addopts
+    assert '-m "not infraestructura and not motor_real"' in addopts
 
 
 def test_pytest_ini_desactiva_la_cache_y_usa_importlib():

@@ -48,7 +48,7 @@ class ConfiguracionContexto:
 VALORES_POR_OMISION = ConfiguracionContexto(
     ventana=8192,
     reserva=1024,
-    caracteres_por_token=3.5,
+    caracteres_por_token=2.9,
     fragmentos_por_consulta=8,
     fragmento_tamano_maximo=1500,
     fragmento_solapamiento=200,

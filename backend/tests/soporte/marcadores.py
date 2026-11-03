@@ -12,6 +12,7 @@ MARCADOR_POR_CARPETA = {
     "unitarias": "unitaria",
     "integracion": "integracion",
     "infraestructura": "infraestructura",
+    "motor_real": "motor_real",
 }
 
 

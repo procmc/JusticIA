@@ -78,7 +78,7 @@ def test_ambos():
 
 def test_historial_corto_cede():
     """RF-11.61 · un historial corto cede su espacio a los fragmentos."""
-    frs = [_frag(i, 2400) for i in range(8)]
+    frs = [_frag(i, 2000) for i in range(8)]
     largo = _armar(historial=["h" * 2000 for _ in range(20)], fragmentos=frs)
     corto = _armar(historial=["hola"], fragmentos=frs)
     assert len(corto.fragmentos) == 8
@@ -122,10 +122,10 @@ def test_justo_sobre_el_limite(chat):
 
 
 def test_espacio_minimo_por_omision():
-    """RF-11.62 · espacio mínimo: 572 tokens (1500 + 500 caracteres) y 658 en el notebook (+300)."""
-    assert pc.espacio_minimo("general") == 572
-    assert pc.espacio_minimo("tema") == 572
-    assert pc.espacio_minimo("notebook") == 658
+    """RF-11.62 · espacio mínimo: 690 tokens (1500 + 500 caracteres) y 794 en el notebook (+300)."""
+    assert pc.espacio_minimo("general") == 690
+    assert pc.espacio_minimo("tema") == 690
+    assert pc.espacio_minimo("notebook") == 794
 
 
 def test_encabezado_y_sin_rastros_de_omitidos():
@@ -197,7 +197,7 @@ def test_reformula_con_dos_mensajes(chat):
 
 def test_mensajes_enormes_1_o_0():
     """RF-11.66 · si los 2 no caben queda 1; si ninguno cabe, 0 (sin llamada de reformulación)."""
-    assert pc.mensajes_para_reformular("r" * 1000, PREG, ["a" * 20000, "b" * 20000]) == ["b" * 20000]
+    assert pc.mensajes_para_reformular("r" * 1000, PREG, ["a" * 16000, "b" * 16000]) == ["b" * 16000]
     assert pc.mensajes_para_reformular("r" * 1000, PREG, ["a" * 20000, "b" * 30000]) == []
 
 

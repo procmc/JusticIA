@@ -72,7 +72,7 @@ def test_valores_por_omision(caplog):
     assert [r for r in caplog.records if r.name == LOGGER] == []
     assert resultado == cc.VALORES_POR_OMISION
     assert (resultado.ventana, resultado.reserva, resultado.presupuesto) == (8192, 1024, 7168)
-    assert resultado.caracteres_por_token == 3.5
+    assert resultado.caracteres_por_token == 2.9
     assert resultado.fragmentos_por_consulta == 8
     assert (resultado.fragmento_tamano_maximo, resultado.fragmento_solapamiento) == (1500, 200)
     assert (resultado.senal_de_vida_segundos, resultado.tiempo_maximo_segundos) == (10, 180)
