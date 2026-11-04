@@ -1,15 +1,15 @@
 // NotebookServIA: crear y cargar (spec 005b, T4): RF-17.40 y RF-05.40 en un notebook propio. Spec retroactiva: sigue al ERS,
 // no a lo que hoy hace el código. Corre en `escritorio` (1366) y `pequena` (616). Los datos son inventados (prefijo PRUEBA);
 // el motor de lenguaje es el simulado de la instancia.
-const { test, expect, iniciarSesion, pulsar, fallaEsperada } = require('../soporte/fixtures.js');
+const { test, expect, iniciarSesion, pulsar } = require('../soporte/fixtures.js');
 const {
-  aleatorio, iniciarSesion: iniciarSesionPorApi, crearNotebook, listarDocumentos, cargaMixta, documentoDePrueba, pdfMinimo,
+  enviar, aleatorio, iniciarSesion: iniciarSesionPorApi, crearNotebook, listarDocumentos, cargaMixta, documentoDePrueba, pdfMinimo,
   PNG_MINIMO, cargar, esperarTarea, subirYProcesar, notebookConDocumento, preguntar, textoDeLosEventos,
 } = require('../soporte/datos.js');
 const {
   abrirNotebooks, crearNotebookEnPantalla, crearNotebookConEnter, listaDeNotebooks, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, avisosDeLaPantalla, fichaDeDocumento, abrirNotebookConDocumentos,
-  quitarDocumentoEnPantalla,
+  quitarDocumentoEnPantalla, exigirSinVoseo,
 } = require('../soporte/pantallas.js');
 
 const MOTIVO_VACIO = 'archivo vacío';
@@ -29,9 +29,10 @@ async function iniciarComoUsuario(page, crearUsuario) {
 async function exigirNotebookAbierto(page, nombre) {
   await expect(page.getByRole('heading', { name: nombre })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Subir documentos' })).toBeVisible();
-  await expect(page.getByPlaceholder(`Preguntale algo a "${nombre}"...`, { exact: false })).toBeVisible();
+  await expect(page.getByPlaceholder(`Pregúntele algo a "${nombre}"...`, { exact: false })).toBeVisible();
   await expect(page.getByText('archivo(s) seleccionado(s)')).toHaveCount(0);
   await expect(page.locator('div.flex-wrap.gap-2 > div')).toHaveCount(0); // su lista de documentos, vacía
+  await exigirSinVoseo(page); // RT-07.70
 }
 
 test.describe('NotebookServIA: crear y cargar', () => {
@@ -57,6 +58,22 @@ test.describe('NotebookServIA: crear y cargar', () => {
     await expect(listaDeNotebooks(page)).toHaveText([segundo, primero]);
     await exigirNotebookAbierto(page, segundo);
 
+    // Aviso de arrastre (RT-07.70): al arrastrar una imagen sobre el chat aparece, con el nombre del notebook; al salir, desaparece.
+    // No se suelta la imagen: el `drop` no forma parte de esta prueba.
+    const chat = page.getByPlaceholder(`Pregúntele algo a "${segundo}"...`, { exact: false });
+    const aviso = page.getByText(`Suelte la imagen para subirla a "${segundo}"`);
+    await expect(aviso).toHaveCount(0);
+    const transferencia = await page.evaluateHandle(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['PRUEBA'], 'prueba.png', { type: 'image/png' }));
+      return dt;
+    });
+    await chat.dispatchEvent('dragover', { dataTransfer: transferencia });
+    await expect(aviso).toBeVisible();
+    await exigirSinVoseo(page);
+    await chat.dispatchEvent('dragleave', { dataTransfer: transferencia });
+    await expect(aviso).toHaveCount(0);
+
     // Y siguen ahí al volver a abrir la pantalla: se guardaron, no solo se dibujaron.
     await abrirNotebooks(page);
     await expect(listaDeNotebooks(page)).toHaveText([segundo, primero]);
@@ -65,7 +82,9 @@ test.describe('NotebookServIA: crear y cargar', () => {
   test('RF-17.40 · nombre vacío', async ({ page, crearUsuario }) => {
     await iniciarComoUsuario(page, crearUsuario);
     await abrirNotebooks(page);
-    await expect(page.getByText('Todavía no tenés notebooks')).toBeVisible();
+    await expect(page.getByText('Todavía no tiene notebooks. Cree uno arriba.')).toBeVisible();
+    await expect(page.getByText('Elija o cree un notebook para empezar')).toBeVisible(); // RT-07.70
+    await exigirSinVoseo(page);
     const peticiones = [];
     page.on('request', (r) => { if (esCreacion(r.url(), r.method())) peticiones.push(r.url()); });
 
@@ -76,7 +95,7 @@ test.describe('NotebookServIA: crear y cargar', () => {
       await page.getByRole('button', { name: 'Crear notebook' }).click();
       await campo.press('Enter');
     }
-    await expect(page.getByText('Todavía no tenés notebooks')).toBeVisible();
+    await expect(page.getByText('Todavía no tiene notebooks')).toBeVisible();
     await expect(listaDeNotebooks(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Subir documentos' })).toHaveCount(0); // no se abrió ninguno
 
@@ -88,6 +107,8 @@ test.describe('NotebookServIA: crear y cargar', () => {
   });
 
   test('RF-17.40 · otro usuario no lo ve', async ({ page, crearUsuario, control, otroUsuario }) => {
+    // Recorte de contingencia de la spec 008 (presupuesto de RNF-04.70): no depende del ancho; dos corridas seguidas pasaron de 569 s.
+    test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (spec 008, recorte de contingencia)');
     await iniciarComoUsuario(page, crearUsuario);
     await abrirNotebooks(page);
     const mio = `PRUEBA notebook propio ${aleatorio()}`;
@@ -115,6 +136,8 @@ test.describe('NotebookServIA: crear y cargar', () => {
     // RF-10.50: la advertencia de manuscrito junto a «Subir documentos».
     await expect(page.getByText('Las imágenes deben contener texto impreso o tipeado: la escritura a mano no se reconoce de forma confiable.')).toBeVisible();
     await elegirArchivosEnNotebook(page, [valido, vacio, largo]);
+    await expect(page.getByText('archivo(s) seleccionado(s) — revise antes de subir:')).toBeVisible(); // RT-07.70
+    await exigirSinVoseo(page);
 
     const respuestaEsperada = page.waitForResponse(esCargaDeArchivos);
     await confirmarSubidaEnNotebook(page, notebook.nombre);
@@ -209,6 +232,8 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
   });
 
   test('RF-18.40 · Pendiente y Error no se abren', async ({ page, crearUsuario, control }) => {
+    // Recorte de contingencia de la spec 008 (presupuesto de RNF-04.70): no depende del ancho; dos corridas seguidas pasaron de 569 s.
+    test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (spec 008, recorte de contingencia)');
     const usuario = await iniciarComoUsuario(page, crearUsuario);
     const token = await iniciarSesionPorApi(control, usuario);
     const notebook = await crearNotebook(control, token, `PRUEBA notebook estados ${aleatorio()}`);
@@ -252,28 +277,77 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
   });
 
   test('RF-19.40 · confirmación con nombre y advertencia; cancelar no cambia nada', async ({ page, crearUsuario, control }) => {
-    // Hoy la «x» quita el documento sin pedir confirmar (visto en rojo: no aparece ningún cuadro). Estado actual del ERS (RF-19).
-    fallaEsperada(test, 'RF-19.40 · notebooks');
     const usuario = await iniciarComoUsuario(page, crearUsuario);
+    const administrador = await crearUsuario('administrador');
     const token = await iniciarSesionPorApi(control, usuario);
+    const tokenAdmin = await iniciarSesionPorApi(control, administrador);
     const { notebook, documento } = await notebookConDocumento(control, token);
-    await abrirNotebookConDocumentos(page, notebook, [documento.nombre]);
+    const segundo = documentoDePrueba();
+    await subirYProcesar(control, token, notebook.clave_interna, segundo);
+    await abrirNotebookConDocumentos(page, notebook, [documento.nombre, segundo.nombre]);
     const borrados = [];
     page.on('request', (r) => { if (r.method() === 'DELETE') borrados.push(r.url()); });
-
-    await pulsar(fichaDeDocumento(page, documento.nombre).locator('[aria-label="close chip"]'));
+    const registrosDeQuitar = async () => {
+      const lista = await enviar(control, 'GET', `/bitacora/registros?usuario=${encodeURIComponent(usuario.cedula)}&limite=100`, undefined, tokenAdmin);
+      expect(lista.status).toBe(200);
+      return (await lista.json()).items.filter((i) => i.tipoAccion === 'Quitar Documento de Notebook').length;
+    };
+    const equis = (nombre) => fichaDeDocumento(page, nombre).locator('[aria-label="close chip"]');
     const dialogo = page.getByRole('dialog');
-    await expect(dialogo).toBeVisible();
-    await expect(dialogo).toContainText(documento.nombre);
-    await expect(dialogo).toContainText(/no (se )?puede(n)? deshacer/i);
 
-    // Cancelar: el cuadro se cierra, el documento sigue en pantalla y en el sistema, y no salió ninguna petición de quitar.
-    await pulsar(dialogo.getByRole('button', { name: /cancelar/i }));
+    // RF-19.70: título, cuerpo exacto y botones; sin desborde (a 616 px también).
+    await pulsar(equis(documento.nombre));
+    await expect(dialogo).toBeVisible();
+    await expect(dialogo.getByRole('heading', { name: 'Quitar documento', exact: true })).toBeVisible();
+    await expect(dialogo.locator('p')).toHaveText(`¿Quitar "${documento.nombre}" del notebook? Esta acción no se puede deshacer.`);
+    await expect(dialogo.getByRole('button', { name: 'Quitar', exact: true })).toBeVisible();
+    await expect(dialogo.getByRole('button', { name: 'Cancelar', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sin desborde').toBe(true);
+    const caja = await dialogo.boundingBox();
+    expect(caja.x).toBeGreaterThanOrEqual(0);
+    expect(caja.x + caja.width).toBeLessThanOrEqual(page.viewportSize().width);
+
+    // Cancelar: el cuadro se cierra, el documento sigue en pantalla y en el sistema, sin petición ni registro de quitar.
+    await pulsar(dialogo.getByRole('button', { name: 'Cancelar', exact: true }));
     await expect(dialogo).toHaveCount(0);
     await dejarPasarFotogramas(page);
     await expect(fichaDeDocumento(page, documento.nombre)).toHaveCount(1);
     expect(borrados).toEqual([]);
     expect(await estadoDelDocumento(control, token, notebook, documento)).toBe('Procesado');
+    expect(await registrosDeQuitar()).toBe(0);
+
+    // Doble clic en «Quitar» (operación retenida): una sola petición y el documento deshabilitado.
+    const estaDeshabilitada = (nombre) => fichaDeDocumento(page, nombre).evaluate((e) => (
+      getComputedStyle(e).pointerEvents === 'none' || e.hasAttribute('data-disabled') || e.getAttribute('aria-disabled') === 'true'
+    ));
+    await control.notebooks({ retener_quitar: true });
+    await pulsar(equis(documento.nombre));
+    await expect(dialogo).toBeVisible();
+    await dialogo.getByRole('button', { name: 'Quitar', exact: true }).dblclick();
+    await expect.poll(async () => (await control.notebooksEstado()).esperando_quitar, { timeout: 15_000 }).toBe(1);
+    await expect(dialogo).toHaveCount(0);
+    await dejarPasarFotogramas(page);
+    expect(borrados).toHaveLength(1);
+    expect((await control.notebooksEstado()).esperando_quitar).toBe(1);
+
+    // Un segundo documento mientras el primero sigue en curso: ambos deshabilitados, cada uno con su petición.
+    await pulsar(equis(segundo.nombre));
+    await expect(dialogo).toBeVisible();
+    await pulsar(dialogo.getByRole('button', { name: 'Quitar', exact: true }));
+    await expect.poll(async () => (await control.notebooksEstado()).esperando_quitar, { timeout: 15_000 }).toBe(2);
+    expect(borrados).toHaveLength(2);
+    await expect.poll(() => estaDeshabilitada(documento.nombre)).toBe(true);
+    await expect.poll(() => estaDeshabilitada(segundo.nombre)).toBe(true);
+
+    // Al liberar: ambos fuera de la pantalla y del sistema, el chat ya no cita el primero y quedan exactamente dos registros.
+    await control.notebooksLiberar();
+    await expect(fichaDeDocumento(page, documento.nombre)).toHaveCount(0);
+    await expect(fichaDeDocumento(page, segundo.nombre)).toHaveCount(0);
+    expect(await listarDocumentos(control, token, notebook)).toEqual([]);
+    const pregunta = `¿Qué dice el documento sobre ${documento.frase}?`;
+    expect(textoDeLosEventos(await preguntar(control, token, usuario, pregunta, { notebook: notebook.id })).includes(documento.nombre)).toBe(false);
+    await expect.poll(registrosDeQuitar).toBe(2);
+    expect(borrados).toHaveLength(2);
   });
 
   test('RF-19.41 · deshabilitado, luego fuera de la lista y del chat', async ({ page, crearUsuario, control }) => {
@@ -332,6 +406,8 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
   test('RNF-07.40 · documento quitado en otra pestaña: sesión y pantalla siguen', async ({
     page, otraPestana, crearUsuario, control, consola,
   }) => {
+    // Recorte de contingencia de la spec 008 (presupuesto de RNF-04.70): no depende del ancho; dos corridas seguidas pasaron de 569 s.
+    test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (spec 008, recorte de contingencia)');
     consola.provocado(/404/);
     consola.provocado(/Error al obtener el archivo/); // el servicio de notebooks registra la vista previa fallida
     const usuario = await iniciarComoUsuario(page, crearUsuario);

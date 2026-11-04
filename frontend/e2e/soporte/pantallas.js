@@ -85,7 +85,7 @@ async function quitarDocumentoEnPantalla(page, nombre) {
   const dialogo = page.getByRole('dialog');
   const primero = await Promise.race([peticion.then(() => 'peticion'), dialogo.waitFor({ state: 'visible' }).then(() => 'dialogo')]);
   if (primero === 'dialogo') {
-    await pulsar(dialogo.getByRole('button').filter({ hasNotText: /cancel|cerrar|close/i }).last());
+    await pulsar(dialogo.getByRole('button', { name: 'Quitar', exact: true })); // el cuadro también tiene una «x» sin texto: no sirve «el último botón»
     await peticion;
   }
 }
@@ -142,9 +142,15 @@ async function preguntarEnElChat(page, pregunta) {
   await campo.press('Enter');
 }
 
+// RT-07.70: la pantalla no contiene formas con voseo. Sin ``, que no funciona con vocales con tilde.
+async function exigirSinVoseo(page) {
+  await expect(page.locator('body')).not.toContainText(/tenés|creá|elegí|revisá|soltá|preguntale|podés|intentá/i);
+}
+
 module.exports = {
   abrirNotebooks, crearNotebookEnPantalla, abrirIngesta, elegirArchivosEnIngesta, guardarEnIngesta, filaDeIngesta,
   campoDelTema, agregarArchivosEnIngesta,
   avisosDeLaPantalla, abrirChatGeneral, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
+  exigirSinVoseo,
 };

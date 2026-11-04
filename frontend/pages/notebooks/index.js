@@ -9,6 +9,7 @@ import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX } from 'react-icons/f
 import notebookService from '@/services/notebookService';
 import ingestaService from '@/services/ingestaService';
 import Toast from '@/components/ui/CustomAlert';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import consultaService from '@/services/consultaService';
 import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
@@ -54,7 +55,10 @@ const NotebooksPage = () => {
   const [archivosSeleccionados, setArchivosSeleccionados] = useState([]); // File[] — en revisión, aún no subidos
   const [archivosSubiendo, setArchivosSubiendo] = useState([]); // [{nombre, taskId, status}] — subida en curso
   const [documentosNotebook, setDocumentosNotebook] = useState([]); // documentos ya persistidos (backend)
-  const [eliminandoId, setEliminandoId] = useState(null);
+  const [eliminandoIds, setEliminandoIds] = useState(() => new Set()); // documentos con su «quitar» en curso (cada uno, el suyo)
+  const quitandoRef = useRef(new Set()); // lo mismo, sin esperar al render: defensa para no enviar dos DELETE del mismo documento
+  const [documentoPorQuitar, setDocumentoPorQuitar] = useState(null); // {id, nombre} mientras se pide confirmar (RF-19.40)
+  const confirmacionRef = useRef(null); // el mismo documento; se vacía en el primer «Quitar» para absorber el doble clic (RF-19.70)
   const pollingRef = useRef(new Set());
   const [avisoCarga, setAvisoCarga] = useState(null); // aviso fijo de la última carga (RF-05.23); lo cierra el usuario
 
@@ -141,8 +145,9 @@ const NotebooksPage = () => {
   }, [messages, sessionId, notebookActivo]);
 
   const handleEliminarDocumento = async (documentoId) => {
-    if (!notebookActivo) return;
-    setEliminandoId(documentoId);
+    if (!notebookActivo || quitandoRef.current.has(documentoId)) return;
+    quitandoRef.current.add(documentoId);
+    setEliminandoIds(prev => new Set(prev).add(documentoId));
     const result = await notebookService.eliminarDocumento(notebookActivo.id, documentoId);
     if (result.success) {
       setDocumentosNotebook(prev => prev.filter(d => d.id !== documentoId));
@@ -150,7 +155,24 @@ const NotebooksPage = () => {
       // El documento sigue en la lista: el servidor no lo quitó del todo y un nuevo intento completa lo que faltó.
       Toast.error('Error al quitar el documento', result.message);
     }
-    setEliminandoId(null);
+    quitandoRef.current.delete(documentoId);
+    setEliminandoIds(prev => {
+      const siguiente = new Set(prev);
+      siguiente.delete(documentoId);
+      return siguiente;
+    });
+  };
+
+  const pedirConfirmacionDeQuitar = (doc) => {
+    const pendiente = { id: doc.id, nombre: doc.nombre_archivo };
+    confirmacionRef.current = pendiente;
+    setDocumentoPorQuitar(pendiente);
+  };
+
+  const confirmarQuitar = () => {
+    const pendiente = confirmacionRef.current;
+    confirmacionRef.current = null;
+    if (pendiente) handleEliminarDocumento(pendiente.id);
   };
 
   // Previsualización: click en un documento ya procesado abre su archivo
@@ -222,7 +244,7 @@ const NotebooksPage = () => {
       nuevos.forEach(a => pollTaskProgress(a.taskId, a.nombre, notebookActivo.id));
     } catch (error) {
       console.error('Error subiendo archivos al notebook:', error);
-      Toast.error('Error al subir', error.message || 'No se pudo subir el archivo. Intentá de nuevo.');
+      Toast.error('Error al subir', error.message || 'No se pudo subir el archivo. Intente de nuevo.');
     }
   };
 
@@ -342,7 +364,7 @@ const NotebooksPage = () => {
           {loadingNotebooks ? (
             <div className="flex justify-center p-4"><Spinner size="sm" /></div>
           ) : notebooks.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center p-4">Todavía no tenés notebooks. Creá uno arriba.</p>
+            <p className="text-sm text-gray-400 text-center p-4">Todavía no tiene notebooks. Cree uno arriba.</p>
           ) : (
             notebooks.map(nb => (
               <button
@@ -365,7 +387,7 @@ const NotebooksPage = () => {
           <div className="flex-1 flex items-center justify-center text-gray-400">
             <div className="text-center">
               <FiBookOpen className="mx-auto mb-2" size={32} />
-              <p>Elegí o creá un notebook para empezar</p>
+              <p>Elija o cree un notebook para empezar</p>
             </div>
           </div>
         ) : (
@@ -398,7 +420,7 @@ const NotebooksPage = () => {
               {archivosSeleccionados.length > 0 && (
                 <div className="mb-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
                   <p className="text-xs text-gray-500 mb-2">
-                    {archivosSeleccionados.length} archivo(s) seleccionado(s) — revisá antes de subir:
+                    {archivosSeleccionados.length} archivo(s) seleccionado(s) — revise antes de subir:
                   </p>
                   <div className="space-y-1 mb-2">
                     {archivosSeleccionados.map((file, i) => (
@@ -458,8 +480,8 @@ const NotebooksPage = () => {
                       startContent={<FiFile className="ml-1" />}
                       color={doc.estado === 'Procesado' ? 'success' : doc.estado === 'Error' ? 'danger' : 'default'}
                       variant="flat"
-                      onClose={() => handleEliminarDocumento(doc.id)}
-                      isDisabled={eliminandoId === doc.id}
+                      onClose={() => pedirConfirmacionDeQuitar(doc)}
+                      isDisabled={eliminandoIds.has(doc.id)}
                       onClick={(e) => handleVerArchivo(doc, e)}
                       className={doc.estado === 'Procesado' ? 'cursor-pointer' : ''}
                       title={doc.estado === 'Procesado' ? 'Click para ver el archivo original' : undefined}
@@ -497,7 +519,7 @@ const NotebooksPage = () => {
             >
               {arrastrandoImagen && (
                 <div className="absolute inset-0 z-10 bg-blue-50/90 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center pointer-events-none">
-                  <p className="text-blue-700 font-medium">Soltá la imagen para subirla a &quot;{notebookActivo.nombre}&quot;</p>
+                  <p className="text-blue-700 font-medium">Suelte la imagen para subirla a &quot;{notebookActivo.nombre}&quot;</p>
                 </div>
               )}
               <MessageList
@@ -508,7 +530,7 @@ const NotebooksPage = () => {
               />
               <div className="p-3 border-t border-gray-200 bg-white flex gap-2">
                 <Input
-                  placeholder={`Preguntale algo a "${notebookActivo.nombre}"... (podés pegar una imagen con Ctrl+V)`}
+                  placeholder={`Pregúntele algo a "${notebookActivo.nombre}"... (puede pegar una imagen con Ctrl+V)`}
                   value={texto}
                   onValueChange={setTexto}
                   onKeyDown={(e) => e.key === 'Enter' && handleEnviarMensaje()}
@@ -546,6 +568,17 @@ const NotebooksPage = () => {
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!documentoPorQuitar}
+        onClose={() => setDocumentoPorQuitar(null)}
+        onConfirm={confirmarQuitar}
+        title="Quitar documento"
+        description={`¿Quitar "${documentoPorQuitar?.nombre ?? ''}" del notebook? Esta acción no se puede deshacer.`}
+        confirmText="Quitar"
+        cancelText="Cancelar"
+        confirmColor="danger"
+      />
     </div>
   );
 };

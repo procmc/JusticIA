@@ -39,7 +39,7 @@ async function prepararNotebook(page, control, usuario) {
   const token = await iniciarSesionPorApi(control, usuario);
   const { notebook, documento } = await notebookConDocumento(control, token);
   await abrirNotebookConDocumentos(page, notebook, [documento.nombre]);
-  const campo = page.getByPlaceholder(`Preguntale algo a "${notebook.nombre}"...`, { exact: false });
+  const campo = page.getByPlaceholder(`Pregúntele algo a "${notebook.nombre}"...`, { exact: false });
   const enviar = page.getByRole('button', { name: 'Enviar', exact: true });
   return {
     enviar: async (texto) => { await escribir(campo, texto); await campo.press('Enter'); },
