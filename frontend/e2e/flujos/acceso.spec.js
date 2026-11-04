@@ -316,6 +316,11 @@ test.describe('RF-01.43 · panel de cambio de contraseña obligatorio', () => {
     await llenarPanel(page, { actual: usuario.contrasena, nueva, confirmar: nueva });
     // Se espera a que el cambio quede aplicado (el panel se cierra o la sesión se cierra) y se empieza de cero.
     await expect.poll(async () => (await panelObligatorio(page).count()) === 0 || new URL(page.url()).pathname === '/auth/login').toBe(true);
+    // Si el `signOut` redirige a «Inicio de sesión», se espera a que esa redirección termine: si no, el `goto` siguiente choca con ella
+    // («interrupted by another navigation») cuando la suite completa carga la máquina (spec 008, corrección de fase 6).
+    // Si el panel desaparece antes de que cambie la dirección, se espera la redirección; si la app no la hace, sigue tras el plazo.
+    await page.waitForURL('**/auth/login', { timeout: 10000 }).catch(() => {});
+    if (new URL(page.url()).pathname === '/auth/login') await expect(tituloInicioSesion(page)).toBeVisible();
     await context.clearCookies();
     await iniciarSesion(page, usuario.correo, nueva);
     await esperarInicio(page);
