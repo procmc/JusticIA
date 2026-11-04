@@ -1,5 +1,5 @@
 # Spec 007 — Contexto y señales del chat (corrección)
-Estado: implementada (03/11/2026; T0-T12 hechas, falta la verificación manual de T13, la validación y la aprobación de Andrés); aprobada (29/10/2026). Alcance aprobado (JJJ1 = A); P1-P9, P-A a P-H, D1, Q1-Q4, R1-R5, P-α, P-β, Q-A, Q-B y D-2 resueltas. Cambio tras el plan (P-1 a P-5, RF-11.69) confirmado por Andrés (29/10/2026).
+Estado: implementada (04/11/2026): T0-T13, incluida T12b; validación del reviewer APROBADA; paso 8 del plan §17 (R-5) como hueco declarado, a la spec del notebook. Antes: cambios RF-22.60 y RF-21.61 tras la verificación de T13, aprobados por Andrés (03/11/2026); aprobada (29/10/2026). Alcance aprobado (JJJ1 = A); P1-P9, P-A a P-H, D1, Q1-Q4, R1-R5, P-α, P-β, Q-A, Q-B y D-2 resueltas. Cambio tras el plan (P-1 a P-5, RF-11.69) confirmado por Andrés (29/10/2026).
 
 ## Contexto y objetivo
 - En el piloto de la 006 (30 PDF de Nexus: 27 Procesado, 3 Error) el chat general nunca mostró respuesta. Diagnóstico comprobado (solo lectura, 28-29/10/2026):
@@ -11,18 +11,18 @@ Estado: implementada (03/11/2026; T0-T12 hechas, falta la verificación manual d
 - Es una **corrección de errores** (testing.md: puede ir antes que las funciones nuevas), con prueba de regresión primero. Según el paso 3, prueba también los requisitos existentes del módulo (RF-16.40 de la 005 nunca se automatizó).
 
 ## Trazabilidad
-- ERS V1.8: RF-08, RF-11, RF-12, RF-16, RF-20 (resumen con IA, Q2), RF-21, RNF-01, RNF-04, RNF-09, RNF-10, RN-01, RA-02 (RA-02.47, presupuesto e2e). Como regresión, sin cambios: RF-11.40-43 (005), RF-11.1-3 y RF-12.1 (004).
-- HU-08, HU-11, HU-12, HU-16, HU-20 · CU-07 (paso 10), CU-09 (pasos 5-8, FE-01, FE-02, FE-04 nuevo), CU-14 (resumen).
+- ERS V1.8: RF-08, RF-11, RF-12, RF-16, RF-20 (resumen con IA, Q2), RF-21 (RF-21.60-61), RF-22 (detalle, RF-22.60), RNF-01, RNF-04, RNF-09, RNF-10, RN-01, RA-02 (RA-02.47, presupuesto e2e). Como regresión, sin cambios: RF-11.40-43 (005), RF-11.1-3 y RF-12.1 (004).
+- HU-08, HU-11, HU-12, HU-16, HU-20, HU-22 · CU-07 (paso 10), CU-09 (pasos 5-8, FE-01, FE-02, FE-04 nuevo), CU-14 (resumen), CU-15 (detalle del registro).
 - «Estado actual» que cierra: ninguno documentado (el error no figura en el ERS). Ver el «Anexo» (`plan.md`, Anexo C).
 - Contradice el ERS vigente en tres puntos, que esta spec propone cambiar: RF-16 reinicia el plazo «con cada fragmento de texto» (aquí, con cualquier dato del stream); su aviso dice «Intentá»; RN-01 no admite el re-fragmentado.
 - Requisitos nuevos en el bloque **.60+** (004: .1+, 004a: .20+, 004b: .30+, 005: .40+, 006: .50+).
 - `[NUEVO]` marca todo requisito que exige texto nuevo o cambiado en el ERS (está en el «Anexo», hoy `plan.md`, Anexo C); sin la marca, el requisito solo detalla texto vigente (RF-12.60, RNF-04.60, RNF-09.60). RF-16.40 es de la 005; el cambio de su aviso va en RF-16.61.
 
 ## Usuarios
-Usuario Gubernamental: consulta en los tres chats y carga documentos. Administrador: no consulta ni carga (RN-03); sin cambios.
+Usuario Gubernamental: consulta en los tres chats y carga documentos. Administrador: no consulta ni carga (RN-03); en la bitácora ve el motivo de las consultas que no terminaron (RF-22.60).
 
 ## Historias de usuario
-HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
+HU-08, HU-11, HU-12, HU-16, HU-20, HU-22 (sin historias nuevas).
 
 ## Definiciones
 - **Ventana**: 8.192 tokens de entrada más salida por llamada al motor. Sin ventana explícita, el motor usa 4.096.
@@ -143,6 +143,14 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
   - El turno con error del motor no se registra además como terminado, ni se guarda en el historial (RF-11.68).
   - SI el usuario cierra la pestaña o la conexión a mitad de la consulta, ENTONCES EL SISTEMA no registra nada.
   - *Prueba*: integración por chat (turno terminado, rechazo, tope y error del motor: un registro cada uno con su motivo, ninguno doble; desconexión antes y después del primer texto: ninguno).
+- **RF-21.61** (RF-21, HU-22; RF-21.60, RF-11.62; hallazgo (b) de T13) `[NUEVO]`: EL SISTEMA guarda en la descripción de toda consulta registrada (`CONSULTA_RAG`), en los tres chats, la pregunta hasta 200 caracteres, seguida de «…» si es más larga.
+  - CUANDO la consulta se rechazó por pregunta demasiado larga (RF-11.62), EL SISTEMA aplica el mismo recorte a la pregunta completa de la información adicional.
+  - Una pregunta de 200 caracteres o menos se guarda igual, sin «…».
+  - *Prueba*: unitaria (≤ 200 sin «…»; > 200 recortada con «…»; rechazo con la información adicional recortada) y e2e (el detalle muestra la descripción con «…»).
+- **RF-22.60** (RF-22, CU-15 FA-01; RF-21.60, D-2) `[NUEVO]`: CUANDO el Administrador abre el detalle de un registro de consulta que guardó un motivo, EL SISTEMA muestra el dato «Motivo» con su texto, con la primera letra en mayúscula: «Pregunta demasiado larga», «Tiempo máximo agotado» o «Error del motor».
+  - Un registro sin motivo (turno terminado) no muestra «Motivo», ni vacío ni de relleno.
+  - Igual a 1366 y a 616 px, sin desborde horizontal; el resto del detalle no cambia.
+  - *Prueba*: e2e con el Administrador a ambos anchos: el detalle de una consulta rechazada por demasiado larga muestra el motivo; el de un turno terminado, no.
 
 ### D. Requisitos existentes del módulo (testing.md, paso 3)
 - RF-11.1-3, RF-12.1 (004) y RF-11.40-43 (005): sus pruebas siguen pasando; la de etapas de la 005 se ajusta solo si mostraba la animación (sin borrarla ni desactivarla).
@@ -200,6 +208,7 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
 - Los demás avisos con voseo (p. ej. «Preguntale algo a…» del notebook, CU-09 FA-05): a la spec de mejoras del notebook.
 - La causa de fondo de los 3 Error por Tika (P7): sin código; solo su recarga.
 - Del resumen: la búsqueda, el formato de su respuesta, los reintentos y el texto de sus instrucciones (salvo RF-20.60-62).
+- Del detalle de la consulta en la bitácora (RF-22.60): los demás datos guardados que no se ven (pregunta, tema, tiempo). Del recorte (RF-21.61): los registros ya guardados, que no se modifican (RN-01), y los demás tipos de registro.
 
 ## ⚠️ Pregunta antes (CLAUDE.md) que tocará el plan
 - Prompts (RF-12.61, RF-11.66, mostrados antes); `docker-compose.yml` si lo exige RF-11.63; reemplazar los 27 de RF-08.63 tras aplicar la excepción.
@@ -252,4 +261,8 @@ HU-08, HU-11, HU-12, HU-16, HU-20 (sin historias nuevas).
 - 29/10/2026: **aprobada por Andrés**, con el texto del principio 5 del Anexo. Anexo, Decisiones y Pistas trasladados literalmente a `plan.md` (Anexos A-C), con remisión aquí (P-β).
 - 29/10/2026: cambio aprobado por Andrés tras el plan (P-1 = C, P-2 = A, P-3 = A, P-4 = A): RF-11.69 nuevo; RF-11.66 en los tres chats; RF-08.62 con señal de vida, tope y valores no numéricos; RF-16.62 sin el reintento; RNF-09.60 con el ejemplo de configuración local; «Fuera de alcance» ajustado. Pendiente de confirmar el diff.
 - 29/10/2026: Andrés confirma el diff tras el plan y P-5 = A (sin umbral en tema y notebook); sin dudas abiertas. Plan y tareas aprobados.
+- 03/11/2026: cambio tras la verificación de T13, hallazgo (a): el detalle de `CONSULTA_RAG` no muestra el motivo de RF-21.60 (D-2). RF-22.60 nuevo (motivo con mayúscula inicial), Trazabilidad (RF-22, CU-15), Usuarios y «Fuera de alcance» (hallazgo (b)); aprobado por Andrés el 03/11/2026. Va también al ERS (plan, Anexo C.3).
+- 03/11/2026: cambio tras la verificación de T13, hallazgo (b): la descripción y, en el rechazo, la información adicional guardaban la pregunta entera. RF-21.61 nuevo (recorte a 200 caracteres con «…», opción B), Trazabilidad (RF-21.60-61), HU-22 y «Fuera de alcance»; aprobado por Andrés el 03/11/2026. Se implementa en T12b; va al ERS (plan, Anexo C.4).
+- 04/11/2026: implementación terminada (T1-T13, incluida T12b). Recarga de los 8 PDF en Error de SINALEVI: filas nuevas 150141-150148, Procesado. Paso 8 del plan §17 (R-5) como hueco declarado (decisión de Andrés, por memoria: HTR ~4 GB). Validación del reviewer, ronda 1, con correcciones documentales.
+- 04/11/2026: validación del reviewer APROBADA (ronda 1) y aprobación de Andrés (opción A): spec cerrada como implementada. Paso 8 del plan §17 (R-5) queda como hueco declarado, a la spec del notebook.
 

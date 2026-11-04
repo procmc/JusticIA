@@ -335,6 +335,20 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 - Error: conserva el texto recibido, añade el texto del servidor en la conversación y libera el control (RF-11.67). Un tipo desconocido se ignora (como hoy) pero reinicia el plazo.
 - Aviso de RF-16.40: «Se perdió la conexión con el servidor. Intente de nuevo.».
 
+### 10.1 Motivo en el detalle de la bitácora (RF-22.60; cambio del 03/11/2026, T12b)
+- Causa: el caso 12 de `InformacionAdicionalRenderer.jsx` lee `pregunta`, `expediente`, `top_k`, `documentos_recuperados` y `tiempo_respuesta_segundos`; `rag_audit_service.py` guarda `pregunta_completa`, `expediente_numero`, `tiempo_procesamiento_segundos` y `motivo`. Solo se ven `session_id` y `timestamp`.
+- Cambio (solo frontend, presentación): en el caso 12, `motivo && renderizarCampo('Motivo', <motivo con la primera letra en mayúscula>)`; la mayúscula inicial se aplica en ese caso 12 (D-15). Sin tocar los demás campos (Fuera de alcance).
+- El backend no cambia: sigue guardando el motivo en minúscula (RF-21.60 y sus integraciones intactas); los registros ya guardados (p. ej. 260171) se ven sin migrar nada.
+- **D-15** Mayúscula inicial al mostrar, en el frontend (descartada: guardarlo con mayúscula en el backend; cambiaría RF-21.60, sus pruebas y no arreglaría los registros existentes).
+- **D-16** La consulta rechazada se provoca por la API real de la instancia e2e (`preguntar` de `e2e/soporte/datos.js:103`, Usuario Gubernamental, pregunta `PRUEBA` de ~30.000 caracteres con espacios) (descartada: extender `POST /bitacora` de `control.py:266` con un tipo `consulta_rechazada`; duplicaría lo que el sistema ya registra solo). El turno terminado, con `preguntar` corto y el motor simulado por omisión.
+- Bitácora: sin acción nueva (abrir el detalle no se registra hoy; RF-21 sin cambios).
+
+### 10.2 Recorte de la pregunta en la bitácora (RF-21.61; cambio del 03/11/2026, T12b, opción B)
+- Causa: `rag_audit_service.py` (ver el diff) guarda la pregunta entera en la descripción y, en el rechazo, en `pregunta_completa`; el detalle vuelca ~30.000 caracteres.
+- Cambio (solo backend, servicio de auditoría): recortar a 200 caracteres + «…» si es más larga, en la descripción de toda `CONSULTA_RAG` (tres chats) y en `pregunta_completa` cuando `motivo == "pregunta demasiado larga"`.
+- Sin migración; los registros ya guardados no se tocan (RN-01).
+- **D-17** Recorte al guardar, en el backend (descartada: recortar solo al mostrar en el frontend; la base seguiría guardando la pregunta entera).
+
 ## 11. Datos
 - SQL Server: sin cambios de esquema ni migración. `T_Bitacora` usa el tipo `CONSULTA_RAG` existente con `motivo` en la información adicional.
 - Qdrant: mismos metadatos; los fragmentos nuevos llevan páginas por posición real. Los antiguos fuera de Nexus quedan como están (Casos límite de la spec).
@@ -377,6 +391,8 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 | RF-16.60 | `test_senal_de_vida_cada_intervalo` (reloj) | `test_senal_de_vida_con_motor_retenido` | sí |
 | RF-16.62 | `test_tope_cancela` (reloj) | `test_tope_libera_el_motor`, `test_desconexion_antes_y_despues_cancela` | sí |
 | RF-21.60 | — | `test_bitacora_por_turno[3 chats × terminado, rechazo, tope, error; desconexión: ninguno]` | — |
+| RF-21.61 | `test_flujo_consulta.py` › `test_RF_21_61_*` (≤ 200 sin «…», > 200 con «…», rechazo con `pregunta_completa` recortada, otro motivo sin recortar la información adicional) | — | `historial.spec.js` › aserción de la descripción con «…» en la prueba de RF-22.60 |
+| RF-22.60 | — | — | `historial.spec.js` › `RF-22.60 · detalle de consulta: motivo del rechazo y turno terminado sin motivo` (escritorio y pantalla pequeña) |
 | RF-08.60 | `test_tamano_y_solapamiento_configurados` (regresión) | `test_documento_prueba_fragmentos_de_1500` | — |
 | RF-08.61 | `test_paginas_por_posicion_real` (7.000 caracteres) | — | — |
 | RF-08.62 | `test_incoherente[cada caso]`, `test_coherente_sin_aviso` | — | — |
@@ -424,6 +440,8 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 6. Resumen de un resultado de Temas Similares sobre Nexus: se genera, sin recorte.
 7. Cerrar la pestaña a mitad de respuesta: `ollama ps` muestra el motor libre en ≤ 10 s; sin mensaje nuevo en el historial ni en la bitácora.
 8. Notebook con una imagen `PRUEBA`: la pregunta por «la imagen» responde con su texto (calidad, §14).
+   - Hueco declarado: no verificado a mano el 03/11/2026 por memoria (servidor HTR ~4 GB al arrancar); decisión de Andrés: pasa a la spec del notebook.
+   - Cobertura automatizada parcial: `reformular_referencia_imagen` en `test_presupuesto_contexto.py` y `test_instrucciones_chat.py`; la calidad de la respuesta sobre la imagen, exenta (§14).
 9. Administrador: no entra al chat. Consola sin errores. `npm run build` sin errores.
 10. Recarga: SC 182, 183 y 177 por Ingesta (fila nueva; las anteriores quedan en Error, RF-07.51); luego los 128 PDF en tandas ≤ 10 (P-4 = A).
 11. Chat por tema y notebook (RF-11.69): una pregunta sobre un dato del final de una circular larga de Nexus lo cita; una de seguimiento («¿y la segunda?») se responde sobre lo anterior.
@@ -436,18 +454,19 @@ refragmentar(temas, simular):                       # exige ≥ 1 --tema; no exi
 - **R-3** La desconexión en la integración depende de que el cliente de pruebas propague `http.disconnect`; si no, PARAR y preguntar antes de bajar la prueba a unitaria.
 - **R-4** Nombres de archivo o rutas muy largos superan los 500 caracteres de encabezado estimados (P-α): la garantía de RF-11.62 podría fallar por pocos tokens. Nexus tiene nombres cortos.
 - **R-5** Quitar el recordatorio dinámico de imágenes puede empeorar el notebook con imágenes: paso 8 de §17.
+  - Hueco declarado: sin verificar a mano (03/11/2026, memoria: HTR ~4 GB); decisión de Andrés: a la spec del notebook. Cobertura parcial automatizada y exención de la calidad: §17 paso 8.
 - **R-6** El tiempo e2e (M ≈ 475-513 s) más 40 s queda cerca de 560 s; control en cada tarea con e2e.
 - **R-7** Horas: ~58 h de 64 compartidas con la spec del notebook (P-1 = C y P-4 = A): quedan ~6 h para ella.
 - `.env.example:38-40` apunta a un Ollama en la nube (`https://ollama.com`, `gpt-oss:20b-cloud`), contra RNF-09: se corrige en T13 (RNF-09.60).
 
 ## 19. Documentación a actualizar (T13)
-- Entregar a Andrés la segunda parte del Anexo (Anexo C.2), con la viñeta de CF-1 para `CLAUDE.md` (redactada abajo).
+- Entregar a Andrés la segunda parte del Anexo (Anexo C.2), con la viñeta de CF-1 para `CLAUDE.md` (redactada abajo), el Anexo C.3 (RF-22.60 para el ERS y CU-15) y el C.4 (RF-21.61 para el ERS).
 - Spec 005: RF-16.40 con «Intente de nuevo.» y «tras el último dato». Spec 006: L231 «(salvo EEE1)» y los resultados del piloto (Nexus re-fragmentado, recarga).
 - Spec 007 «implementada»; `MEMORY.md` (con los Error nuevos de la carga de los 128 PDF); `graphify-out/` (`python.exe` de uv) y mapas.
 
 ## 20. Cobertura
 - §4-§5: RF-08.62, RF-11.60-63, 65, 66, RF-12.60, 62. §5.1: RF-11.66, RF-11.69. §6: RF-12.61, RF-11.66. §3 y T13: RNF-09.60 (`.env.example`). §7: RF-11.62, 64, 67, 68, RF-16.60-62, RF-21.60. §8: RF-20.60-62.
-- §9: RF-08.63, RN-01.60. Fragmentación (`storage.py`): RF-08.60-61. §10: RF-16.40, 61, RF-11.67. §16: RNF-04.60. RNF-09.60: §1 y §15.
+- §9: RF-08.63, RN-01.60. Fragmentación (`storage.py`): RF-08.60-61. §10: RF-16.40, 61, RF-11.67. §10.1 y T12b: RF-22.60. §10.2 y T12b: RF-21.61. §16: RNF-04.60. RNF-09.60: §1 y §15.
 
 ## 21. Dudas del plan
 - Resueltas por Andrés (29/10/2026): **P-1 = C**, **P-2 = A**, **P-3 = A**, **P-4 = A** (Anexo A; D-9, D-11, D-12, D-14). La spec ya las recoge (RF-11.66, RF-11.69, RF-08.62, RF-16.62).
@@ -531,3 +550,19 @@ La **primera** se aprobó con la spec y Andrés la aplica antes de la corrida re
 - **RNF-01**: «Una consulta abandonada por el usuario o que supera el tope de 180 s deja de generar y libera el modelo, que atiende una consulta a la vez.»
 - **RF-11** (P-1 = C), además: «En el chat por tema y en NotebookServIA, los fragmentos se recuperan por relevancia dentro del tema o notebook. Los tres chats reformulan la pregunta de seguimiento antes de buscar.» (RF-11.66, RF-11.69).
 - **CU-09**: paso 8 (reformulación) vale para los tres chats; FE-01: el reintento es una consulta nueva con su propio tope de 180 s (P-2).
+
+### C.3 Tercera parte (RF-22.60; cambio aprobado por Andrés el 03/11/2026)
+- La edición la hace Andrés en el Word (`Documentacion/Documentacion_ServIA_2026/`). Ubicaciones según `graphify-out/documentacion_texto/` (exportado antes de aplicar C.2; RF-22 y CU-15 no los tocó C.2, pero conviene confirmarlas en el Word).
+
+#### ERS V1.8, RF-22, «Detalle y exportación» (`ERS.txt:1138-1153`)
+- Insertar tras «El detalle de los registros de recuperación de contraseña muestra el paso y su resultado.» (`ERS.txt:1142-1143`):
+> El detalle de los registros de consulta al chat que no terminaron muestra su Motivo («Pregunta demasiado larga», «Tiempo máximo agotado» o «Error del motor»); el de una consulta terminada no lo muestra.
+
+#### CU-15, FA-01 (`Casos_de_Uso.txt:993-1002`)
+- CU-15 sí describe el detalle del registro (FA-01, lista de ejemplos). Insertar tras «para un archivo rechazado, solo la fecha y hora y el motivo;» (`Casos_de_Uso.txt:999-1000`):
+> para una consulta al chat que no terminó, el motivo (pregunta demasiado larga, tiempo máximo agotado o error del motor);
+
+### C.4 Cuarta parte (RF-21.61; cambio aprobado por Andrés el 03/11/2026)
+#### ERS V1.8, RF-21, «Contenido del registro» (`ERS.txt:1101-1115`)
+- Agregar al final del párrafo (confirmar la ubicación en el Word):
+> La consulta al asistente guarda en su descripción la pregunta hasta 200 caracteres, con «…» si es más larga; si se rechazó por demasiado larga, también la recorta en su información adicional.
