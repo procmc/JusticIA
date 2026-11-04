@@ -5,6 +5,7 @@
 // Administrador. Las contraseñas y los códigos viven solo en la memoria de la prueba y nunca se imprimen.
 const crypto = require('node:crypto');
 const { test, expect, fallaEsperada, iniciarSesion, pulsar, escribir } = require('../soporte/fixtures.js');
+const { iniciarSesion: iniciarSesionPorApi, preguntar } = require('../soporte/datos.js');
 
 const RUTA = '/administracion/bitacora';
 
@@ -232,5 +233,35 @@ test.describe('RF-21.40 · Historial de Actividades', () => {
     }).formatToParts(new Date()).reduce((acc, parte) => ({ ...acc, [parte.type]: parte.value }), {});
     const ahoraEnMinutos = Date.UTC(Number(ahora.year), Number(ahora.month) - 1, Number(ahora.day), Number(ahora.hour), Number(ahora.minute)) / 60_000;
     expect(Math.abs(ahoraEnMinutos - mostradoEnMinutos), `mostrado «${mostrado.replace(/\s+/g, ' ')}»`).toBeLessThanOrEqual(5);
+  });
+
+  test('RF-22.60 · detalle de consulta: motivo del rechazo y turno terminado sin motivo', async ({ page, crearUsuario, control }) => {
+    // Dos usuarios, para que el filtro por usuario deje una sola consulta en cada caso: una rechazada por pregunta demasiado
+    // larga (~30.000 caracteres, por la API real) y otra corta que termina.
+    const administrador = await crearUsuario('administrador');
+    const rechazado = await crearUsuario('usuario');
+    const terminado = await crearUsuario('usuario');
+    await preguntar(control, await iniciarSesionPorApi(control, rechazado), rechazado, 'palabra '.repeat(3750));
+    await preguntar(control, await iniciarSesionPorApi(control, terminado), terminado, 'PRUEBA pregunta corta');
+
+    await iniciarSesion(page, administrador.correo, administrador.contrasena);
+    await abrirHistorial(page);
+
+    await filtrarPorUsuario(page, rechazado.correo);
+    // RF-21.61: la descripción de la consulta rechazada guarda solo el comienzo de la pregunta (~30.000 caracteres) y «…».
+    const descripcion = (await filaDe(page, 'Consulta').innerText()).replace(/\s+/g, ' ');
+    expect(descripcion, 'descripción recortada con «…»').toContain('…');
+    expect(descripcion.length, 'descripción corta').toBeLessThanOrEqual(400);
+    let panel = await abrirDetalle(page, 'Consulta');
+    await expect(panel.getByText('Motivo', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Pregunta demasiado larga', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sin desborde').toBe(true);
+    await cerrarDetalle(page);
+
+    await filtrarPorUsuario(page, terminado.correo);
+    panel = await abrirDetalle(page, 'Consulta');
+    await expect(panel.getByText('Descripción', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Motivo', { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sin desborde').toBe(true);
   });
 });

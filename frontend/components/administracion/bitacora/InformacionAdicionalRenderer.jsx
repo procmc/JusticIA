@@ -404,11 +404,12 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
       // CONSULTA_RAG (12) - Consultas conversacionales IA
       // ============================================
       case 12: {
-        const { pregunta, session_id, expediente, top_k, documentos_recuperados, tiempo_respuesta_segundos, timestamp } = informacionAdicional;
+        const { pregunta, motivo, session_id, expediente, top_k, documentos_recuperados, tiempo_respuesta_segundos, timestamp } = informacionAdicional;
         
         return (
           <>
             {pregunta && renderizarCampo('Pregunta', pregunta, { fullWidth: true })}
+            {motivo && renderizarCampo('Motivo', motivo.charAt(0).toUpperCase() + motivo.slice(1))}
             {session_id && renderizarCampo('Session ID', session_id, { codigo: true, fullWidth: true })}
             {expediente && renderizarCampo('Expediente', expediente, { codigo: true })}
             {top_k && renderizarCampo('Top K Documentos', top_k)}

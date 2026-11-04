@@ -270,3 +270,63 @@ def test_desconexion_cancela_sin_historial_ni_bitacora(reloj_controlable):
     assert [e["type"] for e in eventos] == ["vida"], "tras cerrar la conexión no se envía nada más"
     assert cadena.cancelada is True
     assert registro.motivos == [] and cadena.guardados == []
+
+
+class _BitacoraFalsa:
+    """Sustituye a `bitacora_service`: anota con qué se le llama en vez de escribir en la base."""
+
+    def __init__(self):
+        self.llamadas = []
+
+    async def registrar(self, **kwargs):
+        self.llamadas.append(kwargs)
+
+
+class _ExpedienteRepoFalso:
+    def obtener_por_numero(self, db, numero):
+        return None
+
+
+def _registrar_consulta(monkeypatch, pregunta, motivo=None, tipo="general"):
+    """Corre `registrar_consulta_rag` con la bitácora y el repositorio simulados; devuelve lo que se habría guardado."""
+    from app.services.bitacora.rag_audit_service import rag_audit_service
+    falsa = _BitacoraFalsa()
+    monkeypatch.setattr(rag_audit_service, "bitacora_service", falsa)
+    monkeypatch.setattr(rag_audit_service, "expediente_repo", _ExpedienteRepoFalso())
+    asyncio.run(rag_audit_service.registrar_consulta_rag(
+        db=None, usuario_id="PRUEBA", pregunta=pregunta, session_id="s", tipo_consulta=tipo, motivo=motivo))
+    return falsa.llamadas[0]
+
+
+@pytest.mark.requisito("RF-21.61")
+def test_RF_21_61_rechazada_larga_recortada_en_texto_e_info(monkeypatch):
+    """RF-21.61 · una pregunta rechazada por larga guarda 200 caracteres y «…», en la descripción y en `pregunta_completa`."""
+    pregunta = "p" * 30000
+    llamada = _registrar_consulta(monkeypatch, pregunta, motivo="pregunta demasiado larga")
+    assert llamada["texto"] == "Consulta RAG general: " + "p" * 200 + "…"
+    assert llamada["info_adicional"]["pregunta_completa"] == "p" * 200 + "…"
+
+
+@pytest.mark.requisito("RF-21.61")
+def test_RF_21_61_aceptada_larga_texto_recortado_info_entera(monkeypatch):
+    """RF-21.61 · una pregunta larga que sí se atendió recorta la descripción, pero conserva `pregunta_completa` entera."""
+    pregunta = "p" * 1000
+    llamada = _registrar_consulta(monkeypatch, pregunta)
+    assert llamada["texto"] == "Consulta RAG general: " + "p" * 200 + "…"
+    assert llamada["info_adicional"]["pregunta_completa"] == pregunta
+
+
+@pytest.mark.requisito("RF-21.61")
+def test_RF_21_61_pregunta_de_200_sin_marca(monkeypatch):
+    """RF-21.61 · una pregunta de exactamente 200 caracteres no se recorta ni lleva marca."""
+    pregunta = "p" * 200
+    llamada = _registrar_consulta(monkeypatch, pregunta, motivo="pregunta demasiado larga")
+    assert llamada["texto"] == "Consulta RAG general: " + pregunta
+    assert llamada["info_adicional"]["pregunta_completa"] == pregunta
+
+
+@pytest.mark.requisito("RF-21.61")
+def test_RF_21_61_pregunta_de_201_con_marca(monkeypatch):
+    """RF-21.61 · con 201 caracteres ya se recorta a 200 y se marca con «…»."""
+    llamada = _registrar_consulta(monkeypatch, "p" * 201)
+    assert llamada["texto"] == "Consulta RAG general: " + "p" * 200 + "…"

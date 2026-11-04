@@ -89,6 +89,9 @@ from app.repositories.expediente_repository import ExpedienteRepository
 
 logger = logging.getLogger(__name__)
 
+# RF-21.61: caracteres de la pregunta que se guardan en la descripción de la bitácora.
+LIMITE_PREGUNTA_BITACORA = 200
+
 
 class RAGAuditService:
     """Servicio especializado para auditoría esencial del módulo RAG"""
@@ -128,13 +131,18 @@ class RAGAuditService:
         try:
             # Usar siempre CONSULTA_RAG (12) para ambos tipos
             tipo_accion_id = TiposAccion.CONSULTA_RAG
+
+            # RF-21.61: la descripción guarda solo el comienzo de la pregunta, para que un texto enorme no llene la bitácora.
+            # La pregunta entera se conserva en la información adicional, salvo cuando se rechazó por larga.
+            pregunta_corta = pregunta[:LIMITE_PREGUNTA_BITACORA] + ("…" if len(pregunta) > LIMITE_PREGUNTA_BITACORA else "")
+            pregunta_info = pregunta_corta if motivo == "pregunta demasiado larga" else pregunta
             
             # Determinar expediente_id y texto según el tipo de consulta
             if tipo_consulta in ("expediente", "notebook") and expediente_numero:
                 # Para consultas de expediente específico o de un notebook propio (su clave es su tema, RF-21.31):
                 # 1. Asociar con el expediente real
                 # 2. Incluir número de expediente o clave del notebook en el texto
-                texto = f"Consulta RAG {tipo_consulta} {expediente_numero}: {pregunta}"
+                texto = f"Consulta RAG {tipo_consulta} {expediente_numero}: {pregunta_corta}"
                 
                 # Buscar el expediente en la base de datos
                 expediente = self.expediente_repo.obtener_por_numero(db, expediente_numero)
@@ -147,14 +155,14 @@ class RAGAuditService:
                 # Para consultas generales:
                 # 1. No asociar expediente (NULL)
                 # 2. Marcar como consulta general en el texto
-                texto = f"Consulta RAG general: {pregunta}"
+                texto = f"Consulta RAG general: {pregunta_corta}"
                 expediente_id = None
             
             # Información adicional estructurada
             info_adicional = {
                 "tipo_consulta": tipo_consulta,
                 "session_id": session_id,
-                "pregunta_completa": pregunta,
+                "pregunta_completa": pregunta_info,
                 "modulo": "rag_chat",
                 "timestamp": datetime.utcnow().isoformat()
             }
