@@ -987,6 +987,8 @@ class EstadoChat:
         self._vida = self._tope = 0.0
         self.mudo = self.pausa_entre_etapas = self.pausa_antes_de_generar = False
         self.evento_desconocido: Optional[str] = None
+        self.abandonados = 0  # turnos cerrados sin `done` ni `error` (008b, RF-15.72, RF-17.70)
+        self._candado = threading.Lock()
 
     def instalar(self, general_chains, rag_chain_service, parches: "pytest.MonkeyPatch") -> None:
         """Envuelve el orquestador y `get_llm` y guarda la configuración real. Parchea el módulo, no la clase."""
@@ -1007,8 +1009,11 @@ class EstadoChat:
             await self.muda.esperar_async()
             interno = original(*argumentos, **opciones)
             primero = True
+            terminado = False
             try:
                 async for linea in interno:
+                    if '"type": "done"' in linea or '"type": "error"' in linea:
+                        terminado = True
                     if self._modulo.ETAPA_GENERANDO in linea and '"type": "etapa"' in linea:
                         await self.pausa_generar.esperar_async()
                     yield linea
@@ -1017,6 +1022,9 @@ class EstadoChat:
                         if self.evento_desconocido:
                             yield self._modulo._evento(self.evento_desconocido, "PRUEBA", False)
             finally:
+                if not terminado:  # 008b: el servidor abandonó la consulta (cliente cancelado o desconectado)
+                    with self._candado:
+                        self.abandonados += 1
                 await interno.aclose()  # si el cliente se va, el orquestador también cancela su turno
 
         return turno
@@ -1041,6 +1049,8 @@ class EstadoChat:
                               replace(self._base, senal_de_vida_segundos=vida, tiempo_maximo_segundos=tope))
         self.mudo, self.pausa_entre_etapas, self.evento_desconocido = bool(mudo), bool(pausa_entre_etapas), evento_desconocido
         self.pausa_antes_de_generar = bool(pausa_antes_de_generar)
+        with self._candado:
+            self.abandonados = 0
         for compuerta, cerrada in ((self.muda, self.mudo), (self.pausa, self.pausa_entre_etapas),
                                    (self.pausa_generar, self.pausa_antes_de_generar)):
             compuerta.retener() if cerrada else compuerta.liberar()
@@ -1058,7 +1068,8 @@ class EstadoChat:
                 "pausa_entre_etapas": self.pausa_entre_etapas, "pausa_antes_de_generar": self.pausa_antes_de_generar,
                 "evento_desconocido": self.evento_desconocido,
                 "retenida": self.muda.retenida or self.pausa.retenida or self.pausa_generar.retenida,
-                "esperando": self.muda.esperando + self.pausa.esperando + self.pausa_generar.esperando}
+                "esperando": self.muda.esperando + self.pausa.esperando + self.pausa_generar.esperando,
+                "abandonados": self.abandonados}
 
 
 @dataclass

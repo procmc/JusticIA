@@ -931,8 +931,53 @@ def test_chat_programable_valida_y_se_restablece(monkeypatch):
     chat.restablecer()
     assert chat.estado() == {"senal_de_vida_segundos": base[0], "tiempo_maximo_segundos": base[1], "mudo": False,
                              "pausa_entre_etapas": False, "pausa_antes_de_generar": False, "evento_desconocido": None,
-                             "retenida": False, "esperando": 0}
+                             "retenida": False, "esperando": 0, "abandonados": 0}
     assert general_chains.CONFIGURACION == CONFIGURACION
+
+
+def test_chat_programable_cuenta_los_turnos_abandonados(monkeypatch):
+    """RA-02.49 (008b, RF-15.72, RF-17.70): un turno cerrado antes de `done` o `error` sube `abandonados`; uno que termina
+    (con `done` o con `error`) no lo cambia; `restablecer` lo deja en 0."""
+    import asyncio
+
+    from app.services.RAG import general_chains, rag_chain_service
+
+    chat = _chat_e2e()
+    chat.instalar(general_chains, rag_chain_service, monkeypatch)
+    assert chat.estado()["abandonados"] == 0
+
+    def con_cierre(tipo):
+        async def original(*argumentos, **opciones):
+            yield general_chains._evento("chunk", "PRUEBA parcial", False)
+            yield general_chains._evento(tipo, "PRUEBA", True)
+        return original
+
+    async def abandonado(*argumentos, **opciones):
+        yield general_chains._evento("chunk", "PRUEBA parcial", False)
+        yield general_chains._evento("chunk", "PRUEBA más", False)
+
+    async def completo(original):
+        return [linea async for linea in chat.envolver_turno(original)()]
+
+    async def cerrado_a_medias():
+        turno = chat.envolver_turno(abandonado)()
+        await turno.__anext__()
+        await turno.aclose()  # el cliente se fue
+
+    async def escenario():
+        await completo(con_cierre("done"))
+        await completo(con_cierre("error"))
+        assert chat.estado()["abandonados"] == 0
+        await cerrado_a_medias()
+        assert chat.estado()["abandonados"] == 1
+        await cerrado_a_medias()
+        assert chat.estado()["abandonados"] == 2
+        await completo(con_cierre("done"))
+        assert chat.estado()["abandonados"] == 2
+
+    asyncio.run(escenario())
+    chat.restablecer()
+    assert chat.estado()["abandonados"] == 0
 
 
 def test_chat_programable_mudo_pausa_y_evento_desconocido(monkeypatch):

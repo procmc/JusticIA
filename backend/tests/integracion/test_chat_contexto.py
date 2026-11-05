@@ -283,14 +283,15 @@ def test_tope_libera_el_motor(cliente_api, sesion, ollama_simulado, monkeypatch)
 @pytest.mark.requisito("RF-11.68")
 @pytest.mark.requisito("RF-21.60")
 @pytest.mark.parametrize("momento", ["antes", "despues"])
-def test_desconexion_antes_y_despues_cancela(momento, cliente_api, sesion, usuario_gubernamental, llamar_asgi,
-                                             ollama_simulado, monkeypatch):
+@pytest.mark.parametrize("chat", TRES_CHATS)
+def test_desconexion_antes_y_despues_cancela(chat, momento, cliente_api, sesion, usuario_gubernamental, registro_de_datos,
+                                             llamar_asgi, ollama_simulado, monkeypatch):
     """RF-16.62 · si el usuario cierra la conexión antes o después del primer texto, el motor recibe la cancelación y queda
-    libre; el turno no se guarda en el historial (RF-11.68) ni se registra en la bitácora (RF-21.60)."""
+    libre; el turno no se guarda en el historial (RF-11.68) ni se registra en la bitácora (RF-21.60). En los tres chats."""
     _tiempos_cortos(monkeypatch, vida=VIDA_CORTA, tope=60)
     ollama_simulado.responder("Respuesta de PRUEBA con bastantes palabras para cortar a la mitad.")
     ollama_simulado.retener(tras=0 if momento == "antes" else 2)
-    cuerpo = _cuerpo("¿Hola, PRUEBA?", {})
+    cuerpo = _cuerpo("¿Hola, PRUEBA?", _alcance_vacio(chat, cliente_api, sesion, registro_de_datos))
     desde = _ultimo_id_de_bitacora()
 
     async def esperar(condicion, mensaje):
