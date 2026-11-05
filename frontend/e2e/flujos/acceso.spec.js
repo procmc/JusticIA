@@ -269,19 +269,9 @@ test.describe('RF-01.43 · panel de cambio de contraseña obligatorio', () => {
       mensaje: /contraseña/i,
     },
     {
-      nombre: 'la nueva tiene menos de 8 caracteres',
-      campos: (u) => ({ actual: u.contrasena, nueva: 'Ab1-xyz', confirmar: 'Ab1-xyz' }),
-      mensaje: /8 caracteres/i,
-    },
-    {
       nombre: 'la nueva es igual a la actual',
       campos: (u) => ({ actual: u.contrasena, nueva: u.contrasena, confirmar: u.contrasena }),
       mensaje: /diferente/i,
-    },
-    {
-      nombre: 'la confirmación no coincide',
-      campos: (u) => ({ actual: u.contrasena, nueva: `${u.contrasena}-Nueva9`, confirmar: `${u.contrasena}-Otra9` }),
-      mensaje: /no coinciden/i,
     },
   ];
 
@@ -298,6 +288,65 @@ test.describe('RF-01.43 · panel de cambio de contraseña obligatorio', () => {
       expect(new URL(page.url()).pathname).toBe('/');
     });
   }
+
+  // Con el botón desactivado ya no se pulsa para ver el error: el usuario lo ve antes de enviar.
+  test('RF-01.43 · errores del panel: la nueva tiene menos de 8 caracteres', async ({ page, crearUsuario }) => {
+    const usuario = await entrarConTemporal(page, crearUsuario);
+    await escribir(campoActual(page), usuario.contrasena);
+    await escribir(campoNueva(page), 'Ab1-xyz');
+    await escribir(campoConfirmar(page), 'Ab1-xyz');
+    await expect(page.locator('[data-criterio="longitud"]')).toHaveAttribute('data-cumplido', 'false');
+    await expect(botonCambiar(page)).toBeDisabled();
+    await expect(panelObligatorio(page)).toBeVisible();
+  });
+
+  test('RF-01.43 · errores del panel: la confirmación no coincide', async ({ page, crearUsuario }) => {
+    const usuario = await entrarConTemporal(page, crearUsuario);
+    await escribir(campoActual(page), usuario.contrasena);
+    await escribir(campoNueva(page), `${usuario.contrasena}-Nueva9`);
+    await escribir(campoConfirmar(page), `${usuario.contrasena}-Otra9`);
+    await expect(page.getByText('Las contraseñas no coinciden', { exact: true })).toBeVisible();
+    await expect(botonCambiar(page)).toBeDisabled();
+    await expect(panelObligatorio(page)).toBeVisible();
+    // Al coincidir, el aviso desaparece.
+    await escribir(campoConfirmar(page), `${usuario.contrasena}-Nueva9`);
+    await expect(page.getByText('Las contraseñas no coinciden', { exact: true })).toHaveCount(0);
+  });
+
+  test('RF-01.43 · el panel muestra las seis casillas y bloquea el botón hasta cumplirlas y coincidir [NUEVO]', async ({ page, crearUsuario, generadorContrasenas }) => {
+    const usuario = await entrarConTemporal(page, crearUsuario);
+    const fuerte = generadorContrasenas.siguiente();
+    const casillas = page.locator('[data-criterio]');
+    const cumplidas = (n) => expect(page.locator('[data-criterio][data-cumplido="true"]')).toHaveCount(n);
+
+    await expect(casillas).toHaveCount(6);
+    await expect(page.getByText('Al menos una letra mayúscula', { exact: true })).toBeVisible();
+    await expect(page.getByText('No es una contraseña común o fácil de adivinar', { exact: true })).toBeVisible();
+    await cumplidas(0);
+    await expect(botonCambiar(page)).toBeDisabled();
+
+    // El indicador va entre «Contraseña actual» y «Nueva contraseña».
+    const yActual = (await campoActual(page).boundingBox()).y;
+    const yIndicador = (await casillas.first().boundingBox()).y;
+    const yNueva = (await campoNueva(page).boundingBox()).y;
+    expect(yActual).toBeLessThan(yIndicador);
+    expect(yIndicador).toBeLessThan(yNueva);
+
+    await escribir(campoActual(page), usuario.contrasena);
+    // «Password1!» cumple 5 de 6 (común): bloqueado aunque coincida.
+    await escribir(campoNueva(page), 'Password1!');
+    await escribir(campoConfirmar(page), 'Password1!');
+    await cumplidas(5);
+    await expect(botonCambiar(page)).toBeDisabled();
+
+    // Cumple las seis pero la confirmación no coincide: bloqueado.
+    await escribir(campoNueva(page), fuerte);
+    await cumplidas(6);
+    await expect(botonCambiar(page)).toBeDisabled();
+
+    await escribir(campoConfirmar(page), fuerte);
+    await expect(botonCambiar(page)).toBeEnabled();
+  });
 
   test('RF-01.43 · tras cambiarla, el usuario continúa en la página de inicio', async ({ page, crearUsuario }) => {
     // Hoy, al cambiarla, la interfaz cierra la sesión y lleva a «Inicio de sesión» (CambiarContraseña.jsx: `signOut`).

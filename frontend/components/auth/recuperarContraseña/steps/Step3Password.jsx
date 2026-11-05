@@ -9,6 +9,7 @@ const Step3Password = ({
     errors, 
     loading, 
     timeLeft,
+    puedeCambiar,
     showPasswords,
     handleChange, 
     handleCambiarContraseña,
@@ -32,9 +33,14 @@ const Step3Password = ({
         </button>
     );
 
+    // Aviso en vivo: explica por qué el botón sigue desactivado.
+    const noCoinciden = formData.confirmarContraseña !== "" && formData.confirmarContraseña !== formData.nuevaContraseña;
+
     return (
         <div className="w-full max-w-sm mx-auto">
             <Form onSubmit={handleCambiarContraseña} className="space-y-4 md:space-y-6">
+                <PasswordStrengthIndicator password={formData.nuevaContraseña} />
+
                 <Input
                     label="Nueva contraseña"
                     type={showPasswords.nueva ? "text" : "password"}
@@ -56,16 +62,14 @@ const Step3Password = ({
                         />
                     }
                 />
-                <PasswordStrengthIndicator password={formData.nuevaContraseña} showInstructions={false} />
-
                 <Input
                     label="Confirmar nueva contraseña"
                     type={showPasswords.confirmar ? "text" : "password"}
                     value={formData.confirmarContraseña}
                     onValueChange={(value) => handleChange("confirmarContraseña", value)}
                     isRequired
-                    errorMessage={errors.confirmarContraseña}
-                    isInvalid={!!errors.confirmarContraseña}
+                    errorMessage={errors.confirmarContraseña || (noCoinciden ? "Las contraseñas no coinciden" : "")}
+                    isInvalid={!!errors.confirmarContraseña || noCoinciden}
                     placeholder="Repite la nueva contraseña"
                     color="primary"
                     variant="bordered"
@@ -87,7 +91,7 @@ const Step3Password = ({
                         size="lg"
                         className="w-full font-semibold text-sm md:text-base"
                         isLoading={loading}
-                        disabled={loading || timeLeft === 0}
+                        disabled={loading || timeLeft === 0 || !puedeCambiar}
                     >
                         {loading ? "Cambiando..." : "Cambiar Contraseña"}
                     </Button>

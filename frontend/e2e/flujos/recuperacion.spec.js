@@ -332,4 +332,64 @@ test.describe('RF-03.41 · recuperación de contraseña', () => {
     await expect(page.getByRole('heading', { name: 'Inicio de sesión' })).toBeVisible();
     await iniciarSesion(page, usuario.correo, nueva);
   });
+
+  test('RF-03.41 · indicador de seis casillas y botón bloqueado hasta cumplirlas y coincidir', async ({ page, crearUsuario, generadorContrasenas, control }) => {
+    const usuario = await crearUsuario('usuario');
+    const fuerte = generadorContrasenas.siguiente();
+    await abrir(page);
+    await solicitar(page, usuario.correo);
+    const codigo = await leerCodigo(control, usuario.correo);
+    expect((await verificar(page, codigo)).estado).toBe(200);
+    await expect(pasoNuevaContrasena(page)).toBeVisible();
+
+    const casillas = page.locator('[data-criterio]');
+    const cumplidas = (n) => expect(page.locator('[data-criterio][data-cumplido="true"]')).toHaveCount(n);
+
+    // Campo vacío: las seis casillas se ven, todas pendientes, y el botón no se puede pulsar.
+    await expect(casillas).toHaveCount(6);
+    for (const texto of [
+      'Al menos 8 caracteres',
+      'Al menos una letra mayúscula',
+      'Al menos una letra minúscula',
+      'Al menos un número',
+      'Al menos un símbolo (!@#$%…)',
+      'No es una contraseña común o fácil de adivinar',
+    ]) {
+      await expect(page.getByText(texto, { exact: true })).toBeVisible();
+    }
+    await cumplidas(0);
+    await expect(page.getByText('Fortaleza: Muy débil')).toBeVisible();
+    await expect(botonCambiar(page)).toBeDisabled();
+
+    // El indicador va antes del campo «Nueva contraseña».
+    const yIndicador = (await casillas.first().boundingBox()).y;
+    const yCampo = (await campoNueva(page).boundingBox()).y;
+    expect(yIndicador).toBeLessThan(yCampo);
+
+    // Las casillas se marcan en vivo.
+    await escribir(campoNueva(page), 'a');
+    await expect(page.locator('[data-criterio="minuscula"]')).toHaveAttribute('data-cumplido', 'true');
+    await expect(page.locator('[data-criterio="mayuscula"]')).toHaveAttribute('data-cumplido', 'false');
+
+    // «Password1!» cumple 5 de 6 (zxcvbn la puntúa 1, común): botón bloqueado aunque coincida.
+    await escribir(campoNueva(page), 'Password1!');
+    await escribir(campoConfirmar(page), 'Password1!');
+    await cumplidas(5);
+    await expect(page.locator('[data-criterio="comun"]')).toHaveAttribute('data-cumplido', 'false');
+    await expect(page.getByText('Fortaleza: Buena')).toBeVisible();
+    await expect(botonCambiar(page)).toBeDisabled();
+
+    // Cumple las seis pero no coincide con la confirmación: bloqueado.
+    await escribir(campoNueva(page), fuerte);
+    await cumplidas(6);
+    await expect(page.getByText('Fortaleza: Muy fuerte')).toBeVisible();
+    await expect(botonCambiar(page)).toBeDisabled();
+    // Aviso en vivo: la confirmación no está vacía y es distinta de la nueva.
+    await expect(page.getByText('Las contraseñas no coinciden', { exact: true })).toBeVisible();
+
+    // Cumple las seis y coincide: se activa y el aviso desaparece.
+    await escribir(campoConfirmar(page), fuerte);
+    await expect(botonCambiar(page)).toBeEnabled();
+    await expect(page.getByText('Las contraseñas no coinciden', { exact: true })).toHaveCount(0);
+  });
 });

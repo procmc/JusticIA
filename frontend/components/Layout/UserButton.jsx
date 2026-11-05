@@ -89,6 +89,7 @@ export function UserButton() {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [puedeCambiarContraseña, setPuedeCambiarContraseña] = useState(false);
     const [avatarError, setAvatarError] = useState(false);
     const cambiarContraseñaRef = useRef();
     
@@ -372,6 +373,7 @@ export function UserButton() {
                     texto: "Cambiar Contraseña",
                     color: "primary",
                     loading: isLoading,
+                    disabled: !puedeCambiarContraseña,
                     onPress: async () => {
                         if (isLoading) return;
                         setIsLoading(true);
@@ -389,6 +391,7 @@ export function UserButton() {
                 disableClose={isLoading}
             >
                 <CambiarContraseña
+                    onValidezChange={setPuedeCambiarContraseña}
                     ref={cambiarContraseñaRef}
                     cedulaUsuario={session?.user?.id || 1}
                     onSuccess={handlePasswordChangeSuccess}

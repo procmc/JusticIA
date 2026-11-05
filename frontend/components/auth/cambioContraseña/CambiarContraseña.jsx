@@ -5,9 +5,9 @@ import { Toast } from "../../ui/CustomAlert";
 import { EyeFilledIcon } from "../../icons/EyeFilledIcon";
 import { EyeSlashFilledIcon } from "../../icons/EyeSlashFilledIcon";
 import { signOut } from "next-auth/react";
-import zxcvbn from "zxcvbn";
+import PasswordStrengthIndicator, { mensajeContraseñaIncompleta, evaluarContraseña } from "./PasswordStrengthIndicator";
 
-const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
+const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess, onValidezChange }, ref) => {
     const [formData, setFormData] = useState({
         contraseñaActual: "",
         nuevaContraseña: "",
@@ -61,14 +61,9 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
 
         if (!formData.nuevaContraseña.trim()) {
             newErrors.nuevaContraseña = "La nueva contraseña es requerida";
-        } else if (formData.nuevaContraseña.length < 8) {
-            newErrors.nuevaContraseña = "La nueva contraseña debe tener al menos 8 caracteres";
-        } else {
-            // Validar fortaleza con zxcvbn
-            const strength = zxcvbn(formData.nuevaContraseña);
-            if (strength.score < 2) {
-                newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elija una más segura";
-            }
+        } else if (mensajeContraseñaIncompleta(formData.nuevaContraseña)) {
+            // Misma regla que el indicador y el botón (seis criterios)
+            newErrors.nuevaContraseña = mensajeContraseñaIncompleta(formData.nuevaContraseña);
         }
 
         if (!formData.confirmarContraseña.trim()) {
@@ -84,6 +79,18 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     }, [formData]);
+
+    // Avisa al contenedor si el botón de enviar puede activarse: los seis criterios y la confirmación coinciden.
+    const puedeCambiar = evaluarContraseña(formData.nuevaContraseña).completa
+        && formData.nuevaContraseña === formData.confirmarContraseña;
+    // Aviso en vivo bajo la confirmación: explica por qué el botón sigue desactivado.
+    const noCoinciden = formData.confirmarContraseña !== ""
+        && formData.confirmarContraseña !== formData.nuevaContraseña;
+    useEffect(() => {
+        onValidezChange && onValidezChange(puedeCambiar);
+    }, [puedeCambiar, onValidezChange]);
+    // Al cerrarse el formulario, el botón del contenedor vuelve a quedar desactivado.
+    useEffect(() => () => { onValidezChange && onValidezChange(false); }, [onValidezChange]);
 
     // Exponer validateAndSubmit a través de la ref
     useImperativeHandle(ref, () => ({
@@ -208,6 +215,8 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 }
             />
 
+            <PasswordStrengthIndicator password={formData.nuevaContraseña} />
+
             <Input
                 label="Nueva contraseña"
                 type={showPasswords.nueva ? "text" : "password"}
@@ -235,8 +244,8 @@ const CambiarContraseña = forwardRef(({ cedulaUsuario, onSuccess }, ref) => {
                 value={formData.confirmarContraseña}
                 onValueChange={(value) => handleChange("confirmarContraseña", value)}
                 isRequired
-                errorMessage={errors.confirmarContraseña}
-                isInvalid={!!errors.confirmarContraseña}
+                errorMessage={errors.confirmarContraseña || (noCoinciden ? "Las contraseñas no coinciden" : "")}
+                isInvalid={!!errors.confirmarContraseña || noCoinciden}
                 placeholder="Confirme su nueva contraseña"
                 color="primary"
                 variant="bordered"

@@ -68,6 +68,7 @@ const Layout = ({ children }) => {
   const [toggleCollapse, setToggleCollapse] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [puedeCambiarContraseña, setPuedeCambiarContraseña] = useState(false);
   const cambiarContraseñaRef = useRef();
   const { data: session } = useSession();
   
@@ -124,6 +125,7 @@ const Layout = ({ children }) => {
           texto: "Cambiar Contraseña",
           color: "primary",
           loading: isLoading,
+          disabled: !puedeCambiarContraseña,
           onPress: async () => {
             if (isLoading) return;
             setIsLoading(true);
@@ -167,6 +169,7 @@ const Layout = ({ children }) => {
 
           {/* Formulario de cambio de contraseña */}
           <CambiarContraseña
+            onValidezChange={setPuedeCambiarContraseña}
             ref={cambiarContraseñaRef}
             cedulaUsuario={session?.user?.id}
             onSuccess={() => {

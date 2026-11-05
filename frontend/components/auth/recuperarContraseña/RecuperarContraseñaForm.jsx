@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, Divider } from "@heroui/react";
 import { useRouter } from "next/router";
-import zxcvbn from "zxcvbn";
+import { mensajeContraseñaIncompleta } from "../cambioContraseña/PasswordStrengthIndicator";
 import {
     solicitarRecuperacionService,
     verificarCodigoRecuperacionService,
@@ -15,6 +15,25 @@ import Step3Password from "./steps/Step3Password";
 // Los avisos de la recuperación llevan mensajes largos de la API: duran más que los 3 s por omisión.
 const OPCIONES_AVISO = { timeout: 10000 };
 const MENSAJE_ERROR_INESPERADO = "Ocurrió un error inesperado. Inténtelo de nuevo.";
+
+// Una sola regla para el envío y para el botón: los seis criterios del indicador y coincidir con la confirmación.
+const errorDeContraseñas = (nueva, confirmar) => {
+    const errores = {};
+
+    if (!nueva.trim()) {
+        errores.nuevaContraseña = "La nueva contraseña es requerida";
+    } else if (mensajeContraseñaIncompleta(nueva)) {
+        errores.nuevaContraseña = mensajeContraseñaIncompleta(nueva);
+    }
+
+    if (!confirmar.trim()) {
+        errores.confirmarContraseña = "Debe confirmar la nueva contraseña";
+    } else if (nueva !== confirmar) {
+        errores.confirmarContraseña = "Las contraseñas no coinciden";
+    }
+
+    return errores;
+};
 
 const RecuperarContraseñaForm = () => {
     const router = useRouter();
@@ -166,25 +185,7 @@ const RecuperarContraseñaForm = () => {
     const handleCambiarContraseña = async (e) => {
         e.preventDefault();
 
-        const newErrors = {};
-
-        if (!formData.nuevaContraseña.trim()) {
-            newErrors.nuevaContraseña = "La nueva contraseña es requerida";
-        } else if (formData.nuevaContraseña.length < 8) {
-            newErrors.nuevaContraseña = "La contraseña debe tener al menos 8 caracteres";
-        } else {
-            // Validar fortaleza de la contraseña con zxcvbn
-            const strengthResult = zxcvbn(formData.nuevaContraseña);
-            if (strengthResult.score < 2) {
-                newErrors.nuevaContraseña = "La contraseña es demasiado débil. Por favor, elige una contraseña más segura.";
-            }
-        }
-
-        if (!formData.confirmarContraseña.trim()) {
-            newErrors.confirmarContraseña = "Debe confirmar la nueva contraseña";
-        } else if (formData.nuevaContraseña !== formData.confirmarContraseña) {
-            newErrors.confirmarContraseña = "Las contraseñas no coinciden";
-        }
+        const newErrors = errorDeContraseñas(formData.nuevaContraseña, formData.confirmarContraseña);
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -320,6 +321,7 @@ const RecuperarContraseñaForm = () => {
                         errors={errors}
                         loading={loading}
                         timeLeft={timeLeft}
+                        puedeCambiar={Object.keys(errorDeContraseñas(formData.nuevaContraseña, formData.confirmarContraseña)).length === 0}
                         showPasswords={showPasswords}
                         handleChange={handleChange}
                         handleCambiarContraseña={handleCambiarContraseña}
