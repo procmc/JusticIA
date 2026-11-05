@@ -130,9 +130,12 @@ class ConsultaService {
     }
 
     // Crear nuevo AbortController para esta consulta
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
-    
+    // El controlador propio se guarda en una constante: el `finally` de una consulta cancelada se ejecuta después de que la
+    // siguiente ya guardó el suyo y no debe borrarlo, o la segunda cancelación seguida no cerraría nada (RF-15.74).
+    const controladorPropio = new AbortController();
+    this.abortController = controladorPropio;
+    const signal = controladorPropio.signal;
+
     try {
       // Validar que la consulta no esté vacía
       if (!query || query.trim().length === 0) {
@@ -268,8 +271,10 @@ class ConsultaService {
       console.error('Error en consulta streaming:', error);
       onError?.(error);
     } finally {
-      // Limpiar referencia al controller
-      this.abortController = null;
+      // Limpiar la referencia solo si sigue siendo la de esta consulta
+      if (this.abortController === controladorPropio) {
+        this.abortController = null;
+      }
     }
   }
 

@@ -17,6 +17,7 @@ import {
   createUserMessage,
   createEmptyAssistantMessage,
   createStreamingCallbacks,
+  markMessageAsCanceled,
   saveNotebookChatToSessionStorage,
   restoreNotebookChatFromSessionStorage
 } from '@/utils/chat/messageUtils';
@@ -113,6 +114,11 @@ const NotebooksPage = () => {
   }, []);
 
   const seleccionarNotebook = (notebook) => {
+    // RF-17.70: abrir otro notebook con una respuesta en curso la cancela; la conversación cancelada se guarda bajo el
+    // notebook anterior antes de cambiar (el efecto de abajo ya correría con el notebook nuevo).
+    if (notebookActivo && sessionId && hayEnCurso()) {
+      saveNotebookChatToSessionStorage(notebookActivo.id, sessionId, cancelarEnCurso());
+    }
     setNotebookActivo(notebook);
     setArchivosSubiendo([]);
     setArchivosSeleccionados([]);
@@ -286,10 +292,48 @@ const NotebooksPage = () => {
 
   // ===================== Chat =====================
 
-  const handleEnviarMensaje = async () => {
+  // Hay una respuesta en curso si la consulta sigue activa, si hay una burbuja en streaming o si está en la pausa del
+  // reintento automático («Reintentando obtener respuesta...»).
+  const hayEnCurso = () => Boolean(
+    currentRequestRef.current?.active
+    || streamingMessageIndex !== null
+    || messages.some((m) => m.isRetrying)
+  );
+
+  // Cancela la respuesta en curso (RF-15.72, RF-15.73, RF-17.70): cierra la conexión, deja la burbuja con su texto parcial y el
+  // aviso, y libera el envío. La marca inactiva no es `null`: con `null` el temporizador del reintento automático relanzaría
+  // la consulta (messageUtils.js, `currentRequestRef.current === null`). Devuelve los mensajes ya marcados.
+  const cancelarEnCurso = () => {
+    if (!hayEnCurso()) return messages;
+    consultaService.cancelConsulta();
+    currentRequestRef.current = { active: false, id: 'cancelada' };
+    const marcados = messages.map((m, i) => {
+      if (i !== streamingMessageIndex && !m.isRetrying) return m;
+      const base = m.isRetrying ? { ...m, text: '', isRetrying: false } : m;
+      return { ...markMessageAsCanceled(base), etapa: undefined };
+    });
+    setMessages(marcados);
+    setStreamingMessageIndex(null);
+    setIsTyping(false);
+    return marcados;
+  };
+
+  // Enter se bloquea con la misma condición que el botón de enviar (RF-17.71): el texto escrito se conserva.
+  const handleEnviarMensaje = () => {
     const query = texto.trim();
-    if (!query || !notebookActivo || !sessionId) return;
+    if (!query || hayEnCurso()) return;
     setTexto('');
+    enviarPregunta(query);
+  };
+
+  // Reintentar usa el texto de la pregunta original y no lee ni cambia el campo de texto (RF-15.70, RF-15.71).
+  const reintentar = (textoPregunta) => {
+    cancelarEnCurso();
+    enviarPregunta(textoPregunta);
+  };
+
+  const enviarPregunta = async (query) => {
+    if (!query || !notebookActivo || !sessionId) return;
 
     const userMessage = createUserMessage(query, 'notebook');
     setMessages(prev => [...prev, userMessage]);
@@ -526,7 +570,7 @@ const NotebooksPage = () => {
                 messages={messages}
                 isTyping={isTyping}
                 streamingMessageIndex={streamingMessageIndex}
-                onRetry={() => {}}
+                onRetry={reintentar}
               />
               <div className="p-3 border-t border-gray-200 bg-white flex gap-2">
                 <Input

@@ -1,7 +1,7 @@
 // NotebookServIA: crear y cargar (spec 005b, T4): RF-17.40 y RF-05.40 en un notebook propio. Spec retroactiva: sigue al ERS,
 // no a lo que hoy hace el código. Corre en `escritorio` (1366) y `pequena` (616). Los datos son inventados (prefijo PRUEBA);
 // el motor de lenguaje es el simulado de la instancia.
-const { test, expect, iniciarSesion, pulsar } = require('../soporte/fixtures.js');
+const { test, expect, iniciarSesion, pulsar, escribir } = require('../soporte/fixtures.js');
 const {
   enviar, aleatorio, iniciarSesion: iniciarSesionPorApi, crearNotebook, listarDocumentos, cargaMixta, documentoDePrueba, pdfMinimo,
   PNG_MINIMO, cargar, esperarTarea, subirYProcesar, notebookConDocumento, preguntar, textoDeLosEventos,
@@ -436,5 +436,160 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
     await expect(listaDeNotebooks(page).filter({ hasText: nuevo })).toHaveCount(1);
     await abrirNotebooks(page); // recargar sigue entrando: la sesión no se cerró
     await expect(listaDeNotebooks(page).filter({ hasText: nuevo })).toHaveCount(1);
+  });
+});
+
+// Reintentar, cancelar, cambiar de notebook y Enter en el chat del notebook (spec 008b, T3). Una sola prueba con seis pasos,
+// solo a 1366 px (RNF-04.71). RF-15.73 se prueba únicamente tras un error: la pausa de «Reintentando…» no se alcanza hoy (plan §7a).
+const PREGUNTA_NB = '¿Qué dice el documento de PRUEBA sobre el reintento?';
+const PARCIAL = 'PRUEBA parcial uno dos tres';
+const AVISO_CANCELADA = 'Consulta cancelada por el usuario';
+
+test.describe('NotebookServIA: reintentar y cancelar', () => {
+  test('RF-15.70 · reintentar, cancelar, cambiar de notebook y Enter', async ({ page, crearUsuario, control }) => {
+    // RNF-04.71: una sola prueba a 1366 px; no se repite a 616 px.
+    test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (RNF-04.71)');
+    const usuario = await iniciarComoUsuario(page, crearUsuario);
+    const administrador = await crearUsuario('administrador');
+    const token = await iniciarSesionPorApi(control, usuario);
+    const tokenAdmin = await iniciarSesionPorApi(control, administrador);
+    const { notebook, documento } = await notebookConDocumento(control, token);
+    const segundo = await crearNotebook(control, token, `PRUEBA notebook B ${aleatorio()}`);
+    // `chat` reinicia el contador de abandonos: se programa antes de contar (plan §6). La señal de vida de 1 s hace que el
+    // servidor note la desconexión de una respuesta retenida en un segundo, no en los 10 s por omisión.
+    await control.chat({ senal_de_vida_segundos: 1 });
+    await control.motor({ modo: 'texto', texto: 'PRUEBA respuesta A' });
+    await abrirNotebookConDocumentos(page, notebook, [documento.nombre]);
+
+    const campo = page.getByPlaceholder(`Pregúntele algo a "${notebook.nombre}"...`, { exact: false });
+    const enviarBoton = page.getByRole('button', { name: 'Enviar', exact: true });
+    const reintentar = page.getByRole('button', { name: 'Reintentar consulta' });
+    const burbujas = page.locator('div.space-y-4 > div');
+    const dejarPasar = () => page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+
+    // Conexiones de la consulta abortadas por el navegador y peticiones enviadas (CDP, como chat.spec.js:133-138).
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Network.enable');
+    const flujos = new Set();
+    let abortadas = 0;
+    let peticiones = 0;
+    cdp.on('Network.requestWillBeSent', (e) => {
+      if (e.request.url.includes('consulta-con-historial-stream')) { flujos.add(e.requestId); peticiones += 1; }
+    });
+    cdp.on('Network.loadingFailed', (e) => { if (flujos.has(e.requestId) && e.canceled) abortadas += 1; });
+    const abandonados = async () => (await control.chatEstado()).abandonados;
+
+    // Paso 1 · RF-15.70 y RF-15.71: reintentar agrega al final y no toca el campo de texto.
+    await escribir(campo, PREGUNTA_NB);
+    await campo.press('Enter');
+    await expect(burbujas).toHaveCount(2);
+    await expect(burbujas.nth(1)).toContainText('PRUEBA respuesta A');
+    await expect(enviarBoton).toBeEnabled();
+    await escribir(campo, 'borrador PRUEBA');
+    await control.motor({ modo: 'texto', texto: 'PRUEBA respuesta B' });
+    await pulsar(reintentar);
+    await expect(burbujas, 'RF-15.70 · reintentar agrega la pregunta y la respuesta al final').toHaveCount(4);
+    await expect(burbujas.nth(2)).toContainText(PREGUNTA_NB);
+    await expect(burbujas.nth(3)).toContainText('PRUEBA respuesta B');
+    await expect(burbujas.nth(1), 'RF-15.70 · la respuesta anterior queda intacta').toContainText('PRUEBA respuesta A');
+    await expect(burbujas.nth(1)).not.toContainText('PRUEBA respuesta B');
+    await expect(campo, 'RF-15.71 · el campo conserva el borrador').toHaveValue('borrador PRUEBA');
+    await expect(enviarBoton).toBeEnabled();
+
+    // Paso 2 · RF-15.72 y RF-15.74: dos reintentos seguidos con la respuesta retenida cierran dos conexiones y dos abandonos.
+    await control.motor({ modo: 'texto', texto: PARCIAL, retener_tras: 2 });
+    await pulsar(reintentar);
+    await expect(burbujas).toHaveCount(6);
+    await expect(burbujas.nth(5)).toContainText('PRUEBA parcial');
+    await pulsar(reintentar);
+    await expect(burbujas).toHaveCount(8);
+    await expect(burbujas.nth(7)).toContainText('PRUEBA parcial');
+    await pulsar(reintentar);
+    await expect(burbujas).toHaveCount(10);
+    await expect(burbujas.nth(9)).toContainText('PRUEBA parcial');
+    await expect.poll(() => abortadas, { message: 'RF-15.74 · dos cancelaciones seguidas cierran dos conexiones' }).toBe(2);
+    await expect.poll(abandonados, { message: 'RF-15.72 · el servidor registra dos consultas abandonadas' }).toBe(2);
+    for (const indice of [5, 7]) {
+      await expect(burbujas.nth(indice), 'RF-15.72 · conserva el texto parcial y el aviso').toContainText('PRUEBA parcial');
+      await expect(burbujas.nth(indice)).toContainText(AVISO_CANCELADA);
+      await expect(burbujas.nth(indice)).not.toContainText('tres');
+    }
+    await control.motorLiberar();
+    await expect(burbujas.nth(9)).toContainText('tres');
+    await expect(burbujas.nth(9)).not.toContainText(AVISO_CANCELADA);
+    await expect(enviarBoton).toBeEnabled();
+
+    // Paso 3 · RF-15.73 (tras un error): reintentar después del aviso de error agrega la pregunta y la respuesta nuevas.
+    const inicioPaso3 = Date.now();
+    await control.motor({ modo: 'conexion' });
+    await pulsar(reintentar);
+    await expect(burbujas).toHaveCount(12);
+    await expect(enviarBoton).toBeEnabled();
+    const textoDelError = await burbujas.nth(11).innerText();
+    expect(textoDelError.trim()).not.toBe('');
+    await expect(burbujas.nth(11)).not.toContainText('PRUEBA');
+    await control.motor({ modo: 'texto', texto: 'PRUEBA tras error' });
+    await pulsar(reintentar);
+    await expect(burbujas, 'RF-15.73 · reintentar tras un error agrega al final').toHaveCount(14);
+    await expect(burbujas.nth(12)).toContainText(PREGUNTA_NB);
+    await expect(burbujas.nth(13)).toContainText('PRUEBA tras error');
+    expect(await burbujas.nth(11).innerText(), 'RF-15.73 · la burbuja del error queda intacta').toBe(textoDelError);
+    const duracionPaso3 = Date.now() - inicioPaso3;
+    test.info().annotations.push({ type: 'paso 3 (ms)', description: String(duracionPaso3) });
+    expect(duracionPaso3, 'el paso 3 debe sumar 5 s o menos (spec 008b, P2)').toBeLessThanOrEqual(5_000);
+
+    // Paso 4 · RF-17.70: abrir otro notebook con una respuesta en curso la cancela y, al volver, se ve el texto parcial y el aviso.
+    await control.motor({ modo: 'texto', texto: PARCIAL, retener_tras: 2 });
+    await escribir(campo, 'segunda pregunta PRUEBA');
+    await campo.press('Enter');
+    await expect(burbujas).toHaveCount(16);
+    await expect(burbujas.nth(15)).toContainText('PRUEBA parcial');
+    const abortadasAntes = abortadas;
+    const abandonadosAntes = await abandonados();
+    await abrirNotebookDeLaLista(page, segundo.nombre);
+    await expect.poll(() => abortadas, { message: 'RF-17.70 · abrir otro notebook cierra la conexión' }).toBe(abortadasAntes + 1);
+    await expect.poll(abandonados, { message: 'RF-17.70 · el servidor registra el abandono' }).toBe(abandonadosAntes + 1);
+    await expect(burbujas, 'RF-17.70 · el otro notebook no recibe burbujas').toHaveCount(0);
+    await expect(page.getByPlaceholder(`Pregúntele algo a "${segundo.nombre}"...`, { exact: false })).toBeVisible();
+    await expect(enviarBoton, 'RF-17.70 · el envío queda libre en el otro notebook').toBeEnabled();
+    await abrirNotebookDeLaLista(page, notebook.nombre);
+    await expect(burbujas).toHaveCount(16);
+    await expect(burbujas.nth(15), 'RF-17.70 · al volver: texto parcial y aviso').toContainText('PRUEBA parcial');
+    await expect(burbujas.nth(15)).toContainText(AVISO_CANCELADA);
+    await expect(enviarBoton).toBeEnabled();
+
+    // Paso 5 · RF-17.71: con una respuesta en curso, Enter no envía y el texto se conserva.
+    await escribir(campo, 'tercera pregunta PRUEBA');
+    await campo.press('Enter');
+    await expect(burbujas).toHaveCount(18);
+    await expect(burbujas.nth(17)).toContainText('PRUEBA parcial');
+    const peticionesAntes = peticiones;
+    const consultasAntes = (await control.motorEstado()).consultas;
+    await escribir(campo, 'cuarta pregunta PRUEBA');
+    await campo.press('Enter');
+    await dejarPasar();
+    await dejarPasar();
+    expect(peticiones, 'RF-17.71 · Enter no envía una petición nueva').toBe(peticionesAntes);
+    expect((await control.motorEstado()).consultas).toBe(consultasAntes);
+    await expect(campo, 'RF-17.71 · el texto escrito se conserva').toHaveValue('cuarta pregunta PRUEBA');
+    await expect(burbujas).toHaveCount(18);
+    await control.motorLiberar();
+    await expect(burbujas.nth(17)).toContainText('tres');
+    await expect(enviarBoton).toBeEnabled();
+
+    // Paso 6 · RF-21.71: un registro de consulta del notebook por turno terminado y ninguno por los tres cancelados.
+    // Terminados: 2 (paso 1) + 1 (paso 2) + 2 (paso 3: el error, con su motivo, y su reintento) + 1 (paso 5) = 6.
+    const consultasDelNotebook = async () => {
+      const lista = await enviar(control, 'GET', `/bitacora/registros?usuario=${encodeURIComponent(usuario.cedula)}&limite=100`, undefined, tokenAdmin);
+      expect(lista.status).toBe(200);
+      return (await lista.json()).items
+        .filter((i) => i.tipoAccion === 'Consulta RAG')
+        .map((i) => (typeof i.informacionAdicional === 'string' ? JSON.parse(i.informacionAdicional) : i.informacionAdicional) || {})
+        .filter((info) => info.tipo_consulta === 'notebook');
+    };
+    await expect.poll(async () => (await consultasDelNotebook()).length, {
+      message: 'RF-21.71 · una consulta del notebook por turno terminado y ninguna por las canceladas',
+    }).toBe(6);
+    expect((await consultasDelNotebook()).filter((info) => info.motivo).length, 'RF-21.60 · solo el turno con error lleva motivo').toBe(1);
   });
 });
