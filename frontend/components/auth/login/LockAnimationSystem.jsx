@@ -62,16 +62,16 @@ const LockAnimationSystem = ({ isUnlocked, showSuccess, isClosing }) => {
       </div>
       
       {/* Logos institucionales en la parte inferior */}
-      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-2 md:gap-3 opacity-70">
-        <div className="relative w-12 h-7 md:w-16 md:h-10">
-          <Image 
-            src="/logoPj.png" 
-            alt="Logo Poder Judicial" 
-            fill 
-            className="object-contain filter brightness-0 invert" 
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-2 md:gap-3">
+        <div className="relative w-32 h-6 md:w-56 md:h-11">
+          <Image
+            src="/logo-micitt.png"
+            alt="Logo MICITT — Gobierno de Costa Rica"
+            fill
+            className="object-contain rounded-sm"
           />
         </div>
-        <div className="relative w-10 h-6 md:w-14 md:h-8">
+        <div className="relative w-10 h-6 md:w-14 md:h-8 opacity-70">
           <Image 
             src="/InteligenciaInformacion.png" 
             alt="Inteligencia Información" 
