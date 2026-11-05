@@ -269,19 +269,15 @@ export default function Home() {
             {/* Contenido principal */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
 
-              {/* Logo y Nombre Poder Judicial */}
+              {/* Banner del MICITT (ya trae «Ministerio… | Gobierno de Costa Rica») */}
               <div className="flex items-center justify-center md:justify-start gap-2">
                 <Image
-                  src="/PJ.png"
-                  alt="Poder Judicial de Costa Rica"
-                  width={40}
-                  height={30}
-                  className="w-auto"
+                  src="/logo-micitt.png"
+                  alt="Logo MICITT — Gobierno de Costa Rica"
+                  width={574}
+                  height={104}
+                  className="h-auto w-[160px] max-w-full rounded-sm"
                 />
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-800">Poder Judicial</h3>
-                  <p className="text-[10px] text-gray-600">Costa Rica</p>
-                </div>
               </div>
 
               {/* Información del Sistema */}
@@ -290,19 +286,19 @@ export default function Home() {
                   ServIA
                 </h2>
                 <p className="text-xs text-gray-600">
-                  Sistema de Información Jurídica
+                  Sistema de Información Gubernamental
                 </p>
               </div>
 
               {/* Logo y Nombre TI */}
               <div className="flex items-center justify-center md:justify-end gap-2">
                 <div className="text-right">
-                  <h3 className="text-xs font-semibold text-gray-800">Dirección de TI</h3>
-                  <p className="text-[10px] text-gray-600">Tecnologías de la Información</p>
+                  <h3 className="text-xs font-semibold text-gray-800">Dirección de Gobernanza</h3>
+                  <p className="text-[10px] text-gray-600">MICITT</p>
                 </div>
                 <Image
                   src="/InteligenciaInformacion.png"
-                  alt="Tecnologías de la Información"
+                  alt="Dirección de Gobernanza"
                   width={100}
                   height={40}
                   className=""
@@ -314,7 +310,7 @@ export default function Home() {
             {/* Información inferior */}
             <div className="flex justify-center items-center gap-2 border-t border-gray-100">
               <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>&copy; 2025 Poder Judicial de Costa Rica</span>
+                <span>&copy; Ministerio de Ciencia, Innovación, Tecnología y Telecomunicaciones</span>
               </div>
             </div>
 

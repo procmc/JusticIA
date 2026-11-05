@@ -21,6 +21,19 @@ test('RA-02.48 · lista de páginas completa: toda página de pages/ está clasi
   ).toEqual([]);
 });
 
+// [NUEVO] Vocabulario del pie de la página de inicio: ServIA es de gobierno (MICITT), no del Poder Judicial. No corresponde a
+// RT-06/RT-07 del ERS (son sobre modelos de IA e idioma), así que se marca como nuevo.
+test('[NUEVO] vocabulario · el pie de inicio es del MICITT y de gobierno, no jurídico', async ({ page, crearUsuario }) => {
+  const usuario = await crearUsuario('administrador');
+  await iniciarSesion(page, usuario.correo, usuario.contrasena);
+  await page.goto('/');
+  const pie = page.locator('footer');
+  await expect(pie).toContainText('Sistema de Información Gubernamental');
+  await expect(pie).toContainText('Ministerio de Ciencia, Innovación, Tecnología y Telecomunicaciones');
+  await expect(pie).not.toContainText('Poder Judicial');
+  await expect(pie).not.toContainText('Jurídica');
+});
+
 const ROLES = ['administrador', 'usuario'];
 
 for (const rol of ROLES) {
