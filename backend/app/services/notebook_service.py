@@ -114,6 +114,36 @@ def _id_de_clave(tema: str) -> Optional[int]:
     return int(resto)
 
 
+LARGO_MAXIMO_NOMBRE = 150
+MENSAJE_NOMBRE_VACIO = "El nombre del notebook no puede estar vacío"
+
+
+class NombreNoValido(Exception):
+    """El nombre no cumple una regla. `mensaje` es el `detail` que ve el usuario y `motivo`, el texto fijo que queda en la
+    bitácora (RF-21.81): nunca llevan el nombre, que es texto libre y puede traer datos personales (RNF-07.24)."""
+
+    def __init__(self, motivo: str, mensaje: str):
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.mensaje = mensaje
+
+
+def validar_nombre(nombre: Optional[str], mensaje_vacio: str = MENSAJE_NOMBRE_VACIO) -> str:
+    """El nombre normalizado (NFC y sin espacios en los extremos), o `NombreNoValido` si queda vacío (RF-17.81; también si solo
+    tiene caracteres de formato invisibles) o supera 150 caracteres (RF-17.82). Pura, sin base de datos; `mensaje_vacio` deja
+    que otro nombre (p. ej. el de una fuente, spec 009b) la reutilice con su propio texto."""
+    normalizado = unicodedata.normalize("NFC", nombre or "").strip()
+    if all(c.isspace() or unicodedata.category(c) == "Cf" for c in normalizado):
+        raise NombreNoValido("nombre vacío", mensaje_vacio)
+    if len(normalizado) > LARGO_MAXIMO_NOMBRE:
+        raise NombreNoValido("nombre demasiado largo", f"El nombre no puede superar {LARGO_MAXIMO_NOMBRE} caracteres.")
+    return normalizado
+
+
+class SinCambios(Exception):
+    """Renombrar con el mismo nombre que ya tiene el notebook: no es un error ni deja registro (RF-17.83)."""
+
+
 class RecursoNoDisponible(Exception):
     """Un notebook, documento o conversación que el usuario no puede usar: ajeno, inexistente o pedido con una forma que no es
     la suya. No distingue entre ellos: quien la atiende responde lo mismo (404 uniforme) y deja el intento fallido con `motivo`
@@ -188,13 +218,67 @@ class NotebookService:
             T_Notebook: Notebook creado.
 
         Raises:
-            ValueError: Si el nombre está vacío (su mensaje es para el usuario, RF-17.1). Cualquier otra excepción es un
-                error inesperado: quien atiende la petición no debe mostrar su texto (RF-17.30).
+            NombreNoValido: Si el nombre está vacío, es demasiado largo, no se puede guardar tal cual o ya lo tiene otro
+                notebook activo del usuario (su mensaje es para el usuario, RF-17.81-17.85, 17.93). Cualquier otra excepción
+                es un error inesperado: quien atiende la petición no debe mostrar su texto (RF-17.30).
         """
-        if not nombre or not nombre.strip():
-            raise ValueError("El nombre del notebook no puede estar vacío")
+        return self.notebook_repo.crear(db, self.nombre_admitido(db, usuario_id, validar_nombre(nombre)), usuario_id)
 
-        return self.notebook_repo.crear(db, nombre.strip(), usuario_id)
+    def nombre_admitido(self, db: Session, usuario_id: str, nombre: str, propio: Optional[T_Notebook] = None) -> str:
+        """`nombre` (ya validado con `validar_nombre`) si la base lo guarda tal cual y ningún otro notebook ACTIVO del usuario
+        lo tiene, sin distinguir mayúsculas (las tildes sí distinguen, D1). Solo compara con los notebooks propios (RNF-07.82).
+
+        Con `propio` (al renombrar) el notebook no cuenta como su propio duplicado.
+
+        Raises:
+            NombreNoValido: «nombre con caracteres no admitidos» (RF-17.93) o «nombre duplicado» (RF-17.84), en ese orden.
+            SinCambios: `nombre` es idéntico al de `propio` (RF-17.83); se decide antes que el duplicado.
+        """
+        if self.notebook_repo.como_lo_guarda_la_base(db, nombre) != nombre:
+            raise NombreNoValido("nombre con caracteres no admitidos", "El nombre contiene caracteres no admitidos.")
+        if propio is not None and nombre == propio.CT_Nombre:
+            raise SinCambios()
+        propios = {
+            n.CT_Nombre.casefold() for n in self.notebook_repo.listar_por_usuario(db, usuario_id) if n is not propio
+        }
+        if nombre.casefold() in propios:
+            raise NombreNoValido("nombre duplicado", "Ya tiene un notebook con ese nombre.")
+        return nombre
+
+    async def _notebook_de_texto(self, db: Session, texto_id: str, usuario_id: str) -> T_Notebook:
+        """El notebook activo del usuario que dice `texto_id`, o `RecursoNoDisponible` si el id no es canónico (RF-11.32) o el
+        notebook es ajeno, inexistente o eliminado: todo igual hacia afuera (RNF-07.80)."""
+        notebook_id = id_de_notebook(texto_id)
+        notebook = None if notebook_id is None else await self.obtener_notebook_de_usuario(db, notebook_id, usuario_id)
+        if notebook is None:
+            raise RecursoNoDisponible(MOTIVO_NOTEBOOK_NO_DISPONIBLE)
+        return notebook
+
+    async def renombrar_notebook(
+        self, db: Session, texto_id: str, nombre: str, usuario_id: str
+    ) -> Tuple[T_Notebook, bool]:
+        """Cambia el nombre de un notebook propio (RF-17.80). Devuelve el notebook y si hubo cambio (False: mismo nombre, RF-17.83).
+
+        Raises:
+            RecursoNoDisponible: Antes de mirar el nombre, para no distinguir lo ajeno de lo inexistente (RNF-07.80).
+            NombreNoValido: Una regla del nombre (RF-17.81, 17.82, 17.84, 17.93).
+        """
+        notebook = await self._notebook_de_texto(db, texto_id, usuario_id)
+        normalizado = validar_nombre(nombre)
+        try:
+            self.nombre_admitido(db, usuario_id, normalizado, propio=notebook)
+        except SinCambios:
+            return notebook, False
+        return self.notebook_repo.renombrar(db, notebook, normalizado), True
+
+    async def eliminar_notebook(self, db: Session, texto_id: str, usuario_id: str) -> T_Notebook:
+        """Elimina de forma lógica un notebook propio (RF-17.87): solo marca la fecha, nada más se borra (RN-01.80).
+
+        Raises:
+            RecursoNoDisponible: Si el id no es canónico o el notebook es ajeno, inexistente o ya eliminado (RNF-07.80).
+        """
+        notebook = await self._notebook_de_texto(db, texto_id, usuario_id)
+        return self.notebook_repo.marcar_eliminado(db, notebook)
 
     async def _notebook_o_no_disponible(self, db: Session, notebook_id: int, usuario_id: str) -> T_Notebook:
         """El notebook del usuario, o `RecursoNoDisponible` si es ajeno, inexistente o su id no cabe en la columna (sin
@@ -290,6 +374,18 @@ class NotebookService:
         if notebook and notebook.CN_Id_usuario == usuario_id:
             return notebook
         return None
+
+    async def conversacion_disponible(self, db: Session, session_id: str, usuario_id: Optional[str]) -> bool:
+        """Si la conversación puede verse, restaurarse o eliminarse según su notebook (RF-17.88): la de un notebook
+        (`session_notebook_<id>_…`) solo si el notebook existe, no está eliminado y es del usuario; la del chat general no depende
+        de ningún notebook. Un id con la forma pero no canónico no está disponible y no consulta la base."""
+        coincidencia = re.match(r"session_notebook_([0-9]+)_", session_id or "", re.ASCII)
+        if coincidencia is None:
+            return True
+        id_notebook = id_de_notebook(coincidencia.group(1))
+        if id_notebook is None:
+            return False
+        return await self.obtener_notebook_de_usuario(db, id_notebook, usuario_id) is not None
 
     async def obtener_notebook_para_chat(
         self, db: Session, notebook_id: Optional[str], usuario_id: Optional[str]

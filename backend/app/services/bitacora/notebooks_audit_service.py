@@ -92,6 +92,81 @@ class NotebooksAuditService:
             logger.warning(f"Error registrando la creación de un notebook en bitácora: {type(e).__name__}")
             return None
 
+    async def registrar_creacion_fallida(
+        self,
+        db: Session,
+        usuario_id: Optional[str],
+        motivo: str,
+        tipo_error: str
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra la creación rechazada o fallida de un notebook (RF-21.81): tipo «Crear Notebook», sin tema (el notebook no llega
+        a existir), con el resultado de error, el motivo fijo («nombre vacío», «error inesperado»…) y su clasificación
+        («validacion» o «interno»). Nunca el nombre pedido (RNF-07.24).
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21.83)
+        """
+        try:
+            return await self.bitacora_service.registrar(
+                db=db,
+                usuario_id=usuario_id,
+                tipo_accion_id=TiposAccion.CREAR_NOTEBOOK,
+                texto=f"Error al crear un notebook: {motivo}",
+                info_adicional={
+                    "resultado": "error",
+                    "accion": "crear_notebook",
+                    "motivo": motivo,
+                    "tipo_error": tipo_error,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Error registrando una creación fallida de notebook en bitácora: {type(e).__name__}")
+            return None
+
+    async def _registrar_cambio(
+        self, db: Session, usuario_id: Optional[str], tipo: int, accion: str, hecho: str, clave_notebook: Optional[str],
+        exito: bool, motivo: Optional[str], tipo_error: Optional[str]
+    ) -> Optional[T_Bitacora]:
+        """Fila de renombrar o eliminar: solo la clave `NB-<id>` (o ninguna si el id no se validó), el resultado y, si falló, un motivo fijo y su clasificación;
+        nunca un nombre (RNF-07.24) ni el texto de una excepción."""
+        try:
+            clave = _sin_control(clave_notebook) if clave_notebook else None
+            if exito:
+                return await self._registrar_accion(
+                    db, usuario_id, tipo, f"Notebook {hecho}: {clave}", clave, {"resultado": "exitoso", "accion": accion})
+            if clave is None:  # el id aún no estaba validado: la fila lleva solo el motivo, sin ningún texto de la URL
+                return await self.bitacora_service.registrar(
+                    db=db, usuario_id=usuario_id, tipo_accion_id=tipo,
+                    texto=f"Error en {accion.replace('_', ' ')}: {_sin_control(motivo or '')}",
+                    info_adicional={"resultado": "error", "accion": accion, "motivo": motivo,
+                                    "tipo_error": tipo_error or "interno", "timestamp": datetime.utcnow().isoformat()})
+            return await self._registrar_accion(
+                db, usuario_id, tipo, f"Error en {accion.replace('_', ' ')} {clave}: {_sin_control(motivo or '')}", clave,
+                {"resultado": "error", "accion": accion, "motivo": motivo, "tipo_error": tipo_error or "interno"})
+        except Exception as e:
+            logger.warning(f"Error registrando {accion} en bitácora: {type(e).__name__}")
+            return None
+
+    async def registrar_renombrado(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: Optional[str], exito: bool,
+        motivo: Optional[str] = None, tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """Registra renombrar un notebook propio, con éxito o rechazado (RF-21.81). None si la bitácora falla (RF-21.83)."""
+        return await self._registrar_cambio(
+            db, usuario_id, TiposAccion.RENOMBRAR_NOTEBOOK, "renombrar_notebook", "renombrado", clave_notebook,
+            exito, motivo, tipo_error)
+
+    async def registrar_eliminacion(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: Optional[str], exito: bool,
+        motivo: Optional[str] = None, tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """Registra eliminar un notebook propio, con éxito o fallido (RF-21.81). None si la bitácora falla (RF-21.83)."""
+        return await self._registrar_cambio(
+            db, usuario_id, TiposAccion.ELIMINAR_NOTEBOOK, "eliminar_notebook", "eliminado", clave_notebook,
+            exito, motivo, tipo_error)
+
     async def registrar_previsualizacion(
         self,
         db: Session,

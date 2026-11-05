@@ -16,7 +16,7 @@ Ver también:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import literal, select
 from datetime import datetime
 from app.db.models.notebook import T_Notebook
 
@@ -50,17 +50,46 @@ class NotebookRepository:
         """Lista los notebooks de un usuario, más reciente primero."""
         stmt = (
             select(T_Notebook)
-            .where(T_Notebook.CN_Id_usuario == usuario_id)
+            .where(T_Notebook.CN_Id_usuario == usuario_id, T_Notebook.CF_Fecha_eliminacion.is_(None))
             .order_by(T_Notebook.CF_Fecha_creacion.desc())
         )
         result = db.execute(stmt)
         return list(result.scalars().all())
 
     def obtener_por_id(self, db: Session, notebook_id: int) -> Optional[T_Notebook]:
-        """Busca un notebook por su ID."""
-        stmt = select(T_Notebook).where(T_Notebook.CN_Id_notebook == notebook_id)
+        """Busca un notebook ACTIVO por su ID: el eliminado (RF-17.87) deja de existir para quien lo pide (RF-17.88)."""
+        stmt = select(T_Notebook).where(
+            T_Notebook.CN_Id_notebook == notebook_id, T_Notebook.CF_Fecha_eliminacion.is_(None)
+        )
         result = db.execute(stmt)
         return result.scalar_one_or_none()
+
+    def renombrar(self, db: Session, notebook: T_Notebook, nombre: str) -> T_Notebook:
+        """Cambia el nombre del notebook (RF-17.80); si falla, deshace y relanza."""
+        try:
+            notebook.CT_Nombre = nombre
+            db.commit()
+            db.refresh(notebook)
+            return notebook
+        except Exception:
+            db.rollback()
+            raise
+
+    def marcar_eliminado(self, db: Session, notebook: T_Notebook) -> T_Notebook:
+        """Eliminación lógica (RF-17.87, RN-01.80): solo anota la fecha, no toca nada más; si falla, deshace y relanza."""
+        try:
+            notebook.CF_Fecha_eliminacion = datetime.utcnow()
+            db.commit()
+            return notebook
+        except Exception:
+            db.rollback()
+            raise
+
+    def como_lo_guarda_la_base(self, db: Session, nombre: str) -> str:
+        """El nombre tal como lo guardaría el INSERT en la columna `CT_Nombre` (VARCHAR): el controlador cambia o quita los
+        caracteres que no existen en la página de códigos. Sirve para rechazar lo que no se guardaría igual (RF-17.93) en vez de
+        guardarlo degradado. Solo lectura."""
+        return db.execute(select(literal(nombre, T_Notebook.CT_Nombre.type))).scalar()
 
     def pertenece_a_usuario(self, db: Session, notebook_id: int, usuario_id: str) -> bool:
         """Valida que el notebook exista y pertenezca al usuario dado."""

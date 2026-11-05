@@ -103,6 +103,10 @@ class TiposAccion:
     QUITAR_DOCUMENTO_NOTEBOOK = 17    # Quitar un documento de un notebook
     GESTIONAR_CONVERSACION = 18       # Ver, restaurar o eliminar una conversación
 
+    # Gestión de notebooks (spec 009, RF-21.80)
+    RENOMBRAR_NOTEBOOK = 19           # Cambiar el nombre de un notebook
+    ELIMINAR_NOTEBOOK = 20            # Eliminación lógica de un notebook
+
 
 # Mapeo de descripciones para logging
 DESCRIPCIONES_TIPOS_ACCION = {
@@ -124,4 +128,6 @@ DESCRIPCIONES_TIPOS_ACCION = {
     TiposAccion.CREAR_NOTEBOOK: "Crear Notebook",
     TiposAccion.QUITAR_DOCUMENTO_NOTEBOOK: "Quitar Documento de Notebook",
     TiposAccion.GESTIONAR_CONVERSACION: "Gestionar Conversación",
+    TiposAccion.RENOMBRAR_NOTEBOOK: "Renombrar Notebook",
+    TiposAccion.ELIMINAR_NOTEBOOK: "Eliminar Notebook",
 }

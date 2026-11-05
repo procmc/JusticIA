@@ -377,7 +377,8 @@ async def get_conversation_detail(
         
         # El dueño se comprueba ANTES de leer la conversación (RNF-07.6): la de otro usuario y la inexistente dan el mismo 404
         # y el mismo intento fallido; el 403 de antes revelaba que la conversación existía.
-        if conversation_store.es_propia(session_id, user_id) is not True:
+        # La conversación de un notebook eliminado tampoco está disponible (RF-17.88): mismo 404 e intento fallido.
+        if conversation_store.es_propia(session_id, user_id) is not True or not await NotebookService().conversacion_disponible(db, session_id, current_user.get("user_id")):
             await _registrar_intento_de_conversacion(db, current_user)
             raise HTTPException(
                 status_code=404,
@@ -432,7 +433,8 @@ async def delete_conversation(
         
         # Eliminar conversación: la de otro usuario y la inexistente dan el mismo 404 y el mismo intento fallido (RNF-07.6)
         success = False
-        if conversation_store.es_propia(session_id, user_id) is True:
+        if conversation_store.es_propia(session_id, user_id) is True and await NotebookService().conversacion_disponible(
+                db, session_id, current_user.get("user_id")):
             success = conversation_store.delete_session(session_id, user_id)
         else:
             await _registrar_intento_de_conversacion(db, current_user)
@@ -482,7 +484,8 @@ async def restore_conversation(
         
         # El dueño se comprueba ANTES de cargar nada (RNF-07.6): la de otro usuario y la inexistente dan el mismo 404 y el mismo
         # intento fallido, y la ajena no llega a cargarse en memoria ni un instante.
-        if conversation_store.es_propia(session_id, user_id) is not True:
+        # La conversación de un notebook eliminado tampoco está disponible (RF-17.88): mismo 404 e intento fallido.
+        if conversation_store.es_propia(session_id, user_id) is not True or not await NotebookService().conversacion_disponible(db, session_id, current_user.get("user_id")):
             await _registrar_intento_de_conversacion(db, current_user)
             raise HTTPException(
                 status_code=404,

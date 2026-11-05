@@ -40,6 +40,7 @@ Version:
     1.0.0
 """
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import BigInteger, String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
@@ -61,6 +62,8 @@ class T_Notebook(Base):
     CT_Nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     CN_Id_usuario: Mapped[str] = mapped_column(String(20), ForeignKey("T_Usuario.CN_Id_usuario"), nullable=False)
     CF_Fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    # Eliminación lógica (spec 009, RN-01.80): NULL = activo; con fecha = eliminado, no se borra la fila.
+    CF_Fecha_eliminacion: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     @property
     def clave_interna(self) -> str:
