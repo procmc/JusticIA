@@ -686,7 +686,7 @@ def test_catalogo_con_tres_tipos_nuevos():
     from app.constants.tipos_accion import DESCRIPCIONES_TIPOS_ACCION, TiposAccion
 
     filas = dict(_consultar("SELECT CN_Id_tipo_accion, CT_Nombre_tipo_accion FROM T_Tipo_accion"))
-    assert sorted(filas) == list(range(1, 19))
+    assert sorted(filas) == list(range(1, 21))  # spec 009: suma 19 y 20
     assert {i: filas[i] for i in range(16, 19)} == _TIPOS_NUEVOS
     assert {i: filas[i] for i in range(1, 16)} == {i: DESCRIPCIONES_TIPOS_ACCION[i] for i in range(1, 16)}
     assert (TiposAccion.CREAR_NOTEBOOK, TiposAccion.QUITAR_DOCUMENTO_NOTEBOOK, TiposAccion.GESTIONAR_CONVERSACION) == (16, 17, 18)
@@ -694,28 +694,30 @@ def test_catalogo_con_tres_tipos_nuevos():
 
 
 @pytest.mark.requisito("RF-21.34")
+@pytest.mark.requisito("RF-21.80")
 def test_filtro_por_tipo_nuevo(cliente_api, iniciar_sesion, administrador, usuario_gubernamental):
-    """RF-21.34: la bitácora del Administrador y el historial propio aceptan y filtran por los tipos 16 a 18 (con `le=15`
-    respondían 422); el 19 sigue rechazándose."""
+    """RF-21.34, RF-21.80: la bitácora del Administrador y el historial propio aceptan y filtran por los tipos 16 a 20 (con `le=15`
+    respondían 422; los 19 y 20 son de la spec 009); el 21 sigue rechazándose."""
     from fastapi.testclient import TestClient
 
     from app.db.database import SessionLocal
     from app.services.bitacora.bitacora_service import bitacora_service
     from app.services.bitacora.bitacora_stats_service import bitacora_stats_service
 
+    tipos = {**_TIPOS_NUEVOS, 19: "Renombrar Notebook", 20: "Eliminar Notebook"}  # RF-21.80
     texto = f"{PREFIJO_DATOS} acción de notebook {uuid.uuid4().hex[:6]}"
     with SessionLocal() as db:
-        for tipo in _TIPOS_NUEVOS:
+        for tipo in tipos:
             fila = asyncio.run(bitacora_service.registrar(
                 db=db, usuario_id=usuario_gubernamental.cedula, tipo_accion_id=tipo, texto=f"{texto} {tipo}"))
             assert fila is not None, f"no se pudo registrar el tipo {tipo}"
-        for tipo in _TIPOS_NUEVOS:  # historial propio: su servicio filtra por el tipo
+        for tipo in tipos:  # historial propio: su servicio filtra por el tipo
             propio = bitacora_stats_service.obtener_con_filtros(
                 db=db, usuario_id=usuario_gubernamental.cedula, tipo_accion_id=tipo, limite=50)
             assert [i["texto"] for i in propio["items"] if texto in i["texto"]] == [f"{texto} {tipo}"]
 
     cabeceras = iniciar_sesion(administrador)
-    for tipo, nombre in _TIPOS_NUEVOS.items():
+    for tipo, nombre in tipos.items():
         respuesta = cliente_api.get("/bitacora/registros", headers=cabeceras,
                                     params={"tipoAccion": tipo, "usuario": usuario_gubernamental.correo, "limite": 100})
         assert respuesta.status_code == 200, (tipo, respuesta.text)
@@ -724,10 +726,10 @@ def test_filtro_por_tipo_nuevo(cliente_api, iniciar_sesion, administrador, usuar
 
     sesion = iniciar_sesion(usuario_gubernamental)
     sin_relanzar = TestClient(cliente_api.app, raise_server_exceptions=False)
-    for tipo in _TIPOS_NUEVOS:  # la ruta del historial propio hoy da 500 por otra causa (004, xfail): lo que no puede dar es 422
+    for tipo in tipos:  # la ruta del historial propio hoy da 500 por otra causa (004, xfail): lo que no puede dar es 422
         assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": tipo}).status_code != 422, tipo
-    assert cliente_api.get("/bitacora/registros", headers=cabeceras, params={"tipoAccion": 19}).status_code == 422
-    assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": 19}).status_code == 422
+    assert cliente_api.get("/bitacora/registros", headers=cabeceras, params={"tipoAccion": 21}).status_code == 422
+    assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": 21}).status_code == 422
 
 
 # --- T6: la clave de ancho completo (RF-17.34) -----------------------------------------------------------------------------------
@@ -1109,10 +1111,13 @@ def _operacion_de_notebook(cliente_api, cabeceras, operacion: str, id_notebook, 
 
 
 @pytest.mark.requisito("RF-17.30")
-def test_crear_con_error_inesperado_es_generico(cliente_api, sesion, correo_simulado, monkeypatch, caplog):
+def test_crear_con_error_inesperado_es_generico(cliente_api, sesion, usuario_gubernamental, correo_simulado, monkeypatch,
+                                                caplog):
     """RF-17.30: si crear el notebook falla por un error inesperado (aquí el repositorio lanza con una ruta inventada) la
     respuesta es 500 «Error interno del servidor», sin el texto de la excepción ni la ruta, ni en el cuerpo ni en el registro
-    del servidor, y no queda ningún efecto (ni notebook ni fila de bitácora). Un nombre vacío conserva su 400 con mensaje."""
+    del servidor, y no queda ningún efecto salvo UNA fila de bitácora «Crear Notebook» fallida, sin tema, con el motivo
+    «error inesperado» y tipo «interno» y sin la ruta (RF-21.81, spec 009). Un nombre vacío conserva su 400 con su mensaje
+    exacto y deja también su fila."""
     from app.repositories.notebook_repository import NotebookRepository
 
     caplog.set_level(logging.DEBUG, logger="app")
@@ -1123,14 +1128,22 @@ def test_crear_con_error_inesperado_es_generico(cliente_api, sesion, correo_simu
 
     monkeypatch.setattr(NotebookRepository, "crear", _falla)
     antes = foto_de_efectos(correo_simulado)
+    marca = _marca_de_bitacora()
 
     respuesta = cliente_api.post("/notebooks", json={"nombre": f"{PREFIJO_DATOS} notebook que falla"}, headers=sesion)
 
     assert respuesta.status_code == 500 and respuesta.json() == {"detail": "Error interno del servidor"}
     assert ruta not in respuesta.text and ruta not in caplog.text, "la ruta de la excepción salió a la respuesta o al registro"
-    assert foto_de_efectos(correo_simulado) == antes, "el error dejó algún efecto"
+    despues = foto_de_efectos(correo_simulado)
+    assert _sin_bitacora(despues) == _sin_bitacora(antes), "el error dejó algún efecto"
+    assert despues["filas"]["T_Bitacora"] == antes["filas"]["T_Bitacora"] + 1
+    filas = _filas_del_usuario(usuario_gubernamental, marca)
+    assert len(filas) == 1 and filas[0]["tipo"] == CREAR_NOTEBOOK and filas[0]["expediente"] is None, filas
+    assert filas[0]["info"]["resultado"] == "error" and filas[0]["info"]["motivo"] == "error inesperado"
+    assert filas[0]["info"]["tipo_error"] == "interno" and ruta not in _contenido_de_la_fila(filas[0])
     vacio = cliente_api.post("/notebooks", json={"nombre": "  "}, headers=sesion)
-    assert vacio.status_code == 400 and "nombre" in vacio.json()["detail"].lower()
+    assert vacio.status_code == 400 and vacio.json() == {"detail": "El nombre del notebook no puede estar vacío"}
+    assert [f["info"]["motivo"] for f in _filas_del_usuario(usuario_gubernamental, marca)][1:] == ["nombre vacío"]
 
 
 @pytest.mark.requisito("RF-21.30")

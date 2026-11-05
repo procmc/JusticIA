@@ -90,7 +90,7 @@ def test_crear_y_orden_propio(cliente_api, sesion, usuario_gubernamental, inicia
 @pytest.mark.parametrize("nombre", ["", " ", "   ", "\t \n"])
 def test_nombre_vacio_o_espacios(cliente_api, sesion, correo_simulado, nombre):
     """RF-17.1: un nombre vacío o de solo espacios no crea nada y responde 4xx (no 5xx) con un mensaje en español; no deja
-    ningún efecto (ni notebook, ni fila de bitácora, ni archivo)."""
+    ningún efecto (ni notebook ni archivo) salvo la fila de bitácora del rechazo (RF-21.81, spec 009)."""
     antes = foto_de_efectos(correo_simulado)
 
     respuesta = cliente_api.post("/notebooks", json={"nombre": nombre}, headers=sesion)
@@ -98,7 +98,10 @@ def test_nombre_vacio_o_espacios(cliente_api, sesion, correo_simulado, nombre):
     assert 400 <= respuesta.status_code < 500, f"se esperaba un 4xx y se recibió {respuesta.status_code}"
     detalle = respuesta.json().get("detail")
     assert isinstance(detalle, str) and "nombre" in detalle.lower(), f"se esperaba un mensaje en español: {detalle!r}"
-    assert foto_de_efectos(correo_simulado) == antes
+    despues = foto_de_efectos(correo_simulado)
+    assert despues["filas"]["T_Bitacora"] == antes["filas"]["T_Bitacora"] + 1, "el rechazo debe dejar UNA fila de bitácora"
+    sin_bitacora = lambda foto: {**foto, "filas": {t: n for t, n in foto["filas"].items() if t != "T_Bitacora"}}
+    assert sin_bitacora(despues) == sin_bitacora(antes)
 
 
 # --- RF-17.2: subir al notebook y llegar a Procesado --------------------------------------------------------------------------
