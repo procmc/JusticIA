@@ -45,6 +45,7 @@ rectangle "Sistema ServIA" {
     usecase "Crear un Notebook" as CU11
     usecase "Previsualizar Documento Original" as CU12
     usecase "Eliminar Documento de un Notebook" as CU13
+    usecase "Gestionar un Notebook" as CU17
   }
   rectangle "Búsqueda de Temas Similares" {
     usecase "Buscar Temas o Documentos Similares" as CU14
@@ -68,10 +69,12 @@ UG --> CU09
 UG --> CU11
 UG --> CU12
 UG --> CU13
+UG --> CU17
 UG --> CU14
 ADM --> CU15
 CU01 ..> CU04 : <<extend>>
 CU07 ..> CU08 : <<extend>>
 CU09 ..> CU10 : <<extend>>
+CU11 ..> CU17 : <<extend>>
 CU15 ..> CU16 : <<extend>>
 @enduml
