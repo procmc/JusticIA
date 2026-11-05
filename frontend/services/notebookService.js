@@ -18,8 +18,32 @@ class NotebookService {
       const data = await httpService.post('/notebooks', { nombre });
       return { success: true, notebook: data };
     } catch (error) {
-      console.error('Error al crear notebook:', error);
-      return { error: true, message: error.message || 'Error al crear el notebook' };
+      // Sin console.error: el mensaje del servidor (en español) lo muestra la página bajo el campo (RF-17.85).
+      return { error: true, status: error.status, message: error.message || 'Error al crear el notebook' };
+    }
+  }
+
+  /**
+   * Renombrar un notebook (RF-17.80). El error lleva `status`: 400 trae el mensaje de validación del servidor.
+   */
+  async renombrarNotebook(notebookId, nombre) {
+    try {
+      const data = await httpService.put(`/notebooks/${notebookId}`, { nombre });
+      return { success: true, notebook: data };
+    } catch (error) {
+      return { error: true, status: error.status, message: error.message || 'No se pudo renombrar el notebook. Intente de nuevo.' };
+    }
+  }
+
+  /**
+   * Eliminar un notebook (eliminación lógica, RF-17.87).
+   */
+  async eliminarNotebook(notebookId) {
+    try {
+      await httpService.delete(`/notebooks/${notebookId}`);
+      return { success: true };
+    } catch (error) {
+      return { error: true, status: error.status, message: error.message || 'No se pudo eliminar el notebook. Intente de nuevo.' };
     }
   }
 

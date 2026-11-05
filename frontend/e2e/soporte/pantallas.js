@@ -36,7 +36,7 @@ async function crearNotebookEnPantalla(page, nombre) {
 }
 
 // Los notebooks de la lista lateral, en el orden en que se muestran (el primero es el más reciente).
-const listaDeNotebooks = (page) => page.locator('div.overflow-y-auto.space-y-1 > button');
+const listaDeNotebooks = (page) => page.locator('div.overflow-y-auto.space-y-1 > div > button:first-child');
 
 // Crea un notebook escribiendo el nombre y pulsando Enter en el campo (sin el botón) y espera a verlo en la lista.
 async function crearNotebookConEnter(page, nombre) {

@@ -145,7 +145,7 @@ export function textoResumen(d) {
     '=== Resumen de extremo a extremo ===',
     ...cifras,
     `Preparación: ${segundos(d.preparacionMs)} (límite ${segundos(LIMITE_PREPARACION_MS)})`,
-    `Suite: ${segundos(d.suiteMs)} (límite 600.0 s)`,
+    `Suite: ${segundos(d.suiteMs)} (límite 720.0 s)`,
     `Residuos de datos de prueba: ${d.residuos ?? 'no se pudo leer'}${d.textoResiduos && d.residuos ? ` (${d.textoResiduos})` : ''} (al empezar: ${d.residuosAlEmpezar ?? 'n/d'})`,
     `Contraseñas en artefactos: ${d.contrasenas} (en el registro de la instancia: ${d.coincidenciasRegistro ?? 'n/d'})`,
     `Backend de desarrollo: antes ${d.desarrolloAntes}, después ${d.desarrolloDespues}`,

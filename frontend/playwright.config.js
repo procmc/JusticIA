@@ -11,9 +11,9 @@ module.exports = defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.spec.js',
   outputDir: 'test-results/artefactos',
-  // Límites de la spec (RA-02.47): 10 min la suite y 60 s cada prueba.
+  // Límites (RA-02.47): 12 min la suite (subido de 10 por decisión de Andrés, spec 009 T6) y 60 s cada prueba.
   timeout: 60_000,
-  globalTimeout: 600_000,
+  globalTimeout: 720_000,
   expect: { timeout: 10_000 },
   // La instancia es compartida: un solo trabajador y sin reintentos que oculten fallos.
   workers: 1,

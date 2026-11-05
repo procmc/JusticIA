@@ -12,6 +12,7 @@ import Toast from '@/components/ui/CustomAlert';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import consultaService from '@/services/consultaService';
 import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
+import ItemNotebook from '@/components/notebooks/ItemNotebook';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
   createUserMessage,
@@ -39,6 +40,9 @@ const NotebooksPage = () => {
   const [loadingNotebooks, setLoadingNotebooks] = useState(true);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [creando, setCreando] = useState(false);
+  const [errorCreacion, setErrorCreacion] = useState(''); // rechazo del servidor al crear (RF-17.85), bajo el campo
+  const [notebookPorEliminar, setNotebookPorEliminar] = useState(null); // notebook que se pide confirmar (RF-17.86)
+  const eliminacionRef = useRef(null); // el mismo notebook; se vacía en el primer «Eliminar» (envío único)
 
   const [notebookActivo, setNotebookActivo] = useState(null);
   const [sessionId, setSessionId] = useState(null);
@@ -100,9 +104,75 @@ const NotebooksPage = () => {
     const result = await notebookService.crearNotebook(nuevoNombre.trim());
     setCreando(false);
     if (result.success) {
+      setErrorCreacion('');
       setNuevoNombre('');
       setNotebooks(prev => [result.notebook, ...prev]);
       seleccionarNotebook(result.notebook);
+    } else if (result.status === 400) {
+      setErrorCreacion(result.message);
+    } else {
+      Toast.error('Error al crear', 'No se pudo crear el notebook. Intente de nuevo.');
+    }
+  };
+
+  // Quita de la lista (y cierra si estaba abierto) un notebook que ya no existe o se eliminó, sin guardar su chat.
+  const retirarNotebook = (id) => {
+    if (notebookActivo?.id === id) {
+      cancelarEnCurso();
+      try {
+        sessionStorage.removeItem(`notebook_chat_session_${id}`);
+        sessionStorage.removeItem(`notebook_chat_messages_${id}`);
+      } catch (error) {
+        // sessionStorage inaccesible: no es crítico
+      }
+      setNotebookActivo(null);
+      setSessionId(null);
+      setMessages([]);
+      setDocumentosNotebook([]);
+      setArchivosSeleccionados([]);
+      setArchivosSubiendo([]);
+    }
+    setNotebooks(prev => prev.filter(n => n.id !== id));
+  };
+
+  // RF-17.80: 400 devuelve el mensaje del servidor para el campo; 404 retira la fila (RF-17.92); lo demás, un aviso.
+  const handleRenombrarNotebook = async (nb, nombre) => {
+    const result = await notebookService.renombrarNotebook(nb.id, nombre);
+    if (result.success) {
+      setNotebooks(prev => prev.map(n => (n.id === nb.id ? { ...n, nombre: result.notebook.nombre } : n)));
+      setNotebookActivo(prev => (prev?.id === nb.id ? { ...prev, nombre: result.notebook.nombre } : prev));
+      return { success: true };
+    }
+    if (result.status === 400) return { message: result.message };
+    if (result.status === 404) {
+      retirarNotebook(nb.id);
+      Toast.warning('El notebook ya no está disponible.');
+      return { success: true };
+    }
+    Toast.error('Error al renombrar', 'No se pudo renombrar el notebook. Intente de nuevo.');
+    return {};
+  };
+
+  const pedirConfirmacionDeEliminar = (nb) => {
+    const pendiente = { id: nb.id, nombre: nb.nombre };
+    eliminacionRef.current = pendiente;
+    setNotebookPorEliminar(pendiente);
+  };
+
+  const confirmarEliminar = async () => {
+    const pendiente = eliminacionRef.current;
+    eliminacionRef.current = null;
+    if (!pendiente) return;
+    const result = await notebookService.eliminarNotebook(pendiente.id);
+    if (result.success) {
+      const estabaAbierto = notebookActivo?.id === pendiente.id;
+      retirarNotebook(pendiente.id);
+      if (estabaAbierto) Toast.info('Notebook eliminado.');
+    } else if (result.status === 404) {
+      retirarNotebook(pendiente.id);
+      Toast.warning('El notebook ya no está disponible.');
+    } else {
+      Toast.error('Error al eliminar', 'No se pudo eliminar el notebook. Intente de nuevo.');
     }
   };
 
@@ -389,7 +459,9 @@ const NotebooksPage = () => {
             size="sm"
             placeholder="Nombre del notebook"
             value={nuevoNombre}
-            onValueChange={setNuevoNombre}
+            onValueChange={(v) => { setNuevoNombre(v); setErrorCreacion(''); }}
+            isInvalid={!!errorCreacion}
+            errorMessage={errorCreacion}
             onKeyDown={(e) => e.key === 'Enter' && handleCrearNotebook()}
           />
           <Button
@@ -411,15 +483,14 @@ const NotebooksPage = () => {
             <p className="text-sm text-gray-400 text-center p-4">Todavía no tiene notebooks. Cree uno arriba.</p>
           ) : (
             notebooks.map(nb => (
-              <button
+              <ItemNotebook
                 key={nb.id}
-                onClick={() => seleccionarNotebook(nb)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  notebookActivo?.id === nb.id ? 'bg-blue-50 text-[#003d82] font-medium' : 'hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                {nb.nombre}
-              </button>
+                notebook={nb}
+                activo={notebookActivo?.id === nb.id}
+                onSeleccionar={() => seleccionarNotebook(nb)}
+                onRenombrar={(nombre) => handleRenombrarNotebook(nb, nombre)}
+                onEliminar={() => pedirConfirmacionDeEliminar(nb)}
+              />
             ))
           )}
         </div>
@@ -612,6 +683,17 @@ const NotebooksPage = () => {
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!notebookPorEliminar}
+        onClose={() => setNotebookPorEliminar(null)}
+        onConfirm={confirmarEliminar}
+        title="Eliminar notebook"
+        description={`¿Eliminar "${notebookPorEliminar?.nombre ?? ''}"? Dejará de estar disponible, con sus documentos y su conversación.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        confirmColor="danger"
+      />
 
       <ConfirmModal
         isOpen={!!documentoPorQuitar}
