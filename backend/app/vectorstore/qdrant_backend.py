@@ -416,6 +416,19 @@ class QdrantBackend(VectorStoreBackend):
 
         return langchain_docs
 
+    async def actualizar_nombre_de_documento(self, document_id: int, nombre: str) -> None:
+        """Pone `nombre` en `metadata.nombre_archivo` de todos los puntos del documento (los nombres que ve el usuario en las
+        citas). `key="metadata"` fusiona solo esa clave dentro del objeto anidado; `wait=True` para que la compensación posterior
+        encuentre el cambio ya aplicado."""
+        client = _get_client()
+        client.set_payload(
+            collection_name=QDRANT_COLLECTION_NAME,
+            payload={"nombre_archivo": nombre},
+            key="metadata",
+            points=Filter(must=[FieldCondition(key="metadata.id_documento", match=MatchValue(value=document_id))]),
+            wait=True,
+        )
+
     async def delete_document_chunks(self, document_id: int) -> None:
         """Elimina todos los puntos de Qdrant de un documento (permite 'quitar' un archivo ya subido)."""
         client = _get_client()

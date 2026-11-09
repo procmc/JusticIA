@@ -253,6 +253,43 @@ class NotebooksAuditService:
             logger.warning(f"Error registrando que se quitó un documento en bitácora: {type(e).__name__}")
             return None
 
+    async def registrar_renombrado_documento(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: Optional[str], documento_id: Optional[int], exito: bool,
+        motivo: Optional[str] = None, tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra renombrar una fuente propia de un notebook, con éxito o rechazada (RF-21.101): tipo «Renombrar Documento de
+        Notebook», con la clave, el número del documento y el resultado. NUNCA el nombre anterior ni el nuevo (RNF-07.24) ni el
+        texto de una excepción; un fallo lleva un motivo fijo y su clasificación. Con `clave_notebook` o `documento_id` en None
+        (aún sin validar el id de la URL) la fila los omite.
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21)
+        """
+        try:
+            clave = _sin_control(clave_notebook) if clave_notebook else None
+            numero = int(documento_id) if documento_id is not None else None
+            info = {"accion": "renombrar_documento", "resultado": "exitoso" if exito else "error"}
+            if numero is not None:
+                info["documento_id"] = numero
+            donde = f" de {clave}" if clave else ""
+            hecho = f" (documento {numero})" if numero is not None else ""
+            if exito:
+                texto = f"Fuente renombrada en el notebook {clave}{hecho}"
+            else:
+                info.update({"motivo": motivo, "tipo_error": tipo_error or "interno"})
+                texto = f"Error al renombrar una fuente{donde}{hecho}: {_sin_control(motivo or '')}"
+            if clave is None:
+                info["timestamp"] = datetime.utcnow().isoformat()
+                return await self.bitacora_service.registrar(
+                    db=db, usuario_id=usuario_id, tipo_accion_id=TiposAccion.RENOMBRAR_DOCUMENTO_NOTEBOOK, texto=texto,
+                    info_adicional=info)
+            return await self._registrar_accion(
+                db, usuario_id, TiposAccion.RENOMBRAR_DOCUMENTO_NOTEBOOK, texto, clave, info)
+        except Exception as e:
+            logger.warning(f"Error registrando el renombrado de una fuente en bitácora: {type(e).__name__}")
+            return None
+
     async def registrar_intento_fallido(
         self,
         db: Session,

@@ -8,6 +8,7 @@ Endpoints:
     - GET /notebooks: Listar los notebooks del usuario autenticado
     - GET /notebooks/{id}/documentos: Listar los documentos de un notebook propio
     - GET /notebooks/{id}/documentos/{id}/archivo: Previsualizar el archivo de un documento
+    - PUT /notebooks/{id}/documentos/{id}: Cambiar el nombre que se muestra de una fuente (spec 009b)
     - DELETE /notebooks/{id}/documentos/{id}: Quitar un documento del notebook
 
 Las rutas solo reciben, llaman al servicio, registran en la bitácora y traducen los errores (RF-17.33): el acceso a datos,
@@ -47,8 +48,8 @@ from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.bitacora.notebooks_audit_service import MOTIVO_NOTEBOOK_NO_DISPONIBLE, notebooks_audit_service
 from app.services.notebook_service import (
-    ArchivoNoEncontrado, DocumentoSinProcesar, ErrorAlQuitar, NombreNoValido, NotebookService, RecursoNoDisponible,
-    id_de_notebook
+    ArchivoNoEncontrado, DocumentoSinProcesar, ErrorAlQuitar, ErrorAlRenombrar, NombreNoValido, NotebookService,
+    RecursoNoDisponible, extension_de, id_de_notebook, nombre_mostrado
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,10 @@ class NotebookCrearRequest(BaseModel):
 
 class NotebookRenombrarRequest(BaseModel):
     nombre: str  # sin `max_length`: el largo lo valida el servicio, para dar su mensaje (RF-17.82)
+
+
+class FuenteRenombrarRequest(BaseModel):
+    nombre: str  # la base, sin extensión y sin `max_length`: el servicio valida el largo para dar su mensaje (RF-19.106)
 
 
 class NotebookEliminadoRespuesta(BaseModel):
@@ -188,7 +193,8 @@ async def eliminar_notebook(
 
 class DocumentoNotebookResponse(BaseModel):
     id: int
-    nombre_archivo: str
+    nombre_archivo: str  # el nombre mostrado (RF-19.103)
+    extension: str  # la del nombre interno, con su punto o vacía: es lo único que no se edita (RF-19.102)
     estado: str
 
 
@@ -218,7 +224,8 @@ async def listar_documentos_notebook(
     return [
         DocumentoNotebookResponse(
             id=d.CN_Id_documento,
-            nombre_archivo=d.CT_Nombre_archivo,
+            nombre_archivo=nombre_mostrado(d),
+            extension=extension_de(d.CT_Nombre_archivo),
             estado=d.estado_procesamiento.CT_Nombre_estado if d.estado_procesamiento else "Desconocido",
         )
         for d in documentos
@@ -257,7 +264,53 @@ async def ver_archivo_documento_notebook(
         db, current_user["user_id"], notebook.clave_interna, documento.CN_Id_documento
     )
     media_type, _ = mimetypes.guess_type(documento.CT_Nombre_archivo)
-    return FileResponse(path=str(ruta_archivo), media_type=media_type or "application/octet-stream")
+    # El tipo sale del nombre interno y el archivo, de su ruta; el nombre mostrado solo va en la cabecera (RF-19.103).
+    return FileResponse(path=str(ruta_archivo), media_type=media_type or "application/octet-stream",
+                        filename=nombre_mostrado(documento), content_disposition_type="inline")
+
+
+@router.put("/{notebook_id}/documentos/{documento_id}", response_model=DocumentoNotebookResponse)
+async def renombrar_documento_notebook(
+    notebook_id: str,
+    documento_id: str,
+    request: FuenteRenombrarRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial),
+):
+    """Cambia el nombre que se muestra de una fuente propia. Los ids llegan como texto y solo vale el canónico: otro da 404, no
+    422. El archivo y el nombre interno no cambian (RF-19.103)."""
+    usuario = current_user["user_id"]
+    try:
+        # El servicio resuelve primero notebook y fuente (404 uniforme) y después valida el nombre (RNF-07.101).
+        documento, cambiado = await notebook_service.renombrar_documento(db, notebook_id, documento_id, request.nombre, usuario)
+    except RecursoNoDisponible as no_disponible:
+        raise await _no_encontrado(db, current_user, no_disponible, TiposAccion.RENOMBRAR_DOCUMENTO_NOTEBOOK)
+    except NombreNoValido as e:
+        # Aquí los dos ids ya son canónicos: el servicio los resolvió antes de mirar el nombre.
+        await notebooks_audit_service.registrar_renombrado_documento(
+            db, usuario, _clave_validada(notebook_id), id_de_notebook(documento_id), exito=False, motivo=e.motivo,
+            tipo_error="validacion")
+        raise HTTPException(status_code=400, detail=e.mensaje)
+    except Exception as e:
+        # Sin el texto de la excepción ni en la respuesta ni en el registro (RF-19.108); el nombre es texto libre.
+        await notebooks_audit_service.registrar_renombrado_documento(
+            db, usuario, _clave_validada(notebook_id), id_de_notebook(documento_id), exito=False, motivo="error inesperado",
+            tipo_error="interno")
+        causa = e.causa if isinstance(e, ErrorAlRenombrar) else e
+        logger.error(
+            "Error al renombrar una fuente de un notebook (%s)\n%s", type(causa).__name__,
+            "".join(traceback.format_tb(causa.__traceback__)))
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+    if cambiado:  # el mismo nombre responde 200 sin dejar fila (RF-19.106)
+        await notebooks_audit_service.registrar_renombrado_documento(
+            db, usuario, _clave_validada(notebook_id), documento.CN_Id_documento, exito=True)
+    return DocumentoNotebookResponse(
+        id=documento.CN_Id_documento,
+        nombre_archivo=nombre_mostrado(documento),
+        extension=extension_de(documento.CT_Nombre_archivo),
+        estado=documento.estado_procesamiento.CT_Nombre_estado if documento.estado_procesamiento else "Desconocido",
+    )
 
 
 @router.delete("/{notebook_id}/documentos/{documento_id}")

@@ -18,13 +18,14 @@ EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
 
 
 def a_fragmento(doc: Document) -> Fragmento:
-    """Convierte un documento recuperado en un `Fragmento` (el nombre del archivo sale de la ruta si la hay)."""
+    """Convierte un documento recuperado en un `Fragmento`.
+
+    El nombre que ve el modelo (y que cita) es `nombre_archivo`: es el que se actualiza al renombrar una fuente (RF-19.104).
+    La ruta conserva el nombre interno, que es el del archivo en disco; solo sirve de respaldo para documentos sin nombre.
+    """
     metadata = doc.metadata or {}
     ruta = (metadata.get("ruta_archivo") or "").strip()
-    if ruta:
-        archivo = ruta.split("/")[-1]
-    else:
-        archivo = metadata.get("nombre_archivo") or metadata.get("archivo") or "N/A"
+    archivo = (metadata.get("nombre_archivo") or metadata.get("archivo") or (ruta.split("/")[-1] if ruta else "") or "N/A")
     return Fragmento(
         texto=doc.page_content,
         archivo=archivo,

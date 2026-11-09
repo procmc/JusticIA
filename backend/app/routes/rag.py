@@ -49,7 +49,7 @@ Note:
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app.services.RAG.rag_chain_service import get_rag_service
@@ -60,7 +60,7 @@ from app.services.bitacora.rag_audit_service import rag_audit_service
 from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
 )
-from app.services.notebook_service import NotebookService, RecursoNoDisponible, NO_DISPONIBLE
+from app.services.notebook_service import NotebookService, RecursoNoDisponible, SeleccionVacia, NO_DISPONIBLE
 from app.constants.tipos_accion import TiposAccion
 import logging
 import json
@@ -93,6 +93,9 @@ class ConsultaConHistorialRequest(BaseModel):
     top_k: Optional[int] = None  # RF-11.65: ausente o ≤ 0 usa el valor del servidor; nunca más que él
     expediente_number: Optional[str] = None  # Opcional, para consultas de expediente específico
     notebook_id: Optional[str] = None  # Opcional, para consultas acotadas a un notebook (NotebookServIA)
+    # Fuentes marcadas en el chat del notebook (RF-11.105): ausente = todas; solo se usa con `notebook_id`. StrictInt: "5", 5.5 y
+    # true no se convierten, dan 422.
+    documentos: Optional[List[StrictInt]] = None
 
 
 class UpdateExpedienteContextRequest(BaseModel):
@@ -187,6 +190,7 @@ async def consulta_con_historial_stream(
             top_k=request.top_k,
             expediente_filter=request.expediente_number,
             notebook_filter=request.notebook_id,
+            documentos=request.documentos,
             usuario_id=current_user["user_id"],
             http_request=http_request,
             usuario_nombre=current_user.get("username"),
@@ -224,6 +228,9 @@ async def consulta_con_historial_stream(
         except Exception as audit_error:
             logger.warning(f"Error en auditoría RAG: {type(audit_error).__name__}")
         raise HTTPException(status_code=404, detail="Notebook no encontrado")
+    except SeleccionVacia:
+        # Antes de tocar la conversación: no llama al modelo ni deja fila (como «La consulta no puede estar vacía»)
+        raise HTTPException(status_code=400, detail="Marque al menos una fuente para consultar.")
     except Exception as e:
         logger.error(f"Error en consulta con historial: {e}", exc_info=True)
         raise HTTPException(

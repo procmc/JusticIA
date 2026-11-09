@@ -75,7 +75,7 @@ See Also:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, literal
 from app.db.models.documento import T_Documento
 from app.db.models.expediente import T_Expediente
 from app.db.models.expediente_documento import T_Expediente_Documento
@@ -254,7 +254,7 @@ class DocumentoRepository:
             # Filtrar solo documentos procesados
             documentos = [
                 doc for doc in documentos 
-                if doc.estado and doc.estado.CT_Nombre_estado == "Procesado"
+                if doc.estado_procesamiento and doc.estado_procesamiento.CT_Nombre_estado == "Procesado"
             ]
         
         return documentos
@@ -375,6 +375,24 @@ class DocumentoRepository:
             print(f"Error listando archivos por expediente: {e}")
             return []
     
+    def como_lo_guarda_la_base(self, db: Session, nombre: str) -> str:
+        """El nombre tal como lo guardaría el INSERT en la columna `CT_Nombre_visible` (VARCHAR): el controlador cambia o quita los
+        caracteres que no existen en la página de códigos. Sirve para rechazar lo que no se guardaría igual (RF-19.106) en vez de
+        guardarlo degradado. Solo lectura."""
+        return db.execute(select(literal(nombre, T_Documento.CT_Nombre_visible.type))).scalar()
+
+    def renombrar(self, db: Session, documento: T_Documento, nombre: str) -> T_Documento:
+        """Guarda el nombre que se muestra del documento (RF-19.103); el interno, que ubica el archivo, no cambia. Si falla,
+        deshace y relanza."""
+        try:
+            documento.CT_Nombre_visible = nombre
+            db.commit()
+            db.refresh(documento)
+            return documento
+        except Exception:
+            db.rollback()
+            raise
+
     def eliminar(self, db: Session, documento: T_Documento, auto_commit: bool = True) -> None:
         """
         Elimina un documento (y su fila en la tabla de unión con expediente).

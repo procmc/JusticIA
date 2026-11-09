@@ -103,6 +103,11 @@ class VectorStoreBackend(ABC):
     async def delete_document_chunks(self, document_id: int) -> None:
         """Elimina todos los chunks de un documento (por id_documento)."""
 
+    async def actualizar_nombre_de_documento(self, document_id: int, nombre: str) -> None:
+        """Cambia `metadata.nombre_archivo` de todos los fragmentos de un documento al nombre mostrado (renombrar una fuente,
+        spec 009b); el resto de la metadata y los vectores no se tocan."""
+        raise NotImplementedError
+
     async def listar_puntos_de_documento(self, document_id: int) -> List[Dict[str, Any]]:
         """Todos los puntos de un documento, con su identificador, su texto y su metadata (re-fragmentado, RF-08.63)."""
         raise NotImplementedError

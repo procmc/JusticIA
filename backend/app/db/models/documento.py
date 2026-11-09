@@ -84,6 +84,8 @@ class T_Documento(Base):
     CT_Nombre_archivo: Mapped[str] = mapped_column(String(255), nullable=False)
     CT_Tipo_archivo: Mapped[str] = mapped_column(String(50), nullable=False)
     CT_Ruta_archivo: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Spec 009b (RN-01.100): nombre que ve el usuario; NULL = se muestra CT_Nombre_archivo, que sigue ubicando el archivo en disco.
+    CT_Nombre_visible: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     CF_Fecha_carga: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # M:N con Expediente (Contiene)

@@ -116,6 +116,22 @@ def _id_de_clave(tema: str) -> Optional[int]:
 
 LARGO_MAXIMO_NOMBRE = 150
 MENSAJE_NOMBRE_VACIO = "El nombre del notebook no puede estar vacío"
+MENSAJE_NOMBRE_VACIO_FUENTE = "El nombre de la fuente no puede estar vacío"  # sin punto final, como el de la 009 (RF-19.106)
+MENSAJE_FUENTE_EN_PROCESO = "Espere a que termine de procesarse."
+ESTADOS_RENOMBRABLES = ("Procesado", "Error")  # Pendiente no (RF-19.107)
+
+
+def extension_de(nombre_interno: str) -> str:
+    """La extensión del nombre interno de un archivo, con su punto (`informe.v2.pdf` -> `.pdf`); un punto inicial (`.notas`)
+    no cuenta y sin punto no hay ninguna (RF-19.102). Es lo único que no se edita al renombrar una fuente."""
+    posicion = nombre_interno.rfind(".")
+    return nombre_interno[posicion:] if posicion > 0 else ""
+
+
+def nombre_mostrado(documento) -> str:
+    """El nombre que ve el usuario: el visible si lo tiene y, si no, el interno, que sigue ubicando el archivo en disco (RF-19.103).
+    `getattr` porque las pruebas unitarias simulan documentos sin esa columna."""
+    return getattr(documento, "CT_Nombre_visible", None) or documento.CT_Nombre_archivo
 
 
 class NombreNoValido(Exception):
@@ -154,6 +170,11 @@ class RecursoNoDisponible(Exception):
         self.motivo = motivo
 
 
+class SeleccionVacia(Exception):
+    """Ninguna de las fuentes marcadas para el chat del notebook es consultable (vacía, Pendiente, Error o ajena): el chat no se
+    atiende (RF-11.105). No lleva nada de lo pedido."""
+
+
 class DocumentoSinProcesar(Exception):
     """El documento del notebook todavía no terminó de procesarse: no se puede previsualizar aún. Lleva la clave del notebook y
     el número del documento para registrar el fallo en la bitácora (RF-21.30); nunca el nombre del archivo."""
@@ -183,6 +204,15 @@ class ErrorAlQuitar(Exception):
         super().__init__("No se pudo quitar el documento")
         self.clave = clave
         self.documento_id = documento_id
+        self.causa = causa
+
+
+class ErrorAlRenombrar(Exception):
+    """Falló al guardar el nombre nuevo de una fuente. Su mensaje no repite el de la excepción original (`causa`), que puede
+    traer rutas internas o el nombre (RF-19.108)."""
+
+    def __init__(self, causa: Exception):
+        super().__init__("No se pudo cambiar el nombre de la fuente")
         self.causa = causa
 
 
@@ -299,6 +329,67 @@ class NotebookService:
             raise RecursoNoDisponible(MOTIVO_DOCUMENTO_NO_DISPONIBLE)
         return documento
 
+    async def renombrar_documento(
+        self, db: Session, texto_notebook: str, texto_documento: str, base: str, usuario_id: str
+    ) -> Tuple[T_Documento, bool]:
+        """Cambia el nombre que se muestra de una fuente propia (RF-19.103). `base` es lo que escribió el usuario SIN extensión:
+        al guardarlo se le agrega la del nombre interno (RF-19.102). Devuelve el documento y si hubo cambio (False: mismo nombre,
+        no se guarda nada). El archivo en disco y el nombre interno no se tocan.
+
+        Solo Procesado y Error se pueden renombrar (RF-19.107). Una fuente Procesado tiene fragmentos con el nombre en Qdrant:
+        se actualizan antes que la fila y, si algo falla, se devuelve el nombre anterior (RF-19.104, RF-19.105).
+
+        Raises:
+            RecursoNoDisponible: Notebook o fuente ajenos, inexistentes o con id no canónico; se decide ANTES de mirar el nombre
+                (RNF-07.101).
+            NombreNoValido: Fuente en proceso o una regla del nombre (RF-19.106, RF-19.107), en ese orden.
+            ErrorAlRenombrar: No se pudo guardar (RF-19.105, RF-19.108).
+        """
+        id_notebook = id_de_notebook(texto_notebook)
+        if id_notebook is None:
+            raise RecursoNoDisponible(MOTIVO_NOTEBOOK_NO_DISPONIBLE)
+        notebook = await self._notebook_o_no_disponible(db, id_notebook, usuario_id)
+        id_documento = id_de_notebook(texto_documento)
+        if id_documento is None:
+            raise RecursoNoDisponible(MOTIVO_DOCUMENTO_NO_DISPONIBLE)
+        documento = self._documento_del_notebook(db, notebook, id_documento)
+
+        estado = documento.estado_procesamiento.CT_Nombre_estado if documento.estado_procesamiento else None
+        if estado not in ESTADOS_RENOMBRABLES:
+            raise NombreNoValido("fuente en proceso", MENSAJE_FUENTE_EN_PROCESO)
+        nuevo = validar_nombre(base, mensaje_vacio=MENSAJE_NOMBRE_VACIO_FUENTE) + extension_de(documento.CT_Nombre_archivo)
+        if self.documento_repo.como_lo_guarda_la_base(db, nuevo) != nuevo:
+            raise NombreNoValido("nombre con caracteres no admitidos", "El nombre contiene caracteres no admitidos.")
+        if nuevo == nombre_mostrado(documento):
+            return documento, False
+        tema = self.expediente_repo.obtener_por_numero(db, notebook.clave_interna)
+        otras = [d for d in self.documento_repo.listar_por_expediente(db, tema) if d.CN_Id_documento != id_documento] if tema else []
+        if nuevo.casefold() in {nombre_mostrado(d).casefold() for d in otras}:
+            raise NombreNoValido("nombre duplicado", "Ya hay una fuente con ese nombre en este notebook.")
+        anterior = nombre_mostrado(documento)
+        # Primero Qdrant y después la base, con compensación: si algo falla, los fragmentos vuelven al nombre anterior
+        # (RF-19.105). Una fuente en Error no tiene fragmentos.
+        if estado == "Procesado":
+            try:
+                await get_vectorstore_backend().actualizar_nombre_de_documento(id_documento, nuevo)
+            except Exception as causa:
+                await self._devolver_nombre_en_qdrant(id_documento, anterior)
+                raise ErrorAlRenombrar(causa) from causa
+        try:
+            return self.documento_repo.renombrar(db, documento, nuevo), True
+        except Exception as causa:
+            if estado == "Procesado":
+                await self._devolver_nombre_en_qdrant(id_documento, anterior)
+            raise ErrorAlRenombrar(causa) from causa
+
+    async def _devolver_nombre_en_qdrant(self, id_documento: int, anterior: str) -> None:
+        """Compensación de `renombrar_documento`. Si también falla queda el riesgo residual aceptado (fragmentos con el nombre
+        nuevo y la base con el anterior): solo se deja en el registro y la respuesta sigue siendo la del fallo original."""
+        try:
+            await get_vectorstore_backend().actualizar_nombre_de_documento(id_documento, anterior)
+        except Exception:
+            logger.exception("No se pudo devolver el nombre anterior a los fragmentos del documento %s", id_documento)
+
     async def listar_documentos_de_notebook(self, db: Session, notebook_id: int, usuario_id: str) -> List[T_Documento]:
         """Los documentos de un notebook del usuario (vacía si aún no se subió ninguno).
 
@@ -386,6 +477,15 @@ class NotebookService:
         if id_notebook is None:
             return False
         return await self.obtener_notebook_de_usuario(db, id_notebook, usuario_id) is not None
+
+    def seleccion_efectiva(self, db: Session, notebook: T_Notebook, ids: List[int]) -> Set[int]:
+        """Las fuentes marcadas que de verdad se consultan: del notebook y en Procesado (RF-11.105, RF-11.106). Lo ajeno,
+        inexistente o fuera de rango se descarta en silencio, sin distinguirlo (RNF-07.100)."""
+        tema = self.expediente_repo.obtener_por_numero(db, notebook.clave_interna)
+        if tema is None:
+            return set()
+        procesados = {d.CN_Id_documento for d in self.documento_repo.listar_por_expediente(db, tema, solo_procesados=True)}
+        return procesados & set(ids)
 
     async def obtener_notebook_para_chat(
         self, db: Session, notebook_id: Optional[str], usuario_id: Optional[str]

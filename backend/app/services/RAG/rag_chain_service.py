@@ -60,7 +60,7 @@ Authors:
 Version:
     2.0.0 - LangChain con streaming SSE
 """
-from typing import Optional
+from typing import List, Optional, Set
 from fastapi.responses import StreamingResponse
 from fastapi import Request
 import re
@@ -74,7 +74,7 @@ from .notebook_chains import create_notebook_specific_chain
 from .prompts.notebook_prompt import reformular_referencia_imagen
 from .session_store import conversation_store
 from .presupuesto_contexto import cantidad_a_recuperar
-from app.services.notebook_service import NotebookService, RecursoNoDisponible, forma_de_clave
+from app.services.notebook_service import NotebookService, RecursoNoDisponible, SeleccionVacia, forma_de_clave
 from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
 )
@@ -190,6 +190,18 @@ class RAGChainService:
             raise RecursoNoDisponible(MOTIVO_NOTEBOOK_NO_DISPONIBLE)
         return notebook
 
+    def _seleccion_del_chat(self, notebook, documentos: List[int]) -> Set[int]:
+        """Las fuentes que se consultan de las marcadas; `SeleccionVacia` si no queda ninguna (RF-11.105). Sesión propia, como
+        `_notebook_del_chat`."""
+        db = next(get_db())
+        try:
+            seleccion = self.notebook_service.seleccion_efectiva(db, notebook, documentos)
+        finally:
+            db.close()
+        if not seleccion:
+            raise SeleccionVacia()
+        return seleccion
+
     # =====================================================================
     # LANGCHAIN ARCHITECTURE (Modern)
     # =====================================================================
@@ -206,8 +218,10 @@ class RAGChainService:
         http_request: Optional[Request] = None,
         usuario_nombre: Optional[str] = None,
         tema_es_clave: bool = False,
-        registrar=None
+        registrar=None,
+        documentos: Optional[List[int]] = None
     ):
+        # `documentos`: fuentes marcadas, solo en el chat del notebook (RF-11.105, RF-11.107); None = todas.
         # `registrar`: lo que arma el router para dejar el turno en la bitácora al terminar (RF-21.60).
         # `tema_es_clave`: la ruta ya comprobó con la base que el tema, sin tener forma de clave, se guardaría o igualaría como
         # la de un notebook (RF-17.34); el servicio no abre su propia sesión para ello.
@@ -217,13 +231,20 @@ class RAGChainService:
         if notebook_filter is not None:
             notebook = await self._notebook_del_chat(notebook_filter, usuario_id)
 
+        # 0a. La selección efectiva, también ANTES de la conversación: sin fuentes consultables no se llama al modelo ni se
+        # guarda la pregunta (RF-11.105). Se ignora fuera del chat del notebook (RF-11.107).
+        seleccion = None
+        if notebook is not None and documentos is not None and not (expediente_filter and expediente_filter.strip()):
+            seleccion = self._seleccion_del_chat(notebook, documentos)
+
         # 0b. De quién es la conversación, también ANTES de tocarla (RNF-07.31, RNF-07.33): la ajena se atiende como nueva.
         session_id, es_efimera = await self._conversacion_del_usuario(
             session_id, usuario_nombre, usuario_id, en_lista=notebook is None
         )
         try:
             respuesta = await self._despachar_consulta(
-                pregunta, session_id, top_k, expediente_filter, notebook, usuario_id, http_request, tema_es_clave, registrar
+                pregunta, session_id, top_k, expediente_filter, notebook, usuario_id, http_request, tema_es_clave, registrar,
+                seleccion
             )
         except BaseException:
             if es_efimera:
@@ -245,7 +266,8 @@ class RAGChainService:
         usuario_id: Optional[str],
         http_request: Optional[Request],
         tema_es_clave: bool = False,
-        registrar=None
+        registrar=None,
+        seleccion: Optional[Set[int]] = None
     ):
         # 1. Actualizar la información de la conversación
         conversation_store.update_metadata(session_id)
@@ -286,7 +308,8 @@ class RAGChainService:
                 usuario_id=usuario_id,
                 http_request=http_request,
                 top_k=top_k,
-                registrar=registrar
+                registrar=registrar,
+                seleccion=seleccion
             )
         else:
             logger.info(f"FLUJO: GENERAL CON HISTORIAL")
@@ -416,7 +439,8 @@ class RAGChainService:
         usuario_id: Optional[str] = None,
         http_request: Optional[Request] = None,
         top_k: Optional[int] = None,
-        registrar=None
+        registrar=None,
+        seleccion: Optional[Set[int]] = None
     ):
         """Chat acotado a un notebook propio. `notebook` ya fue comprobado como del usuario en `consulta_con_historial_streaming`
         (RF-11.32), que además actualizó la conversación: aquí no se vuelve a buscar ni a tocar nada."""
@@ -432,6 +456,7 @@ class RAGChainService:
             top_k=top_k,
             expediente_filter=clave_interna,
             nombre_visible=nombre_notebook,
+            documentos_visibles=seleccion,
             por_relevancia=True
         )
 

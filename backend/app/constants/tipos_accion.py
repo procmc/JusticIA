@@ -107,6 +107,9 @@ class TiposAccion:
     RENOMBRAR_NOTEBOOK = 19           # Cambiar el nombre de un notebook
     ELIMINAR_NOTEBOOK = 20            # Eliminación lógica de un notebook
 
+    # Fuentes del notebook (spec 009b, RF-21.100)
+    RENOMBRAR_DOCUMENTO_NOTEBOOK = 21  # Cambiar el nombre mostrado de un documento de un notebook
+
 
 # Mapeo de descripciones para logging
 DESCRIPCIONES_TIPOS_ACCION = {
@@ -130,4 +133,5 @@ DESCRIPCIONES_TIPOS_ACCION = {
     TiposAccion.GESTIONAR_CONVERSACION: "Gestionar Conversación",
     TiposAccion.RENOMBRAR_NOTEBOOK: "Renombrar Notebook",
     TiposAccion.ELIMINAR_NOTEBOOK: "Eliminar Notebook",
+    TiposAccion.RENOMBRAR_DOCUMENTO_NOTEBOOK: "Renombrar Documento de Notebook",
 }
