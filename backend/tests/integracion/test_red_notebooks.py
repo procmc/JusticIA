@@ -115,7 +115,7 @@ def test_subir_al_notebook_procesado(cliente_api, sesion, registro_de_datos, pro
 
     lista = cliente_api.get(f"/notebooks/{notebook['id']}/documentos", headers=sesion)
     assert lista.status_code == 200
-    assert lista.json() == [{"id": id_documento, "nombre_archivo": documento.nombre, "estado": "Procesado"}]
+    assert lista.json() == [{"id": id_documento, "nombre_archivo": documento.nombre, "extension": ".txt", "estado": "Procesado"}]
 
     puntos = _puntos_del_tema(notebook["clave_interna"])
     assert len(puntos) > 0 and len(puntos) == contar_puntos(notebook["clave_interna"])
@@ -368,7 +368,7 @@ def test_recurso_ajeno_da_404_identico(cliente_api, ajeno, correo_simulado, olla
     assert [len(i) for i in intentos] == [1, 1]
     assert intentos[0][0][:2] == intentos[1][0][:2] and intentos[0][0][1].startswith("Intento fallido: ")
     lista = cliente_api.get(f"/notebooks/{ajeno.notebook['id']}/documentos", headers=ajeno.cabeceras_dueno)
-    assert lista.json() == [{"id": ajeno.id_documento, "nombre_archivo": ajeno.documento.nombre, "estado": "Procesado"}]
+    assert lista.json() == [{"id": ajeno.id_documento, "nombre_archivo": ajeno.documento.nombre, "extension": ".txt", "estado": "Procesado"}]
     original = cliente_api.get(
         f"/notebooks/{ajeno.notebook['id']}/documentos/{ajeno.id_documento}/archivo", headers=ajeno.cabeceras_dueno)
     assert original.status_code == 200 and original.content == ajeno.documento.contenido
@@ -434,7 +434,7 @@ def _lista_del_notebook(cliente_api, cabeceras, notebook: dict) -> list:
 
 
 def _item(documento, id_documento: int) -> dict:
-    return {"id": id_documento, "nombre_archivo": documento.nombre, "estado": "Procesado"}
+    return {"id": id_documento, "nombre_archivo": documento.nombre, "extension": ".txt", "estado": "Procesado"}
 
 
 # --- RF-19.1: quitar un documento de dos ------------------------------------------------------------------------------------
@@ -595,7 +595,7 @@ def test_fallo_en_notebook_queda_en_error_y_se_quita(cliente_api, sesion, regist
     id_documento = id_del_documento(nombre)
     assert id_documento is not None, "el fallo no dejó el documento en el notebook"
 
-    assert _lista_del_notebook(cliente_api, sesion, notebook) == [{"id": id_documento, "nombre_archivo": nombre, "estado": "Error"}]
+    assert _lista_del_notebook(cliente_api, sesion, notebook) == [{"id": id_documento, "nombre_archivo": nombre, "extension": ".png", "estado": "Error"}]
     capas = _tres_capas(clave, nombre, id_documento)
     assert capas["archivo"] and capas["fila"] == 1 and capas["relacion"] == 1 and capas["fragmentos"] == 0
 

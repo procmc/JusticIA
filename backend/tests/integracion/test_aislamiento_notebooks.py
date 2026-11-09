@@ -686,7 +686,7 @@ def test_catalogo_con_tres_tipos_nuevos():
     from app.constants.tipos_accion import DESCRIPCIONES_TIPOS_ACCION, TiposAccion
 
     filas = dict(_consultar("SELECT CN_Id_tipo_accion, CT_Nombre_tipo_accion FROM T_Tipo_accion"))
-    assert sorted(filas) == list(range(1, 21))  # spec 009: suma 19 y 20
+    assert sorted(filas) == list(range(1, 22))  # spec 009: suma 19 y 20; spec 009b: suma 21
     assert {i: filas[i] for i in range(16, 19)} == _TIPOS_NUEVOS
     assert {i: filas[i] for i in range(1, 16)} == {i: DESCRIPCIONES_TIPOS_ACCION[i] for i in range(1, 16)}
     assert (TiposAccion.CREAR_NOTEBOOK, TiposAccion.QUITAR_DOCUMENTO_NOTEBOOK, TiposAccion.GESTIONAR_CONVERSACION) == (16, 17, 18)
@@ -696,15 +696,16 @@ def test_catalogo_con_tres_tipos_nuevos():
 @pytest.mark.requisito("RF-21.34")
 @pytest.mark.requisito("RF-21.80")
 def test_filtro_por_tipo_nuevo(cliente_api, iniciar_sesion, administrador, usuario_gubernamental):
-    """RF-21.34, RF-21.80: la bitácora del Administrador y el historial propio aceptan y filtran por los tipos 16 a 20 (con `le=15`
-    respondían 422; los 19 y 20 son de la spec 009); el 21 sigue rechazándose."""
+    """RF-21.34, RF-21.80: la bitácora del Administrador y el historial propio aceptan y filtran por los tipos 16 a 21 (con `le=15`
+    respondían 422; los 19 y 20 son de la spec 009 y el 21 de la 009b); el 22 se rechaza."""
     from fastapi.testclient import TestClient
 
     from app.db.database import SessionLocal
     from app.services.bitacora.bitacora_service import bitacora_service
     from app.services.bitacora.bitacora_stats_service import bitacora_stats_service
 
-    tipos = {**_TIPOS_NUEVOS, 19: "Renombrar Notebook", 20: "Eliminar Notebook"}  # RF-21.80
+    tipos = {**_TIPOS_NUEVOS, 19: "Renombrar Notebook", 20: "Eliminar Notebook",
+             21: "Renombrar Documento de Notebook"}  # RF-21.80, RF-21.100
     texto = f"{PREFIJO_DATOS} acción de notebook {uuid.uuid4().hex[:6]}"
     with SessionLocal() as db:
         for tipo in tipos:
@@ -728,8 +729,8 @@ def test_filtro_por_tipo_nuevo(cliente_api, iniciar_sesion, administrador, usuar
     sin_relanzar = TestClient(cliente_api.app, raise_server_exceptions=False)
     for tipo in tipos:  # la ruta del historial propio hoy da 500 por otra causa (004, xfail): lo que no puede dar es 422
         assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": tipo}).status_code != 422, tipo
-    assert cliente_api.get("/bitacora/registros", headers=cabeceras, params={"tipoAccion": 21}).status_code == 422
-    assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": 21}).status_code == 422
+    assert cliente_api.get("/bitacora/registros", headers=cabeceras, params={"tipoAccion": 22}).status_code == 422
+    assert sin_relanzar.get("/bitacora/mi-historial", headers=sesion, params={"tipoAccion": 22}).status_code == 422
 
 
 # --- T6: la clave de ancho completo (RF-17.34) -----------------------------------------------------------------------------------

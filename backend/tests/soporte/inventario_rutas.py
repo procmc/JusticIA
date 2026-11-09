@@ -207,6 +207,7 @@ CLASIFICACION: Dict[Clave, Clasificacion] = _tabla(
         ("DELETE", "/notebooks/{notebook_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("GET", "/notebooks/{notebook_id}/documentos", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/archivo", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
+        ("PUT", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N, "json": {"nombre": "PRUEBA fuente"}}, None),
         ("DELETE", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
     ]),
 )
