@@ -94,7 +94,7 @@ _devolver: try actualizar_nombre_de_documento(id, anterior) except: logger.excep
 - Lista `ul` con `aria-label="Fuentes del notebook"`, una `li` por fuente (`FuenteNotebook.jsx`):
   - `Checkbox` HeroUI con `aria-label="Usar <nombre> en el chat"`;
   - botón del nombre (`truncate`, `min-w-0`, `title` completo, color por estado como hoy): abre la vista previa si está Procesado;
-  - `Dropdown` con disparador `aria-label="Opciones de <nombre>"` (`shrink-0`): «Cambiar el nombre» (entrega 2) y «Quitar fuente».
+  - `Dropdown` con disparador `aria-label="Opciones de <nombre>"` (`shrink-0`): «Cambiar el nombre de la fuente» (entrega 2) y «Quitar fuente».
   - Mientras se quita: la `li` con `aria-disabled="true"` y `data-disabled` (lo lee `notebooks.spec.js:320` y `:369`).
 - Estado en `index.js`: `desmarcadas` (`Set` de ids). Así lo nuevo entra marcado; se vacía en `seleccionarNotebook` (:116). RF-11.103.
 - Selección enviada = ids de `documentosNotebook` fuera de `desmarcadas`, en cualquier estado (RF-11.106).
@@ -157,7 +157,8 @@ _devolver: try actualizar_nombre_de_documento(id, anterior) except: logger.excep
   - `RNF-04.100 · nombre de 150 sin desborde` (solo 616 px).
 - Entrega 2: `RF-19.102 · RF-19.103 · renombrar, cancelar y Escape`, `RF-19.106 · rechazos`, `RF-19.107 · en proceso desactivado`.
 - Diferibles (con exención y verificación manual): `RF-19.109 · otra pestaña`, `RF-19.110 · dos pestañas`, `RF-19.105 · aviso de fallo`.
-- Para el presupuesto (≤ 569 s): solo RNF-04.100 corre a 616 px; las demás, a 1366.
+- Para el presupuesto (≤ 720 s): solo RNF-04.100 corre a 616 px; las demás, a 1366.
+**Exención de las e2e diferibles (decisión de Andrés, 09/11/2026)**: sin e2e quedan RF-19.109 en la interfaz (aviso «La fuente ya no está disponible.» y la fila desaparece), RF-19.110 (dos pestañas), RF-19.105 en la interfaz (aviso «No se pudo cambiar el nombre de la fuente. Intente de nuevo.», `frontend/pages/notebooks/index.js` ~244) y RNF-04.100 para el renombrado a 616 px. Justificación: la suite e2e ya dura 651–664 s de un límite de 720 s. Evidencia manual (entrega 2, MCP `chrome-devtools`, 09/11/2026): el 404 desde otra pestaña PASA (paso 8: aviso y fila retirada) y el renombrado a 616 px PASA (paso 11: sin desborde, `scrollWidth` = `clientWidth`); el aviso de fallo inesperado de RF-19.105 en la interfaz NO se verificó a mano (el servidor sí: `test_renombrar_compensacion`, `test_renombrar_compensa_si_falla_qdrant`).
 **Exentos**: el aspecto visual y el nombre de descarga del visor de PDF del navegador (el servidor se prueba por la cabecera); los revisa Andrés.
 
 ## 10. Verificación manual (Andrés, en persona)

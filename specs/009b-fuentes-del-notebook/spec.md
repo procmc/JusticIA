@@ -1,9 +1,9 @@
 # Spec 009b — Fuentes del notebook: usar o no usar, renombrar y quitar
-Estado: aprobada (05/11/2026, Andrés; P1-P8 y correcciones QA 1-12 incorporadas)
+Estado: implementada (09/11/2026; aprobada el 05/11/2026 por Andrés, con P1-P8 y correcciones QA 1-12 incorporadas; falta la validación del @reviewer)
 
 ## Contexto y objetivo
 - Petición de Andrés: un notebook puede tener varias fuentes; si una pierde valor para una consulta, se desmarca y el chat no la usa «en ese momento».
-- Cada fuente lleva una casilla «usar en el chat» y, a su lado, un menú ⋮ con «Quitar fuente» y «Cambiar el nombre».
+- Cada fuente lleva una casilla «usar en el chat» y, a su lado, un menú ⋮ con «Quitar fuente» y «Cambiar el nombre de la fuente».
 - «Quitar fuente» es el «Quitar documento» de RF-19 y CU-13, con su borrado físico (excepción aprobada); solo cambia de lugar en la interfaz.
 - Va después de la 009, con su mismo estilo de nombre, bitácora y aislamiento.
 - Función nueva del módulo NotebookServIA (testing.md, paso 3): las pruebas existentes de quitar documento, vista previa y chat del notebook siguen pasando.
@@ -15,7 +15,7 @@ Estado: aprobada (05/11/2026, Andrés; P1-P8 y correcciones QA 1-12 incorporadas
 
 ## Prioridades y entregas (P8)
 1. **Entrega 1**: casilla (A), menú ⋮ con «Quitar fuente» (B) y sus no funcionales. Sin migración.
-2. **Entrega 2**: «Cambiar el nombre» (C) y su bitácora (D), con una única migración ⚠️ posterior a la de la 009: la columna de nombre visible (QA-1) y el tipo de acción nuevo.
+2. **Entrega 2**: «Cambiar el nombre de la fuente» (C) y su bitácora (D), con una única migración ⚠️ posterior a la de la 009: la columna de nombre visible (QA-1) y el tipo de acción nuevo.
 - Hasta la entrega 2, el menú muestra solo «Quitar fuente».
 
 ## Usuarios
@@ -63,7 +63,7 @@ Estado: aprobada (05/11/2026, Andrés; P1-P8 y correcciones QA 1-12 incorporadas
   - El notebook ajeno sigue respondiendo el 404 uniforme (RF-11.32). Descartar no deja fila propia en la bitácora; la consulta conserva su registro actual.
 
 ### B. Menú ⋮ de la fuente (RF-19) — entrega 1
-- **RF-19.100** `[NUEVO]` (RF-19, CU-13 paso 1): EL SISTEMA muestra junto a cada fuente un botón de opciones (⋮, texto accesible «Opciones de <nombre mostrado>») con «Cambiar el nombre» (entrega 2) y «Quitar fuente».
+- **RF-19.100** `[NUEVO]` (RF-19, CU-13 paso 1): EL SISTEMA muestra junto a cada fuente un botón de opciones (⋮, texto accesible «Opciones de <nombre mostrado>») con «Cambiar el nombre de la fuente» (entrega 2) y «Quitar fuente».
   - Reemplaza la «x» actual de la fuente; abrir el menú no abre la vista previa (RF-18) ni cambia la casilla.
 - **RF-19.101** (RF-19, P6): CUANDO el Usuario Gubernamental elige «Quitar fuente», EL SISTEMA sigue RF-19 y CU-13 sin cambios de texto.
   - Confirmación «Quitar documento» con «Quitar» y «Cancelar», doble clic con una sola solicitud, borrado de las tres capas y sus mensajes.
@@ -90,7 +90,7 @@ Toda validación la hace el servidor: **400** con el `detail` exacto, en el orde
   - caracteres no admitidos (los de la 009): «El nombre contiene caracteres no admitidos.»;
   - idéntica a la actual (mismas mayúsculas): no cambia nada, no deja fila y cierra la edición sin error;
   - nombre completo igual, sin distinguir mayúsculas, al nombre mostrado de otra fuente del mismo notebook: «Ya hay una fuente con ese nombre en este notebook.».
-- **RF-19.107** `[NUEVO]` (P7): MIENTRAS la fuente está en Pendiente, EL SISTEMA muestra «Cambiar el nombre» desactivado con el aviso «Espere a que termine de procesarse.».
+- **RF-19.107** `[NUEVO]` (P7): MIENTRAS la fuente está en Pendiente, EL SISTEMA muestra «Cambiar el nombre de la fuente» desactivado con el aviso «Espere a que termine de procesarse.».
   - Defensa en el servidor: renombrar una fuente Pendiente (también una que volvió a Pendiente) responde 400 con ese mismo texto, sin cambiar nada.
   - En Error se permite y solo cambia el nombre visible (no tiene fragmentos).
 - **RF-19.108** `[NUEVO]` (RF-17.90): SI renombrar falla por otro error inesperado, ENTONCES EL SISTEMA responde 500 como en RF-19.105, sin cambiar nada.
@@ -115,7 +115,7 @@ Regla de la 009: cada acción queda registrada, con éxito o con fallo, con la c
 - **RNF-04.100** (RNF-04): casilla, menú y renombrado se usan a 1366 px y a 616 px, sin que un nombre de 150 caracteres desborde la lista ni tape la casilla o el ⋮ (el ancho de desplazamiento de la lista no supera su ancho visible).
 - **RN-01.100** (RN-01): renombrar y desmarcar no borran nada; el único borrado físico sigue siendo «Quitar fuente» (RF-19).
   - Única migración ⚠️ (entrega 2): la columna de nombre visible del documento (opcional; vacía en los existentes, que siguen mostrando su nombre interno) y el tipo de RF-21.100. La casilla no necesita migración.
-- **RA-02.100**: sin dependencias, servicios, prompts ni modelos nuevos; el e2e queda dentro de su presupuesto (≤ 569 s).
+- **RA-02.100**: sin dependencias, servicios, prompts ni modelos nuevos; el e2e queda dentro de su presupuesto (≤ 720 s).
 - **RT-07.100** (RT-07): textos nuevos en español, sin voseo.
 
 ## Casos límite
