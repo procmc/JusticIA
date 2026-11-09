@@ -23,7 +23,8 @@ export const TIPOS_ACCION = [
   { key: '17', label: 'Quitar Documento de Notebook' },
   { key: '18', label: 'Gestionar Conversación' },
   { key: '19', label: 'Renombrar Notebook' },
-  { key: '20', label: 'Eliminar Notebook' }
+  { key: '20', label: 'Eliminar Notebook' },
+  { key: '21', label: 'Renombrar Documento de Notebook' }
 ];
 
 export default TIPOS_ACCION;

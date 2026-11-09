@@ -13,6 +13,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import consultaService from '@/services/consultaService';
 import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 import ItemNotebook from '@/components/notebooks/ItemNotebook';
+import FuenteNotebook from '@/components/notebooks/FuenteNotebook';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
   createUserMessage,
@@ -60,6 +61,9 @@ const NotebooksPage = () => {
   const [archivosSeleccionados, setArchivosSeleccionados] = useState([]); // File[] — en revisión, aún no subidos
   const [archivosSubiendo, setArchivosSubiendo] = useState([]); // [{nombre, taskId, status}] — subida en curso
   const [documentosNotebook, setDocumentosNotebook] = useState([]); // documentos ya persistidos (backend)
+  // Fuentes que el usuario dejó fuera del chat (RF-11.100). Guardar las desmarcadas, y no las marcadas, hace que lo nuevo
+  // entre marcado. Vive solo en la página abierta y se vacía al abrir un notebook (RF-11.103).
+  const [desmarcadas, setDesmarcadas] = useState(() => new Set());
   const [eliminandoIds, setEliminandoIds] = useState(() => new Set()); // documentos con su «quitar» en curso (cada uno, el suyo)
   const quitandoRef = useRef(new Set()); // lo mismo, sin esperar al render: defensa para no enviar dos DELETE del mismo documento
   const [documentoPorQuitar, setDocumentoPorQuitar] = useState(null); // {id, nombre} mientras se pide confirmar (RF-19.40)
@@ -193,6 +197,7 @@ const NotebooksPage = () => {
     setArchivosSubiendo([]);
     setArchivosSeleccionados([]);
     setDocumentosNotebook([]);
+    setDesmarcadas(new Set());
     setAvisoCarga(null);
 
     // Restaurar la conversación si ya existía (guardada en sessionStorage
@@ -219,6 +224,26 @@ const NotebooksPage = () => {
       saveNotebookChatToSessionStorage(notebookActivo.id, sessionId, messages);
     }
   }, [messages, sessionId, notebookActivo]);
+
+  // RF-19.102: 400 devuelve el mensaje del servidor para el campo; 200 vuelve a leer la lista (RF-19.103); 404 retira la
+  // fuente (RF-19.109); lo demás, un aviso.
+  const handleRenombrarFuente = async (doc, nombre) => {
+    if (!notebookActivo) return {};
+    const notebookId = notebookActivo.id;
+    const result = await notebookService.renombrarDocumento(notebookId, doc.id, nombre);
+    if (result.success) {
+      await cargarDocumentos(notebookId);
+      return { success: true };
+    }
+    if (result.status === 400) return { message: result.message };
+    if (result.status === 404) {
+      setDocumentosNotebook(prev => prev.filter(d => d.id !== doc.id));
+      Toast.warning('La fuente ya no está disponible.');
+      return { success: true };
+    }
+    Toast.error('Error al cambiar el nombre', 'No se pudo cambiar el nombre de la fuente. Intente de nuevo.');
+    return {};
+  };
 
   const handleEliminarDocumento = async (documentoId) => {
     if (!notebookActivo || quitandoRef.current.has(documentoId)) return;
@@ -256,10 +281,7 @@ const NotebooksPage = () => {
   const [preview, setPreview] = useState(null); // { url, tipo, nombre } | null
   const [cargandoPreviewId, setCargandoPreviewId] = useState(null);
 
-  const handleVerArchivo = async (doc, e) => {
-    // El botón "x" de cerrar vive dentro del mismo Chip que este onClick:
-    // si el click vino de ahí, es para eliminar el documento, no para verlo.
-    if (e?.target?.closest('[aria-label="close chip"]')) return;
+  const handleVerArchivo = async (doc) => {
     if (!notebookActivo || doc.estado !== 'Procesado' || cargandoPreviewId) return;
     setCargandoPreviewId(doc.id);
     const result = await notebookService.obtenerArchivoPreview(notebookActivo.id, doc.id);
@@ -389,9 +411,17 @@ const NotebooksPage = () => {
   };
 
   // Enter se bloquea con la misma condición que el botón de enviar (RF-17.71): el texto escrito se conserva.
+  // Se envían los identificadores de las fuentes marcadas, en cualquier estado: el servidor solo usa las Procesado (RF-11.106).
+  const alternarFuente = (id, marcada) => setDesmarcadas((prev) => {
+    const siguiente = new Set(prev);
+    if (marcada) siguiente.delete(id); else siguiente.add(id);
+    return siguiente;
+  });
+  const sinFuenteMarcada = !documentosNotebook.some((d) => d.estado === 'Procesado' && !desmarcadas.has(d.id));
+
   const handleEnviarMensaje = () => {
     const query = texto.trim();
-    if (!query || hayEnCurso()) return;
+    if (!query || hayEnCurso() || sinFuenteMarcada) return; // RF-11.104: el texto escrito se conserva
     setTexto('');
     enviarPregunta(query);
   };
@@ -420,9 +450,12 @@ const NotebooksPage = () => {
     currentRequestRef.current = { active: true, id: requestId };
     retryCountRef.current = 0;
 
+    // La selección se toma al enviar: marcar o desmarcar después no cambia una respuesta en curso (RF-11.102).
+    const documentos = documentosNotebook.filter((d) => !desmarcadas.has(d.id)).map((d) => d.id);
+
     const retryFunction = () => consultaService.consultaGeneralStreaming(
       query, callbacks.onChunk, callbacks.onComplete, callbacks.onError,
-      null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir
+      null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir, documentos
     );
 
     const callbacks = createStreamingCallbacks(
@@ -434,7 +467,7 @@ const NotebooksPage = () => {
     try {
       await consultaService.consultaGeneralStreaming(
         query, callbacks.onChunk, callbacks.onComplete, callbacks.onError,
-        null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir
+        null, sessionId, null, String(notebookActivo.id), callbacks.alRecibir, documentos
       );
     } catch (error) {
       setStreamingMessageIndex(null);
@@ -587,24 +620,21 @@ const NotebooksPage = () => {
 
               {/* Documentos ya subidos y procesados — se pueden quitar */}
               {documentosNotebook.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <ul aria-label="Fuentes del notebook" className="flex flex-col gap-1 mt-2 list-none p-0">
                   {documentosNotebook.map(doc => (
-                    <Chip
+                    <FuenteNotebook
                       key={doc.id}
-                      size="sm"
-                      startContent={<FiFile className="ml-1" />}
-                      color={doc.estado === 'Procesado' ? 'success' : doc.estado === 'Error' ? 'danger' : 'default'}
-                      variant="flat"
-                      onClose={() => pedirConfirmacionDeQuitar(doc)}
-                      isDisabled={eliminandoIds.has(doc.id)}
-                      onClick={(e) => handleVerArchivo(doc, e)}
-                      className={doc.estado === 'Procesado' ? 'cursor-pointer' : ''}
-                      title={doc.estado === 'Procesado' ? 'Click para ver el archivo original' : undefined}
-                    >
-                      {cargandoPreviewId === doc.id ? 'Abriendo…' : doc.nombre_archivo}
-                    </Chip>
+                      fuente={doc}
+                      marcada={!desmarcadas.has(doc.id)}
+                      onAlternar={(marcada) => alternarFuente(doc.id, marcada)}
+                      abriendo={cargandoPreviewId === doc.id}
+                      quitando={eliminandoIds.has(doc.id)}
+                      onAbrir={() => handleVerArchivo(doc)}
+                      onQuitar={() => pedirConfirmacionDeQuitar(doc)}
+                      onRenombrar={(nombre) => handleRenombrarFuente(doc, nombre)}
+                    />
                   ))}
-                </div>
+                </ul>
               )}
 
               {/* Subidas en curso (todavía no aparecen en la lista persistida) */}
@@ -643,6 +673,9 @@ const NotebooksPage = () => {
                 streamingMessageIndex={streamingMessageIndex}
                 onRetry={reintentar}
               />
+              {sinFuenteMarcada && (
+                <p role="status" className="px-3 pt-2 text-xs text-warning-700 bg-white">Marque al menos una fuente para consultar.</p>
+              )}
               <div className="p-3 border-t border-gray-200 bg-white flex gap-2">
                 <Input
                   placeholder={`Pregúntele algo a "${notebookActivo.nombre}"... (puede pegar una imagen con Ctrl+V)`}
@@ -655,7 +688,7 @@ const NotebooksPage = () => {
                   isIconOnly
                   color="primary"
                   onPress={handleEnviarMensaje}
-                  isDisabled={isTyping || streamingMessageIndex !== null}
+                  isDisabled={isTyping || streamingMessageIndex !== null || sinFuenteMarcada}
                   aria-label="Enviar"
                 >
                   <FiSend />

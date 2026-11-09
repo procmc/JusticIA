@@ -66,8 +66,14 @@ const confirmarSubidaEnNotebook = (page, nombreDelNotebook) => pulsar(
   page.getByRole('button', { name: `Confirmar y subir a "${nombreDelNotebook}"` }),
 );
 
-// La ficha (chip) de un documento del notebook abierto, por su nombre. Mientras se abre su vista previa muestra «Abriendo…».
-const fichaDeDocumento = (page, nombre) => page.locator('div.flex-wrap.gap-2 > div').filter({ hasText: nombre });
+// La fila (fuente) de un documento del notebook abierto, por su nombre. Mientras se abre su vista previa muestra «Abriendo…». Selector CSS: con un cuadro abierto el resto de la página queda oculto para los roles.
+const fichaDeDocumento = (page, nombre) => page.locator('ul[aria-label="Fuentes del notebook"] > li').filter({ hasText: nombre });
+
+// Abre el menú ⋮ de la fuente y elige «Quitar fuente» (abre la confirmación «Quitar documento»).
+async function elegirQuitarFuente(page, nombre) {
+  await pulsar(page.getByRole('button', { name: `Opciones de ${nombre}`, exact: true }));
+  await pulsar(page.getByRole('menuitem', { name: 'Quitar fuente', exact: true }));
+}
 
 // Abre el notebook por la pantalla y espera a que su lista de documentos muestre los nombres dados (la lista carga tras abrirlo).
 async function abrirNotebookConDocumentos(page, notebook, nombres) {
@@ -76,12 +82,12 @@ async function abrirNotebookConDocumentos(page, notebook, nombres) {
   for (const nombre of nombres) await expect(fichaDeDocumento(page, nombre)).toHaveCount(1);
 }
 
-// Pulsa la «x» de un documento. Si el sistema pide confirmar (RF-19.40), acepta; si no, la petición de quitar sale sola. Espera
+// Quita un documento por su menú ⋮ → «Quitar fuente». Si el sistema pide confirmar (RF-19.40), acepta; si no, la petición de quitar sale sola. Espera
 // lo primero que ocurra: el cuadro o la petición, sin tiempos fijos.
 async function quitarDocumentoEnPantalla(page, nombre) {
   const peticion = page.waitForRequest((r) => r.method() === 'DELETE' && /\/documentos\/\d+$/.test(new URL(r.url()).pathname));
   peticion.catch(() => {}); // si el cuadro gana la carrera y la prueba termina, no queda un rechazo sin atender
-  await pulsar(fichaDeDocumento(page, nombre).locator('[aria-label="close chip"]'));
+  await elegirQuitarFuente(page, nombre);
   const dialogo = page.getByRole('dialog');
   const primero = await Promise.race([peticion.then(() => 'peticion'), dialogo.waitFor({ state: 'visible' }).then(() => 'dialogo')]);
   if (primero === 'dialogo') {
@@ -151,6 +157,6 @@ module.exports = {
   abrirNotebooks, crearNotebookEnPantalla, abrirIngesta, elegirArchivosEnIngesta, guardarEnIngesta, filaDeIngesta,
   campoDelTema, agregarArchivosEnIngesta,
   avisosDeLaPantalla, abrirChatGeneral, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
-  elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
+  elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, elegirQuitarFuente, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
   exigirSinVoseo,
 };

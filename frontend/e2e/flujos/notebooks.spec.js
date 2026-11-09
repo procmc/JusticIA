@@ -9,7 +9,7 @@ const {
 const {
   abrirNotebooks, crearNotebookEnPantalla, crearNotebookConEnter, listaDeNotebooks, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, avisosDeLaPantalla, fichaDeDocumento, abrirNotebookConDocumentos,
-  quitarDocumentoEnPantalla, exigirSinVoseo,
+  quitarDocumentoEnPantalla, elegirQuitarFuente, exigirSinVoseo,
 } = require('../soporte/pantallas.js');
 
 const MOTIVO_VACIO = 'archivo vacío';
@@ -31,7 +31,7 @@ async function exigirNotebookAbierto(page, nombre) {
   await expect(page.getByRole('button', { name: 'Subir documentos' })).toBeVisible();
   await expect(page.getByPlaceholder(`Pregúntele algo a "${nombre}"...`, { exact: false })).toBeVisible();
   await expect(page.getByText('archivo(s) seleccionado(s)')).toHaveCount(0);
-  await expect(page.locator('div.flex-wrap.gap-2 > div')).toHaveCount(0); // su lista de documentos, vacía
+  await expect(page.locator('ul[aria-label="Fuentes del notebook"] > li')).toHaveCount(0); // su lista de documentos, vacía
   await exigirSinVoseo(page); // RT-07.70
 }
 
@@ -292,11 +292,11 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
       expect(lista.status).toBe(200);
       return (await lista.json()).items.filter((i) => i.tipoAccion === 'Quitar Documento de Notebook').length;
     };
-    const equis = (nombre) => fichaDeDocumento(page, nombre).locator('[aria-label="close chip"]');
+    const equis = (nombre) => elegirQuitarFuente(page, nombre); // la «x» pasó al menú ⋮ → «Quitar fuente»
     const dialogo = page.getByRole('dialog');
 
     // RF-19.70: título, cuerpo exacto y botones; sin desborde (a 616 px también).
-    await pulsar(equis(documento.nombre));
+    await equis(documento.nombre);
     await expect(dialogo).toBeVisible();
     await expect(dialogo.getByRole('heading', { name: 'Quitar documento', exact: true })).toBeVisible();
     await expect(dialogo.locator('p')).toHaveText(`¿Quitar "${documento.nombre}" del notebook? Esta acción no se puede deshacer.`);
@@ -321,7 +321,7 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
       getComputedStyle(e).pointerEvents === 'none' || e.hasAttribute('data-disabled') || e.getAttribute('aria-disabled') === 'true'
     ));
     await control.notebooks({ retener_quitar: true });
-    await pulsar(equis(documento.nombre));
+    await equis(documento.nombre);
     await expect(dialogo).toBeVisible();
     await dialogo.getByRole('button', { name: 'Quitar', exact: true }).dblclick();
     await expect.poll(async () => (await control.notebooksEstado()).esperando_quitar, { timeout: 15_000 }).toBe(1);
@@ -331,7 +331,7 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
     expect((await control.notebooksEstado()).esperando_quitar).toBe(1);
 
     // Un segundo documento mientras el primero sigue en curso: ambos deshabilitados, cada uno con su petición.
-    await pulsar(equis(segundo.nombre));
+    await equis(segundo.nombre);
     await expect(dialogo).toBeVisible();
     await pulsar(dialogo.getByRole('button', { name: 'Quitar', exact: true }));
     await expect.poll(async () => (await control.notebooksEstado()).esperando_quitar, { timeout: 15_000 }).toBe(2);
@@ -455,6 +455,8 @@ test.describe('NotebookServIA: reintentar y cancelar', () => {
     const tokenAdmin = await iniciarSesionPorApi(control, administrador);
     const { notebook, documento } = await notebookConDocumento(control, token);
     const segundo = await crearNotebook(control, token, `PRUEBA notebook B ${aleatorio()}`);
+    // Con una fuente Procesado: un notebook sin fuentes tiene el envío desactivado a propósito (spec 009b, RF-11.104).
+    await subirYProcesar(control, token, segundo.clave_interna, documentoDePrueba());
     // `chat` reinicia el contador de abandonos: se programa antes de contar (plan §6). La señal de vida de 1 s hace que el
     // servidor note la desconexión de una respuesta retenida en un segundo, no en los 10 s por omisión.
     await control.chat({ senal_de_vida_segundos: 1 });

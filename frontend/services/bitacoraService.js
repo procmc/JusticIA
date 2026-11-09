@@ -298,7 +298,8 @@ class BitacoraService {
       17: 'Quitar Documento de Notebook',
       18: 'Gestionar Conversación',
       19: 'Renombrar Notebook',
-      20: 'Eliminar Notebook'
+      20: 'Eliminar Notebook',
+      21: 'Renombrar Documento de Notebook'
     };
     
     return tipos[idTipo] || `Acción ${idTipo}`;

@@ -92,6 +92,19 @@ class NotebookService {
   }
 
   /**
+   * Cambiar el nombre de una fuente del notebook (RF-19.102). Se envía solo la base: el servidor añade la extensión. El error
+   * lleva `status`: 400 trae el mensaje de validación del servidor (RF-19.106, 19.107) y 404, que la fuente ya no está.
+   */
+  async renombrarDocumento(notebookId, documentoId, nombre) {
+    try {
+      const data = await httpService.put(`/notebooks/${notebookId}/documentos/${documentoId}`, { nombre });
+      return { success: true, documento: data };
+    } catch (error) {
+      return { error: true, status: error.status, message: error.message || 'No se pudo cambiar el nombre de la fuente. Intente de nuevo.' };
+    }
+  }
+
+  /**
    * Quitar un documento de un notebook (Qdrant, archivo físico y BD)
    */
   async eliminarDocumento(notebookId, documentoId) {

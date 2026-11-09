@@ -93,10 +93,11 @@ function leerEventos(texto) {
 }
 const textoDeLosEventos = (eventos) => eventos.filter((e) => e.type === 'chunk').map((e) => e.content).join('');
 
-function cuerpoDeChat(usuario, pregunta, { tema, notebook, sesion } = {}) {
+function cuerpoDeChat(usuario, pregunta, { tema, notebook, sesion, documentos } = {}) {
   const cuerpo = { query: pregunta, session_id: sesion || `session_${usuario.cedula}_${aleatorio()}` };
   if (tema !== undefined) cuerpo.expediente_number = tema;
   if (notebook !== undefined) cuerpo.notebook_id = String(notebook);
+  if (documentos !== undefined) cuerpo.documentos = documentos; // fuentes marcadas (RF-11.101)
   return cuerpo;
 }
 

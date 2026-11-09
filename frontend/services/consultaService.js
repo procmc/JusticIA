@@ -97,6 +97,7 @@ class ConsultaService {
    * @param {string|null} [notebookId=null] - Notebook consultado (NotebookServIA)
    * @param {{onEtapa?: Function, onActividad?: Function}} [alRecibir={}] - onEtapa(texto) al llegar cada etapa; onActividad() con
    *   cualquier dato del servidor (RF-11.64, RF-16.60)
+   * @param {number[]|null} [documentos=null] - Identificadores de las fuentes marcadas del notebook (RF-11.101); null = todas
    * @throws {Error} Si query está vacío o sessionId no se proporciona
    *
    * @example
@@ -123,7 +124,7 @@ class ConsultaService {
    * 
    * @note El backend maneja reformulación automática de preguntas ambiguas usando el historial
    */
-  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null, notebookId = null, alRecibir = {}) {
+  async consultaGeneralStreaming(query, onChunk, onComplete, onError, topK = null, sessionId = null, expedienteNumber = null, notebookId = null, alRecibir = {}, documentos = null) {
     // Cancelar consulta anterior si existe
     if (this.abortController) {
       this.abortController.abort();
@@ -167,6 +168,11 @@ class ConsultaService {
       // Agregar notebook si está disponible (NotebookServIA)
       if (notebookId) {
         payload.notebook_id = notebookId;
+      }
+
+      // Fuentes marcadas del notebook (RF-11.101); sin la lista, el servidor usa todas
+      if (Array.isArray(documentos)) {
+        payload.documentos = documentos;
       }
 
       console.log('📤 Enviando consulta con historial:', {
