@@ -30,6 +30,7 @@ rectangle "Sistema ServIA" {
   usecase "Previsualizar Documento Original\n(CU-12)" as RCU12
   usecase "Eliminar Documento de un Notebook\n(CU-13)" as RCU13
   usecase "Gestionar un Notebook\n(CU-17)" as RCU17
+  usecase "Renombrar una Fuente del Notebook\n(CU-18)" as RCU18
 }
 UG --> CU11
 CU11 ..> S1 : <<include>>
@@ -38,5 +39,6 @@ S2 ..> RCU07 : <<extend>>
 S2 ..> RCU09 : <<extend>>
 S2 ..> RCU12 : <<extend>>
 S2 ..> RCU13 : <<extend>>
+S2 ..> RCU18 : <<extend>>
 CU11 ..> RCU17 : <<extend>>
 @enduml

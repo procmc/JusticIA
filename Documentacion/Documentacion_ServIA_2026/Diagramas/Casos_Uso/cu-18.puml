@@ -1,0 +1,40 @@
+@startuml
+left to right direction
+
+skinparam backgroundColor white
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam actor {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+}
+skinparam rectangle {
+  BorderColor #1F4E79
+  FontColor #1F4E79
+  FontStyle bold
+}
+skinparam ArrowColor #1F4E79
+skinparam packageStyle rectangle
+
+actor "Usuario Gubernamental" as UG
+actor "Base de datos vectorial (Qdrant)" as QDRANT
+rectangle "Sistema ServIA" {
+  usecase "Renombrar una Fuente del Notebook" as CU18
+  usecase "Validar nombre de la fuente" as S1
+  usecase "Actualizar fragmentos vectoriales" as S2
+  usecase "Guardar nombre visible" as S3
+  usecase "Registrar la acción en la bitácora" as S4
+  usecase "Crear un Notebook\n(CU-11)" as RCU11
+}
+UG --> CU18
+S2 --> QDRANT
+RCU11 ..> CU18 : <<extend>>
+CU18 ..> S1 : <<include>>
+CU18 ..> S2 : <<include>>
+CU18 ..> S3 : <<include>>
+CU18 ..> S4 : <<include>>
+@enduml
