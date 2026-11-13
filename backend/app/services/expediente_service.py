@@ -350,3 +350,25 @@ class ExpedienteService:
             
         except Exception as e:
             raise Exception(f"Error en lógica de obtención de documento: {str(e)}")
+
+    async def listar_temas_disponibles(self, db: Session) -> List[dict]:
+        """
+        Los temas con al menos un documento Procesado, con su cantidad de documentos, en orden alfabético (spec 006, RF-06.2).
+
+        Sirve para que el chat acotado a un tema ofrezca los nombres reales y compruebe el que escribe el usuario. Las claves de
+        notebook (`NB-<id>`) no son temas: ni las propias ni las ajenas aparecen (RF-11.31, RF-17.3).
+
+        Returns:
+            List[dict]: [{"nombre": str, "documentos": int}]
+        """
+        from app.services.notebook_service import forma_de_clave  # aquí dentro: notebook_service importa este módulo de forma indirecta
+
+        documentos_por_tema = {}
+        for id_documento, tema in self.documento_repo.listar_procesados_con_temas(db):
+            if forma_de_clave(tema):
+                continue
+            documentos_por_tema.setdefault(tema, set()).add(id_documento)
+        return sorted(
+            ({"nombre": tema, "documentos": len(ids)} for tema, ids in documentos_por_tema.items()),
+            key=lambda t: t["nombre"].casefold(),
+        )

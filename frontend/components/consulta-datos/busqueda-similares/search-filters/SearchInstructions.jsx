@@ -15,22 +15,22 @@ const SearchInstructions = () => {
               Búsqueda por Descripción
             </h4>
             <p className="text-slate-600 text-xs leading-relaxed">
-              Describe tu caso en lenguaje natural con detalles específicos sobre el tipo de caso y circunstancias relevantes.
+              Describe el tema en lenguaje natural con detalles específicos sobre su materia y las circunstancias relevantes.
             </p>
           </div>
         </div>
 
-        {/* Búsqueda por Expediente */}
+        {/* Búsqueda por Tema (modo heredado «expediente») */}
         <div className="flex items-start gap-3">
           <div className="p-2 bg-slate-100 rounded-lg mt-0.5 flex-shrink-0">
             <IoDocument className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <h4 className="font-medium text-slate-700 text-sm mb-1">
-              Búsqueda por Expediente
+              Búsqueda por Tema
             </h4>
             <p className="text-slate-600 text-xs leading-relaxed">
-              Ingresa el número de expediente específico para encontrar casos relacionados o con características similares.
+              Indica un tema de referencia para encontrar otros temas relacionados o con características similares.
             </p>
           </div>
         </div>
@@ -45,7 +45,7 @@ const SearchInstructions = () => {
           <div>
             <span className="font-medium text-slate-700 text-xs">Consejo: </span>
             <span className="text-slate-600 text-xs">
-              Nuestra IA utiliza análisis semántico avanzado. Sé específico e incluye elementos legales relevantes para obtener mejores resultados.
+              Nuestra IA utiliza análisis semántico avanzado. Sé específico e incluye términos, instituciones o normativa relevantes para obtener mejores resultados.
             </span>
           </div>
         </div>

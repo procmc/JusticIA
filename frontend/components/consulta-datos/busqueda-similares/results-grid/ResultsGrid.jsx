@@ -2,9 +2,7 @@ import React from 'react';
 import CaseCard from './CaseCard';
 
 const ResultsGrid = ({ 
-  results, 
-  parseExpedientNumber, 
-  getMatterDescription, 
+  results,
   getSimilarityColor,
   onViewDetails 
 }) => {
@@ -14,8 +12,6 @@ const ResultsGrid = ({
         <CaseCard
           key={result.id}
           caseData={result}
-          parseExpedientNumber={parseExpedientNumber}
-          getMatterDescription={getMatterDescription}
           getSimilarityColor={getSimilarityColor}
           onViewDetails={onViewDetails}
         />

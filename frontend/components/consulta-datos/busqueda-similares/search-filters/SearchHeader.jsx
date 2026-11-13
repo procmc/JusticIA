@@ -5,7 +5,9 @@ import { FiAlertCircle, FiFolder } from 'react-icons/fi';
 import { PiBroomLight } from 'react-icons/pi';
 import { Textarea } from '@/components/ui/Textarea';
 import SearchInstructions from './SearchInstructions';
-import { validarExpediente, obtenerMensajeError } from '@/utils/validation/expedienteValidator';
+
+// El servidor admite temas de hasta 60 caracteres (RF-06.52); aquí solo se avisa, no se bloquea la escritura.
+const TEMA_LONGITUD_MAXIMA = 60;
 
 const SearchHeader = ({
   searchMode,
@@ -24,25 +26,17 @@ const SearchHeader = ({
     if (searchMode === 'description') {
       return searchText.trim().length > 0;
     } else if (searchMode === 'expedient') {
-      const trimmedNumber = expedientNumber.trim();
-      if (trimmedNumber.length === 0) return false;
-
-      // Usar validador unificado (misma lógica que ingesta)
-      return validarExpediente(trimmedNumber);
+      // El tema es de nombre libre: solo se pide que no esté vacío ni exceda el máximo.
+      const nombreTema = expedientNumber.trim();
+      return nombreTema.length > 0 && nombreTema.length <= TEMA_LONGITUD_MAXIMA;
     }
     return false;
   };
 
-  // Verificar si el formato de expediente es inválido (para mostrar error)
+  // Verificar si el nombre del tema es demasiado largo (para mostrar error)
   const isExpedientFormatInvalid = () => {
     if (searchMode !== 'expedient') return false;
-    const trimmedNumber = expedientNumber.trim();
-
-    // No mostrar error si está vacío o si aún está escribiendo (menos de 17 chars para YY-NNNNNN-NNNN-XX)
-    if (trimmedNumber.length === 0 || trimmedNumber.length < 17) return false;
-
-    // Solo mostrar error si ya escribió suficientes caracteres pero el formato es inválido
-    return !validarExpediente(trimmedNumber);
+    return expedientNumber.trim().length > TEMA_LONGITUD_MAXIMA;
   };
 
   const isButtonDisabled = !canSearch() || isSearching;
@@ -108,7 +102,7 @@ const SearchHeader = ({
                   title={
                     <div className="flex items-center justify-center space-x-1">
                       <IoDocument className="w-3 h-3" />
-                      <span>Expediente</span>
+                      <span>Tema</span>
                     </div>
                   }
                 />
@@ -156,10 +150,10 @@ const SearchHeader = ({
               <div className="space-y-2">
                 <div className="relative mb-4">
                   <label className="block text-sm font-medium text-primary pb-1.5">
-                    Descripción del caso<span className="text-danger">*</span>
+                    Descripción del tema<span className="text-danger">*</span>
                   </label>
                   <Textarea
-                    placeholder="Describe tu caso legal... Ej: 'Despido injustificado de trabajador...'"
+                    placeholder="Describe el tema que buscas... Ej: 'Lineamientos de contratación pública para instituciones del Estado...'"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -174,10 +168,10 @@ const SearchHeader = ({
                   <div className="flex flex-wrap gap-1 items-center">
                     <span className="text-xs text-gray-500">Ejemplos:</span>
                     {[
-                      "Despido laboral",
-                      "Accidente tránsito",
-                      "Divorcio",
-                      "Resp. civil"
+                      "Contratación pública",
+                      "Teletrabajo",
+                      "Protección de datos",
+                      "Gobierno digital"
                     ].map((suggestion) => (
                       <Chip
                         key={suggestion}
@@ -205,9 +199,9 @@ const SearchHeader = ({
 
                 <div className="w-full sm:max-w-sm">
                   <Input
-                    label="Número de expediente"
+                    label="Nombre del tema"
                     labelPlacement='outside'
-                    placeholder="02-000744-0164-CI"
+                    placeholder="Ej.: Normativa, NEXUS-Circulares-DE"
                     value={expedientNumber}
                     onChange={(e) => setExpedientNumber(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -216,7 +210,7 @@ const SearchHeader = ({
                     size="md"
                     isRequired
                     isInvalid={isExpedientFormatInvalid()}
-                    errorMessage={isExpedientFormatInvalid() ? "Formato inválido. Use: YY-NNNNNN-NNNN-XX (ej: 02-000744-0164-CI)" : ""}
+                    errorMessage={isExpedientFormatInvalid() ? `El nombre del tema no puede superar los ${TEMA_LONGITUD_MAXIMA} caracteres` : ""}
                     startContent={
                       <FiFolder className="w-4 h-4 text-gray-400" />
                     }
@@ -224,19 +218,16 @@ const SearchHeader = ({
                   />
                 </div>
 
-                {/* Explicación del formato (ABAJO) */}
+                {/* Indicación del nombre del tema (ABAJO) */}
                 <div className="bg-primary-50 border-l-4 border-primary-400 p-3 sm:p-4 rounded-r-lg">
                   <div className="flex items-start gap-2">
                     <FiAlertCircle className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                        <span className="font-medium">Formato requerido:</span>
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                          YY-NNNNNN-NNNN-XX
-                        </code>
-                      </div>
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">Nombre del tema:</span> escríbalo tal como se registró en Ingesta de Datos.
+                      </p>
                       <p className="text-xs text-gray-600 italic mt-1">
-                        * Use el formato oficial del Poder Judicial de Costa Rica
+                        * Se distingue entre mayúsculas, minúsculas y tildes.
                       </p>
                     </div>
                   </div>

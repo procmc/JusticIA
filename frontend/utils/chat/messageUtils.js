@@ -10,21 +10,21 @@ import { formatearSoloHoraCostaRica } from '../dateUtils';
 // CONSTANTES
 // ============================================
 
-export const EXPEDIENTE_WELCOME_MESSAGE = `¡Hola! Me alegra que hayas elegido consultar un expediente específico. 
+export const EXPEDIENTE_WELCOME_MESSAGE = `¡Hola! Me alegra que hayas elegido consultar un tema específico. 
 
-Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el expediente que selecciones.
+Puedo ayudarte a generar resúmenes, responder cualquier consulta y crear borradores sobre el tema que selecciones.
 
 ---
 
 ### **¿Cómo funciona?**
 
-**1.** Proporciona el número del expediente que deseas analizar  
-**2.** Realiza cualquier consulta específica sobre el caso  
-**3.** Cambia a otro expediente escribiendo un nuevo número  
+**1.** Elige un tema de la lista de abajo o escribe su nombre  
+**2.** Realiza cualquier consulta específica sobre ese tema  
+**3.** Para cambiar de tema, pulsa «Nueva» o vuelve a marcar «Por tema específico»  
 
 ---
 
-**¿Tienes el número de expediente que quieres consultar?**`;
+**¿Sobre qué tema quieres consultar?**`;
 
 // ============================================
 // VALIDACIÓN Y MANEJO DE EXPEDIENTES
@@ -59,8 +59,8 @@ export const shouldChangeExpediente = (text, currentExpediente) => {
 export const createExpedienteMessages = (newExpediente, isChange) => {
   const userMessage = {
     text: isChange
-      ? `Cambiar consulta a expediente: ${newExpediente}`
-      : `Establecer consulta para expediente: ${newExpediente}`,
+      ? `Cambiar consulta a tema: ${newExpediente}`
+      : `Establecer consulta para tema: ${newExpediente}`,
     isUser: true,
     timestamp: formatearSoloHoraCostaRica(new Date()),
     scope: 'expediente',
@@ -69,13 +69,47 @@ export const createExpedienteMessages = (newExpediente, isChange) => {
 
   const assistantMessage = {
     text: isChange
-      ? `**Expediente cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?`
-      : `**Expediente establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?`,
+      ? `**Tema cambiado:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este nuevo tema. ¿Qué te gustaría saber?`
+      : `**Tema establecido:** ${newExpediente}\n\nAhora puedes hacer cualquier consulta sobre este tema. ¿Qué te gustaría saber?`,
     isUser: false,
     timestamp: formatearSoloHoraCostaRica(new Date())
   };
 
   return { userMessage, assistantMessage };
+};
+
+/**
+ * El tema que el usuario quiso decir (RF-06.2): el de la lista de temas disponibles que coincide con lo escrito, sin distinguir
+ * mayúsculas ni espacios de más, con su nombre exacto (el servidor filtra por el nombre tal como se registró). Si la lista no se
+ * pudo cargar (`temas` vacío), acepta el texto tal cual para no bloquear el chat; el servidor responde sin documentos si no existe.
+ * Devuelve null si no hay coincidencia, o si el texto está vacío o supera los 60 caracteres que admite un tema.
+ */
+export const resolverTema = (texto, temas) => {
+  const escrito = (texto || '').trim().replace(/\s+/g, ' ');
+  if (!escrito || escrito.length > 60) return null;
+  if (!temas || temas.length === 0) return escrito;
+  const coincidencia = temas.find((t) => t.nombre.toLowerCase() === escrito.toLowerCase());
+  return coincidencia ? coincidencia.nombre : null;
+};
+
+/**
+ * Crea los mensajes cuando lo escrito no coincide con ningún tema: avisa y recuerda cuáles hay (RF-06.2).
+ */
+export const createTemaNoEncontradoMessage = (userText, temas) => {
+  const lista = (temas || []).slice(0, 8).map((t) => `- ${t.nombre}`).join('\n');
+  return {
+    userMessage: {
+      text: userText,
+      isUser: true,
+      timestamp: formatearSoloHoraCostaRica(new Date()),
+      scope: 'expediente'
+    },
+    assistantMessage: {
+      text: `No encontré un tema con ese nombre. Elige uno de la lista de abajo o escríbelo tal como aparece.${lista ? `\n\nAlgunos temas disponibles:\n${lista}` : ''}`,
+      isUser: false,
+      timestamp: formatearSoloHoraCostaRica(new Date())
+    }
+  };
 };
 
 /**
@@ -90,7 +124,7 @@ export const createNoExpedienteMessage = (userText) => {
   };
 
   const assistantMessage = {
-    text: `Para realizar consultas sobre un expediente específico, **necesito que ingreses un número de expediente válido**.\n\nSi deseas hacer una **consulta general** sobre temas legales o búsquedas amplias, puedes cambiar a "Búsqueda general" usando los botones de abajo.\n\n¿Tienes un número de expediente específico que quieras consultar?`,
+    text: `Para realizar consultas sobre un tema específico, **necesito que ingreses el nombre de un tema válido**.\n\nSi deseas hacer una **consulta general** o una búsqueda amplia, puedes cambiar a "Búsqueda general" usando los botones de abajo.\n\n¿Tienes un tema específico que quieras consultar?`,
     isUser: false,
     timestamp: formatearSoloHoraCostaRica(new Date())
   };

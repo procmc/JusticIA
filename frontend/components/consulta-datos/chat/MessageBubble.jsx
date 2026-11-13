@@ -11,7 +11,7 @@ import { generateInitialsAvatar } from '@/services/avatarService';
 import { useSession } from 'next-auth/react';
 import { copyToClipboard, processFilePath } from '../../../utils/chat/markdownUtils';
 
-const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false, onRetry }) => {
+const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false, onRetry, onGuardarNota, compacto = false }) => {
   const { data: session } = useSession();
   const { avatar } = useAvatar();
   const isError = message.isError || false;
@@ -86,7 +86,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
   };
   
   return (
-    <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full sm:max-w-4xl mx-auto px-2 sm:px-4`}>
+    <div className={`flex gap-2 sm:gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'} w-full max-w-full ${compacto ? 'sm:max-w-5xl px-2' : 'sm:max-w-4xl px-2 sm:px-4'} mx-auto`}>
       {displayAvatar?.startsWith('data:') && isUser ? (
         <div key={displayAvatar} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white border-2 border-gray-100">
           <Image
@@ -124,7 +124,7 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
       )}
       
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : 'text-left'} group`}>
-        <div className={`inline-block max-w-[calc(100%-5rem)] sm:max-w-[calc(100%-10rem)] break-words ${
+        <div className={`inline-block ${compacto ? 'max-w-full' : 'max-w-[calc(100%-5rem)] sm:max-w-[calc(100%-10rem)]'} break-words ${
           isUser 
             ? 'bg-gray-100 text-gray-800 rounded-2xl rounded-tr-md px-4 py-3 text-left' 
             : isError
@@ -193,6 +193,18 @@ const MessageBubble = ({ message, isUser, isStreaming = false, showRetry = false
             </div>
           )}
           
+          {/* «Guardar en notas» (Estudio del notebook, spec 010): solo en una respuesta terminada, sin cancelar ni error */}
+          {!isUser && onGuardarNota && message.text && !isStreaming && !isError && !isWarning && !message.isCanceled && !message.isRetrying && (
+            <button
+              type="button"
+              onClick={onGuardarNota}
+              disabled={message.notaGuardada}
+              className="rounded-lg px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:cursor-default disabled:text-success-600 disabled:hover:bg-transparent"
+            >
+              {message.notaGuardada ? 'Guardada' : 'Guardar en notas'}
+            </button>
+          )}
+
           {/* Botón de copiar - para mensajes del usuario (solo visible en hover) */}
           {isUser && message.text && (
             <div className="relative group/button">

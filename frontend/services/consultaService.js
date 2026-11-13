@@ -77,6 +77,19 @@ class ConsultaService {
   }
 
   /**
+   * Los temas con documentos Procesado, para elegir uno en el chat acotado a un tema (RF-06.2).
+   * Devuelve `{ success, temas: [{ nombre, documentos }] }` o `{ error, message }`.
+   */
+  async listarTemasDisponibles() {
+    try {
+      const temas = await httpService.get('/rag/temas-disponibles');
+      return { success: true, temas };
+    } catch (error) {
+      return { error: true, message: error.message || 'No se pudieron cargar los temas.' };
+    }
+  }
+
+  /**
    * Realiza una consulta con IA mediante streaming con gestión de historial.
    * 
    * Envía consultas al backend RAG que retorna respuestas progresivas

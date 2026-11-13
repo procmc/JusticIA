@@ -67,6 +67,8 @@
 import httpService from './httpService';
 import RAG_CONFIG from '../config/ragConfig';
 
+const TEMA_LONGITUD_MAXIMA = 60; // igual que el campo de búsqueda por tema (SearchHeader.jsx)
+
 /**
  * Servicio de búsqueda de casos similares con vector search.
  * 
@@ -171,10 +173,9 @@ class SimilarityService {
         throw new Error('Número de expediente no puede estar vacío');
       }
 
-      // Validar formato
-      const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
-      if (!expedientPattern.test(expedienteTrimmed)) {
-        throw new Error('Formato de número de expediente inválido');
+      // El tema es de nombre libre (RF-06.2): solo se limita el largo; el servidor comprueba que exista.
+      if (expedienteTrimmed.length > TEMA_LONGITUD_MAXIMA) {
+        throw new Error(`El nombre del tema no puede superar los ${TEMA_LONGITUD_MAXIMA} caracteres`);
       }
 
       // Llamada al backend con timeout largo (puede tardar)
@@ -240,11 +241,10 @@ class SimilarityService {
       }
     } else if (searchMode === 'expediente') {
       if (!query || query.trim().length === 0) {
-        throw new Error('Número de expediente es requerido para búsqueda por expediente');
+        throw new Error('El nombre del tema es requerido para la búsqueda por tema');
       }
-      const expedientPattern = /^[0-9]{2,4}-[A-Z0-9]{6,8}-[0-9]{4,6}(-[A-Z]{1,2})?$/;
-      if (!expedientPattern.test(query.trim())) {
-        throw new Error('Formato de número de expediente inválido');
+      if (query.trim().length > TEMA_LONGITUD_MAXIMA) {
+        throw new Error(`El nombre del tema no puede superar los ${TEMA_LONGITUD_MAXIMA} caracteres`);
       }
     }
 

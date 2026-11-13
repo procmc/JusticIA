@@ -9,14 +9,20 @@ import ResultsGrid from './results-grid/ResultsGrid';
 import CaseDetailsModal from './results-grid/details-drawer/CaseDetailsDrawer';
 import useSimilarityUtils from '@/hooks/busqueda-similares/useSimilarityUtils';
 import similarityService from '@/services/similarityService';
-import Toast from '@/components/ui/CustomAlert';  
+import Toast from '@/components/ui/CustomAlert';
+
+// Con el modelo de embeddings E5 la similitud coseno cruda se mueve en una franja estrecha: medido sobre los temas reales, una
+// consulta sin relación (una receta de cocina) llega a ~0,82 y una pertinente a ~0,87. Por eso el deslizador no empieza en 20 %
+// (traería todo): va de UMBRAL_MINIMO a 100 % y arranca en UMBRAL_INICIAL, justo sobre el ruido.
+const UMBRAL_MINIMO = 75;
+const UMBRAL_INICIAL = 83;
 
 const BusquedaSimilares = ({ initialMode }) => {
   // Estados
   const [searchMode, setSearchMode] = useState('description');
   const [searchText, setSearchText] = useState('');
   const [expedientNumber, setExpedientNumber] = useState('');
-  const [similarityThreshold, setSimilarityThreshold] = useState([30]); // Cambiar a 30% por defecto
+  const [similarityThreshold, setSimilarityThreshold] = useState([UMBRAL_INICIAL]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -40,7 +46,7 @@ const BusquedaSimilares = ({ initialMode }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   
   // Hook personalizado para utilidades
-  const { parseExpedientNumber, getMatterDescription, getSimilarityColor } = useSimilarityUtils();
+  const { getSimilarityColor } = useSimilarityUtils();
 
   // Filtrar resultados por umbral de similitud (convertir de porcentaje a decimal)
   const filteredResults = searchResults.filter(
@@ -75,7 +81,7 @@ const BusquedaSimilares = ({ initialMode }) => {
         throw new Error(
           searchMode === 'description' 
             ? 'Por favor ingrese una descripción para buscar'
-            : 'Por favor ingrese un número de expediente para buscar'
+            : 'Por favor ingrese el nombre de un tema para buscar'
         );
       }
 
@@ -84,7 +90,9 @@ const BusquedaSimilares = ({ initialMode }) => {
         searchMode: searchModeSpanish,
         query: query,
         limit: 30,
-        threshold: similarityThreshold[0] / 100 // Convertir de porcentaje a decimal
+        // Siempre se pide desde el piso del deslizador: así subir o bajar el filtro después se resuelve en pantalla, sin repetir
+        // la búsqueda (con el umbral elegido, bajar el filtro no traía nada nuevo).
+        threshold: UMBRAL_MINIMO / 100
       });
 
       if (results) {
@@ -131,7 +139,7 @@ const BusquedaSimilares = ({ initialMode }) => {
 
   // Función para reducir similitud cuando no hay resultados
   const handleReduceSimilarity = () => {
-    setSimilarityThreshold([20]); // Reducir a 20%
+    setSimilarityThreshold([UMBRAL_MINIMO]);
   };
 
   // Función para limpiar inputs y cancelar búsqueda
@@ -213,8 +221,6 @@ const BusquedaSimilares = ({ initialMode }) => {
                 ) : (
                   <ResultsGrid
                     results={filteredResults}
-                    parseExpedientNumber={parseExpedientNumber}
-                    getMatterDescription={getMatterDescription}
                     getSimilarityColor={getSimilarityColor}
                     onViewDetails={handleViewDetails}
                   />
@@ -228,8 +234,6 @@ const BusquedaSimilares = ({ initialMode }) => {
           isOpen={isOpen}
           onClose={onClose}
           selectedCase={selectedCase}
-          parseExpedientNumber={parseExpedientNumber}
-          getMatterDescription={getMatterDescription}
           getSimilarityColor={getSimilarityColor}
         />
       </div>

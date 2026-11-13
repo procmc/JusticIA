@@ -61,6 +61,9 @@ from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
 )
 from app.services.notebook_service import NotebookService, RecursoNoDisponible, SeleccionVacia, NO_DISPONIBLE
+from app.services.estudio_service import MENSAJE_EN_CURSO as MENSAJE_GENERACION_EN_CURSO, hay_generacion_en_curso
+from app.services.expediente_service import ExpedienteService
+from app.schemas.rag_schemas import TemaDisponible
 from app.constants.tipos_accion import TiposAccion
 import logging
 import json
@@ -129,6 +132,10 @@ async def consulta_con_historial_stream(
                 detail="session_id es requerido"
             )
         
+        # Mientras el usuario genera un resultado del Estudio el modelo está ocupado: el chat del notebook espera (RF-11.131).
+        if request.notebook_id is not None and hay_generacion_en_curso(current_user.get("user_id")):
+            raise HTTPException(status_code=409, detail=MENSAJE_GENERACION_EN_CURSO)
+
         # Usar query directamente (sin validación de seguridad por ahora)
         query_to_use = request.query
         
@@ -237,6 +244,19 @@ async def consulta_con_historial_stream(
             status_code=500,
             detail=f"Error procesando consulta con historial: {str(e)}"
         )
+
+
+@router.get("/temas-disponibles", response_model=list[TemaDisponible])
+async def listar_temas_disponibles(
+    current_user: dict = Depends(require_usuario_judicial),
+    db: Session = Depends(get_db)
+):
+    """Los temas con documentos Procesado y su cantidad de documentos, para elegir uno en el chat acotado a un tema (RF-06.2)."""
+    try:
+        return await ExpedienteService().listar_temas_disponibles(db)
+    except Exception as e:
+        logger.error("Error listando los temas disponibles (%s)", type(e).__name__, exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.post("/update-expediente-context")

@@ -60,6 +60,28 @@ _EVENTO, _FIN, _ERROR = "evento", "fin", "error"
 Registrador = Callable[[Optional[str]], Awaitable[None]]
 
 
+# Tope de archivos que el servidor lista cuando el modelo omitió la sección de fuentes (RF-12.1).
+MAXIMO_FUENTES_AGREGADAS = 5
+_LARGO_MINIMO_PARA_FUENTES = 120   # por debajo es un saludo o una frase corta: no lleva fuentes
+_SIN_INFORMACION = ("no contienen información suficiente", "no contiene información suficiente")
+
+
+def _fuentes_que_faltan(respuesta: str, fuentes) -> str:
+    """La sección `**FUENTES:**` que el modelo omitió, con los archivos y las rutas exactas de los fragmentos que recibió, o ''.
+
+    Las instrucciones piden terminar toda respuesta con esa sección, pero el modelo local a veces la olvida (RF-12.1). No agrega
+    nada si ya la escribió, si dijo que los documentos no tienen información, si pide una aclaración (termina en «?») o si la
+    respuesta es corta (un saludo). `fuentes` es una lista de (archivo, ruta) en orden de relevancia.
+    """
+    if not fuentes or len((respuesta or "").strip()) < _LARGO_MINIMO_PARA_FUENTES:
+        return ""
+    texto = respuesta.casefold()
+    if "fuentes" in texto or any(frase in texto for frase in _SIN_INFORMACION) or respuesta.rstrip().endswith("?"):
+        return ""
+    lineas = "\n".join(f"- {archivo}: ({ruta})" for archivo, ruta in list(fuentes)[:MAXIMO_FUENTES_AGREGADAS])
+    return f"\n\n**FUENTES:**\n\n{lineas}"
+
+
 class CadenaArmada:
     """Un turno de chat: reformula (solo el general), recupera, arma la entrada dentro del presupuesto y transmite.
 
@@ -80,6 +102,7 @@ class CadenaArmada:
         self.retriever = retriever
         self.historial_de = historial_de  # None: sin historial (ni lectura ni guardado)
         self.reformula = reformula
+        self.fuentes_enviadas: list = []  # (archivo, ruta) de los fragmentos que llegaron al modelo, sin repetir y por relevancia
 
     def cabe_la_pregunta(self, pregunta: str) -> bool:
         """RF-11.62: instrucciones, pregunta y espacio mínimo de fragmento caben en el presupuesto."""
@@ -122,6 +145,7 @@ class CadenaArmada:
         entrada = pc.armar_respuesta(
             self.chat, self.instrucciones, pregunta, [str(m.content) for m in previos], fragmentos
         )
+        self.fuentes_enviadas = list(dict.fromkeys((f.archivo, f.ruta) for f in entrada.fragmentos if f.archivo and f.ruta))
         enviados = previos[len(previos) - len(entrada.historial):] if entrada.historial else []
         mensajes = [SystemMessage(content=entrada.sistema), *enviados, HumanMessage(content=pregunta)]
         logger.info(
@@ -188,11 +212,14 @@ async def stream_chain_response(
     http_request=None,
     registrar: Optional[Registrador] = None,
     al_terminar: Optional[Callable[[], None]] = None,
+    corregir_rutas=None,
 ):
     """Orquesta un turno y entrega sus eventos SSE.
 
     `registrar(motivo)` deja el turno en la bitácora (una vez por turno; ninguna si el usuario se desconecta) y `al_terminar()`
     se llama solo si el turno terminó bien (genera el título de la conversación). Ambos ocurren antes del evento final.
+    `corregir_rutas` (un `CorrectorDeRutas`, opcional) devuelve a la ruta registrada las que el modelo escribió con otra ortografía;
+    lo que se guarda en el historial es lo mismo que ve el usuario.
     """
     pregunta = input_dict["input"]
 
@@ -251,6 +278,15 @@ async def stream_chain_response(
                 return
 
             if clase == _FIN:
+                if corregir_rutas is not None:
+                    resto = corregir_rutas.vaciar()  # lo que el corrector retenía por si era una ruta
+                    if resto:
+                        texto.append(resto)
+                        yield _evento("chunk", resto)
+                faltan = _fuentes_que_faltan("".join(texto), getattr(chain, "fuentes_enviadas", None))
+                if faltan:
+                    texto.append(faltan)
+                    yield _evento("chunk", faltan)
                 completo = "".join(texto)
                 logger.info("Streaming completado: %s caracteres generados", len(completo))
                 if not completo:
@@ -277,8 +313,11 @@ async def stream_chain_response(
                     await _detener(productor)
                     return
                 contenido = valor["answer"] if isinstance(valor["answer"], str) else str(valor["answer"])
-                texto.append(contenido)
-                yield _evento("chunk", contenido)
+                if corregir_rutas is not None:
+                    contenido = corregir_rutas.procesar(contenido)
+                if contenido:
+                    texto.append(contenido)
+                    yield _evento("chunk", contenido)
     finally:
         # Cierre del cliente (GeneratorExit o cancelación de la respuesta): la tarea del turno no debe seguir generando
         if not productor.done():

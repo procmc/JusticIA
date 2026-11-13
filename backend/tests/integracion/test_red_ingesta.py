@@ -287,7 +287,6 @@ def test_tema_libre_se_acepta_y_crea_el_tema(cliente_api, sesion, registro_de_da
 
 
 @pytest.mark.requisito("RF-06.2")
-@pytest.mark.xfail(strict=True, reason="RF-06.2 · ingesta")
 def test_tema_libre_y_chat_acotado(cliente_api, sesion, usuario_gubernamental, registro_de_datos, procesamiento_en_prueba,
                                    ollama_simulado):
     """RF-06.2 (chat acotado): el chat acotado a un tema de nombre libre recupera SU documento y no mezcla el de otro tema
@@ -309,6 +308,25 @@ def test_tema_libre_y_chat_acotado(cliente_api, sesion, usuario_gubernamental, r
         cliente_api, sesion, usuario_gubernamental, ollama_simulado, libre, _pregunta_sobre(en_heredado))
     assert en_libre.frase in contexto, "el chat acotado al tema libre no recuperó su documento"
     assert en_heredado.frase not in contexto, "el chat acotado al tema libre trajo el documento de otro tema"
+
+
+@pytest.mark.requisito("RF-06.2")
+def test_temas_disponibles_lista_los_temas_con_documentos_y_no_los_notebooks(
+        cliente_api, sesion, registro_de_datos, procesamiento_en_prueba):
+    """RF-06.2: `GET /rag/temas-disponibles` lista, en orden alfabético y con su cantidad de documentos, los temas con al menos
+    un documento Procesado (el chat acotado los ofrece y comprueba el que escribe el usuario); las claves de notebook no son
+    temas y no aparecen."""
+    libre = _tema_libre(registro_de_datos)
+    _subir_y_procesar(cliente_api, sesion, procesamiento_en_prueba, libre, [documento_de_prueba()])
+
+    r = cliente_api.get("/rag/temas-disponibles", headers=sesion)
+    assert r.status_code == 200
+    temas = r.json()
+    por_nombre = {t["nombre"]: t["documentos"] for t in temas}
+    assert por_nombre[libre] == 1
+    assert not [n for n in por_nombre if n.strip().upper().startswith("NB-")], "una clave de notebook salió como tema"
+    nombres = [t["nombre"] for t in temas]
+    assert nombres == sorted(nombres, key=str.casefold)
 
 
 # --- RF-06.53: el tema se normaliza (spec 006, T1) --------------------------------------------------------------------------

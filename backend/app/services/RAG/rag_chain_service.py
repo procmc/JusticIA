@@ -74,17 +74,29 @@ from .notebook_chains import create_notebook_specific_chain
 from .prompts.notebook_prompt import reformular_referencia_imagen
 from .session_store import conversation_store
 from .presupuesto_contexto import cantidad_a_recuperar
+from .corrector_rutas import CorrectorDeRutas
 from app.services.notebook_service import NotebookService, RecursoNoDisponible, SeleccionVacia, forma_de_clave
 from app.services.bitacora.notebooks_audit_service import (
     notebooks_audit_service, MOTIVO_NOTEBOOK_NO_DISPONIBLE, MOTIVO_CONVERSACION_NO_DISPONIBLE
 )
 from app.constants.tipos_accion import TiposAccion
-from app.db.database import get_db
+from app.db.database import get_db, SessionLocal
+from app.repositories.documento_repository import DocumentoRepository
 
 # Importar configuración centralizada
 from app.config.rag_config import rag_config
 
 logger = logging.getLogger(__name__)
+
+
+def _rutas_visibles_de_la_carpeta(carpeta: str, usuario_id: Optional[str]) -> List[str]:
+    """Las rutas registradas de los documentos de `uploads/<carpeta>/` que el usuario puede ver (RF-17.3): las candidatas a las que
+    se devuelve una ruta que el modelo escribió con otra ortografía (RF-12.1). Sesión propia: corre mientras se envía la respuesta,
+    cuando la de la petición ya se cerró."""
+    with SessionLocal() as db:
+        visibles = NotebookService().ids_visibles(db, usuario_id)
+        return [ruta for id_documento, ruta in DocumentoRepository().listar_rutas_de_carpeta(db, carpeta)
+                if ruta and id_documento in visibles]
 
 
 class RAGChainService:
@@ -159,14 +171,17 @@ class RAGChainService:
             conversation_store.descartar_efimera(session_id)
 
     @staticmethod
-    def _respuesta_en_flujo(chain, input_dict, config, http_request, session_id: str, registrar):
+    def _respuesta_en_flujo(chain, input_dict, config, http_request, session_id: str, registrar, usuario_id: Optional[str] = None):
         """La respuesta SSE de un turno de cualquiera de los tres chats. El orquestador (`stream_chain_response`) guarda el
         historial y llama a `registrar` solo si corresponde (RF-11.68, RF-21.60); el título de la conversación se genera
         únicamente si el turno terminó bien."""
         return StreamingResponse(
             stream_chain_response(
                 chain, input_dict, config, http_request, registrar=registrar,
-                al_terminar=lambda: conversation_store.auto_generate_title(session_id)
+                al_terminar=lambda: conversation_store.auto_generate_title(session_id),
+                # El modelo a veces corrige la ortografía al copiar una ruta y el enlace de descarga deja de funcionar: se
+                # devuelve a la ruta registrada de la misma carpeta que el usuario puede ver (RF-12.1).
+                corregir_rutas=CorrectorDeRutas(lambda carpeta: _rutas_visibles_de_la_carpeta(carpeta, usuario_id))
             ),
             media_type="text/event-stream",
             headers={
@@ -361,7 +376,7 @@ class RAGChainService:
             "input": pregunta
         }
         
-        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar, usuario_id)
     
     # Consulta de expediente específico con historial
     async def _consulta_expediente_con_historial(
@@ -376,20 +391,10 @@ class RAGChainService:
     ):
         logger.info(f"Expediente con historial - Número: {expediente_numero}")
         
-        # Validar formato del expediente ingresado
-        expediente_pattern = r'\b\d{2,4}-\d{6}-\d{4}-[A-Z]{2}\b'
-        if not re.match(expediente_pattern, expediente_numero):
-            logger.error(f"Formato inválido: {expediente_numero}")
-            # Fallback a general
-            return await self._consulta_general_con_historial(
-                pregunta=pregunta,
-                session_id=session_id,
-                top_k=top_k,
-                usuario_id=usuario_id,
-                http_request=http_request,
-                registrar=registrar
-            )
-        
+        # El tema es de nombre libre (RF-06.2): no se exige el formato heredado `YY-NNNNNN-NNNN-XX`. Antes, un nombre que no lo
+        # cumplía caía en la búsqueda general y el chat respondía con documentos de TODOS los temas. Un tema que no existe
+        # simplemente no recupera fragmentos.
+
         # Actualizar la información de la conversación
         conversation_store.update_metadata(
             session_id=session_id,
@@ -428,7 +433,7 @@ class RAGChainService:
             "input": pregunta
         }
         
-        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar, usuario_id)
     
     # Consulta de notebook específico con historial (NotebookServIA)
     async def _consulta_notebook_con_historial(
@@ -491,7 +496,7 @@ class RAGChainService:
             "input": pregunta_para_llm
         }
 
-        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar)
+        return self._respuesta_en_flujo(chain, input_dict, config, http_request, session_id, registrar, usuario_id)
 
     # Actualizar contexto de expediente en la sesión
     async def update_expediente_context(

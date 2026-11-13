@@ -183,7 +183,7 @@ const ConversationHistory = ({ isOpen, onClose, onConversationSelect, onNewConve
                           </span>
                           {conv.expediente_number && (
                             <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded font-mono w-fit">
-                              Expediente: {conv.expediente_number}
+                              Tema: {conv.expediente_number}
                             </span>
                           )}
                         </div>

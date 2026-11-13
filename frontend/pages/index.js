@@ -12,7 +12,6 @@ import {
   IoPeople,
   IoTime,
   IoStatsChart,
-  IoDocuments,
   IoFolderOpen
 } from 'react-icons/io5';
 import Toast from '@/components/ui/CustomAlert';
@@ -50,14 +49,14 @@ export default function Home() {
   const userJudicialCards = [
     {
       title: 'Consultas Generales',
-      description: 'Realice consultas generales sobre expedientes del sistema',
+      description: 'Realice consultas generales sobre temas del sistema',
       icon: IoChatbubble,
       gradient: 'from-blue-500 to-blue-600',
       onClick: () => navigateTo('/consulta-datos/chat')
     },
     {
-      title: 'Consulta por Expediente',
-      description: 'Busque información específica de un expediente',
+      title: 'Consulta por Tema',
+      description: 'Busque información específica de un tema',
       icon: IoDocument,
       gradient: 'from-indigo-500 to-indigo-600',
       onClick: () => navigateTo('/consulta-datos/chat?mode=expediente')
@@ -70,15 +69,8 @@ export default function Home() {
       onClick: () => navigateTo('/consulta-datos/busqueda-similares?mode=descripcion')
     },
     {
-      title: 'Casos Similares por Expediente',
-      description: 'Encuentre casos similares basados en un expediente específico',
-      icon: IoDocuments,
-      gradient: 'from-green-500 to-green-600',
-      onClick: () => navigateTo('/consulta-datos/busqueda-similares?mode=expediente')
-    },
-    {
       title: 'Ingesta de Datos',
-      description: 'Cargue nuevos documentos y expedientes al sistema',
+      description: 'Cargue nuevos documentos y temas al sistema',
       icon: IoCloudUpload,
       gradient: 'from-orange-500 to-orange-600',
       onClick: () => navigateTo('/ingesta-datos')
@@ -139,12 +131,12 @@ export default function Home() {
   ];
 
   // Renderizar componente de tarjeta
-  const renderCard = (card, index, isFullWidth = false) => (
+  const renderCard = (card, index, isFullWidth = false, extraClass = '') => (
     <div
       key={index}
       className={`bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
         isFullWidth ? 'col-span-2' : ''
-      }`}
+      } ${extraClass}`}
       onClick={card.onClick}
     >
       <div className={`w-14 h-14 bg-gradient-to-br ${card.gradient} rounded-xl flex items-center justify-center mb-4 mx-auto`}>
@@ -193,9 +185,11 @@ export default function Home() {
                   <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-6">
                     {userJudicialCards.slice(0, 3).map((card, index) => renderCard(card, index))}
                   </div>
-                  {/* Segunda fila: 3 tarjetas del mismo tamaño */}
-                  <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    {userJudicialCards.slice(3, 6).map((card, index) => renderCard(card, index + 3))}
+                  {/* Segunda fila: 2 tarjetas del mismo tamaño que las de arriba, centradas (rejilla de 6 columnas, 2 por tarjeta) */}
+                  <div className="grid md:grid-cols-6 gap-6 max-w-5xl mx-auto">
+                    {userJudicialCards.slice(3).map((card, index) =>
+                      renderCard(card, index + 3, false, `md:col-span-2 ${index === 0 ? 'md:col-start-2' : ''}`)
+                    )}
                   </div>
                 </>
               )}

@@ -74,15 +74,15 @@ const ResultsHeader = ({
               <Slider
                 value={similarityThreshold}
                 onChange={setSimilarityThreshold}
-                minValue={50}
+                minValue={75}
                 maxValue={100}
-                step={5}
+                step={1}
                 size='sm'
                 color="primary"
                 className="w-full"
                 marks={[
-                  { value: 50, label: "50%" },
                   { value: 75, label: "75%" },
+                  { value: 85, label: "85%" },
                   { value: 100, label: "100%" }
                 ]}
               />

@@ -206,9 +206,9 @@ const CustomTextarea = ({
               ref={textareaRef}
               placeholder={
                 searchScope === 'expediente' && !consultedExpediente 
-                  ? "Ingresa un num. expediente (02-000744-0164-Cl)"
+                  ? "Elige un tema de la lista o escribe su nombre (ej.: NEXUS-Circulares-DE)"
                   : searchScope === 'expediente' && consultedExpediente
-                  ? `Pregunta sobre el expediente ${consultedExpediente}...`
+                  ? `Pregunta sobre el tema ${consultedExpediente}...`
                   : "¿En qué puedo ayudarte hoy?..."
               }
               value={value}
@@ -296,7 +296,7 @@ const CustomTextarea = ({
             >
               <div className="flex items-center gap-2">
                 <IoDocument className="w-4 h-4 text-primario" />
-                <span>Por expediente específico</span>
+                <span>Por tema específico</span>
                 {/* Indicador discreto del expediente consultado */}
                 {searchScope === 'expediente' && consultedExpediente && (
                   <span className="ml-2 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md whitespace-nowrap">

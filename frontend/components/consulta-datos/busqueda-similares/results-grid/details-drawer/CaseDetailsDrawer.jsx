@@ -5,7 +5,7 @@ import {
   Tab,
   Chip
 } from '@heroui/react';
-import { IoCalendar, IoScale, IoDocument, IoCheckmarkCircle } from 'react-icons/io5';
+import { IoDocument, IoCheckmarkCircle } from 'react-icons/io5';
 import DrawerGeneral from '@/components/ui/DrawerGeneral';
 import ResumenTab from './ResumenTab';
 import DocumentosTab from './DocumentosTab';
@@ -14,8 +14,6 @@ const CaseDetailsModal = ({
   isOpen,
   onClose,
   selectedCase,
-  parseExpedientNumber,
-  getMatterDescription,
   getSimilarityColor
 }) => {
   const [selectedTab, setSelectedTab] = useState("resumen");
@@ -26,10 +24,8 @@ const CaseDetailsModal = ({
   // Calcular documentCount directamente sin estado
   const documentCount = selectedCase?.documents?.length || selectedCase?.totalDocuments || 0;
   
-  // Calcular datos del expediente (puede ser null)
+  // El tema es de nombre libre: ya no se parte como número de expediente judicial (año, oficina y materia no existen).
   const numeroExpediente = selectedCase?.expedientNumber || selectedCase?.expedient || selectedCase?.expedientId;
-  const expedientData = numeroExpediente ? parseExpedientNumber(numeroExpediente) : null;
-  const matterDescription = expedientData ? getMatterDescription(expedientData.matter) : null;
 
   // Resetear tab al cambiar expediente
   useEffect(() => {
@@ -65,7 +61,7 @@ const CaseDetailsModal = ({
 
   return (
     <DrawerGeneral
-      titulo={`Expediente: ${numeroExpediente || 'No definido'}`}
+      titulo={`Tema: ${numeroExpediente || 'No definido'}`}
       isOpen={isOpen}
       onOpenChange={onClose}
       size="3xl"
@@ -75,60 +71,25 @@ const CaseDetailsModal = ({
         onPress: () => onClose(false)
       }}
     >
-      <div className="space-y-6">
-        {/* Header con información básica */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-x-8 gap-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <IoCalendar className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Año</p>
-                <p className="text-lg font-semibold text-gray-900">{expedientData.year}</p>
-              </div>
+      <div className="bg-white">
+        {/* La similitud va a la izquierda de las pestañas, en la misma fila */}
+        <div className="flex flex-wrap items-center gap-x-6 border-b border-gray-200">
+          <div className="flex h-12 shrink-0 items-center gap-3 border-r border-gray-200 pr-6">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <IoCheckmarkCircle className="w-4 h-4 text-green-600" />
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <IoScale className="w-4 h-4 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Oficina</p>
-                <p className="text-lg font-semibold text-gray-900">{expedientData.office}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <IoDocument className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Materia</p>
-                <p className="text-lg font-semibold text-gray-900">{matterDescription}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <IoCheckmarkCircle className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Similitud</p>
-                <p className="text-lg font-semibold text-green-700">{selectedCase.similarityPercentage}%</p>
-              </div>
+            <div className="leading-tight">
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Similitud</p>
+              <p className="text-base font-semibold text-green-700">{selectedCase.similarityPercentage}%</p>
             </div>
           </div>
-        </div>
 
-        {/* Tabs content */}
-        <div className="bg-white">
           <Tabs
             selectedKey={selectedTab}
             onSelectionChange={setSelectedTab}
             variant="underlined"
             classNames={{
-              tabList: "w-full relative rounded-none p-0 border-b border-gray-200",
+              tabList: "relative rounded-none p-0",
               cursor: "w-full bg-primary-500",
               tab: "max-w-fit px-4 h-12",
               tabContent: "group-data-[selected=true]:text-primary-600 font-medium text-gray-500",
@@ -145,22 +106,7 @@ const CaseDetailsModal = ({
                   )}
                 </div>
               }
-            >
-              <div className="pt-6">
-                <ResumenTab 
-                  selectedCase={selectedCase}
-                  expedientData={expedientData}
-                  matterDescription={matterDescription}
-                  aiSummary={currentExpedientState.aiSummary}
-                  setAiSummary={setAiSummary}
-                  isGeneratingResumen={currentExpedientState.isGenerating}
-                  setIsGeneratingResumen={setIsGeneratingResumen}
-                  generationStats={currentExpedientState.generationStats}
-                  setGenerationStats={setGenerationStats}
-                />
-              </div>
-            </Tab>
-
+            />
             <Tab
               key="documentos"
               title={
@@ -169,12 +115,25 @@ const CaseDetailsModal = ({
                   <span>Documentos ({documentCount})</span>
                 </div>
               }
-            >
-              <div className="pt-6">
-                <DocumentosTab selectedCase={selectedCase} />
-              </div>
-            </Tab>
+            />
           </Tabs>
+        </div>
+
+        {/* Contenido de la pestaña elegida */}
+        <div className="pt-6">
+          {selectedTab === "resumen" ? (
+            <ResumenTab
+              selectedCase={selectedCase}
+              aiSummary={currentExpedientState.aiSummary}
+              setAiSummary={setAiSummary}
+              isGeneratingResumen={currentExpedientState.isGenerating}
+              setIsGeneratingResumen={setIsGeneratingResumen}
+              generationStats={currentExpedientState.generationStats}
+              setGenerationStats={setGenerationStats}
+            />
+          ) : (
+            <DocumentosTab selectedCase={selectedCase} />
+          )}
         </div>
       </div>
     </DrawerGeneral>

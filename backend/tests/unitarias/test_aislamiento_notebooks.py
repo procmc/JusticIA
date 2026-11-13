@@ -492,6 +492,21 @@ def test_resumen_de_un_tema_pasa_los_visibles_al_buscador(servicio_similares, mo
     assert [d.metadata["nombre_archivo"] for d in docs] == ["PRUEBA_visible.txt"]
 
 
+def _fragmento(**metadatos):
+    return SimpleNamespace(metadata=metadatos)
+
+
+def test_el_resumen_cuenta_documentos_y_no_fragmentos():
+    """Regresión: el resumen IA decía «41 documentos» porque contaba los fragmentos recuperados; son los documentos distintos."""
+    from app.services.busqueda_similares.similarity_service import contar_documentos_distintos
+
+    fragmentos = [_fragmento(id_documento=1, nombre_archivo="PRUEBA_a.pdf")] * 30 + [_fragmento(id_documento=2, nombre_archivo="PRUEBA_b.pdf")] * 11
+    assert contar_documentos_distintos(fragmentos) == 2
+    assert contar_documentos_distintos([_fragmento(nombre_archivo="PRUEBA_a.pdf")] * 3 + [_fragmento(nombre_archivo="PRUEBA_b.pdf")]) == 2
+    assert contar_documentos_distintos([_fragmento(), _fragmento()]) == 2  # sin identificar ninguno, no se puede agrupar
+    assert contar_documentos_distintos([]) == 0
+
+
 # --- RF-11.32 (spec 004b, T4): el chat del notebook comprueba el notebook antes de leer o tocar nada ---------------------------------
 
 @pytest.mark.requisito("RF-11.32")
@@ -964,7 +979,7 @@ def test_rutas_de_notebooks_solo_usan_el_servicio():
 
     prohibidos = ("app.repositories", "app.vectorstore", "app.services.documentos", "app.db.models")
     assert [m for m in importados if m.startswith(prohibidos)] == [], "la ruta importa acceso a datos"
-    acceso_a_datos = {"obtener_por_id", "obtener_por_numero", "listar_por_expediente", "eliminar", "verificar_esta_procesado",
+    acceso_a_datos = {"obtener_por_id", "obtener_por_numero", "listar_por_expediente", "eliminar", "dar_de_baja", "verificar_esta_procesado",
                       "delete_document_chunks", "obtener_ruta_archivo", "unlink"}
     assert atributos & acceso_a_datos == set(), "la ruta llama al acceso a datos"
     assert "app.services.notebook_service" in importados

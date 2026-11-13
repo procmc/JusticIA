@@ -24,9 +24,11 @@ const DocumentosTab = ({ selectedCase }) => {
   }, [selectedCase]);
 
   // Función para descargar documento individual
-  const handleDownloadDocument = async (doc) => {
+  // Se identifica la fila por su posición: el `id` del documento puede llegar vacío y entonces todas las filas
+  // quedaban «Descargando…» a la vez.
+  const handleDownloadDocument = async (doc, index) => {
     try {
-      setDownloadingDoc(doc.id);
+      setDownloadingDoc(index);
       await downloadService.downloadFile(doc.filePath, doc.name);
     } catch (error) {
       console.error('Error descargando documento:', error);
@@ -41,7 +43,7 @@ const DocumentosTab = ({ selectedCase }) => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-600">
-            Documentos del Expediente ({documents.length})
+            Documentos coincidentes con tu búsqueda ({documents.length})
           </h4>
         </div>
         
@@ -50,7 +52,7 @@ const DocumentosTab = ({ selectedCase }) => {
             <CardBody className="p-6 text-center">
               <IoFolderOpen className="w-8 h-8 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-gray-500">
-                No hay documentos disponibles para este expediente
+                No hay documentos disponibles para este tema
               </p>
             </CardBody>
           </Card>
@@ -78,17 +80,17 @@ const DocumentosTab = ({ selectedCase }) => {
                       variant="light"
                       color="secondary"
                       startContent={
-                        downloadingDoc === doc.id ? (
+                        downloadingDoc === index ? (
                           <Spinner size="sm" color="secondary" />
                         ) : (
                           <IoDownload className="w-3 h-3" />
                         )
                       }
-                      onPress={() => handleDownloadDocument(doc)}
+                      onPress={() => handleDownloadDocument(doc, index)}
                       className="text-xs px-2"
-                      isDisabled={downloadingDoc === doc.id}
+                      isDisabled={downloadingDoc === index}
                     >
-                      {downloadingDoc === doc.id ? 'Descargando...' : 'Descargar'}
+                      {downloadingDoc === index ? 'Descargando...' : 'Descargar'}
                     </Button>
                   </div>
                 </div>

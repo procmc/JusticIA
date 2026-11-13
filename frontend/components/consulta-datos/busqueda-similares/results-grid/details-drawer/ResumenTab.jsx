@@ -116,8 +116,7 @@ const ResumenTab = ({
                 <div className="flex items-center gap-4 text-xs text-green-600">
                   <div className="flex items-center gap-1">
                     <IoDocument className="w-3 h-3" />
-                    {generationStats.totalDocumentos} documentos
-                  </div>
+                    {generationStats.totalDocumentos} documentos                  </div>
                   <div className="flex items-center gap-1">
                     <IoTime className="w-3 h-3" />
                     {generationStats.tiempoGeneracion}s

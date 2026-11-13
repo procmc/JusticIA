@@ -223,6 +223,19 @@ from .response_parser import ResponseParser
 
 logger = logging.getLogger(__name__)
 
+
+def contar_documentos_distintos(fragmentos) -> int:
+    """Cuántos documentos distintos hay entre los fragmentos recuperados.
+
+    El buscador devuelve fragmentos (hasta 50), no documentos: contarlos tal cual hacía decir «41 documentos» de un tema de 2.
+    Se agrupa por el id del documento y, si falta, por el nombre del archivo; un fragmento sin ninguno de los dos cuenta aparte.
+    """
+    claves = set()
+    for indice, fragmento in enumerate(fragmentos):
+        metadatos = getattr(fragmento, "metadata", None) or {}
+        claves.add(metadatos.get("id_documento") or metadatos.get("nombre_archivo") or ("sin-identificar", indice))
+    return len(claves)
+
 class SimilarityService:
     """Servicio principal para búsqueda de casos legales similares unificado."""
 
@@ -390,8 +403,7 @@ class SimilarityService:
             
             return RespuestaGenerarResumen(
                 numero_expediente=numero_expediente,
-                total_documentos_analizados=len(docs_expediente),
-                resumen_ia=resumen_ia,
+                total_documentos_analizados=contar_documentos_distintos(docs_expediente),                resumen_ia=resumen_ia,
                 tiempo_generacion_segundos=round(end_time - start_time, 2)
             )
             

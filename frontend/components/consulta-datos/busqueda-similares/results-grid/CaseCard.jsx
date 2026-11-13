@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardBody, Chip, Progress, Button } from '@heroui/react';
-import { IoCalendar, IoScale, IoDocument, IoEye } from 'react-icons/io5';
+import { Card, CardBody, Progress, Button } from '@heroui/react';
+import { IoDocument, IoEye } from 'react-icons/io5';
 
 /**
  * Formatea una fecha ISO a formato legible en español
@@ -32,15 +32,9 @@ const formatDate = (isoDate) => {
 
 const CaseCard = ({
   caseData,
-  parseExpedientNumber,
-  getMatterDescription,
   getSimilarityColor,
   onViewDetails
 }) => {
-  // Usar expedientNumber del servicio en lugar de expedient
-  const expedientData = parseExpedientNumber(caseData.expedientNumber || caseData.expedient);
-  const matterDescription = getMatterDescription(expedientData.matter);
-  
   // Usar similarityPercentage del servicio
   const similarityPercent = caseData.similarityPercentage || Math.round((caseData.similarity || 0) * 100);
   
@@ -51,41 +45,16 @@ const CaseCard = ({
     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
       <CardBody className="p-8">
         <div className="space-y-6">
-          {/* Header con número de expediente y año/oficina */}
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <div className="p-2.5 bg-primary-100 rounded-xl">
-                  <IoDocument className="w-5 h-5 text-primary-600" />
-                </div>
-                <h3 className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent text-md tracking-wide">
-                  {caseData.expedientNumber || caseData.expedient}
-                </h3>
+          {/* Nombre del tema */}
+          <div className="flex items-start">
+            <div className="inline-flex items-center gap-2">
+              <div className="p-2.5 bg-primary-100 rounded-xl">
+                <IoDocument className="w-5 h-5 text-primary-600" />
               </div>
+              <h3 className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent text-md tracking-wide">
+                {caseData.expedientNumber || caseData.expedient}
+              </h3>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <IoCalendar className="w-3 h-3" />
-                <span>Año: {expedientData.year}</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <IoScale className="w-3 h-3" />
-                <span>Oficina: {expedientData.office}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Chip de materia */}
-          <div className="flex justify-start">
-            <Chip
-              color="primary"
-              variant="flat"
-              size="sm"
-              startContent={<IoScale className="w-4 h-4 pr-1" />}
-              className="text-xs"
-            >
-              {matterDescription}
-            </Chip>
           </div>
 
           {/* Barra de similitud prominente */}

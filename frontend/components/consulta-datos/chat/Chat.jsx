@@ -7,11 +7,9 @@ import { useSessionId } from '../../../hooks/conversacion/useSessionId';
 import { formatearSoloHoraCostaRica } from '../../../utils/dateUtils';
 import {
   EXPEDIENTE_WELCOME_MESSAGE,
-  isValidExpediente,
-  normalizeExpediente,
-  shouldChangeExpediente,
+  resolverTema,
   createExpedienteMessages,
-  createNoExpedienteMessage,
+  createTemaNoEncontradoMessage,
   createUserMessage,
   createEmptyAssistantMessage,
   createWelcomeMessage,
@@ -33,6 +31,17 @@ const ConsultaChat = ({ initialMode }) => {
   // Estados para el alcance de búsqueda
   const [searchScope, setSearchScope] = useState('general');
   const [consultedExpediente, setConsultedExpediente] = useState(null); // Para rastrear el expediente consultado
+  const [temasDisponibles, setTemasDisponibles] = useState([]); // temas con documentos, para elegir en el chat por tema (RF-06.2)
+
+  // En el chat por tema se ofrecen los temas reales y se comprueba el que el usuario escribe.
+  useEffect(() => {
+    if (searchScope !== 'expediente') return;
+    let vigente = true;
+    consultaService.listarTemasDisponibles().then((respuesta) => {
+      if (vigente && respuesta.success) setTemasDisponibles(respuesta.temas);
+    });
+    return () => { vigente = false; };
+  }, [searchScope]);
 
   // Efecto para manejar el modo inicial desde la URL
   useEffect(() => {
@@ -123,6 +132,14 @@ const ConsultaChat = ({ initialMode }) => {
     }
   };
 
+  // Fija el tema de la conversación: lo anota en pantalla y en el servidor (sin hacer ninguna consulta todavía).
+  const establecerTema = (tema) => {
+    setConsultedExpediente(tema);
+    const { userMessage, assistantMessage } = createExpedienteMessages(tema, false);
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    consultaService.updateExpedienteContext(sessionId, tema, 'set').catch(() => {});
+  };
+
   const handleSendMessage = async (text) => {
     // Cancelar cualquier consulta en progreso primero
     if (currentRequestRef.current?.active) {
@@ -133,36 +150,17 @@ const ConsultaChat = ({ initialMode }) => {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Si estamos en modo expediente específico
-    if (searchScope === 'expediente') {
-      // Verificar si el texto es un número de expediente (nuevo o cambio de expediente)
-      if (isValidExpediente(text)) {
-        const newExpediente = normalizeExpediente(text);
-
-        // Si es un expediente diferente al actual, cambiarlo
-        if (shouldChangeExpediente(text, consultedExpediente)) {
-          setConsultedExpediente(newExpediente);
-
-          const { userMessage, assistantMessage } = createExpedienteMessages(
-            newExpediente, 
-            consultedExpediente !== null
-          );
-
-          setMessages(prev => [...prev, userMessage, assistantMessage]);
-
-          // Actualizar el contexto en el backend
-          const action = consultedExpediente ? 'change' : 'set';
-          consultaService.updateExpedienteContext(sessionId, newExpediente, action)
-            .catch(() => {});
-          return;
-        }
-      }
-      // Si no tenemos expediente consultado y el texto no es un número válido
-      else if (!consultedExpediente) {
-        const { userMessage, assistantMessage } = createNoExpedienteMessage(text);
+    // Chat por tema (RF-06.2): lo primero que se escribe es el NOMBRE del tema; ya elegido, todo lo que se escribe es una
+    // pregunta sobre ese tema (cambiar de tema es empezar una conversación nueva).
+    if (searchScope === 'expediente' && !consultedExpediente) {
+      const tema = resolverTema(text, temasDisponibles);
+      if (tema) {
+        establecerTema(tema);
+      } else {
+        const { userMessage, assistantMessage } = createTemaNoEncontradoMessage(text, temasDisponibles);
         setMessages(prev => [...prev, userMessage, assistantMessage]);
-        return;
       }
+      return;
     }
 
     // Resetear flag de parada y contador de reintentos
@@ -344,6 +342,25 @@ const ConsultaChat = ({ initialMode }) => {
               streamingMessageIndex={streamingMessageIndex}
               onRetry={handleSendMessage}
         />
+
+            {/* Los temas reales para elegir (RF-06.2): solo mientras la conversación no tiene tema */}
+            {searchScope === 'expediente' && !consultedExpediente && temasDisponibles.length > 0 && (
+              <div className="mx-auto w-full max-w-4xl px-4 pb-2">
+                <p className="mb-1 text-xs text-gray-500">Elige un tema:</p>
+                <div role="group" aria-label="Temas disponibles" className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+                  {temasDisponibles.map((t) => (
+                    <button
+                      key={t.nombre}
+                      type="button"
+                      onClick={() => handleSendMessage(t.nombre)}
+                      className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 transition-colors hover:border-primary hover:text-primary"
+                    >
+                      {t.nombre} <span className="text-gray-400">({t.documentos})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <ChatInput
               onSendMessage={handleSendMessage}

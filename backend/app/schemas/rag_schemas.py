@@ -109,3 +109,8 @@ class SugerenciaLegalRAGResponse(RAGResponse):
     precedentes: List[CasoSimilar]
     estrategias_recomendadas: List[str]
     documentos_modelo: List[FuenteDocumento]
+
+class TemaDisponible(BaseModel):
+    """Un tema con documentos Procesado, para elegirlo en el chat acotado a un tema (RF-06.2)."""
+    nombre: str
+    documentos: int

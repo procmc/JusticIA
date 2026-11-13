@@ -3,7 +3,9 @@ import Image from 'next/image';
 import MessageBubble from './MessageBubble';
 import { ScrollShadow } from '@heroui/react';
 
-const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
+// `compacto`: para un panel central entre columnas laterales (NotebookServIA): usa casi todo el ancho en vez de los márgenes del
+// chat de pantalla completa.
+const MessageList = ({ messages, streamingMessageIndex, onRetry, onGuardarNota, compacto = false }) => {
   const messagesEndRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
   const lastMessageContentRef = useRef('');
@@ -44,8 +46,8 @@ const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
       className="flex-1 h-full" 
       size={60}
     >
-      <div className="mx-2 sm:mx-12 md:mr-28">
-        <div className="min-h-full py-8 sm:py-20">
+      <div className={compacto ? 'mx-2' : 'mx-2 sm:mx-12 md:mr-28'}>
+        <div className={compacto ? 'min-h-full py-4' : 'min-h-full py-8 sm:py-20'}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-full sm:max-w-lg mx-auto px-2 sm:px-4">
@@ -63,22 +65,22 @@ const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
 
                 {/* Título */}
                 <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-3">
-                  ¡Hola! Soy JusticBot
+                  ¡Hola! Soy ServBot
                 </h1>
 
                 {/* Descripción simple */}
                 <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-4">
-                  Tu asistente inteligente especializado en el marco jurídico costarricense.
+                  Tu asistente inteligente especializado en el marco gubernamental costarricense.
                 </p>
 
                 {/* Capacidades */}
                 <p className="text-gray-500 text-sm sm:text-base leading-relaxed mb-6">
-                  Puedo ayudarte a generar resúmenes de documentos legales y crear borradores para tus casos.
+                  Puedo ayudarte a generar resúmenes de documentos gubernamentales y crear borradores para tus temas.
                 </p>
 
                 {/* Mensaje de advertencia discreto */}
                 <p className="text-xs text-gray-400 mt-4 italic">
-                  JusticBot puede cometer errores. Considera verificar información importante.
+                  ServBot puede cometer errores. Considera verificar información importante.
                 </p>
               </div>
             </div>
@@ -95,8 +97,10 @@ const MessageList = ({ messages, streamingMessageIndex, onRetry }) => {
                     message={message}
                     isUser={message.isUser}
                     isStreaming={index === streamingMessageIndex}
+                    compacto={compacto}
                     showRetry={isLastUserMessage && onRetry}
                     onRetry={() => onRetry && onRetry(message.text)}
+                    onGuardarNota={onGuardarNota ? () => onGuardarNota(index) : undefined}
                   />
                 );
               })}
