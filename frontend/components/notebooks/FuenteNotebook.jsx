@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Checkbox, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Input } from '@heroui/react';
+import { Button, Checkbox, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Input, Tooltip } from '@heroui/react';
 import { FiEdit2, FiFile, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
 
 /**
@@ -12,6 +12,9 @@ import { FiEdit2, FiFile, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
  * (RF-19.102). La validación es del servidor: el campo no lleva `maxLength` y también envía el vacío, para mostrar su mensaje
  * bajo el campo. `onRenombrar(base)` devuelve `{ success }` o `{ message }` (como en `ItemNotebook`). Con la fuente en proceso
  * (ni Procesado ni Error) la opción se muestra desactivada (RF-19.107).
+ *
+ * El nombre se recorta con «…» en una línea; al pasar el mouse o enfocarlo sale un aviso con el nombre completo y, si la fuente
+ * está Procesado, «Haga clic para ver el archivo original» (RF-19.116). El aviso muestra el nombre como texto (RF-19.118).
  */
 const FuenteNotebook = ({ fuente, marcada, abriendo, quitando, onAlternar, onAbrir, onQuitar, onRenombrar }) => {
   const [editando, setEditando] = useState(false);
@@ -98,14 +101,25 @@ const FuenteNotebook = ({ fuente, marcada, abriendo, quitando, onAlternar, onAbr
         classNames={{ base: 'shrink-0 m-0 p-0 max-w-none', wrapper: 'mr-0' }}
       />
       <FiFile className="shrink-0 text-default-500" aria-hidden="true" />
-      <button
-        type="button"
-        onClick={onAbrir}
-        title={procesado ? `${fuente.nombre_archivo} — haga clic para ver el archivo original` : fuente.nombre_archivo}
-        className={`flex-1 min-w-0 truncate text-left px-1 py-1 text-sm ${color} ${procesado ? 'cursor-pointer' : 'cursor-default'}`}
+      <Tooltip
+        delay={0}
+        closeDelay={0}
+        placement="top"
+        content={(
+          <div className="max-w-xs break-all text-small">
+            <div>{fuente.nombre_archivo}</div>
+            {procesado && <div className="mt-1 text-tiny text-default-500">Haga clic para ver el archivo original</div>}
+          </div>
+        )}
       >
-        {abriendo ? 'Abriendo…' : fuente.nombre_archivo}
-      </button>
+        <button
+          type="button"
+          onClick={onAbrir}
+          className={`flex-1 min-w-0 truncate text-left px-1 py-1 text-sm ${color} ${procesado ? 'cursor-pointer' : 'cursor-default'}`}
+        >
+          {abriendo ? 'Abriendo…' : fuente.nombre_archivo}
+        </button>
+      </Tooltip>
       <Dropdown>
         <DropdownTrigger>
           <Button

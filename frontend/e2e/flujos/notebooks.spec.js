@@ -175,7 +175,8 @@ test.describe('NotebookServIA: crear y cargar', () => {
 // Previsualizar y quitar un documento (spec 005b, T5): RF-18.40, RF-19.40 a RF-19.42 y RNF-07.40.
 // Los datos de base van por la API; la acción del requisito, por la pantalla.
 
-const esArchivo = (r) => /\/notebooks\/\d+\/documentos\/\d+\/archivo$/.test(new URL(r.url()).pathname);
+// La vista previa de un .txt, de Word o de HTML pasa por `vista-texto` (spec 009b, II1); la del resto, por `archivo`.
+const esArchivo = (r) => /\/notebooks\/\d+\/documentos\/\d+\/(archivo|vista-texto)$/.test(new URL(r.url()).pathname);
 const esQuitar = (r) => r.request().method() === 'DELETE' && /\/notebooks\/\d+\/documentos\/\d+$/.test(new URL(r.url()).pathname);
 const MENSAJE_FALLO_QUITAR = 'No se pudo quitar el documento. Intente de nuevo.';
 
@@ -262,7 +263,7 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
     expect(pedidos).toEqual([]); // ni siquiera se pidió el archivo
   });
 
-  test('RF-18.40 · tipo sin vista previa', async ({ page, crearUsuario, control }) => {
+  test('RF-18.40 · RF-18.100 · un .txt, que antes no tenía vista previa, ahora se ve como texto', async ({ page, crearUsuario, control }) => {
     const usuario = await iniciarComoUsuario(page, crearUsuario);
     const token = await iniciarSesionPorApi(control, usuario);
     const { notebook, documento } = await notebookConDocumento(control, token);
@@ -272,7 +273,9 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toBeVisible();
     await expect(dialogo.getByRole('banner')).toHaveText(documento.nombre);
-    await expect(dialogo).toContainText('Vista previa no disponible para este tipo de archivo.');
+    // Spec 009b, II1: el texto plano se muestra como texto (antes decía «Vista previa no disponible»).
+    await expect(dialogo).toContainText('PRUEBA documento inventado número');
+    await expect(dialogo).not.toContainText('Vista previa no disponible');
     await expect(dialogo.locator('img, iframe')).toHaveCount(0);
   });
 
@@ -299,7 +302,7 @@ test.describe('NotebookServIA: previsualizar y quitar un documento', () => {
     await equis(documento.nombre);
     await expect(dialogo).toBeVisible();
     await expect(dialogo.getByRole('heading', { name: 'Quitar documento', exact: true })).toBeVisible();
-    await expect(dialogo.locator('p')).toHaveText(`¿Quitar "${documento.nombre}" del notebook? Esta acción no se puede deshacer.`);
+    await expect(dialogo.locator('p')).toHaveText(`¿Desea eliminar "${documento.nombre}" de este notebook de forma definitiva?`);
     await expect(dialogo.getByRole('button', { name: 'Quitar', exact: true })).toBeVisible();
     await expect(dialogo.getByRole('button', { name: 'Cancelar', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sin desborde').toBe(true);

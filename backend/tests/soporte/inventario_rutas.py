@@ -98,6 +98,7 @@ def _tabla(*grupos: Tuple[str, list]) -> Dict[Clave, Clasificacion]:
 _AUTH = ETIQUETA_AUTENTICACION
 _U = {"usuario_id": "PRUEBA-usuario"}
 _N = {"notebook_id": "1", "documento_id": "1"}
+_NR = {"notebook_id": "1", "resultado_id": "1"}  # el Estudio del notebook (spec 010)
 _S = {"session_id": "PRUEBA-sesion"}
 _TEMA = "PRUEBA-tema"
 _ARCHIVO = ("PRUEBA_ejemplo.txt", b"PRUEBA contenido de ejemplo", "text/plain")
@@ -178,6 +179,7 @@ CLASIFICACION: Dict[Clave, Clasificacion] = _tabla(
     ("chat", [
         ("POST", "/rag/consulta-con-historial-stream", USUARIO_GUBERNAMENTAL, True,
          {"json": {"query": "PRUEBA pregunta", "session_id": "PRUEBA-sesion", "expediente_number": _TEMA}}, None),
+        ("GET", "/rag/temas-disponibles", USUARIO_GUBERNAMENTAL, True, {}, None),  # los temas para elegir en el chat (RF-06.2)
         ("POST", "/rag/update-expediente-context", USUARIO_GUBERNAMENTAL, False,
          {"json": {"session_id": "PRUEBA-sesion", "expediente_number": _TEMA, "action": "set"}}, None),
         ("GET", "/rag/conversations", USUARIO_GUBERNAMENTAL, False, {}, None),
@@ -207,8 +209,19 @@ CLASIFICACION: Dict[Clave, Clasificacion] = _tabla(
         ("DELETE", "/notebooks/{notebook_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("GET", "/notebooks/{notebook_id}/documentos", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/archivo", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
+        ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/vista-texto", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
+        ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/vista-imagen", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("PUT", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N, "json": {"nombre": "PRUEBA fuente"}}, None),
         ("DELETE", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
+    ]),
+    # El Estudio del notebook (spec 010): generar, listar, abrir, guardar notas y quitar resultados.
+    ("estudio", [
+        ("POST", "/estudio/{notebook_id}/generar", USUARIO_GUBERNAMENTAL, True, {"parametros": _N, "json": {"tipo": "resumen"}}, None),
+        ("GET", "/estudio/{notebook_id}/resultados", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
+        ("GET", "/estudio/{notebook_id}/resultados/{resultado_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _NR}, None),
+        ("POST", "/estudio/{notebook_id}/notas", USUARIO_GUBERNAMENTAL, True,
+         {"parametros": _N, "json": {"pregunta": "PRUEBA pregunta", "respuesta": "PRUEBA respuesta", "fuentes": []}}, None),
+        ("DELETE", "/estudio/{notebook_id}/resultados/{resultado_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _NR}, None),
     ]),
 )
 

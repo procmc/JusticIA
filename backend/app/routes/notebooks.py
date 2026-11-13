@@ -51,6 +51,9 @@ from app.services.notebook_service import (
     ArchivoNoEncontrado, DocumentoSinProcesar, ErrorAlQuitar, ErrorAlRenombrar, NombreNoValido, NotebookService,
     RecursoNoDisponible, extension_de, id_de_notebook, nombre_mostrado
 )
+from app.services.vista_previa_service import (
+    VistaNoDisponible, tiene_vista_de_imagen, tiene_vista_de_texto, vista_previa_service
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +63,16 @@ notebook_service = NotebookService()
 
 class NotebookCrearRequest(BaseModel):
     nombre: str
+
+
+class VistaTextoResponse(BaseModel):
+    texto: str       # el texto de la fuente, de a lo sumo 200.000 caracteres (RF-18.100)
+    truncado: bool   # si el original tenía más y se cortó
+
+
+class VistaImagenResponse(BaseModel):
+    imagen: str     # el PNG en base64 (RF-18.108)
+    paginas: int    # las páginas del TIFF original; se muestra la primera
 
 
 class NotebookRenombrarRequest(BaseModel):
@@ -267,6 +280,81 @@ async def ver_archivo_documento_notebook(
     # El tipo sale del nombre interno y el archivo, de su ruta; el nombre mostrado solo va en la cabecera (RF-19.103).
     return FileResponse(path=str(ruta_archivo), media_type=media_type or "application/octet-stream",
                         filename=nombre_mostrado(documento), content_disposition_type="inline")
+
+
+async def _documento_para_vista(db: Session, current_user: dict, notebook_id: int, documento_id: int):
+    """El notebook, el documento y la ruta del archivo de una fuente Procesado propia, con las mismas respuestas de error que la
+    ruta del archivo (RF-18.1): 404 uniforme para lo ajeno o inexistente y 400 si aún no está procesado."""
+    try:
+        return await notebook_service.obtener_archivo_de_documento(db, notebook_id, documento_id, current_user["user_id"])
+    except RecursoNoDisponible as no_disponible:
+        raise await _no_encontrado(db, current_user, no_disponible, TiposAccion.DESCARGAR_ARCHIVO)
+    except DocumentoSinProcesar as error:
+        await notebooks_audit_service.registrar_previsualizacion_fallida(
+            db, current_user["user_id"], error.clave, error.documento_id, "documento sin procesar", "validacion"
+        )
+        raise HTTPException(status_code=400, detail="El archivo aún no está disponible para previsualizar")
+    except ArchivoNoEncontrado as error:
+        await notebooks_audit_service.registrar_previsualizacion_fallida(
+            db, current_user["user_id"], error.clave, error.documento_id, "archivo no encontrado", "interno"
+        )
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+
+@router.get("/{notebook_id}/documentos/{documento_id}/vista-texto", response_model=VistaTextoResponse)
+async def ver_texto_documento_notebook(
+    notebook_id: int,
+    documento_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial),
+):
+    """
+    El texto de una fuente Procesado de un notebook, para su vista previa (spec 009b, II1): `.txt` tal cual y Word y HTML
+    como el texto que extrae Tika. Nunca devuelve HTML ni el archivo; el texto se corta a 200.000 caracteres (RF-18.100,
+    RF-18.106).
+    """
+    notebook, documento, ruta_archivo = await _documento_para_vista(db, current_user, notebook_id, documento_id)
+    extension = extension_de(documento.CT_Nombre_archivo).lower()
+    if not tiene_vista_de_texto(extension):
+        raise HTTPException(status_code=400, detail="Este tipo de archivo no tiene vista de texto.")
+    try:
+        texto, truncado = await vista_previa_service.vista_de_texto(ruta_archivo, extension)
+    except VistaNoDisponible:
+        await notebooks_audit_service.registrar_previsualizacion_fallida(
+            db, current_user["user_id"], notebook.clave_interna, documento.CN_Id_documento, "no se pudo extraer el texto", "interno"
+        )
+        raise HTTPException(status_code=500, detail="No se pudo mostrar el documento. Intente de nuevo.")
+    await notebooks_audit_service.registrar_previsualizacion(
+        db, current_user["user_id"], notebook.clave_interna, documento.CN_Id_documento
+    )
+    return VistaTextoResponse(texto=texto, truncado=truncado)
+
+
+@router.get("/{notebook_id}/documentos/{documento_id}/vista-imagen", response_model=VistaImagenResponse)
+async def ver_imagen_documento_notebook(
+    notebook_id: int,
+    documento_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial),
+):
+    """
+    Una fuente TIFF Procesado de un notebook convertida a PNG, porque el navegador no muestra TIFF (spec 009b, II1, RF-18.108):
+    la primera página, reducida a 4000 px por lado, y cuántas páginas tiene.
+    """
+    notebook, documento, ruta_archivo = await _documento_para_vista(db, current_user, notebook_id, documento_id)
+    if not tiene_vista_de_imagen(extension_de(documento.CT_Nombre_archivo)):
+        raise HTTPException(status_code=400, detail="Este tipo de archivo no tiene vista de imagen.")
+    try:
+        imagen, paginas = await vista_previa_service.vista_de_imagen(ruta_archivo)
+    except VistaNoDisponible:
+        await notebooks_audit_service.registrar_previsualizacion_fallida(
+            db, current_user["user_id"], notebook.clave_interna, documento.CN_Id_documento, "no se pudo convertir la imagen", "interno"
+        )
+        raise HTTPException(status_code=500, detail="No se pudo mostrar el documento. Intente de nuevo.")
+    await notebooks_audit_service.registrar_previsualizacion(
+        db, current_user["user_id"], notebook.clave_interna, documento.CN_Id_documento
+    )
+    return VistaImagenResponse(imagen=imagen, paginas=paginas)
 
 
 @router.put("/{notebook_id}/documentos/{documento_id}", response_model=DocumentoNotebookResponse)

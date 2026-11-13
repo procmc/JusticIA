@@ -77,3 +77,5 @@ torch==2.14.0
 transformers==5.17.0
 langsmith==0.12.4
 filelock==3.32.6
+# Vista previa de TIFF (spec 009b, II1, RF-18.108): convierte la imagen a PNG para el navegador
+Pillow==13.0.0

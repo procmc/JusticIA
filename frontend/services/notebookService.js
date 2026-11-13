@@ -92,6 +92,32 @@ class NotebookService {
   }
 
   /**
+   * El texto de una fuente (`.txt`, Word o HTML) para su vista previa (spec 009b, RF-18.100 y RF-18.106). El servidor lo corta a
+   * 200.000 caracteres (`truncado`) y nunca devuelve HTML. Si no se puede obtener, `error` trae el aviso para la ventana.
+   */
+  async obtenerVistaTexto(notebookId, documentoId) {
+    try {
+      const data = await httpService.get(`/notebooks/${notebookId}/documentos/${documentoId}/vista-texto`);
+      return { success: true, texto: data.texto, truncado: data.truncado };
+    } catch (error) {
+      return { error: true, status: error.status, message: 'No se pudo mostrar el documento. Intente de nuevo.' };
+    }
+  }
+
+  /**
+   * Un TIFF convertido a PNG para su vista previa, porque el navegador no lo muestra (spec 009b, RF-18.108). `imagen` viene en
+   * base64 y `paginas` dice cuántas tiene el original: se muestra la primera.
+   */
+  async obtenerVistaImagen(notebookId, documentoId) {
+    try {
+      const data = await httpService.get(`/notebooks/${notebookId}/documentos/${documentoId}/vista-imagen`);
+      return { success: true, imagen: data.imagen, paginas: data.paginas };
+    } catch (error) {
+      return { error: true, status: error.status, message: 'No se pudo mostrar el documento. Intente de nuevo.' };
+    }
+  }
+
+  /**
    * Cambiar el nombre de una fuente del notebook (RF-19.102). Se envía solo la base: el servidor añade la extensión. El error
    * lleva `status`: 400 trae el mensaje de validación del servidor (RF-19.106, 19.107) y 404, que la fuente ya no está.
    */
