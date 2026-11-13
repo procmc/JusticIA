@@ -64,6 +64,10 @@ _DOCUMENTOS_DE_PRUEBA = "SELECT CN_Id_documento FROM T_Documento WHERE CT_Nombre
 TABLAS_DE_PRUEBA = (
     ("T_Bitacora", f"CN_Id_usuario IN ({_USUARIOS_DE_PRUEBA}) OR CN_Id_expediente IN ({_TEMAS_DE_PRUEBA}) "
                    "OR CT_Texto LIKE :texto"),
+    # Los resultados del Estudio (spec 010) apuntan a un notebook: se borran antes que él.
+    ("T_Resultado_Estudio", f"CN_Id_usuario IN ({_USUARIOS_DE_PRUEBA}) OR CN_Id_notebook IN "
+                            f"(SELECT CN_Id_notebook FROM T_Notebook WHERE CN_Id_usuario IN ({_USUARIOS_DE_PRUEBA}) "
+                            "OR CT_Nombre LIKE :prefijo)"),
     ("T_Notebook", f"CN_Id_usuario IN ({_USUARIOS_DE_PRUEBA}) OR CT_Nombre LIKE :prefijo"),
     ("T_Expediente_Documento", f"CN_Id_expediente IN ({_TEMAS_DE_PRUEBA}) OR CN_Id_documento IN ({_DOCUMENTOS_DE_PRUEBA})"),
     ("T_Documento", "CT_Nombre_archivo LIKE :prefijo"),
@@ -73,7 +77,7 @@ TABLAS_DE_PRUEBA = (
 
 # Tablas cuyo conteo de residuos cuenta TODAS las filas, no solo las del prefijo: la base de pruebas nace vacía y un tema
 # heredado, `NB-<id>` o un documento ingerido no llevan `PRUEBA` (decisión 2 del plan de la spec 004).
-TABLAS_CONTADAS_ENTERAS = ("T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente")
+TABLAS_CONTADAS_ENTERAS = ("T_Resultado_Estudio", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente")
 
 # Lo que además se borra cuando la prueba registró temas sin prefijo (`:t0`, `:t1`... son esos temas). Los documentos no
 # figuran: se borran después de sus enlaces y se reconocen por su nombre `PRUEBA`.

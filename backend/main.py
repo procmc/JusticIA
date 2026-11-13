@@ -79,7 +79,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from app.vectorstore import get_vectorstore_backend
-from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora, notebooks, avatares
+from app.routes import ingesta, usuarios, archivos, email, auth, similarity, rag, bitacora, notebooks, avatares, estudio
 from app.db import database
 import asyncio
 import logging
@@ -208,6 +208,7 @@ app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 app.include_router(rag.router, tags=["rag"])
 app.include_router(bitacora.router, prefix="/bitacora", tags=["bitacora"])
 app.include_router(notebooks.router, prefix="/notebooks", tags=["notebooks"])
+app.include_router(estudio.router, prefix="/estudio", tags=["estudio"])
 
 # Avatares públicos (sin sesión, RF-04.20). La carpeta de documentos NO se publica (RNF-07.22): se descargan
 # solo por /archivos/download, con sesión y pertenencia.

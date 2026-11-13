@@ -78,6 +78,7 @@ from .tipo_accion import T_Tipo_accion
 from .bitacora import T_Bitacora
 from .expediente_documento import T_Expediente_Documento
 from .notebook import T_Notebook
+from .resultado_estudio import T_Resultado_Estudio
 
 __all__ = [
     "Base",
@@ -91,4 +92,5 @@ __all__ = [
     "T_Bitacora",
     "T_Expediente_Documento",
     "T_Notebook",
+    "T_Resultado_Estudio",
 ]

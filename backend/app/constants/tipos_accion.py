@@ -110,6 +110,11 @@ class TiposAccion:
     # Fuentes del notebook (spec 009b, RF-21.100)
     RENOMBRAR_DOCUMENTO_NOTEBOOK = 21  # Cambiar el nombre mostrado de un documento de un notebook
 
+    # Estudio del notebook (spec 010, RF-21.120)
+    GENERAR_RESULTADO_ESTUDIO = 22     # Generar un resumen, un informe o un mapa mental
+    GUARDAR_NOTA = 23                  # Guardar una respuesta del chat como nota
+    QUITAR_RESULTADO_ESTUDIO = 24      # Baja lógica de un resultado de estudio
+
 
 # Mapeo de descripciones para logging
 DESCRIPCIONES_TIPOS_ACCION = {
@@ -134,4 +139,7 @@ DESCRIPCIONES_TIPOS_ACCION = {
     TiposAccion.RENOMBRAR_NOTEBOOK: "Renombrar Notebook",
     TiposAccion.ELIMINAR_NOTEBOOK: "Eliminar Notebook",
     TiposAccion.RENOMBRAR_DOCUMENTO_NOTEBOOK: "Renombrar Documento de Notebook",
+    TiposAccion.GENERAR_RESULTADO_ESTUDIO: "Generar Resultado de Estudio",
+    TiposAccion.GUARDAR_NOTA: "Guardar Nota",
+    TiposAccion.QUITAR_RESULTADO_ESTUDIO: "Quitar Resultado de Estudio",
 }

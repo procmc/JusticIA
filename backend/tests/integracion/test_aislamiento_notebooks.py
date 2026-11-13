@@ -686,7 +686,7 @@ def test_catalogo_con_tres_tipos_nuevos():
     from app.constants.tipos_accion import DESCRIPCIONES_TIPOS_ACCION, TiposAccion
 
     filas = dict(_consultar("SELECT CN_Id_tipo_accion, CT_Nombre_tipo_accion FROM T_Tipo_accion"))
-    assert sorted(filas) == list(range(1, 22))  # spec 009: suma 19 y 20; spec 009b: suma 21
+    assert sorted(filas) == list(range(1, 25))  # spec 009: suma 19 y 20; spec 009b: suma 21; spec 010: suma 22, 23 y 24
     assert {i: filas[i] for i in range(16, 19)} == _TIPOS_NUEVOS
     assert {i: filas[i] for i in range(1, 16)} == {i: DESCRIPCIONES_TIPOS_ACCION[i] for i in range(1, 16)}
     assert (TiposAccion.CREAR_NOTEBOOK, TiposAccion.QUITAR_DOCUMENTO_NOTEBOOK, TiposAccion.GESTIONAR_CONVERSACION) == (16, 17, 18)

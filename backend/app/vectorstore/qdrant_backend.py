@@ -411,6 +411,8 @@ class QdrantBackend(VectorStoreBackend):
                     "ruta_archivo": (meta.get("meta") or {}).get("ruta_archivo", ""),
                     "pagina_inicio": meta.get("pagina_inicio"),
                     "pagina_fin": meta.get("pagina_fin"),
+                    # El Estudio del notebook (spec 010) agrupa los fragmentos por documento.
+                    "id_documento": meta.get("id_documento"),
                 }
                 langchain_docs.append(Document(page_content=content, metadata=metadata))
 

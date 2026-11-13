@@ -16,7 +16,7 @@ from tests.soporte.nombres import NOMBRE_PRUEBAS, PREFIJO_DATOS
 from tests.soporte.proteccion import AbortoPruebas
 
 TABLAS_EN_ORDEN_DE_BORRADO = [
-    "T_Bitacora", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario",
+    "T_Bitacora", "T_Resultado_Estudio", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario",
 ]
 CATALOGOS = ["T_Rol", "T_Estado", "T_Estado_procesamiento", "T_Tipo_accion"]
 
@@ -454,7 +454,7 @@ def test_comparar_catalogos_detecta_lo_que_falta_o_sobra():
 
 TEMA_HEREDADO = "99-000001-0001-PE"
 TEMA_DE_NOTEBOOK = "NB-7"
-TABLAS_CONTADAS_ENTERAS = ["T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente"]
+TABLAS_CONTADAS_ENTERAS = ["T_Resultado_Estudio", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente"]
 
 
 def test_registrar_un_tema_dos_veces_lo_deja_una_sola_vez():

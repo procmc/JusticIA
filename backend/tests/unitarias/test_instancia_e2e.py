@@ -401,7 +401,8 @@ def test_limpieza_total_borra_todo_menos_catalogos_y_administrador(nombre_e2e, t
     simulados_e2e.limpiar_todo(destino)
 
     tablas = [sentencia.split("FROM ")[1].split()[0] for sentencia, _ in sql.sentencias]
-    assert tablas == ["T_Bitacora", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario"]
+    # T_Resultado_Estudio (spec 010) apunta a T_Notebook: va antes, o la limpieza falla con la restricción de clave foránea.
+    assert tablas == ["T_Bitacora", "T_Resultado_Estudio", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario"]
     sentencia_usuarios, parametros = sql.sentencias[-1]
     assert "NOT IN" in sentencia_usuarios and list(parametros.values()) == ["000000000"]
     assert all("WHERE" not in sentencia for sentencia, _ in sql.sentencias[:-1])
@@ -772,7 +773,7 @@ def test_motor_programable(tmp_path):
         simulados_e2e.limpiar_todo(destino)
     finally:
         proteccion.fijar_nombre_activo(NOMBRE_PRUEBAS)
-    assert orden[0] == "controles" and orden.count("borrar") == 6 and estado.estado()["modo"] == "cita"
+    assert orden[0] == "controles" and orden.count("borrar") == 7 and estado.estado()["modo"] == "cita"
 
 
 # --- RA-02.49 (005b, T1): etapa de vectorización de la ingesta y reintento de /residuos -------------------------------------

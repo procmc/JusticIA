@@ -28,6 +28,16 @@ async function abrirNotebooks(page) {
   await ocultarMenuSiTapa(page);
 }
 
+// Los paneles del notebook abierto (spec 010, RNF-04.120): a 1366 px se ven los tres; a 616 px, uno solo con pestañas
+// («Fuentes», «Chat» y «Estudio»). Con la pestaña ya elegida o a 1366 px no hace nada.
+async function irAlPanel(page, nombre) {
+  if (page.viewportSize().width >= 1024) return;
+  const pestana = page.getByRole('tab', { name: nombre });
+  if ((await pestana.getAttribute('aria-selected')) === 'true') return;
+  await pulsar(pestana);
+  await expect(pestana).toHaveAttribute('aria-selected', 'true');
+}
+
 // Crea un notebook desde la pantalla (botón «Crear notebook») y espera a verlo en la lista.
 async function crearNotebookEnPantalla(page, nombre) {
   await escribir(page.getByPlaceholder('Nombre del notebook'), nombre);
@@ -158,5 +168,5 @@ module.exports = {
   campoDelTema, agregarArchivosEnIngesta,
   avisosDeLaPantalla, abrirChatGeneral, preguntarEnElChat, listaDeNotebooks, crearNotebookConEnter, abrirNotebookDeLaLista,
   elegirArchivosEnNotebook, confirmarSubidaEnNotebook, fichaDeDocumento, elegirQuitarFuente, abrirNotebookConDocumentos, quitarDocumentoEnPantalla,
-  exigirSinVoseo,
+  exigirSinVoseo, irAlPanel,
 };

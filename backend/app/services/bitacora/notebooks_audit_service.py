@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 MOTIVO_NOTEBOOK_NO_DISPONIBLE = "notebook no disponible"
 MOTIVO_DOCUMENTO_NO_DISPONIBLE = "documento no disponible"
 MOTIVO_CONVERSACION_NO_DISPONIBLE = "conversación no disponible"
+MOTIVO_RESULTADO_NO_DISPONIBLE = "resultado no disponible"
 
 
 class NotebooksAuditService:
@@ -252,6 +253,61 @@ class NotebooksAuditService:
         except Exception as e:
             logger.warning(f"Error registrando que se quitó un documento en bitácora: {type(e).__name__}")
             return None
+
+    async def _registrar_estudio(
+        self, db: Session, usuario_id: Optional[str], tipo_accion_id: int, accion: str, hecho: str, clave_notebook: str,
+        resultado_id: Optional[int], tipo_resultado: Optional[str], exito: bool, motivo: Optional[str] = None,
+        tipo_error: Optional[str] = None, fuentes: Optional[int] = None
+    ) -> Optional[T_Bitacora]:
+        """Fila de una acción del Estudio (spec 010, RF-21.120 a RF-21.122): la clave `NB-<id>`, el número y el tipo del
+        resultado y, en la generación, cuántas fuentes se usaron. Nunca el contenido, el título, el nombre de una fuente ni el
+        del notebook, ni el texto de una excepción (RNF-07.24); un fallo lleva un motivo fijo y su clasificación."""
+        try:
+            clave = _sin_control(clave_notebook)
+            info = {"accion": accion, "resultado": "exitoso" if exito else "error"}
+            if resultado_id is not None:
+                info["resultado_estudio_id"] = int(resultado_id)
+            if tipo_resultado:
+                info["tipo_resultado"] = tipo_resultado
+            if fuentes is not None:
+                info["fuentes"] = int(fuentes)
+            if exito:
+                texto = f"{hecho} en el notebook {clave}" + (f" (resultado {int(resultado_id)})" if resultado_id is not None else "")
+            else:
+                info.update({"motivo": motivo, "tipo_error": tipo_error or "interno"})
+                texto = f"Error: {hecho.lower()} en el notebook {clave}: {_sin_control(motivo or '')}"
+            return await self._registrar_accion(db, usuario_id, tipo_accion_id, texto, clave, info)
+        except Exception as e:
+            logger.warning(f"Error registrando {accion} en bitácora: {type(e).__name__}")
+            return None
+
+    async def registrar_generacion(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: str, tipo_resultado: str, exito: bool,
+        resultado_id: Optional[int] = None, fuentes: Optional[int] = None, motivo: Optional[str] = None,
+        tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """Registra que terminó una generación del Estudio, con éxito o con fallo (RF-21.120). Cancelarla no se registra."""
+        return await self._registrar_estudio(
+            db, usuario_id, TiposAccion.GENERAR_RESULTADO_ESTUDIO, "generar_resultado_estudio", "Resultado de estudio generado",
+            clave_notebook, resultado_id, tipo_resultado, exito, motivo, tipo_error, fuentes)
+
+    async def registrar_nota(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: str, resultado_id: Optional[int], exito: bool,
+        motivo: Optional[str] = None, tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """Registra que se guardó una respuesta del chat como nota (RF-21.121)."""
+        return await self._registrar_estudio(
+            db, usuario_id, TiposAccion.GUARDAR_NOTA, "guardar_nota", "Nota guardada", clave_notebook, resultado_id, "nota",
+            exito, motivo, tipo_error)
+
+    async def registrar_quitar_resultado(
+        self, db: Session, usuario_id: Optional[str], clave_notebook: str, resultado_id: Optional[int], exito: bool,
+        motivo: Optional[str] = None, tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """Registra que se quitó (baja lógica) un resultado de estudio (RF-21.121)."""
+        return await self._registrar_estudio(
+            db, usuario_id, TiposAccion.QUITAR_RESULTADO_ESTUDIO, "quitar_resultado_estudio", "Resultado de estudio quitado",
+            clave_notebook, resultado_id, None, exito, motivo, tipo_error)
 
     async def registrar_renombrado_documento(
         self, db: Session, usuario_id: Optional[str], clave_notebook: Optional[str], documento_id: Optional[int], exito: bool,

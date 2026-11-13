@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
-  Card, CardBody, Button, Input, Spinner, Chip, Alert,
+  Card, CardBody, Button, Input, Spinner, Chip, Alert, Tooltip,
   Modal, ModalContent, ModalHeader, ModalBody
 } from '@heroui/react';
-import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiFile, FiSend, FiBookOpen, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import DivisorDeColumna from '@/components/notebooks/DivisorDeColumna';
+import useAnchosDeColumnas, { COLUMNAS } from '@/hooks/notebooks/useAnchosDeColumnas';
 
 import notebookService from '@/services/notebookService';
 import ingestaService from '@/services/ingestaService';
@@ -14,6 +16,8 @@ import consultaService from '@/services/consultaService';
 import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 import ItemNotebook from '@/components/notebooks/ItemNotebook';
 import FuenteNotebook from '@/components/notebooks/FuenteNotebook';
+import PanelEstudio from '@/components/notebooks/PanelEstudio';
+import useEstudio from '@/hooks/notebooks/useEstudio';
 import MessageList from '@/components/consulta-datos/chat/MessageList';
 import {
   createUserMessage,
@@ -23,6 +27,13 @@ import {
   saveNotebookChatToSessionStorage,
   restoreNotebookChatFromSessionStorage
 } from '@/utils/chat/messageUtils';
+
+const CLAVE_PANELES_PLEGADOS = 'notebooks_paneles_plegados';
+// Fuentes cuya vista previa es una vista de texto del servidor (spec 009b, II1): texto plano, Word y HTML. El RTF no es un formato
+// permitido (spec 006, FFF1).
+const EXTENSIONES_VISTA_DE_TEXTO = ['.txt', '.doc', '.docx', '.html', '.htm', '.xhtml'];
+// El navegador no muestra TIFF: el servidor lo convierte a PNG (RF-18.108).
+const EXTENSIONES_VISTA_DE_IMAGEN = ['.tif', '.tiff'];
 
 /**
  * NotebookServIA — v1
@@ -70,6 +81,37 @@ const NotebooksPage = () => {
   const confirmacionRef = useRef(null); // el mismo documento; se vacía en el primer «Quitar» para absorber el doble clic (RF-19.70)
   const pollingRef = useRef(new Set());
   const [avisoCarga, setAvisoCarga] = useState(null); // aviso fijo de la última carga (RF-05.23); lo cierra el usuario
+
+  // Estudio (spec 010): a 1366 px los tres paneles se ven a la vez; en pantalla pequeña, uno solo con pestañas (RNF-04.120).
+  const [panelVisible, setPanelVisible] = useState('fuentes');
+  // Paneles laterales plegados (a partir de lg): el chat toma ese ancho. Se recuerda en este navegador, sin que nada dependa de ello.
+  const [plegados, setPlegados] = useState({ lista: false, fuentes: false, estudio: false });
+  useEffect(() => {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(CLAVE_PANELES_PLEGADOS) || 'null');
+      if (guardado && typeof guardado === 'object') {
+        setPlegados({ lista: !!guardado.lista, fuentes: !!guardado.fuentes, estudio: !!guardado.estudio });
+      }
+    } catch { /* sin almacenamiento: queda con todo desplegado */ }
+  }, []);
+  const alternarPanel = (clave) => setPlegados((previo) => {
+    const siguiente = { ...previo, [clave]: !previo[clave] };
+    try { localStorage.setItem(CLAVE_PANELES_PLEGADOS, JSON.stringify(siguiente)); } catch { /* idem */ }
+    return siguiente;
+  });
+  // Ancho ajustable de las columnas arrastrando la línea que las divide, desde lg (spec 010, JJ1; RNF-04.124 a RNF-04.129).
+  const { anchos, contenedorRef, controlesDe } = useAnchosDeColumnas(plegados);
+  const divisor = (id) => (
+    <DivisorDeColumna etiqueta={COLUMNAS[id].etiqueta} valor={anchos[id]} minimo={COLUMNAS[id].minimo} maximo={COLUMNAS[id].maximo}
+      controles={controlesDe(id)} />
+  );
+  // Las fuentes marcadas, en cualquier estado: el servidor solo usa las Procesado, como en el chat (RF-11.106).
+  const estudio = useEstudio(
+    notebookActivo?.id ?? null,
+    documentosNotebook.filter((d) => !desmarcadas.has(d.id)).map((d) => d.id)
+  );
+  const generandoResultado = Boolean(estudio.generando); // el chat espera mientras se genera (RF-11.131)
+  const guardandoNotaRef = useRef(false); // un doble clic en «Guardar en notas» guarda una sola nota (RF-14.127)
 
   const formatearTamano = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -199,6 +241,7 @@ const NotebooksPage = () => {
     setDocumentosNotebook([]);
     setDesmarcadas(new Set());
     setAvisoCarga(null);
+    setPanelVisible('fuentes');
 
     // Restaurar la conversación si ya existía (guardada en sessionStorage
     // la última vez que se salió de este notebook). Si no hay nada
@@ -278,15 +321,36 @@ const NotebooksPage = () => {
 
   // Previsualización: click en un documento ya procesado abre su archivo
   // original (imagen o PDF) para verificar qué dice contra la respuesta del chat.
-  const [preview, setPreview] = useState(null); // { url, tipo, nombre } | null
+  // La ventana de vista previa (RF-18): { modo: 'archivo', url, tipo, nombre } para imagen, PDF y audio; { modo: 'texto', texto,
+  // truncado, conLinea, nombre } para `.txt`, Word y HTML; { modo: 'error', nombre } si la vista de texto falló.
+  const [preview, setPreview] = useState(null);
   const [cargandoPreviewId, setCargandoPreviewId] = useState(null);
 
   const handleVerArchivo = async (doc) => {
     if (!notebookActivo || doc.estado !== 'Procesado' || cargandoPreviewId) return;
     setCargandoPreviewId(doc.id);
-    const result = await notebookService.obtenerArchivoPreview(notebookActivo.id, doc.id);
-    if (result.success) {
-      setPreview({ url: result.url, tipo: result.tipo, nombre: doc.nombre_archivo });
+    const extension = (doc.extension || '').toLowerCase();
+    if (EXTENSIONES_VISTA_DE_TEXTO.includes(extension)) {
+      // `.txt`, Word y HTML: el servidor entrega el texto (RF-18.100, RF-18.106); un `.txt` no lleva la línea de «vista de texto».
+      const vista = await notebookService.obtenerVistaTexto(notebookActivo.id, doc.id);
+      // Un 404 (la fuente ya no está, quitada en otra pestaña) no abre nada, como con el archivo; otro fallo muestra su aviso (RF-18.107).
+      if (vista.success) {
+        setPreview({ modo: 'texto', nombre: doc.nombre_archivo, texto: vista.texto, truncado: vista.truncado, conLinea: extension !== '.txt' });
+      } else if (vista.status !== 404) {
+        setPreview({ modo: 'error', nombre: doc.nombre_archivo });
+      }
+    } else if (EXTENSIONES_VISTA_DE_IMAGEN.includes(extension)) {
+      const vista = await notebookService.obtenerVistaImagen(notebookActivo.id, doc.id);
+      if (vista.success) {
+        setPreview({ modo: 'imagen', nombre: doc.nombre_archivo, imagen: vista.imagen, paginas: vista.paginas });
+      } else if (vista.status !== 404) {
+        setPreview({ modo: 'error', nombre: doc.nombre_archivo });
+      }
+    } else {
+      const result = await notebookService.obtenerArchivoPreview(notebookActivo.id, doc.id);
+      if (result.success) {
+        setPreview({ modo: 'archivo', url: result.url, tipo: result.tipo, nombre: doc.nombre_archivo });
+      }
     }
     setCargandoPreviewId(null);
   };
@@ -421,9 +485,23 @@ const NotebooksPage = () => {
 
   const handleEnviarMensaje = () => {
     const query = texto.trim();
-    if (!query || hayEnCurso() || sinFuenteMarcada) return; // RF-11.104: el texto escrito se conserva
+    if (!query || hayEnCurso() || sinFuenteMarcada || generandoResultado) return; // RF-11.104: el texto escrito se conserva
     setTexto('');
     enviarPregunta(query);
+  };
+
+  // «Guardar en notas» (RF-14.126, RF-14.127): la pregunta que la originó, la respuesta y las fuentes del notebook que nombra.
+  const handleGuardarNota = async (indice) => {
+    const respuesta = messages[indice];
+    if (!respuesta || respuesta.notaGuardada || guardandoNotaRef.current) return;
+    guardandoNotaRef.current = true;
+    let anterior = indice - 1;
+    while (anterior >= 0 && !messages[anterior].isUser) anterior -= 1;
+    const pregunta = anterior >= 0 ? messages[anterior].text : '';
+    const fuentes = documentosNotebook.map((d) => d.nombre_archivo).filter((nombre) => respuesta.text.includes(nombre));
+    const guardada = await estudio.guardarNota({ pregunta, respuesta: respuesta.text, fuentes });
+    if (guardada) setMessages((prev) => prev.map((m, i) => (i === indice ? { ...m, notaGuardada: true } : m)));
+    guardandoNotaRef.current = false;
   };
 
   // Reintentar usa el texto de la pregunta original y no lee ni cambia el campo de texto (RF-15.70, RF-15.71).
@@ -477,14 +555,32 @@ const NotebooksPage = () => {
   };
 
   return (
-    <div className="h-full flex bg-gray-50">
+    <div
+      ref={contenedorRef}
+      className="h-full flex bg-gray-50"
+      style={{ '--ancho-lista': `${anchos.lista}px`, '--ancho-fuentes': `${anchos.fuentes}px`, '--ancho-estudio': `${anchos.estudio}px` }}
+    >
       {/* Panel lateral: lista de notebooks */}
-      <div className="w-72 border-r border-gray-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#003d82] flex items-center gap-2">
-            <FiBookOpen /> NotebookServIA
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">Tus colecciones de documentos</p>
+      <div data-testid="columna-lista" className={`${plegados.lista ? 'w-12' : 'w-56 lg:w-[var(--ancho-lista)]'} border-r border-gray-200 bg-white flex flex-col shrink-0`}>
+        {plegados.lista && (
+          <div className="flex flex-col items-center gap-3 py-3">
+            <Button isIconOnly size="sm" variant="light" aria-label="Mostrar lista de notebooks" onPress={() => alternarPanel('lista')}>
+              <FiChevronRight />
+            </Button>
+            <FiBookOpen className="text-[#003d82]" aria-hidden="true" />
+          </div>
+        )}
+        <div className={plegados.lista ? 'hidden' : 'contents'}>
+        <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-[#003d82] flex items-center gap-2">
+              <FiBookOpen /> NotebookServIA
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Tus colecciones de documentos</p>
+          </div>
+          <Button isIconOnly size="sm" variant="light" className="shrink-0" aria-label="Plegar lista de notebooks" onPress={() => alternarPanel('lista')}>
+            <FiChevronLeft />
+          </Button>
         </div>
 
         <div className="p-3 border-b border-gray-200 flex gap-2">
@@ -527,7 +623,10 @@ const NotebooksPage = () => {
             ))
           )}
         </div>
+        </div>
       </div>
+
+      {!plegados.lista && divisor('lista')}
 
       {/* Área principal */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -540,13 +639,53 @@ const NotebooksPage = () => {
           </div>
         ) : (
           <>
-            {/* Carga de documentos */}
-            <div className="p-4 border-b border-gray-200 bg-white">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-800">{notebookActivo.nombre}</h3>
+            {/* Pestañas de pantalla pequeña: un panel a la vez (RNF-04.120); a partir de lg se ven los tres */}
+            <div role="tablist" aria-label="Paneles del notebook" className="flex border-b border-gray-200 bg-white lg:hidden">
+              {[['fuentes', 'Fuentes'], ['chat', 'Chat'], ['estudio', 'Estudio']].map(([clave, etiqueta]) => (
+                <button
+                  key={clave}
+                  type="button"
+                  role="tab"
+                  aria-selected={panelVisible === clave}
+                  onClick={() => setPanelVisible(clave)}
+                  className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 ${
+                    panelVisible === clave ? 'border-primary text-primary' : 'border-transparent text-gray-500'
+                  }`}
+                >
+                  {etiqueta}
+                  {clave === 'estudio' && generandoResultado && <span className="ml-1 text-xs text-primary">(generando…)</span>}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 flex min-h-0">
+            {/* Fuentes: carga de documentos y lista */}
+            <aside
+              aria-label="Fuentes"
+              data-testid="columna-fuentes"
+              className={`${panelVisible === 'fuentes' ? 'flex' : 'hidden'} lg:flex flex-col w-full ${plegados.fuentes ? 'lg:w-11 lg:p-1 lg:items-center' : 'lg:w-[var(--ancho-fuentes)]'} lg:shrink-0 min-h-0 overflow-y-auto p-4 border-r border-gray-200 bg-white`}
+            >
+              <div className={`hidden lg:block ${plegados.fuentes ? '' : 'self-end -mb-7 -mt-2 -mr-2 relative z-10'}`}>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  aria-label={plegados.fuentes ? 'Mostrar Fuentes' : 'Plegar Fuentes'}
+                  onPress={() => alternarPanel('fuentes')}
+                >
+                  {plegados.fuentes ? <FiChevronRight /> : <FiChevronLeft />}
+                </Button>
+              </div>
+              {plegados.fuentes && (
+                <span className="hidden lg:block mt-3 text-xs text-gray-500 [writing-mode:vertical-rl]">Fuentes</span>
+              )}
+              <div className={plegados.fuentes ? 'contents lg:hidden' : 'contents'}>
+              <div className="flex flex-col gap-2 mb-2">
+                <h3 className="font-semibold text-gray-800 break-words lg:pr-7">{notebookActivo.nombre}</h3>
                 <Button
                   size="sm"
                   variant="flat"
+                  className="self-start"
                   startContent={<FiUpload />}
                   onPress={() => fileInputRef.current?.click()}
                 >
@@ -639,25 +778,48 @@ const NotebooksPage = () => {
 
               {/* Subidas en curso (todavía no aparecen en la lista persistida) */}
               {archivosSubiendo.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2 min-w-0">
                   {archivosSubiendo.map(a => (
-                    <Chip
+                    // RF-19.117: una línea, nombre recortado con «…», porcentaje siempre visible y el nombre completo en el aviso
+                    <Tooltip
                       key={a.taskId}
-                      size="sm"
-                      startContent={<FiFile className="ml-1" />}
-                      color="default"
-                      variant="flat"
+                      delay={0}
+                      closeDelay={0}
+                      placement="top"
+                      content={<div className="max-w-xs break-all text-small">{a.nombre} — {`${a.progress || 0}%`}</div>}
                     >
-                      {a.nombre} — {`${a.progress || 0}%`}
-                    </Chip>
+                      <span
+                        tabIndex={0}
+                        role="group"
+                        data-testid="subida-en-curso"
+                        aria-label={`${a.nombre} — ${a.progress || 0}%`}
+                        className="inline-flex max-w-full min-w-0 rounded-full"
+                      >
+                        <Chip
+                          size="sm"
+                          startContent={<FiFile className="ml-1" />}
+                          color="default"
+                          variant="flat"
+                          classNames={{ base: 'max-w-full min-w-0', content: 'flex items-center gap-1 min-w-0' }}
+                        >
+                          <span className="truncate min-w-0">{a.nombre}</span>
+                          <span className="shrink-0">{`— ${a.progress || 0}%`}</span>
+                        </Chip>
+                      </span>
+                    </Tooltip>
                   ))}
                 </div>
               )}
-            </div>
+              </div>
+            </aside>
+
+            {!plegados.fuentes && divisor('fuentes')}
 
             {/* Chat — acepta pegar (Ctrl+V) o arrastrar una imagen, se sube sola al notebook */}
-            <div
-              className="flex-1 flex flex-col min-h-0 relative"
+            <section
+              aria-label="Chat"
+              data-testid="columna-chat"
+              className={`${panelVisible === 'chat' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-h-0 min-w-0 relative`}
               onDragOver={(e) => { e.preventDefault(); setArrastrandoImagen(true); }}
               onDragLeave={() => setArrastrandoImagen(false)}
               onDrop={handleDropImagen}
@@ -668,13 +830,18 @@ const NotebooksPage = () => {
                 </div>
               )}
               <MessageList
+                compacto
                 messages={messages}
                 isTyping={isTyping}
                 streamingMessageIndex={streamingMessageIndex}
                 onRetry={reintentar}
+                onGuardarNota={handleGuardarNota}
               />
               {sinFuenteMarcada && (
                 <p role="status" className="px-3 pt-2 text-xs text-warning-700 bg-white">Marque al menos una fuente para consultar.</p>
+              )}
+              {generandoResultado && (
+                <p role="status" className="px-3 pt-2 text-xs text-warning-700 bg-white">Hay una generación en curso. Espere o cancélela.</p>
               )}
               <div className="p-3 border-t border-gray-200 bg-white flex gap-2">
                 <Input
@@ -688,12 +855,40 @@ const NotebooksPage = () => {
                   isIconOnly
                   color="primary"
                   onPress={handleEnviarMensaje}
-                  isDisabled={isTyping || streamingMessageIndex !== null || sinFuenteMarcada}
+                  isDisabled={isTyping || streamingMessageIndex !== null || sinFuenteMarcada || generandoResultado}
                   aria-label="Enviar"
                 >
                   <FiSend />
                 </Button>
               </div>
+            </section>
+
+            {!plegados.estudio && divisor('estudio')}
+
+            {/* Estudio: generar y consultar resultados guardados (spec 010) */}
+            <aside
+              aria-label="Panel Estudio"
+              data-testid="columna-estudio"
+              className={`${panelVisible === 'estudio' ? 'flex' : 'hidden'} lg:flex flex-col w-full ${plegados.estudio ? 'lg:w-11 lg:items-center' : 'lg:w-[var(--ancho-estudio)]'} lg:shrink-0 min-h-0 border-l border-gray-200 bg-white relative`}
+            >
+              <div className={`hidden lg:block ${plegados.estudio ? 'mt-1' : 'absolute top-2 right-2 z-10'}`}>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  aria-label={plegados.estudio ? 'Mostrar Estudio' : 'Plegar Estudio'}
+                  onPress={() => alternarPanel('estudio')}
+                >
+                  {plegados.estudio ? <FiChevronLeft /> : <FiChevronRight />}
+                </Button>
+              </div>
+              {plegados.estudio && (
+                <span className="hidden lg:block mt-3 text-xs text-gray-500 [writing-mode:vertical-rl]">Estudio</span>
+              )}
+              <div className={plegados.estudio ? 'contents lg:hidden' : 'contents'}>
+                <PanelEstudio estudio={estudio} sinFuenteMarcada={sinFuenteMarcada} />
+              </div>
+            </aside>
             </div>
           </>
         )}
@@ -704,7 +899,45 @@ const NotebooksPage = () => {
         <ModalContent>
           <ModalHeader>{preview?.nombre}</ModalHeader>
           <ModalBody className="pb-6">
-            {preview?.tipo?.startsWith('image/') ? (
+            {preview?.modo === 'texto' ? (
+              <div>
+                {preview.conLinea && (
+                  <p className="text-xs text-gray-500 mb-2">Vista de texto: no conserva el formato ni las imágenes del original.</p>
+                )}
+                {preview.texto === '' ? (
+                  <p className="text-gray-500 text-center py-8">
+                    {preview.conLinea ? 'El documento no tiene texto que mostrar.' : 'El archivo está vacío.'}
+                  </p>
+                ) : (
+                  // El texto va como hijo (nunca como HTML) y respeta los saltos de línea (RF-18.100, RF-19.118).
+                  <pre className="whitespace-pre-wrap break-words max-h-[70vh] overflow-auto text-sm font-sans">{preview.texto}</pre>
+                )}
+                {preview.truncado && (
+                  <p className="text-xs text-gray-500 mt-2">Se muestran los primeros 200.000 caracteres del archivo.</p>
+                )}
+              </div>
+            ) : preview?.modo === 'imagen' ? (
+              <div>
+                <img src={`data:image/png;base64,${preview.imagen}`} alt={preview.nombre} className="max-w-full h-auto mx-auto" />
+                {preview.paginas > 1 && <p className="text-xs text-gray-500 mt-2 text-center">Se muestra la primera página.</p>}
+              </div>
+            ) : preview?.modo === 'error' ? (
+              <p className="text-gray-500 text-center py-8">No se pudo mostrar el documento. Intente de nuevo.</p>
+            ) : preview?.tipo?.startsWith('audio/') ? (
+              // Reproductor del navegador: barra de progreso que se mueve, tiempo transcurrido y duración (m:ss, y h:mm:ss desde
+              // una hora). Sin reproducción automática (RF-18.101, RF-18.102); al cerrar la ventana se desmonta y se detiene.
+              preview.audioConError ? (
+                <p className="text-gray-500 text-center py-8">Su navegador no puede reproducir este audio.</p>
+              ) : (
+                <audio
+                  controls
+                  preload="metadata"
+                  src={preview.url}
+                  className="w-full"
+                  onError={() => setPreview((actual) => (actual ? { ...actual, audioConError: true } : actual))}
+                />
+              )
+            ) : preview?.tipo?.startsWith('image/') ? (
               <img src={preview.url} alt={preview.nombre} className="max-w-full h-auto mx-auto" />
             ) : preview?.tipo === 'application/pdf' ? (
               <iframe src={preview.url} title={preview.nombre} className="w-full h-[75vh] border-0" />
@@ -733,7 +966,7 @@ const NotebooksPage = () => {
         onClose={() => setDocumentoPorQuitar(null)}
         onConfirm={confirmarQuitar}
         title="Quitar documento"
-        description={`¿Quitar "${documentoPorQuitar?.nombre ?? ''}" del notebook? Esta acción no se puede deshacer.`}
+        description={`¿Desea eliminar "${documentoPorQuitar?.nombre ?? ''}" de este notebook de forma definitiva?`}
         confirmText="Quitar"
         cancelText="Cancelar"
         confirmColor="danger"

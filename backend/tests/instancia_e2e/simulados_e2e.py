@@ -146,7 +146,7 @@ def estado_de_simulados() -> Dict[str, bool]:
 
 # Tablas con datos de la aplicación, en el orden de borrado por claves foráneas (lo que apunta a un usuario, un tema o un
 # documento se borra antes que ellos). Los catálogos (roles, estados, estados de procesamiento, tipos de acción) no figuran.
-TABLAS_DE_DATOS = ("T_Bitacora", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario")
+TABLAS_DE_DATOS = ("T_Bitacora", "T_Resultado_Estudio", "T_Notebook", "T_Expediente_Documento", "T_Documento", "T_Expediente", "T_Usuario")
 
 
 @dataclass

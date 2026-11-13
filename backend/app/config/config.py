@@ -71,6 +71,10 @@ JWT_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(JWT_EXPIRE
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "10m")
 LLM_REQUEST_TIMEOUT = int(os.getenv("LLM_REQUEST_TIMEOUT", "600"))
+# Estudio del notebook (spec 010, RF-11.129 y RF-11.130): tope de partes por generación y tiempo máximo en segundos. Valores
+# provisionales: el plan los fija midiendo con el modelo real.
+ESTUDIO_PARTES_MAXIMAS = int(os.getenv("ESTUDIO_PARTES_MAXIMAS", "20"))
+ESTUDIO_TIEMPO_MAXIMO_SEGUNDOS = int(os.getenv("ESTUDIO_TIEMPO_MAXIMO_SEGUNDOS", "900"))
 # Contexto del chat: se leen sin convertir y los valida una sola vez `contexto_config`
 # (un valor no numérico o incoherente no tumba el arranque; ver RF-08.62). Por omisión: 8192/1024.
 ENTORNO_CONTEXTO = {

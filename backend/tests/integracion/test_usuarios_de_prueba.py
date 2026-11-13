@@ -213,7 +213,7 @@ def test_los_catalogos_de_las_migraciones_siguen_completos_tras_crear_y_limpiar(
     assert nombres("SELECT CT_Nombre_estado FROM T_Estado_procesamiento") == {"Pendiente", "Procesado", "Error"}
     assert {"Login", "Logout", "Consulta RAG"} <= nombres("SELECT CT_Nombre_tipo_accion FROM T_Tipo_accion")
     with engine.connect() as conexion:
-        assert conexion.execute(text("SELECT COUNT(*) FROM T_Tipo_accion")).scalar() == 21  # 15 de siempre + 3 de la spec 004b (RF-21.34) + 2 de la spec 009 (RF-21.80) + 1 de la 009b (RF-21.100)
+        assert conexion.execute(text("SELECT COUNT(*) FROM T_Tipo_accion")).scalar() == 24  # 15 de siempre + 3 de la spec 004b (RF-21.34) + 2 de la spec 009 (RF-21.80) + 1 de la 009b (RF-21.100) + 3 de la 010 (RF-21.120)
     assert datos.comparar_catalogos(datos.catalogos_iniciales(), datos.contar_catalogos(destino_de_pruebas.contar)) == []
 
 
@@ -260,10 +260,12 @@ def test_el_conteo_del_cierre_detecta_un_catalogo_alterado_y_un_residuo(registro
 
 
 def test_la_limpieza_respeta_el_orden_de_claves_foraneas_con_filas_en_las_seis_tablas(registro_de_datos, destino_de_pruebas):
-    """RA-02.7: con filas `PRUEBA` en las seis tablas (usuario, notebook, tema, documento, su enlace y bitácora de las
-    tres formas), `limpiar` las borra sin violar ninguna clave foránea y el conteo de residuos queda en cero."""
+    """RA-02.7: con filas `PRUEBA` en las siete tablas (usuario, notebook, su resultado de estudio, tema, documento, su enlace y
+    bitácora de las tres formas), `limpiar` las borra sin violar ninguna clave foránea y el conteo de residuos queda en cero."""
     from app.db.database import SessionLocal
-    from app.db.models import T_Bitacora, T_Documento, T_Estado_procesamiento, T_Expediente, T_Notebook
+    from app.db.models import (
+        T_Bitacora, T_Documento, T_Estado_procesamiento, T_Expediente, T_Notebook, T_Resultado_Estudio
+    )
 
     usuario = datos.crear_usuario(datos.ROL_USUARIO_GUBERNAMENTAL, registro_de_datos)
     with SessionLocal() as db:
@@ -272,11 +274,12 @@ def test_la_limpieza_respeta_el_orden_de_claves_foraneas_con_filas_en_las_seis_t
         documento = T_Documento(CT_Nombre_archivo=f"{PREFIJO_DATOS}_documento.txt", CT_Tipo_archivo="txt",
                                 CN_Id_estado=estado.CN_Id_estado)
         tema.documentos.append(documento)
-        db.add_all([
-            tema,
-            T_Notebook(CT_Nombre=f"{PREFIJO_DATOS} notebook", CN_Id_usuario=usuario.cedula),
-        ])
+        notebook = T_Notebook(CT_Nombre=f"{PREFIJO_DATOS} notebook", CN_Id_usuario=usuario.cedula)
+        db.add_all([tema, notebook])
         db.flush()
+        # Un resultado del Estudio (spec 010) apunta al notebook: se borra antes que él
+        db.add(T_Resultado_Estudio(CN_Id_notebook=notebook.CN_Id_notebook, CN_Id_usuario=usuario.cedula, CT_Tipo="nota",
+                                   CT_Titulo=f"{PREFIJO_DATOS} nota", CT_Contenido="{}", CT_Fuentes="[]"))
         db.add_all([
             T_Bitacora(CT_Texto="acción del usuario", CN_Id_usuario=usuario.cedula, CN_Id_tipo_accion=3),
             T_Bitacora(CT_Texto="acción sobre el tema", CN_Id_expediente=tema.CN_Id_expediente, CN_Id_tipo_accion=2),
@@ -286,7 +289,7 @@ def test_la_limpieza_respeta_el_orden_de_claves_foraneas_con_filas_en_las_seis_t
 
     antes = datos.contar_residuos(destino_de_pruebas)
     assert antes.filas == {
-        "T_Bitacora": 3, "T_Notebook": 1, "T_Expediente_Documento": 1, "T_Documento": 1, "T_Expediente": 1, "T_Usuario": 1,
+        "T_Bitacora": 3, "T_Resultado_Estudio": 1, "T_Notebook": 1, "T_Expediente_Documento": 1, "T_Documento": 1, "T_Expediente": 1, "T_Usuario": 1,
     }
 
     datos.limpiar(destino_de_pruebas, registro_de_datos)
