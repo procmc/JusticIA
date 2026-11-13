@@ -2,6 +2,7 @@
 Sistema de autenticación simple para ServIA
 """
 
+import logging
 import jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Request
@@ -11,6 +12,8 @@ from app.db.database import get_db
 from app.db.models.rol import T_Rol
 from app.config.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRE_HOURS, JWT_EXPIRE_MINUTES
 from app.constants.roles import ADMINISTRADOR, USUARIO_JUDICIAL
+
+logger = logging.getLogger(__name__)
 
 
 def create_token(user_id: int, role: str, username: Optional[str] = None) -> str:
@@ -31,7 +34,12 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
     """Verifica un token JWT"""
     try:
         return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-    except:
+    except jwt.ExpiredSignatureError:
+        # Queda en el registro para distinguir un token vencido de uno inválido cuando alguien dice que «se cerró la sesión».
+        logger.warning("Token rechazado: vencido")
+        return None
+    except Exception as error:
+        logger.warning("Token rechazado: %s", type(error).__name__)
         return None
 
 
@@ -52,6 +60,7 @@ def require_usuario_judicial(request: Request) -> Dict[str, Any]:
     # Validar token
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
+        logger.warning("Petición sin token: %s %s", request.method, request.url.path)
         raise HTTPException(
             status_code=401,
             detail="Token requerido",
@@ -111,6 +120,7 @@ def require_administrador(request: Request) -> Dict[str, Any]:
     # Validar token
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
+        logger.warning("Petición sin token: %s %s", request.method, request.url.path)
         raise HTTPException(
             status_code=401,
             detail="Token requerido",

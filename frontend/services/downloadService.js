@@ -106,7 +106,9 @@ class DownloadService {
       window.URL.revokeObjectURL(blobUrl);
       
     } catch (error) {
-      console.error('Error en descarga:', error);
+      // `warn` y solo el mensaje: el error ya se muestra al usuario como aviso, y un `console.error` con el objeto abría la pantalla
+      // roja de errores de Next en desarrollo aunque el fallo estuviera atendido.
+      console.warn('Error en descarga:', error.message);
       
       // Mensajes amigables para errores de red
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {

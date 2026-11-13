@@ -90,6 +90,21 @@ class HttpService {
   constructor(config = {}) {
     this.baseURL = config.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     this.defaultTimeout = config.timeout || 30000; // 30 segundos
+    // Token de la sesión vigente, fijado desde `_app.js` con lo que ya sabe `SessionProvider` (se actualiza al iniciar y cerrar
+    // sesión y al renovarse). Evita consultar `/api/auth/session` en cada petición: con una carga masiva eran cientos por minuto y
+    // varias fallaban, de modo que la petición salía sin token y el 401 cerraba la sesión.
+    this.tokenDeSesion = null;
+  }
+
+  /** Fija (o quita, con null) el token en memoria; `getAuthHeaders` lo usa antes de consultar la sesión. */
+  fijarTokenDeSesion(token) {
+    this.tokenDeSesion = token || null;
+  }
+
+  /** Lee el token directamente de la sesión de NextAuth, sin pasar por la memoria (null si no hay sesión). */
+  async leerTokenDeSesion() {
+    const session = await getSession();
+    return session?.accessToken || null;
   }
 
   /**
@@ -109,13 +124,13 @@ class HttpService {
    * ```
    */
   async getAuthHeaders() {
-    const session = await getSession();
+    const token = this.tokenDeSesion || await this.leerTokenDeSesion();
     const headers = {};
-    
-    if (session?.accessToken) {
-      headers.Authorization = `Bearer ${session.accessToken}`;
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return headers;
   }
 
@@ -233,11 +248,18 @@ class HttpService {
       timeout = this.defaultTimeout,
       signal: externalSignal,
       headers = {},
-      ...fetchOptions 
+      _reintentado = false,
+      ...fetchOptions
     } = options;
 
     // Obtener token de autenticación
-    const authHeaders = await this.getAuthHeaders();
+    let authHeaders = await this.getAuthHeaders();
+    if (!authHeaders.Authorization) {
+      // Una sesión que no se pudo leer un instante (servidor de la interfaz ocupado) no es una sesión vencida: se lee otra vez
+      // antes de enviar sin token, porque un 401 por eso cerraba la sesión.
+      await new Promise(resolver => setTimeout(resolver, 500));
+      authHeaders = await this.getAuthHeaders();
+    }
 
     // Combinar headers
     const finalHeaders = {
@@ -282,6 +304,15 @@ class HttpService {
 
         // Manejar sesión expirada (401 Unauthorized)
         if (response.status === 401) {
+          // Si la sesión ya trae un token distinto (se renovó mientras la petición iba), se repite una vez con el nuevo.
+          if (!_reintentado) {
+            const vigente = await this.leerTokenDeSesion();
+            if (vigente && `Bearer ${vigente}` !== authHeaders.Authorization) {
+              this.fijarTokenDeSesion(vigente);
+              return this.request(url, { ...options, _reintentado: true });
+            }
+          }
+
           // Emitir evento global para que _app.js lo maneje
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('unauthorized'));

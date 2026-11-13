@@ -75,9 +75,12 @@ export default NextAuth({
         if (result?.success && result?.access_token) {
           token.accessToken = result.access_token;
           token.accessTokenExpires = now + 60 * 60 * 1000; // 1 hora
+        } else {
+          // Queda en la terminal de `npm run dev`: sin esto, una renovación fallida solo se nota cuando la sesión vence.
+          console.warn('No se pudo renovar el token de sesión:', result?.message || 'sin detalle');
         }
       }
-      
+
       return token;
     },
     async session({ session, token }) {
