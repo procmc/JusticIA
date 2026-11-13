@@ -3,7 +3,6 @@ ALLOWED_FILE_TYPES = {
     'application/pdf': ['.pdf'],
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    'application/rtf': ['.rtf'],
     'text/plain': ['.txt'],
     'text/html': ['.html', '.htm'],
     'application/xhtml+xml': ['.xhtml'],
@@ -22,9 +21,10 @@ ALLOWED_FILE_TYPES = {
 MAX_FILE_SIZE = 1024 * 1024 * 1024
 
 # Extensiones permitidas
+# El RTF dejó de ser un formato permitido (spec 006, FFF1): el Tika del despliegue lo detecta pero no extrae su texto.
 # Las imágenes (.jpg, .png, .tif, .bmp) se agregaron en el Ciclo 1 de la
 # Fase 4: se procesan con HTR (reconocimiento de manuscrito), no con Tika.
-ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
+ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.html', '.htm', '.xhtml', '.mp3', '.wav', '.ogg', '.m4a', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp']
 
 # Mapeo de extensiones a códigos numéricos para Qdrant
 FILE_TYPE_CODES = {

@@ -256,3 +256,55 @@ def test_rama_failure_del_progreso_usa_el_texto_fijo(monkeypatch):
     assert respuesta["status"] == "fallido" and respuesta["ready"] is True
     assert respuesta["message"] == f"{TEXTO_FIJO} Causa: no se pudo extraer el texto."
     assert "detalle-interno" not in respuesta["message"] and "/app/" not in respuesta["message"]
+
+
+def _tika_con_respuestas(monkeypatch, respuestas):
+    """`TikaService` con `requests.put` simulado: cada llamada devuelve o lanza lo siguiente de `respuestas`. Devuelve el
+    servicio, las llamadas hechas y las esperas pedidas (sin dormir de verdad)."""
+    import importlib.util
+    import requests
+    from app.services.ingesta import tika_service as con_guardian
+
+    # El guardián de las unitarias reemplaza `extract_text` por un «prohibido» en el módulo normal; aquí se necesita el código
+    # real del ciclo de reintentos, así que se carga una copia del archivo con otro nombre (el guardián no la toca) y lo único
+    # que se simula es `requests.put`.
+    especificacion = importlib.util.spec_from_file_location("tika_service_sin_guardian", con_guardian.__file__)
+    modulo = importlib.util.module_from_spec(especificacion)
+    especificacion.loader.exec_module(modulo)
+
+    llamadas, esperas = [], []
+
+    def _put(*argumentos, **opciones):
+        llamadas.append(1)
+        siguiente = respuestas[min(len(llamadas), len(respuestas)) - 1]
+        if isinstance(siguiente, Exception):
+            raise siguiente
+        return siguiente
+
+    monkeypatch.setattr(modulo.requests, "put", _put)
+    monkeypatch.setattr(modulo.time, "sleep", esperas.append)
+    return modulo.TikaService(), llamadas, esperas, requests.exceptions.ConnectionError
+
+
+@pytest.mark.requisito("RF-07.51")
+def test_tika_que_se_reinicia_no_deja_el_archivo_en_error(monkeypatch):
+    """Regresión: dos PDF de una carga grande quedaron en Error («servicio no disponible») porque Tika se reinició ~6 s;
+    ahora se espera y se reintenta, y el archivo se procesa."""
+    import requests
+    caido = requests.exceptions.ConnectionError("PRUEBA servidor caído")
+    ok = SimpleNamespace(status_code=200, content="PRUEBA texto extraído".encode(), headers={}, text="")
+    servicio, llamadas, esperas, _ = _tika_con_respuestas(monkeypatch, [caido, caido, ok])
+
+    assert servicio.extract_text(b"PRUEBA", "PRUEBA.pdf") == "PRUEBA texto extraído"
+    assert len(llamadas) == 3 and len(esperas) == 2 and all(espera > 0 for espera in esperas)
+
+
+@pytest.mark.requisito("RF-07.51")
+def test_tika_que_sigue_caido_falla_con_el_mismo_mensaje_tras_los_reintentos(monkeypatch):
+    import requests
+    servicio, llamadas, esperas, _ = _tika_con_respuestas(monkeypatch, [requests.exceptions.ConnectionError("PRUEBA")])
+
+    with pytest.raises(Exception, match="Servidor Tika no disponible"):
+        servicio.extract_text(b"PRUEBA", "PRUEBA.pdf")
+
+    assert len(llamadas) == servicio.max_retries and len(esperas) == servicio.max_retries - 1

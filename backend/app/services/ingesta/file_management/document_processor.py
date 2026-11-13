@@ -635,7 +635,7 @@ async def extract_text_from_file(content: bytes, filename: str, content_type: st
     Extrae texto de diferentes tipos de archivos:
     - Audio (MP3, WAV, OGG, M4A): Transcripción con Whisper
     - Imágenes (JPG, PNG, TIF, BMP): Reconocimiento de manuscrito con HTR
-    - Otros formatos (PDF, DOC, DOCX, RTF, TXT, HTML, etc.): Apache Tika Server con Tesseract OCR integrado
+    - Otros formatos (PDF, DOC, DOCX, TXT, HTML, etc.): Apache Tika Server con Tesseract OCR integrado
 
     Nota: Tika Server tiene Tesseract OCR configurado para extraer texto de PDFs escaneados automáticamente.
     """

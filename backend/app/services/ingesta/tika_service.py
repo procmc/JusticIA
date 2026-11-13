@@ -67,8 +67,11 @@ Reemplaza el wrapper tika-python con llamadas HTTP directas.
 """
 import os
 import logging
+import time
 import requests
 from typing import Optional
+
+ESPERA_RECONEXION_SEGUNDOS = 10  # entre intentos si Tika no responde: 10 s y 20 s, más que lo que tarda en reiniciarse
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +210,13 @@ class TikaService:
                     raise Exception("Timeout procesando archivo con Tika")
                     
             except requests.exceptions.ConnectionError:
+                # Tika se reinicia solo tras un fallo y tarda unos 6 s en volver: se espera y se reintenta antes de dar el
+                # archivo por fallido (en una carga de 89 PDF, dos quedaron en Error por esa ventana).
+                if attempt < self.max_retries - 1:
+                    espera = ESPERA_RECONEXION_SEGUNDOS * (attempt + 1)
+                    logger.warning(f"Tika no responde (intento {attempt + 1}/{self.max_retries}); se reintenta en {espera} s")
+                    time.sleep(espera)
+                    continue
                 logger.error("No se pudo conectar a Tika")
                 raise Exception("Servidor Tika no disponible")
                 

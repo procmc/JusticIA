@@ -27,7 +27,7 @@ const HeaderStats = ({
                 Ingesta de Datos
               </h1>
               <p className="text-white/80 text-sm sm:text-base">
-                Carga y procesamiento de documentos jurídicos
+                Carga y procesamiento de documentos de interés general
               </p>
             </div>
           </div>

@@ -9,7 +9,9 @@ import { armarAvisoCarga } from '@/utils/ingesta-datos/iconos';
 
 // Configuración
 const PERSIST_KEY = 'ingesta_files';
-const POLL_INTERVAL = 2000; // 2 segundos fijo
+const POLL_INTERVAL = 2000; // mínimo, para pocos archivos
+const POLL_MS_POR_ARCHIVO = 150; // lo que se suma al intervalo por cada archivo de la carga
+const POLL_INTERVAL_MAXIMO = 15000;
 const MAX_NETWORK_RETRIES = 3;
 
 // Estados terminales (alineados con backend)
@@ -114,7 +116,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
   /**
    * Iniciar polling para un archivo individual
    */
-  const startPolling = (fileId, taskId) => {
+  const startPolling = (fileId, taskId, totalTareas = 1) => {
     // Validaciones
     if (!taskId || !fileId) return;
     if (activePollings.current.has(taskId)) return; // Ya está en polling
@@ -228,8 +230,15 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         }));
         
       } catch (error) {
+        // Sesión vencida: este seguimiento se detiene en el primer 401. El aviso y el cierre de sesión los hace una sola
+        // vez el manejador global (`_app.js`); sin esto, cada archivo seguía preguntando cada 2 s y repetía el aviso sin fin.
+        if (error.status === 401) {
+          stopPolling(taskId);
+          return;
+        }
+
         networkRetries++;
-        
+
         // Si es 404, la tarea no existe (error inmediato)
         if (error.message?.includes('404') || error.status === 404) {
           const errorMsg = 'No se pudo procesar el archivo. Por favor, intente nuevamente.';
@@ -296,7 +305,10 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     
     // Ejecutar inmediatamente y luego cada POLL_INTERVAL
     pollFunction();
-    const intervalId = setInterval(pollFunction, POLL_INTERVAL);
+    // Con una carga grande, cada archivo preguntando cada 2 s (89 archivos = unas 45 consultas por segundo, cada una con su lectura
+    // de sesión) saturaba la interfaz y dejaba peticiones sin token. El intervalo crece con la cantidad de archivos.
+    const intervalo = Math.min(POLL_INTERVAL_MAXIMO, Math.max(POLL_INTERVAL, totalTareas * POLL_MS_POR_ARCHIVO));
+    const intervalId = setInterval(pollFunction, intervalo);
     
     activePollings.current.set(taskId, { intervalId, retries: 0 });
   };
@@ -366,7 +378,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
         // Marcar como procesando
         updateFiles(prev => prev.map(f =>
           expedienteFiles.some(ef => ef.id === f.id)
-            ? { ...f, status: 'procesando', progress: 5, message: 'Subiendo...', fileProcessId: null }
+            ? { ...f, expediente, status: 'procesando', progress: 5, message: 'Subiendo...', fileProcessId: null }
             : f
         ));
         
@@ -406,7 +418,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
             }
 
             // Iniciar polling para este archivo
-            setTimeout(() => startPolling(f.id, taskId), 100);
+            setTimeout(() => startPolling(f.id, taskId, tareas.length), 100);
 
             return {
               ...f,
@@ -454,6 +466,19 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     }
   };
 
+
+  /**
+   * Reintentar un archivo con error o cancelado: vuelve a «pendiente» y se envía de nuevo con el mismo archivo y tema, sin
+   * volver a elegirlo. Solo es posible mientras la página conserve el archivo en memoria (al recargarla se pierde, ver `sanitizeForStorage`).
+   */
+  const reintentarArchivo = (archivo) => {
+    if (!archivo?.file) return;
+    cancelledFiles.current.delete(archivo.id);
+    processedFiles.current.delete(archivo.id);
+    const pendiente = { ...archivo, status: 'pendiente', progress: 0, message: '', fileProcessId: null, avisoCarga: undefined };
+    updateFiles(prev => prev.map(f => (f.id === archivo.id ? pendiente : f)));
+    uploadFiles([pendiente]);
+  };
 
   /**
    * Restaurar estado desde localStorage y reanudar polling
@@ -546,6 +571,7 @@ export const useFileUploadProcess = (setFiles, setUploading) => {
     truncateFileName,
     removeCompletedFile,
     cancelFileProcessing,
+    reintentarArchivo,
     restoreFromStorage,
     stopAllPollings,
     processedFiles

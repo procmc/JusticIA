@@ -216,3 +216,33 @@ resolver_o_crear_tema(db, tema):
 
 ## 13. Cobertura
 Bloque 1: RF-06.50-54, RF-07.2, RF-07.50-52, RF-07.54, RF-21.50, RNF-09.50, RN-01.50. Bloque 2: RNF-04.50, RF-10.50, RF-05.50, RF-05.51 (xfail), RF-07.53 (xfail). Regresión: RF-06.2 (xfail), RF-08, RF-09, RF-17.4, RF-22. Corrección T10: RF-06.53 (y RF-06.52: regla en el servidor).
+
+## 14. Cambio FFF1 — el RTF deja de ser un formato permitido (12/11/2026)
+Cubre RF-05.52 y RF-05.53 (sección F de la spec; RF-05, RT-01, RN-01). Aprobado por Andrés el 12/11/2026. Sin migración, bitácora, dependencias ni cambios en `docker-compose.yml` ni en Tika. Los símbolos se confirmaron con `Grep` y `Read`.
+
+### 14.1 Archivos y responsabilidades
+| Archivo (símbolo, `archivo:línea`) | Cambio | Requisitos |
+|---|---|---|
+| `backend/app/config/file_config.py:6` (`ALLOWED_FILE_TYPES`) y `:27` (`ALLOWED_EXTENSIONS`) | Se quita `'application/rtf': ['.rtf']` y `'.rtf'`. Es la lista que usan `document_processor.py:320` (rechazo del formato al procesar) y `expediente_service.py:183`. `FILE_TYPE_CODES:35` (`'.rtf': 5`) se conserva: no valida nada y no hay fragmentos RTF. | RF-05.52 |
+| `backend/app/services/documentos/file_management_service.py:104` (`MIME_TYPE_MAP`) | **Sin cambio**: sirve para entregar el tipo de los archivos ya cargados (RF-05.53, RN-01). | RF-05.53 |
+| `backend/app/routes/ingesta.py:24` y `.../document_processor.py:638` | Solo los comentarios que listan formatos (sin RTF). | RF-05.52 |
+| `frontend/utils/ingesta-datos/ingestaUtils.js:9` (`tiposArchivo.documentos`) | Se quita `'.rtf'`: con eso `getAllowedFileExtensions` (`useFileUpload.js:21`, `DropZone.jsx:22`) ya no lo ofrece ni lo acepta. | RF-05.52 |
+| `frontend/components/ingesta-datos/DropZone.jsx:74` | El texto «Formatos soportados» sin RTF. | RF-05.52 |
+| `backend/app/services/vista_previa_service.py` (`EXTENSIONES_CON_TIKA`) y `backend/app/routes/notebooks.py:305` (docstring) | Sin `.rtf` (spec 009b, RF-18.106). | RF-18.106 |
+| `backend/tests/unitarias/test_vista_previa_service.py`, `backend/tests/integracion/test_vista_previa.py` | Se quitan los casos `.rtf` (la unitaria parametrizada y el fallo esperado estricto `RF-05 · Ingesta: Tika no extrae el texto de un RTF`, que deja de tener sentido). | RF-18.106 |
+
+### 14.2 Decisiones
+- **D1. Quitar de las listas y no agregar validación nueva.** Alternativa descartada: rechazar `.rtf` en la ruta de carga (es el fallo esperado RF-05.51, fuera de alcance y de otra spec).
+- **D2. No tocar `MIME_TYPE_MAP` ni `FILE_TYPE_CODES`.** Alternativa descartada: quitar el RTF de todo el código (puede romper la entrega de archivos ya cargados y no aporta).
+
+### 14.3 Pruebas (primero en rojo; datos `PRUEBA`)
+- **Unitaria** (`test_file_config.py`, nuevo o en el archivo de configuración existente): `.rtf` y `application/rtf` no figuran en `ALLOWED_EXTENSIONS` ni en `ALLOWED_FILE_TYPES`, y los demás formatos permitidos siguen (RF-05.52); y `.RTF` en mayúsculas tampoco pasa el filtro del procesador.
+- **Integración** (`test_red_ingesta.py` u otro de ingesta): un `.rtf` inventado subido a un tema de prueba termina rechazado por el procesador, sin documento Procesado ni fragmentos en Qdrant; los demás archivos de la misma carga se procesan (RF-05.52).
+- **e2e** (`carga.spec.js`, escritorio y 616 px): un `.rtf` elegido en Ingesta de Datos no se agrega a la lista y el texto de formatos soportados no menciona RTF (RF-05.52).
+- **No automatizable:** RF-05.53 más allá de «no se borra nada»: lo cubre la ausencia de código que lo borre y la verificación manual.
+
+### 14.4 Verificación manual (Andrés)
+A 1366 y 616 px: elegir un `.rtf` en Ingesta de Datos y ver que no se agrega y que el texto de formatos no lo nombra; en un notebook, subir un `.rtf` y ver que no queda Procesado; subir un PDF y un `.docx` y ver que siguen funcionando; consola limpia.
+
+### 14.5 Documentación (última tarea) ⚠️
+ERS: RF-05 y RT-01 (sin RTF y su «Estado actual»); Documento de Visión (dos listas de formatos); CU-07 (dos menciones); HU-05; Arquitectura C4 (extracción de texto). Después `graphify update .` y `MEMORY.md`.

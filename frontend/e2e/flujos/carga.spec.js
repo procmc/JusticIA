@@ -101,19 +101,20 @@ test.describe('carga en Ingesta de Datos', () => {
     await expect(filaDeIngesta(page, largo.nombre)).toContainText(MOTIVO_NOMBRE);
   });
 
-  // RF-06.50 a RF-06.52 y la regresión de RF-17.4 (clave del notebook propio): una sola prueba, solo en escritorio.
-  test('RF-06.50 · Ingesta: un tema por archivo y confirmación agrupada', async ({ page, crearUsuario, control, consola }) => {
+  // RF-06.50 a RF-06.52 (cambio FF1, 10/11/2026) y la regresión de RF-17.4: al guardar, los pendientes toman el tema ACTUAL del
+  // campo. Una sola prueba, solo en escritorio.
+  test('RF-06.50 · Ingesta: los pendientes toman el tema actual del campo al guardar', async ({ page, crearUsuario, control, consola }) => {
     test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (plan, decisión 7)');
-    consola.provocado(/400|404/); // los grupos con tema no válido y con clave de notebook inexistente
+    consola.provocado(/400|404/); // los temas no válidos y la clave de notebook inexistente
     const usuario = await iniciarComoUsuario(page, crearUsuario);
     const token = await iniciarSesionPorApi(control, usuario);
     const notebook = await crearNotebook(control, token, `PRUEBA notebook tema ${aleatorio()}`);
-    const [a, b, c, d, e, f] = Array.from({ length: 6 }, () => documentoDePrueba());
+    const [a, b, c, d, e] = Array.from({ length: 5 }, () => documentoDePrueba());
     const tema1 = nuevoTema();
     const tema2 = nuevoTema();
     const temaLargo = `PRUEBA ${'t'.repeat(60)}`; // 67 caracteres: el servidor admite hasta 60
     const claveInexistente = 'NB-987654321';
-    // Lo que la pantalla envía en cada carga: el tema del formulario y los nombres de los archivos de ese grupo.
+    // Lo que la pantalla envía en cada carga: el tema del formulario y los nombres de los archivos.
     const envios = [];
     page.on('request', (r) => {
       if (!esCargaDeArchivos({ url: () => r.url(), request: () => r })) return;
@@ -126,76 +127,78 @@ test.describe('carga en Ingesta de Datos', () => {
 
     await abrirIngesta(page);
 
-    // A se agrega con el campo vacío: queda sin tema y Guardar se deshabilita con su indicación (sin alerta del navegador).
+    // Con el campo vacío o solo con espacios, Guardar queda deshabilitado con su indicación (sin alerta del navegador).
     await agregarArchivosEnIngesta(page, [a]);
     await expect(filaDeIngesta(page, a.nombre)).toBeVisible();
     await expect(guardar).toBeDisabled();
     await expect(indicacion).toBeVisible();
+    await escribir(campoDelTema(page), '   ');
+    await expect(guardar).toBeDisabled();
 
-    // Enter confirma el tema: A lo toma. B se agrega con el campo en tema 1.
+    // El tema escrito se ve de inmediato en el pendiente, sin Enter. B se agrega con el campo en tema 1.
     await escribir(campoDelTema(page), tema1);
-    await campoDelTema(page).press('Enter');
     await expect(filaDeIngesta(page, a.nombre)).toContainText(tema1);
     await expect(indicacion).toHaveCount(0);
     await expect(guardar).toBeEnabled();
     await agregarArchivosEnIngesta(page, [b]);
     await expect(filaDeIngesta(page, b.nombre)).toContainText(tema1);
 
-    // C se agrega con el texto del tema 2 escrito y sin confirmar (S2): toma ese texto; A y B no cambian (hallazgo a).
+    // Cambiar el campo cambia el tema de los dos pendientes (era el error: se quedaban con el tema anterior).
     await escribir(campoDelTema(page), tema2);
-    await agregarArchivosEnIngesta(page, [c]);
-    await expect(filaDeIngesta(page, c.nombre)).toContainText(tema2);
-    await expect(filaDeIngesta(page, a.nombre)).toContainText(tema1);
-    await expect(filaDeIngesta(page, a.nombre)).not.toContainText(tema2);
-    await expect(filaDeIngesta(page, b.nombre)).not.toContainText(tema2);
+    for (const doc of [a, b]) {
+      await expect(filaDeIngesta(page, doc.nombre)).toContainText(tema2);
+      await expect(filaDeIngesta(page, doc.nombre)).not.toContainText(tema1);
+    }
 
-    // D con un tema de más de 60 caracteres, E con la clave del notebook propio (U1) y F con una clave inexistente.
-    await escribir(campoDelTema(page), temaLargo);
-    await agregarArchivosEnIngesta(page, [d]);
-    await escribir(campoDelTema(page), notebook.clave_interna);
-    await agregarArchivosEnIngesta(page, [e]);
-    await escribir(campoDelTema(page), claveInexistente);
-    await agregarArchivosEnIngesta(page, [f]);
-    await expect(filaDeIngesta(page, d.nombre)).toContainText(temaLargo);
-    await expect(filaDeIngesta(page, e.nombre)).toContainText(notebook.clave_interna);
-    await expect(filaDeIngesta(page, f.nombre)).toContainText(claveInexistente);
-
-    // La confirmación agrupa por tema (RF-06.51): cada archivo en el grupo de su tema y la advertencia de asociación permanente.
-    await pulsar(page.getByRole('button', { name: 'Guardar 6' }));
+    // La confirmación muestra un solo tema (el actual) con los dos archivos y la advertencia de asociación permanente.
+    await pulsar(page.getByRole('button', { name: 'Guardar 2' }));
     const confirmacion = page.getByRole('dialog');
     await expect(confirmacion).toContainText('asociará permanentemente los archivos a su tema');
-    await expect(confirmacion.locator('[data-tema-grupo]')).toHaveCount(5);
-    const grupo = (tema) => confirmacion.locator(`[data-tema-grupo="${tema}"]`);
-    await expect(grupo(tema1)).toContainText(a.nombre);
-    await expect(grupo(tema1)).toContainText(b.nombre);
-    await expect(grupo(tema1)).not.toContainText(c.nombre);
-    await expect(grupo(tema2)).toContainText(c.nombre);
-    await expect(grupo(tema2)).not.toContainText(a.nombre);
-    await expect(grupo(notebook.clave_interna)).toContainText(e.nombre);
+    await expect(confirmacion.locator('[data-tema-grupo]')).toHaveCount(1);
+    await expect(confirmacion.locator(`[data-tema-grupo="${tema2}"]`)).toContainText(a.nombre);
+    await expect(confirmacion.locator(`[data-tema-grupo="${tema2}"]`)).toContainText(b.nombre);
+    await expect(confirmacion).not.toContainText(tema1);
     await pulsar(page.getByRole('button', { name: 'Sí, Guardar Archivos' }));
+    for (const doc of [a, b]) {
+      await expect(filaDeIngesta(page, doc.nombre)).toContainText('Completado', { timeout: 30_000 });
+    }
 
-    // Los grupos que el servidor rechaza quedan «Rechazado» con el texto fijo; los demás siguen su curso (RF-06.52).
-    for (const rechazado of [d, f]) {
+    // Lo ya enviado conserva su tema aunque el campo cambie después.
+    await escribir(campoDelTema(page), `${tema2} otro`);
+    for (const doc of [a, b]) {
+      await expect(filaDeIngesta(page, doc.nombre)).toContainText(tema2);
+      await expect(filaDeIngesta(page, doc.nombre)).not.toContainText(`${tema2} otro`);
+    }
+
+    // Segundo Guardar, con la clave del notebook propio (RF-17.4, U1): el archivo carga en ese notebook.
+    await escribir(campoDelTema(page), notebook.clave_interna);
+    await agregarArchivosEnIngesta(page, [c]);
+    await guardarEnIngesta(page, 1);
+    await expect(filaDeIngesta(page, c.nombre)).toContainText('Completado', { timeout: 30_000 });
+
+    // Un tema de más de 60 caracteres y una clave de notebook inexistente: el servidor los rechaza (RF-06.52) y el archivo queda
+    // «Rechazado», sin afectar lo ya procesado.
+    await escribir(campoDelTema(page), temaLargo);
+    await agregarArchivosEnIngesta(page, [d]);
+    await guardarEnIngesta(page, 1);
+    await escribir(campoDelTema(page), claveInexistente);
+    await agregarArchivosEnIngesta(page, [e]);
+    await guardarEnIngesta(page, 1);
+    for (const rechazado of [d, e]) {
       const fila = filaDeIngesta(page, rechazado.nombre);
       await expect(fila).toContainText('Rechazado', { timeout: 30_000 });
       await expect(fila).toContainText('El tema indicado no es válido');
-      await expect(fila).not.toContainText('Procesando');
-    }
-    for (const aceptado of [a, b, c, e]) {
-      await expect(filaDeIngesta(page, aceptado.nombre)).toContainText('Completado', { timeout: 30_000 });
     }
 
-    // La API: cada documento en su tema y nada en el otro; la clave propia carga en ese notebook.
-    // (El listado por tema de `/archivos` no sirve aquí: en la instancia aislada responde 500 porque `uploads/` está fuera del
-    // directorio de trabajo; se comprueba lo que la pantalla envió, que es lo que decide el tema de cada documento.)
-    expect(envios).toHaveLength(5);
+    // Lo que la pantalla envió decide el tema de cada documento: un solo tema por Guardar y nada en el tema que se descartó.
+    expect(envios).toHaveLength(4);
     const nombresEnTema = (tema) => (envios.find((x) => x.tema === tema)?.nombres || []).sort();
-    expect(nombresEnTema(tema1)).toEqual([a.nombre, b.nombre].sort());
-    expect(nombresEnTema(tema2)).toEqual([c.nombre]);
+    expect(nombresEnTema(tema2)).toEqual([a.nombre, b.nombre].sort());
+    expect(nombresEnTema(tema1)).toEqual([]);
+    expect(nombresEnTema(notebook.clave_interna)).toEqual([c.nombre]);
     expect(nombresEnTema(temaLargo)).toEqual([d.nombre]);
-    expect(nombresEnTema(notebook.clave_interna)).toEqual([e.nombre]);
-    expect(nombresEnTema(claveInexistente)).toEqual([f.nombre]);
-    expect((await listarDocumentos(control, token, notebook)).map((x) => [x.nombre_archivo, x.estado])).toEqual([[e.nombre, 'Procesado']]);
+    expect(nombresEnTema(claveInexistente)).toEqual([e.nombre]);
+    expect((await listarDocumentos(control, token, notebook)).map((x) => [x.nombre_archivo, x.estado])).toEqual([[c.nombre, 'Procesado']]);
   });
 
   // RF-07.50: el archivo cuyo procesamiento falla se ve en Error con el texto fijo y su causa, y los contadores lo cuentan.
@@ -347,5 +350,48 @@ test.describe('carga en Ingesta de Datos', () => {
     // Con el motor simulado (cita el archivo recibido), basta con que el nombre del archivo aparezca en la respuesta.
     await preguntarEnElChat(page, `¿Qué dice el documento sobre ${documento.frase}?`);
     await expect(page.getByText(documento.nombre).first()).toBeVisible({ timeout: 30_000 });
+  });
+
+  // Pedido de Andrés (10/11/2026), sin requisito en el ERS todavía: un archivo con error se reintenta sin volver a elegirlo.
+  test('RF-07 [NUEVO] · Ingesta: reintentar un archivo con error', async ({ page, crearUsuario, consola }) => {
+    consola.provocado(/ingesta\/archivos|Failed to fetch|Error subiendo|Error de subida/);
+    await iniciarComoUsuario(page, crearUsuario);
+    const documento = documentoDePrueba();
+    const tema = nuevoTema();
+    await abrirIngesta(page);
+    await elegirArchivosEnIngesta(page, tema, [documento]);
+
+    // La carga se corta en sus 3 intentos automáticos (como cuando el servidor se recarga a mitad de la subida); la siguiente pasa tal cual.
+    let cortes = 0;
+    await page.route(/\/ingesta\/archivos$/, (ruta) => {
+      if (ruta.request().method() === 'POST' && cortes < 3) { cortes += 1; return ruta.abort('failed'); }
+      return ruta.continue();
+    });
+    await guardarEnIngesta(page, 1);
+    const fila = filaDeIngesta(page, documento.nombre);
+    await expect(fila).toContainText('Error', { timeout: 30_000 });
+
+    // Un archivo con error ofrece «Reintentar»; el reintento lo envía de nuevo y llega a Procesado sin volver a elegirlo.
+    await pulsar(fila.getByRole('button', { name: 'Reintentar' }));
+    await expect(fila).toContainText('Completado', { timeout: 30_000 });
+    expect(cortes).toBe(3);
+  });
+
+  test('RF-05.52 · Ingesta: un .rtf no se agrega a la lista y los formatos soportados no lo mencionan', async ({ page, crearUsuario }) => {
+    // Spec 006, cambio FFF1: el RTF dejó de ser un formato permitido (el extractor de texto del despliegue no lo lee). La pantalla
+    // filtra por extensión y descarta en silencio lo no permitido, como con cualquier otro formato.
+    await iniciarComoUsuario(page, crearUsuario);
+    const rtf = { nombre: `PRUEBA_formato_${aleatorio()}.rtf`, contenido: Buffer.from('PRUEBA texto inventado'), tipo: 'application/rtf' };
+    const texto = { nombre: `PRUEBA_formato_${aleatorio()}.txt`, contenido: Buffer.from('PRUEBA texto inventado'), tipo: 'text/plain' };
+    await abrirIngesta(page);
+    const formatos = page.getByText(/Formatos soportados:/);
+    await expect(formatos).toBeVisible();
+    await expect(formatos).not.toContainText('RTF');
+    await expect(page.locator('input[type="file"]')).not.toHaveAttribute('accept', /\.rtf/);
+
+    await agregarArchivosEnIngesta(page, [rtf, texto]);
+    await expect(filaDeIngesta(page, texto.nombre)).toHaveCount(1); // el permitido sí se agrega
+    await expect(filaDeIngesta(page, rtf.nombre)).toHaveCount(0);   // el .rtf se descarta
+    await expect(page.getByRole('button', { name: 'Guardar 1' })).toBeVisible();
   });
 });

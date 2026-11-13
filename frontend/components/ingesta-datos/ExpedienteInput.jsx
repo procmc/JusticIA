@@ -1,7 +1,7 @@
 /**
  * Campo del tema y botones de acción de Ingesta de Datos.
  * El tema es de nombre libre: la pantalla solo exige que no esté vacío; las reglas (longitud, caracteres) las aplica el servidor
- * (RF-06.52). Enter o perder el foco confirma el texto para los archivos que siguen sin tema (RF-06.50).
+ * (RF-06.52). Al guardar, todos los archivos pendientes toman el texto del campo en ese momento (RF-06.50).
  */
 import React from 'react';
 import { Button, Input, Tooltip } from '@heroui/react';
@@ -11,7 +11,6 @@ import { PiBroomLight } from 'react-icons/pi';
 const ExpedienteInput = ({
   expedienteNumero,
   setExpedienteNumero,
-  confirmarTema,
   handleSaveClick,
   isButtonDisabled,
   uploading,
@@ -33,10 +32,6 @@ const ExpedienteInput = ({
               labelPlacement="outside"
               value={expedienteNumero}
               onChange={(e) => setExpedienteNumero(e.target.value)}
-              onBlur={confirmarTema}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') confirmarTema();
-              }}
               startContent={<FiFolder className="w-4 h-4 text-gray-400" />}
               size="md"
               variant="bordered"

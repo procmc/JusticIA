@@ -22,7 +22,6 @@ const IngestaDatos = () => {
     setUploading,
     expedienteNumero,
     setExpedienteNumero,
-    confirmarTema,
     showConfirmModal,
     setShowConfirmModal,
 
@@ -53,7 +52,7 @@ const IngestaDatos = () => {
   };
 
   // Hook para manejar el proceso de subida y polling
-  const { uploadFiles, restoreFromStorage, stopAllPollings, cancelFileProcessing } = useFileUploadProcess(setFiles, setUploading);
+  const { uploadFiles, restoreFromStorage, stopAllPollings, cancelFileProcessing, reintentarArchivo } = useFileUploadProcess(setFiles, setUploading);
 
   // Al montar: intentar restaurar estado y reanudar polling si había archivos activos
   React.useEffect(() => {
@@ -91,7 +90,6 @@ const IngestaDatos = () => {
           <ExpedienteInput
             expedienteNumero={expedienteNumero}
             setExpedienteNumero={setExpedienteNumero}
-            confirmarTema={confirmarTema}
             handleSaveClick={handleSaveClick}
             isButtonDisabled={isButtonDisabled}
             uploading={uploading}
@@ -106,6 +104,7 @@ const IngestaDatos = () => {
             files={files}
             removeFile={removeFile}
             cancelFileProcessing={cancelFileProcessing}
+            reintentarArchivo={reintentarArchivo}
           />
 
           {/* Zona de arrastre */}

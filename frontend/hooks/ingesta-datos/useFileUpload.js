@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { getAllowedFileExtensions, obtenerTipoArchivo } from '@/utils/ingesta-datos/ingestaUtils';
 import Toast from '@/components/ui/CustomAlert';
 
@@ -9,36 +9,16 @@ export const useFileUpload = () => {
   // Referencias
   const fileInputRef = useRef(null);
   const dragZoneRef = useRef(null);
-  const expedienteRef = useRef(''); // Referencia para el expediente actual
   
   // Estados simples
   const [uploading, setUploading] = useState(false);
-  const [expedienteNumero, setExpedienteNumeroEstado] = useState('');
+  const [expedienteNumero, setExpedienteNumero] = useState(''); // el campo «Tema» (nombre heredado)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [filesArray, setFilesArray] = useState([]);
   const [dragActive, setDragActive] = useState(false);
 
   // Configuración
   const allowedTypes = getAllowedFileExtensions();
-
-  // El campo del tema (llamado `expedienteNumero` por herencia). La referencia se actualiza al mismo tiempo que el estado, para
-  // que agregar archivos justo después de escribir tome el texto actual (RF-06.50).
-  const setExpedienteNumero = useCallback((valor) => {
-    expedienteRef.current = valor;
-    setExpedienteNumeroEstado(valor);
-  }, []);
-
-  // RF-06.50: el tema de cada archivo se fija al agregarlo; cambiar el campo después NO altera los pendientes ya agregados.
-  // Confirmar el campo (Enter o foco perdido) solo da el tema a los pendientes que siguen sin él.
-  const confirmarTema = useCallback(() => {
-    const tema = expedienteRef.current.trim();
-    if (!tema) return;
-    setFilesArray(prev => (
-      prev.some(f => f.status === 'pendiente' && !f.expediente?.trim())
-        ? prev.map(f => (f.status === 'pendiente' && !f.expediente?.trim() ? { ...f, expediente: tema } : f))
-        : prev
-    ));
-  }, []);
 
   // Manejar archivos nuevos (definir ANTES de los handlers que lo usan)
   const handleFiles = useCallback((newFiles) => {
@@ -51,9 +31,6 @@ export const useFileUpload = () => {
     // Usar setFilesArray con función para acceder al estado actual
     setFilesArray(currentFiles => {
       if (validFiles.length > 0) {
-        // Usar la referencia que siempre tiene el valor actual
-        const currentExpediente = expedienteRef.current.trim();
-        
         const filesWithMetadata = validFiles.map(file => ({
           id: Date.now() + Math.random(),
           file: file,
@@ -61,7 +38,6 @@ export const useFileUpload = () => {
           size: file.size,
           type: obtenerTipoArchivo(file.name),
           status: 'pendiente',
-          expediente: currentExpediente,
           progress: 0,
           message: '',
           fileProcessId: null,
@@ -141,15 +117,18 @@ export const useFileUpload = () => {
   const successFiles = filesArray.filter(f => f.status === 'completado').length;
   const errorFiles = filesArray.filter(f => f.status === 'fallido' || f.status === 'cancelado').length;
   
-  // Calcular archivos sin expediente
-  const filesWithoutExpediente = filesArray.filter(f => {
-    return f.status === 'pendiente' && (!f.expediente || f.expediente.trim() === '');
-  }).length;
+  // Pendientes sin tema: todos, mientras el campo esté vacío (RF-06.50, FF1)
+  const filesWithoutExpediente = expedienteNumero.trim() === '' ? pendingFiles : 0;
 
-  // Crear objeto files con dragActive y métodos de array
-  const files = Object.assign(filesArray, {
-    dragActive: dragActive
-  });
+  // RF-06.50 (FF1): un pendiente no guarda tema propio; toma el del campo en este momento, así la fila, la confirmación y el envío
+  // coinciden con lo que se ve. Los demás (ya enviados) conservan el tema con el que se enviaron.
+  const files = useMemo(() => {
+    const tema = expedienteNumero.trim();
+    return Object.assign(
+      filesArray.map(f => (f.status === 'pendiente' ? { ...f, expediente: tema } : f)),
+      { dragActive }
+    );
+  }, [filesArray, expedienteNumero, dragActive]);
 
   return {
     // Estados principales
@@ -159,7 +138,6 @@ export const useFileUpload = () => {
     setUploading,
     expedienteNumero,
     setExpedienteNumero,
-    confirmarTema,
     showConfirmModal,
     setShowConfirmModal,
 

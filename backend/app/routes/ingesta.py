@@ -21,7 +21,7 @@ Flujo de ingesta:
     7. Actualiza estado del documento en BD (Pendiente -> Procesado/Error)
 
 Formatos soportados:
-    - Documentos: PDF, DOC, DOCX, RTF, TXT, HTML
+    - Documentos: PDF, DOC, DOCX, TXT, HTML
     - Audio: MP3, WAV (transcripción con Faster-Whisper)
     - OCR: Automático para PDFs escaneados (Tesseract)
 

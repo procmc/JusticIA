@@ -71,7 +71,7 @@ const DropZone = ({
 
         {/* Formatos soportados */}
         <div className="mt-6 space-y-1 text-xs text-gray-500 text-center">
-          <div>Formatos soportados: PDF, DOC, DOCX, RTF, TXT, HTML, MP3, WAV, M4A, OGG, JPG, JPEG, PNG, TIF, TIFF, BMP</div>
+          <div>Formatos soportados: PDF, DOC, DOCX, TXT, HTML, MP3, WAV, M4A, OGG, JPG, JPEG, PNG, TIF, TIFF, BMP</div>
           <div>Las imágenes deben contener texto impreso o tipeado: la escritura a mano no se reconoce de forma confiable.</div>
         </div>
       </motion.div>

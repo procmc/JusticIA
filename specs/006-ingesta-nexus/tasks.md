@@ -88,3 +88,15 @@ Orden: T0 → T1-T5 (bloque 1) → T6-T8 (bloque 2) → T10 (corrección, 28/10)
   - Pendientes fuera de T9: commits (⚠️, los hace @committer) y el paso operativo del piloto de Nexus (de Andrés).
 
 Total: ~38 h (1,5 + 3 + 4,5 + 3 + 6 + 3 + 3 + 3 + 2 + 6 + 3 de T10). Con corte (T0-T5 + T9 + T10): ~30 h. Plazo compartido con la spec del notebook: ~64 h.
+
+- [x] **T11. Ingesta: los pendientes toman el tema actual del campo al guardar (FF1, 10/11/2026).** RF-06.50, RF-06.51, RF-06.52
+  - Pruebas: e2e `RF-06.50 · Ingesta: los pendientes toman el tema actual del campo al guardar` (reescrita; escritorio); `RF-07 [NUEVO] · Ingesta: reintentar un archivo con error` (nueva, ambos anchos).
+  - **Resultado (10/11):** rojo antes del código (el pendiente no mostraba el tema escrito); verde después: `carga.spec.js` 14 pasan, 0 fallan, 0 XPASS, residuos 0, contraseñas 0. Falta la suite completa de extremo a extremo y `npm run build`.
+
+- [x] **T12. Ingesta: el RTF deja de ser un formato permitido (FFF1, 12/11/2026).** RF-05.52, RF-05.53, RF-18.106 (009b)
+  - Pruebas (en rojo primero): unitaria de las listas de formatos (`.rtf` y `application/rtf` fuera; los demás siguen); integración de un `.rtf` rechazado sin documento Procesado ni fragmentos, con los demás archivos de la carga procesados; e2e `carga.spec.js` en ambos anchos (un `.rtf` no se agrega a la lista y el texto de formatos no lo menciona).
+  - Pasos: `file_config.py` (dos listas), `ingestaUtils.js`, `DropZone.jsx`, comentarios de `routes/ingesta.py` y `document_processor.py`; quitar `.rtf` de `vista_previa_service.py`, su docstring en `routes/notebooks.py` y sus pruebas (el fallo esperado estricto de RTF y el caso de la unitaria); `docker compose restart backend celery-worker`.
+  - e2e: subconjunto `npm run e2e -- e2e/flujos/carga.spec.js`; la completa se corre en T19 de la 009b.
+  - Hecho cuando: las pruebas pasan, lint sin errores, `MIME_TYPE_MAP` y `FILE_TYPE_CODES` intactos y el Cierre pasa.
+  - Documentación (al final, no cuenta como tarea aparte): ERS (RF-05, RT-01), Documento de Visión, CU-07, HU-05 y Arquitectura C4.
+  - Evidencia (12/11): pruebas escritas primero: unitaria `test_formatos_permitidos.py` (nueva; 5 fallaban antes) y e2e `RF-05.52` en `carga.spec.js` (2 de 2 fallaban); la de integración `test_formato_rtf.py` (nueva) ya pasaba antes del cambio, porque hoy el `.rtf` termina en Error: queda como guarda de regresión, no como rojo. Cambios: `file_config.py` (lista y tipo MIME), `ingestaUtils.js`, `DropZone.jsx`, comentarios de `routes/ingesta.py` y `document_processor.py`; `.rtf` fuera de `vista_previa_service.py`, de su docstring en `notebooks.py` y de sus pruebas (el fallo esperado estricto de RTF y el caso de la unitaria, que ahora comprueba que `.rtf` no tiene vista de texto). `MIME_TYPE_MAP` y `FILE_TYPE_CODES` intactos. Resultado: pytest 41 pasan (unitarias de formatos y vista previa más `test_formato_rtf.py`); e2e `carga.spec.js` 18 recolectadas, 16 pasan, 0 fallan, 2 omitidas, residuos 0, contraseñas 0, CORRECTO; backend y worker reiniciados. La suite completa va una sola vez al cerrar T18 de la 009b.

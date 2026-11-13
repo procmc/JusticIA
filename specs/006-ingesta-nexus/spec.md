@@ -1,5 +1,5 @@
 # Spec 006 — Ingesta de los documentos de Nexus
-Estado: implementada (28/10/2026); aprobada (27/10/2026); dudas resueltas (D1-D5, R1-R5, S1-S4, T1-T2, Andrés, 27/10/2026); corrección T10 (CC1-CC2, DD1, Andrés, 28/10/2026); asistencia operativa en Nexus, la Asamblea Legislativa, el repositorio de CONARE, Kimuk y SINALEVI (KK1-EEE1, Andrés, 28/10/2026)
+Estado: implementada (28/10/2026); aprobada (27/10/2026); dudas resueltas (D1-D5, R1-R5, S1-S4, T1-T2, Andrés, 27/10/2026); corrección T10 (CC1-CC2, DD1, Andrés, 28/10/2026); cambio del tema al guardar (FF1, Andrés, 10/11/2026, implementado); asistencia operativa en Nexus, la Asamblea Legislativa, el repositorio de CONARE, Kimuk y SINALEVI (KK1-EEE1, Andrés, 28/10/2026); cambio «formato RTF» (FFF1, Andrés, 12/11/2026): aprobado por Andrés el 12/11/2026 («sí»); el 12/11 se corrigió que Ingesta de Datos no muestra aviso al descartar un formato (ver «Fuera de alcance»), a confirmar; sin implementar
 
 ## Contexto y objetivo
 - El tutor autorizó por correo cargar documentos de interés general de Nexus. Andrés los descarga a mano o con la asistencia operativa de un agente (KK1, ver «Datos de la verificación manual y carga del piloto»): PDF con texto seleccionable, públicos y sin datos personales salvo la firma del funcionario en su cargo (PP1), lote piloto de 10-30. Él los revisa y los carga con la Ingesta de siempre, como temas (salvo EEE1: la revisión y la carga las hace un agente).
@@ -29,26 +29,28 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - **Desborde**: en el contenedor del texto del aviso de rechazo, `scrollWidth > clientWidth`.
 - **Archivo pendiente**: agregado a la lista de Ingesta y aún no enviado con Guardar.
 - **Texto del campo**: el valor del campo «Tema» sin los espacios del inicio y del final.
-- **Tema confirmado**: el texto del campo al pulsar Enter o al perder el foco; solo se usa para los pendientes sin tema (S2).
+- **Tema confirmado** (retirado por FF1): ya no existe; el tema se toma del campo al pulsar Guardar.
 
 ## Requisitos funcionales
 
-### A. Tema de cada archivo (hallazgo a; D1, D2, R1, S1, S2)
-- **RF-06.50** (RF-06, HU-06, CU-07 paso 3): CUANDO el Usuario Gubernamental agrega archivos, EL SISTEMA fija a cada uno el texto del campo en ese momento, esté confirmado o no, y lo muestra en su fila.
-  - Cambiar el campo no altera el tema de los pendientes ya agregados; para un segundo grupo: cambiar el campo y después agregar.
-  - Un pendiente agregado con el campo vacío toma el primer tema confirmado después.
-  - Cambio: se retira el campo editable por fila; la fila solo muestra el tema (R1).
-  - MIENTRAS algún pendiente siga sin tema, Guardar está deshabilitado y se muestra «Indique el tema antes de guardar los archivos.» (sin alerta nativa del navegador).
-  - *Prueba*: e2e (escritorio), una sola prueba: dos temas válidos, un archivo agregado sin tema que toma el confirmado, un grupo con tema no válido (más de 60 caracteres) y la confirmación agrupada; la API lista cada documento en su tema y nada en el otro.
-- **RF-06.51** (RF-06, CU-07 paso 5): CUANDO pulsa Guardar, EL SISTEMA muestra en la confirmación los archivos agrupados por tema y la advertencia de asociación permanente.
-  - *Prueba*: e2e, en la prueba de RF-06.50.
+### A. Tema de la carga (hallazgo a; D1, D2, R1, S1, S2; cambiado por FF1)
+- **RF-06.50** (RF-06, HU-06, CU-07 pasos 3 y 6; modificado el 10/11/2026, FF1): CUANDO el Usuario Gubernamental pulsa Guardar con archivos pendientes, EL SISTEMA asocia todos los pendientes al tema que indica el campo en ese momento (el texto del campo), y no al que tuviera el campo cuando se agregaron.
+  - Los pendientes no llevan un tema propio: cada fila pendiente muestra el tema actual del campo y cambia al escribir en él.
+  - MIENTRAS el campo esté vacío (o solo con espacios) y haya pendientes, Guardar está deshabilitado y se muestra «Indique el tema antes de guardar los archivos.» (sin alerta nativa del navegador).
+  - Los archivos ya enviados (en proceso, completados, con error, cancelados o rechazados) conservan el tema con el que se enviaron: cambiar el campo después no los altera, y «Reintentar» los vuelve a enviar a ese mismo tema.
+  - Para cargar archivos de otro tema: guardar el primer lote, cambiar el campo y agregar los siguientes.
+  - Cambio: se retiran el tema fijado a cada archivo al agregarlo (R1, S2), el aviso «tema confirmado» con Enter o al perder el foco, y la carga de varios temas en un mismo Guardar (D2). El servidor sigue recibiendo un tema por petición, sin cambios.
+  - *Prueba*: e2e (escritorio), reescribe la prueba actual de este requisito: archivos agregados con el campo vacío y con otro texto toman el del campo al guardar; cambiar el campo con pendientes cambia el tema que muestran las filas; Guardar deshabilitado con el campo vacío o solo con espacios; la API lista cada documento solo en el tema guardado y nada en el anterior; lo enviado conserva su tema aunque el campo cambie después.
+- **RF-06.51** (RF-06, CU-07 paso 5; modificado el 10/11/2026, FF1): CUANDO pulsa Guardar, EL SISTEMA muestra en la confirmación el tema que se va a usar, la lista de archivos pendientes y la advertencia de asociación permanente, y envía exactamente ese tema.
+  - Cambio: ya no agrupa por tema; hay un solo tema (el encabezado «Tema: …» se conserva).
+  - *Prueba*: e2e, en la prueba de RF-06.50: el tema de la confirmación es el del campo y es el que recibe la API.
 - **RF-06.52** (RF-06, «Estado actual»): EL SISTEMA acepta en Ingesta de Datos un tema de nombre libre y aplica las reglas de RF-06 solo en el servidor (constitución, principio 3).
   - La pantalla solo comprueba que el tema no esté vacío; no valida caracteres ni longitud, ni limita lo que se puede escribir (S1). El servidor admite hasta 60 caracteres.
-  - SI el servidor rechaza el tema de un grupo al confirmar la carga, ENTONCES los archivos de ese grupo aparecen como rechazados con «El tema indicado no es válido» y los de los demás grupos siguen su curso.
-  - Cambio: hoy ese rechazo deja los archivos del grupo como fallidos con un mensaje genérico de subida.
+  - SI el servidor rechaza el tema al confirmar la carga, ENTONCES todos los archivos de esa carga aparecen como rechazados con «El tema indicado no es válido» (con FF1 hay un solo tema por Guardar, ya no hay «demás grupos»).
+  - Cambio (spec original): ese rechazo dejaba los archivos del grupo como fallidos con un mensaje genérico de subida.
   - Un tema con forma de clave de notebook (o que coincide con el tema de un notebook) recibe el 404 de RF-17.4; la pantalla lo muestra igual que un tema no válido: rechazados con «El tema indicado no es válido», sin revelar si el notebook existe (T1).
   - Sus documentos se consultan desde el chat general; el chat acotado a ese tema (RF-06.2) sigue en fallo esperado.
-  - *Prueba*: unitaria del servicio con un tema no válido; e2e: el grupo no válido rechazado y el válido Procesado (en la prueba de RF-06.50); la integración existente (tema libre se crea) y las de RF-17.4 siguen pasando.
+  - *Prueba*: unitaria del servicio con un tema no válido; e2e: un Guardar con tema no válido deja todos los archivos rechazados y uno posterior con tema válido queda Procesado (en la prueba de RF-06.50); la integración existente (tema libre se crea) y las de RF-17.4 siguen pasando.
 - **RF-06.53** (RF-06, RF-08) `[NUEVO]`: EL SISTEMA normaliza el tema antes de validarlo y asociarlo, para que un mismo tema no genere dos carpetas ni dos grupos de fragmentos.
   - Quita los espacios al inicio y al final antes de la validación de RF-06 (hoy un tema que termina en espacio se rechaza).
   - SI ya existe un tema igual salvo mayúsculas y minúsculas, ENTONCES usa el nombre ya registrado en la base, en la carpeta y en los metadatos de los fragmentos.
@@ -102,6 +104,16 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
   - *Prueba*: integración, fallo esperado `RF-05.51 · ingesta` (uno por motivo: extensión, MIME, tamaño); no se corrige en esta spec.
 - **RF-06.2** sigue en fallo esperado; RF-08, RF-09, RF-17.4 y RF-22: sus pruebas siguen pasando sin cambios.
 
+### F. Formato RTF (RF-05, RT-01) — cambio FFF1 (12/11/2026)
+Motivo: al implementar la vista previa de la 009b se comprobó que el Tika del despliegue (2.8.0) detecta un `.rtf` pero lo procesa con un parser vacío (`EmptyParser`): la ingesta lo deja siempre en Error y nunca hay un RTF Procesado. El ERS lo promete como formato permitido (RF-05, RT-01). Andrés decidió quitarlo (12/11/2026, opción 1) en lugar de cambiar la imagen de Tika (toca `docker-compose.yml` y arriesga la ingesta y el OCR) o agregar una librería de lectura de RTF.
+- **RF-05.52** `[NUEVO]` (RF-05, RT-01, «Estado actual»): EL SISTEMA no admite archivos RTF (`.rtf`, `application/rtf`) como formato de carga: los formatos permitidos son PDF, DOC, DOCX, TXT, HTML, HTM y XHTML (texto), MP3, WAV, OGG y M4A (audio), y JPG, JPEG, PNG, TIF, TIFF y BMP (imagen).
+  - La lista de formatos visible en Ingesta de Datos y sus textos no mencionan RTF; el selector de archivos no lo ofrece y la pantalla lo filtra por extensión, como a cualquier otro formato no permitido.
+  - CUANDO el usuario agrega o arrastra un `.rtf` en Ingesta de Datos, EL SISTEMA no lo agrega a la lista ni lo procesa, igual que hoy con cualquier otro formato no permitido: la pantalla filtra por extensión y **no muestra ningún aviso** (verificado en `useFileUpload.js`; el ERS pide un aviso con el motivo y los formatos permitidos, y eso no existe hoy: ver «Fuera de alcance»).
+  - En NotebookServIA y por la API, un `.rtf` recibe el trato que hoy da el sistema a cualquier formato no permitido: el servidor lo rechaza al procesarlo y no queda ningún documento Procesado. No se agrega una validación nueva (la validación en el servidor al cargar sigue siendo el fallo esperado RF-05.51).
+  - La extensión se compara sin distinguir mayúsculas (`.RTF` se trata igual).
+- **RF-05.53** `[NUEVO]` (RN-01): los documentos `.rtf` cargados antes del cambio, que quedaron en Error, no se modifican ni se borran.
+  - *Prueba*: unitaria: `.rtf` no figura en las extensiones ni en los tipos MIME permitidos del servidor; integración: un `.rtf` subido a un tema de prueba termina rechazado, sin documento Procesado ni fragmentos en Qdrant; e2e: un `.rtf` elegido en Ingesta de Datos no se agrega a la lista y el texto de formatos soportados no lo menciona, en ambos anchos.
+
 ## Requisitos no funcionales
 - **RNF-09.50** (RNF-09, constitución principio 6; S4): MIENTRAS se cargan y consultan documentos, EL SISTEMA no envía documentos, fragmentos, preguntas ni respuestas a servicios externos, incluido el rastreo de LangChain.
   - Al arrancar, el backend y el proceso de ingesta fuerzan `LANGSMITH_TRACING` y `LANGCHAIN_TRACING_V2` a `false`, aunque vengan activos o falten.
@@ -123,9 +135,12 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - Corte: si el bloque 2 no cabe, se cierra la spec con el bloque 1 y lo restante pasa a otra spec, con su «Estado actual» en el ERS.
 
 ## Casos límite
-- Varios archivos y varios temas en un Guardar; uno agregado con el campo vacío; uno agregado con el texto escrito sin confirmar (toma ese texto, S2) (RF-06.50).
-- Pendiente sin tema: Guardar deshabilitado con su texto (RF-06.50).
-- Un grupo con tema no válido (más de 60 caracteres) y otro válido en el mismo Guardar: resultado parcial (RF-06.52).
+- RTF (FFF1): un `.RTF` en mayúsculas se rechaza igual; un RTF renombrado a `.txt` pasa la validación por extensión (el servidor no valida el tipo MIME real, RF-05.51) y se procesa como texto, con los comandos del RTF dentro: fuera de alcance; varios archivos con un `.rtf` entre ellos: solo el `.rtf` se rechaza y los demás se procesan; un `.rtf` que ya está en Error de antes se conserva (RF-05.53).
+- Archivos agregados con el campo vacío o con otro texto, y el campo cambiado antes de Guardar: todos los pendientes toman el texto del campo al guardar (RF-06.50, FF1).
+- Campo vacío o solo espacios con pendientes: Guardar deshabilitado con su texto (RF-06.50).
+- Cambiar el campo con archivos ya enviados: no los altera; «Reintentar» los vuelve a enviar a su tema original (RF-06.50).
+- Cambiar el campo mientras el cuadro de confirmación está abierto: no es posible (el cuadro es modal); se envía el tema que mostraba (RF-06.51).
+- Un Guardar con tema no válido (más de 60 caracteres): todos los archivos de esa carga quedan rechazados (RF-06.52).
 - Tema con forma de clave de notebook en Ingesta: 404 de RF-17.4, mostrado como tema no válido (RF-06.52).
 - «Normativa», «normativa», « Normativa » y «Normatíva» (RF-06.53).
 - Tema nuevo en dos grafías en un mismo Guardar (peticiones simultáneas): un solo nombre, el que se registra primero (RF-06.53, CC1).
@@ -215,6 +230,9 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - Rechazados en las estadísticas, la causa persistida en el documento, duplicados por el usuario, edición del tema por fila.
 - Ajustes gráficos de la 005b: «expediente» en el panel del Administrador, «Poder Judicial» en el pie.
 - Mejoras del notebook (RF-19.40), renombrar «expediente» en el código o la base.
+- Mostrar un aviso cuando Ingesta de Datos descarta un archivo de formato no permitido (RF-05 lo pide; hoy se ignora en silencio): vale para el RTF y para cualquier otro formato, y sería otra spec.
+- Leer RTF (cambiar la imagen de Tika o agregar una librería) o convertirlo: se quita el formato en lugar de soportarlo (FFF1); si se pide después, es otra spec.
+- Validar el tipo MIME real o la extensión en el servidor al cargar (RF-05.51), y borrar o reintentar los `.rtf` que ya están en Error.
 
 ## ⚠️ Pregunta antes (CLAUDE.md) que tocará el plan
 - Crear archivos nuevos: los archivos inventados de prueba (PDF dañado, PDF sin texto, PNG) y, si hiciera falta, un archivo de prueba nuevo.
@@ -230,9 +248,12 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 - Limpieza hecha con la aprobación de Andrés y los temas `PRUEBA`, `PRUEBA 2` y `PRUEBA 3` vacíos anotados como residuo aceptado.
 - Paso operativo de Andrés tras la validación (salvo EEE1: la carga la hace un agente con la sesión de Andrés): piloto de Nexus cargado, cada PDF Procesado o en Error con su causa, y el chat general cita al menos uno.
   - Resultado del piloto (29/10/2026) y su corrección en la spec 007 (03/11/2026): 30 PDF de Nexus, 27 Procesado y 3 Error (SC 182, 183 y 177); el chat general no mostraba respuesta (causa en la spec 007). Nexus se re-fragmentó (27 documentos, de 48 a 179 fragmentos, máximo 1.498 caracteres) y las tres circulares se recargaron por Ingesta con fila nueva (Procesado; las anteriores siguen en Error, RF-07.51).
+- FFF1: pruebas de RF-05.52 en rojo antes del código y luego en verde; pytest (normal e inverso) y e2e sin fallos nuevos; verificación manual de Andrés (1366 y 616 px): elegir un `.rtf` en Ingesta de Datos y ver que no se agrega, y en un notebook subir uno y ver que no queda Procesado.
+- FFF1, documentación: RF-05 y RT-01 del ERS, el Documento de Visión (§ formatos), CU-07, HU-05 y la Arquitectura C4 (extracción de texto), sin RTF.
 - Texto propuesto para el ERS y el CU (sección siguiente) entregado a Andrés; `MEMORY.md` actualizado.
 
 ## Texto propuesto para el ERS y el CU (lo aplica Andrés en la entrega de la semana 4)
+- **RF-05 y RT-01 (FFF1, 12/11/2026)**: quitar «RTF» de la lista de formatos de texto permitidos (PDF, DOC, DOCX, TXT, HTML, HTM, XHTML), con el motivo en «Estado actual»: «El RTF no se admite: el extractor de texto del despliegue no lo lee.»
 - **RF-05** (Estado actual): quitar «la pantalla de Ingesta de Datos todavía no admite imágenes… y la advertencia sobre la escritura a mano aún no se muestra» y «El aviso con un nombre de archivo muy largo se desborda a 616 px…».
   - Queda: «El servidor todavía no valida el formato, el tipo MIME ni el tamaño de los archivos; hoy solo lo hace la interfaz (fallo esperado, spec 006).» Estado: Parcial.
 - **RF-06**: añadir «Antes de asociarlo, el sistema quita los espacios al inicio y al final del tema y, si ya existe uno igual salvo mayúsculas y minúsculas, usa el ya registrado; las tildes distinguen temas.» `[NUEVO]` (RF-06.53).
@@ -260,21 +281,24 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 
 ## Decisiones (27/10/2026, Andrés: D1-D5, R1-R5, S1-S4, T1-T2)
 - **D1 = A**: Ingesta acepta un tema de nombre libre (reglas de RF-06); se consulta desde el chat general; RF-06.2 sigue en fallo esperado.
-- **D2 = A**: cada archivo conserva su tema; la confirmación agrupa por tema (precisado por R1).
+- **D2 = A** (sustituida por FF1): cada archivo conserva su tema; la confirmación agrupa por tema (precisado por R1).
 - **D3 = B**: advertencia de manuscrito en Ingesta y en el notebook, e imágenes admitidas en Ingesta (reconocimiento simulado en las pruebas), con alcance acotado.
 - **D4 = A**: la validación en el servidor (RF-05.51) entra como fallo esperado, sin corregir.
 - **D5 = A** (ampliada por S3): temas `PRUEBA` y `PRUEBA 2` en desarrollo, vacíos al final como residuo aceptado; el piloto de Nexus es un paso operativo de Andrés; los PDF de Nexus nunca son datos de prueba.
-- **R1 = A**: el tema se fija al agregar y se ve en cada fila; un pendiente sin tema toma el primer tema confirmado (Enter o foco perdido); sin edición por fila; Guardar deshabilitado con texto mientras falte un tema.
+- **R1 = A** (sustituida por FF1): el tema se fija al agregar y se ve en cada fila; un pendiente sin tema toma el primer tema confirmado (Enter o foco perdido); sin edición por fila; Guardar deshabilitado con texto mientras falte un tema.
 - **R2 = A**: la validación en segundo plano queda fuera de «fallo del procesamiento»; la cubre el fallo esperado de RF-05.51.
 - **R3 = A**: el reintento interno se deduplica por identificador de tarea; una recarga del usuario tras un Error crea una fila nueva y conserva la anterior (RN-01, HU-07).
 - **R4 = A**: la cancelación se cubre con un fallo esperado (RF-07.53), sin corregirla; RF-07 queda «Parcial».
 - **R5 = A**: las tildes distinguen temas. El plan lo confirma contra la intercalación de SQL Server; si la base no las distingue, se PARA y se pregunta a Andrés (no se igualan por cuenta propia).
 - **S1 = A**: se retira el tope de 25 caracteres de la pantalla; la longitud solo la valida el servidor (60); un tema demasiado largo sale rechazado con su mensaje.
-- **S2 = A**: al agregar se toma el texto actual del campo (recortado), confirmado o no; «tema confirmado» solo aplica a los pendientes sin tema.
+- **S2 = A** (sustituida por FF1): al agregar se toma el texto actual del campo (recortado), confirmado o no; «tema confirmado» solo aplica a los pendientes sin tema.
 - **S3 = A**: verificación manual con `PRUEBA` y `PRUEBA 2`, ambos residuo aceptado y anotado.
 - **S4 = A**: el backend fuerza el rastreo de LangChain a apagado al arrancar, con aviso en el log si venía activo; la revisión del `.env` real sigue aparte.
 - **T1 = A**: un tema con forma de clave de notebook en Ingesta (404 de RF-17.4) deja el grupo rechazado con «El tema indicado no es válido», igual que un tema no válido, sin revelar si el notebook existe (RF-06.52).
 - **T2 = A**: el ERS baja el límite del tema de RF-06 de 255 bytes a 60 caracteres, como hace hoy el sistema; no cambia el código (texto propuesto para el ERS).
+
+## Decisión del cambio del tema al guardar (10/11/2026, Andrés: FF1)
+- **FF1 = A**: al pulsar Guardar, todos los archivos pendientes toman el tema actual del campo (no vacío); se retira el tema por archivo (D2, R1, S2) y la carga de varios temas en un Guardar. Motivo: al cambiar el campo, el archivo seguía con el tema antiguo (lo mostraba el chip de la fila y la confirmación) y la asociación es permanente (RN-02). No contradice RF-06 ni CU-07, que ya hablan de «el tema indicado» en singular; sí cambia las decisiones D2, R1 y S2 de esta spec.
 
 ## Decisiones de la corrección T10 (28/10/2026, Andrés: CC1, CC2, DD1)
 - **CC1 = A**: se corrige la carrera de RF-06.53 hallada en la verificación manual de T9: un tema nuevo en dos grafías en un mismo Guardar deja un solo nombre (corrección T10).
@@ -308,3 +332,7 @@ HU-05, HU-06, HU-07, HU-10 (sin historias nuevas).
 
 ## Dudas abiertas
 Ninguna.
+- FFF1 (a confirmar por Andrés): (a) los `.rtf` ya cargados (en Error) se dejan como están; (b) en NotebookServIA no se agrega un aviso propio de formato: sale el del servidor de hoy para un formato no permitido; (c) cambia el ERS (RF-05, RT-01), el Documento de Visión, CU-07, HU-05 y la Arquitectura C4, que hoy nombran el RTF.
+
+## Decisión del cambio «formato RTF» (12/11/2026, Andrés: FFF1)
+- **FFF1 = 1**: el RTF deja de ser un formato permitido. Motivo: el Tika del despliegue (2.8.0) lo detecta pero lo procesa con un parser vacío, así que la ingesta siempre lo deja en Error y el ERS prometía un formato que no funciona. Alternativas descartadas: cambiar la imagen de Tika (toca `docker-compose.yml`, arriesga la ingesta y el OCR) y leerlo con una librería de Python (dependencia nueva y código aparte). No toca Tika, el HTR ni el audio.

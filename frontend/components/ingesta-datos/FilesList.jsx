@@ -5,14 +5,15 @@
 import React from 'react';
 import { Card, CardHeader, CardBody, Divider, Chip, Spinner, Button, Tooltip, Progress, Alert } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiXCircle } from 'react-icons/fi';
+import { FiX, FiXCircle, FiRefreshCw } from 'react-icons/fi';
 import { formatearTamano } from '@/utils/ingesta-datos/ingestaUtils';
 import { getFileIcon, getStatusColor } from '@/utils/ingesta-datos/iconos';
 
 const FilesList = ({
   files,
   removeFile,
-  cancelFileProcessing
+  cancelFileProcessing,
+  reintentarArchivo
 }) => {
   // Avisos de carga ya cerrados por el usuario (RF-05.23): se cierran a mano, no desaparecen solos.
   const [avisosCerrados, setAvisosCerrados] = React.useState([]);
@@ -145,6 +146,22 @@ const FilesList = ({
 
                   {/* Acciones */}
                   <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+                    {/* Reintentar: solo si el archivo sigue en memoria (al recargar la página se pierde) */}
+                    {(file.status === 'fallido' || file.status === 'cancelado') && file.file && reintentarArchivo && (
+                      <Tooltip content="Reintentar" placement="top">
+                        <Button
+                          size="sm"
+                          variant="light"
+                          color="primary"
+                          isIconOnly
+                          aria-label="Reintentar"
+                          onPress={() => reintentarArchivo(file)}
+                        >
+                          <FiRefreshCw className="w-4 h-4" />
+                        </Button>
+                      </Tooltip>
+                    )}
+
                     {/* Botón de eliminar para archivos pendientes, completados, con error o cancelados */}
                     {(file.status === 'pendiente' || file.status === 'completado' || file.status === 'fallido' || file.status === 'cancelado' || file.status === 'rechazado') && (
                       <Tooltip content="Quitar archivo" placement="top">
