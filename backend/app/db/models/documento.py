@@ -87,12 +87,21 @@ class T_Documento(Base):
     # Spec 009b (RN-01.100): nombre que ve el usuario; NULL = se muestra CT_Nombre_archivo, que sigue ubicando el archivo en disco.
     CT_Nombre_visible: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     CF_Fecha_carga: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    # Spec 009b, cambio GG1 (RF-19.111, RN-01.101): baja lógica de una fuente de notebook. NULL = activo. Al quitarla se borran el archivo y
+    # los fragmentos, pero la fila se conserva con la fecha y hora de la baja y quién la quitó, para poder auditar qué se quitó.
+    CF_Fecha_baja: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    CN_Id_usuario_baja: Mapped[Optional[str]] = mapped_column(String(20), ForeignKey("T_Usuario.CN_Id_usuario"), nullable=True)
 
     # M:N con Expediente (Contiene)
     expedientes: Mapped[List["T_Expediente"]] = relationship(
         secondary=T_Expediente_Documento,
         back_populates="documentos"
     )
+
+    @property
+    def esta_quitado(self) -> bool:
+        """Si la fuente ya se quitó del notebook (tiene baja lógica): para el usuario es como si no existiera (RF-19.113)."""
+        return self.CF_Fecha_baja is not None
 
     # N:1 con Estado_procesamiento
     CN_Id_estado: Mapped[Optional[int]] = mapped_column(ForeignKey("T_Estado_procesamiento.CN_Id_estado"))

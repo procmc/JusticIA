@@ -96,6 +96,29 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+def _descartar_fragmentos_de_fuentes_quitadas(db, task_id) -> None:
+    """Borra los fragmentos de un documento que el usuario quitó de su notebook mientras esta tarea lo procesaba (RF-19.111, RF-19.113).
+
+    Quitar una fuente elimina sus fragmentos y su archivo y deja la fila con baja lógica; si la tarea ya estaba en marcha, termina
+    de indexar DESPUÉS de esa baja y dejaría fragmentos de una fuente que ya no existe para el usuario. La búsqueda ya los ignora
+    (solo recupera documentos activos), pero no debe quedar ninguno. Un fallo aquí no hace fallar la tarea: se registra en el log.
+    """
+    try:
+        from app.repositories.documento_repository import DocumentoRepository
+        from app.vectorstore import get_vectorstore_backend
+
+        # El número del documento que esta tarea registró (el mismo dato que usa el reconocimiento de reintentos, RF-07.51).
+        id_documento = progress_manager.documento_de_tarea(task_id)
+        if not id_documento:
+            return
+        documento = DocumentoRepository().obtener_por_id(db, int(id_documento), incluir_quitados=True)
+        if documento is not None and documento.esta_quitado:
+            asyncio.run(get_vectorstore_backend().delete_document_chunks(documento.CN_Id_documento))
+            logger.warning(f"El documento {documento.CN_Id_documento} se quitó mientras se procesaba: se descartaron sus fragmentos")
+    except Exception as error:
+        logger.error(f"No se pudieron descartar los fragmentos de una fuente quitada durante el procesamiento: {type(error).__name__}")
+
+
 @celery_app.task(bind=True)
 def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
     """
@@ -229,6 +252,9 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
                                        documento_previo)
             )
             
+            # GG1 (RF-19.113): si el usuario quitó la fuente mientras se procesaba, no deben quedar fragmentos suyos
+            _descartar_fragmentos_de_fuentes_quitadas(db, task_id)
+
             # Verificar cancelación después del procesamiento
             check_if_cancelled()
             

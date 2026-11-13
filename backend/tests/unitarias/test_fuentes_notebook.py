@@ -135,7 +135,7 @@ def test_validar_nombre_con_mensaje_de_vacio_propio():
 
 def _fuente(id_documento, interno="informe.pdf", visible=None, estado="Procesado", notebook="NB-7"):
     return SimpleNamespace(
-        CN_Id_documento=id_documento, CT_Nombre_archivo=interno, CT_Nombre_visible=visible,
+        CN_Id_documento=id_documento, CT_Nombre_archivo=interno, CT_Nombre_visible=visible, esta_quitado=False,
         estado_procesamiento=SimpleNamespace(CT_Nombre_estado=estado), expedientes=[SimpleNamespace(CT_Num_expediente=notebook)])
 
 

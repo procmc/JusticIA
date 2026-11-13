@@ -75,12 +75,17 @@ See Also:
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import select, delete, literal
+from sqlalchemy import select, literal
 from app.db.models.documento import T_Documento
 from app.db.models.expediente import T_Expediente
 from app.db.models.expediente_documento import T_Expediente_Documento
 from app.db.models.estado_procesamiento import T_Estado_procesamiento
 from datetime import datetime
+
+
+# Spec 009b, cambio GG1 (RF-19.113, RN-01.101): una fuente quitada de un notebook queda con baja lógica (`CF_Fecha_baja`) y, para todo lo
+# que lee documentos, es como si no existiera. Esta es la ÚNICA condición de «activo»: toda consulta de documentos la usa.
+DOCUMENTO_ACTIVO = T_Documento.CF_Fecha_baja.is_(None)
 
 
 class DocumentoRepository:
@@ -93,20 +98,51 @@ class DocumentoRepository:
         Ninguno. Todas las operaciones son stateless y reciben la sesión db como parámetro.
     """
     
-    def obtener_por_id(self, db: Session, documento_id: int) -> Optional[T_Documento]:
+    def obtener_por_id(self, db: Session, documento_id: int, incluir_quitados: bool = False) -> Optional[T_Documento]:
         """
         Obtiene un documento por su ID.
         
         Args:
             db: Sesión de base de datos
             documento_id: ID del documento
+            incluir_quitados: Si True, devuelve también una fuente quitada (solo para auditar); por omisión es como si no existiera
             
         Returns:
             Optional[T_Documento]: Documento encontrado o None
         """
         stmt = select(T_Documento).where(T_Documento.CN_Id_documento == documento_id)
+        if not incluir_quitados:
+            stmt = stmt.where(DOCUMENTO_ACTIVO)
         result = db.execute(stmt)
         return result.scalar_one_or_none()
+
+    def dar_de_baja(self, db: Session, documento: T_Documento, usuario_id: str, auto_commit: bool = True) -> T_Documento:
+        """
+        Marca una fuente de notebook como quitada (baja lógica, RF-19.111): guarda la fecha y hora (UTC) y quién la quitó. No borra la
+        fila ni su relación con el tema; el archivo y los fragmentos los elimina la capa de servicio antes de llamar aquí.
+
+        Args:
+            db: Sesión de base de datos
+            documento: Documento a dar de baja
+            usuario_id: Cédula de quien la quita
+            auto_commit: Si hacer commit automáticamente
+
+        Returns:
+            T_Documento: El documento marcado
+        """
+        try:
+            documento.CF_Fecha_baja = datetime.utcnow()
+            documento.CN_Id_usuario_baja = usuario_id
+            if auto_commit:
+                db.commit()
+                db.refresh(documento)
+            else:
+                db.flush()
+            return documento
+        except Exception as e:
+            if auto_commit:
+                db.rollback()
+            raise Exception(f"Error dando de baja el documento: {str(e)}")
     
     def crear(
         self,
@@ -248,7 +284,7 @@ class DocumentoRepository:
         Returns:
             List[T_Documento]: Lista de documentos del expediente
         """
-        documentos = expediente.documentos
+        documentos = [doc for doc in expediente.documentos if not doc.esta_quitado]
         
         if solo_procesados:
             # Filtrar solo documentos procesados
@@ -259,6 +295,18 @@ class DocumentoRepository:
         
         return documentos
     
+    def listar_rutas_de_carpeta(self, db: Session, carpeta: str) -> List[tuple]:
+        """
+        Los pares (id del documento, ruta registrada) de los documentos cuya ruta está en `uploads/<carpeta>/`.
+
+        Sirve para devolver a la ruta registrada la que el modelo escribió con otra ortografía (RF-12.1); quien lo usa limita el
+        resultado a lo que el usuario puede ver. Solo lectura.
+        """
+        stmt = select(T_Documento.CN_Id_documento, T_Documento.CT_Ruta_archivo).where(
+            T_Documento.CT_Ruta_archivo.startswith(f"uploads/{carpeta}/", autoescape=True), DOCUMENTO_ACTIVO
+        )
+        return [tuple(fila) for fila in db.execute(stmt).all()]
+
     def listar_procesados_con_temas(self, db: Session) -> List[tuple]:
         """
         Lista los pares (id del documento, tema) de todos los documentos 'Procesado'.
@@ -278,7 +326,7 @@ class DocumentoRepository:
             .join(T_Estado_procesamiento, T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado)
             .join(T_Expediente_Documento, T_Expediente_Documento.c.CN_Id_documento == T_Documento.CN_Id_documento)
             .join(T_Expediente, T_Expediente.CN_Id_expediente == T_Expediente_Documento.c.CN_Id_expediente)
-            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado")
+            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado", DOCUMENTO_ACTIVO)
         )
         return [(documento_id, tema) for documento_id, tema in db.execute(stmt).all()]
 
@@ -301,7 +349,8 @@ class DocumentoRepository:
             .join(T_Estado_procesamiento, T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado)
             .join(T_Expediente_Documento, T_Expediente_Documento.c.CN_Id_documento == T_Documento.CN_Id_documento)
             .join(T_Expediente, T_Expediente.CN_Id_expediente == T_Expediente_Documento.c.CN_Id_expediente)
-            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado", T_Expediente.CT_Num_expediente.in_(temas))
+            .where(T_Estado_procesamiento.CT_Nombre_estado == "Procesado", T_Expediente.CT_Num_expediente.in_(temas),
+                   DOCUMENTO_ACTIVO)
             .order_by(T_Expediente.CT_Num_expediente, T_Documento.CN_Id_documento)
         )
         return [tuple(fila) for fila in db.execute(stmt).all()]
@@ -322,7 +371,8 @@ class DocumentoRepository:
                 T_Estado_procesamiento,
                 T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
             ).where(
-                T_Estado_procesamiento.CT_Nombre_estado == "Procesado"
+                T_Estado_procesamiento.CT_Nombre_estado == "Procesado",
+                DOCUMENTO_ACTIVO
             )
             
             result = db.execute(stmt)
@@ -358,7 +408,8 @@ class DocumentoRepository:
                 T_Expediente,
                 T_Expediente_Documento.c.CN_Id_expediente == T_Expediente.CN_Id_expediente
             ).filter(
-                T_Expediente.CT_Num_expediente == expediente_numero
+                T_Expediente.CT_Num_expediente == expediente_numero,
+                DOCUMENTO_ACTIVO
             )
             
             if solo_procesados:
@@ -393,36 +444,6 @@ class DocumentoRepository:
             db.rollback()
             raise
 
-    def eliminar(self, db: Session, documento: T_Documento, auto_commit: bool = True) -> None:
-        """
-        Elimina un documento (y su fila en la tabla de unión con expediente).
-        No borra los chunks de Qdrant ni el archivo físico — eso lo maneja
-        la capa de servicio, que también conoce el vectorstore y el disco.
-
-        Args:
-            db: Sesión de base de datos
-            documento: Documento a eliminar
-            auto_commit: Si hacer commit automáticamente
-        """
-        try:
-            # Primero la fila de la tabla de unión (FK), si no se rompe el delete
-            db.execute(
-                delete(T_Expediente_Documento).where(
-                    T_Expediente_Documento.c.CN_Id_documento == documento.CN_Id_documento
-                )
-            )
-            db.delete(documento)
-
-            if auto_commit:
-                db.commit()
-            else:
-                db.flush()
-
-        except Exception as e:
-            if auto_commit:
-                db.rollback()
-            raise Exception(f"Error eliminando documento: {str(e)}")
-
     def verificar_esta_procesado(
         self, 
         db: Session, 
@@ -455,7 +476,8 @@ class DocumentoRepository:
                 T_Documento.CN_Id_estado == T_Estado_procesamiento.CN_Id_estado
             ).where(
                 T_Expediente.CT_Num_expediente == expediente_numero,
-                T_Documento.CT_Nombre_archivo == nombre_archivo
+                T_Documento.CT_Nombre_archivo == nombre_archivo,
+                DOCUMENTO_ACTIVO
             )
             
             result = db.execute(stmt)

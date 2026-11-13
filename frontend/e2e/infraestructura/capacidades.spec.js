@@ -383,7 +383,8 @@ test.describe('capacidades del control: motor, ingesta y notebooks', () => {
     expect((await quitar()).status).toBe(200);
     expect(await listar()).toEqual([]);
     const despues = await control.residuos();
-    expect(despues.filas.T_Documento).toBe(0);
+    // Cambio GG1 (11/11/2026, RF-19.111): quitar elimina los fragmentos y el archivo, pero la fila se conserva con baja lógica.
+    expect(despues.filas.T_Documento).toBe(1);
     expect(despues.puntos).toBe(0);
     expect(await citaEnElChat()).toBe(false);
 

@@ -32,7 +32,8 @@ HU-19 (sin historias nuevas).
   - *Prueba*: la e2e existente de la 005b, a 1366 y 616 px; se quita su marca de fallo esperado tras verla en XPASS.
 - **RF-19.70** (RF-19; CU-13 p. 2; decisión 5) `[NUEVO]`: EL SISTEMA muestra la confirmación con:
   - título «Quitar documento»;
-  - cuerpo con el texto exacto, comillas incluidas: «¿Quitar "<nombre>" del notebook? Esta acción no se puede deshacer.»;
+  - cuerpo con el texto exacto, comillas incluidas: «¿Desea eliminar "<nombre>" de este notebook de forma definitiva?»;
+    - Cambio (11/11/2026, Andrés, con la baja lógica de la 009b): antes decía «¿Quitar "<nombre>" del notebook? Esta acción no se puede deshacer.»; ahora pregunta con claridad si desea eliminar el documento de forma definitiva.
   - botones «Quitar» y «Cancelar».
   - CUANDO el usuario pulsa «Quitar», EL SISTEMA sigue el flujo vigente de RF-19 (deshabilitado mientras se quita, luego fuera de la lista y del chat).
   - SI el usuario pulsa «Quitar» dos veces seguidas (doble clic), ENTONCES EL SISTEMA envía una sola petición de quitar.

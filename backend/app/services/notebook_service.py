@@ -284,6 +284,11 @@ class NotebookService:
             raise RecursoNoDisponible(MOTIVO_NOTEBOOK_NO_DISPONIBLE)
         return notebook
 
+    async def notebook_propio(self, db: Session, texto_id: str, usuario_id: str) -> T_Notebook:
+        """El notebook activo del usuario que dice `texto_id` (para el Estudio, spec 010), o `RecursoNoDisponible` si el id no es
+        canónico o el notebook es ajeno, inexistente o eliminado: todo igual hacia afuera (RNF-07.120)."""
+        return await self._notebook_de_texto(db, texto_id, usuario_id)
+
     async def renombrar_notebook(
         self, db: Session, texto_id: str, nombre: str, usuario_id: str
     ) -> Tuple[T_Notebook, bool]:
@@ -325,7 +330,7 @@ class NotebookService:
         documento = None
         if 0 < documento_id <= _ID_MAXIMO:
             documento = self.documento_repo.obtener_por_id(db, documento_id)
-        if not documento or notebook.clave_interna not in [e.CT_Num_expediente for e in documento.expedientes]:
+        if not documento or documento.esta_quitado or notebook.clave_interna not in [e.CT_Num_expediente for e in documento.expedientes]:
             raise RecursoNoDisponible(MOTIVO_DOCUMENTO_NO_DISPONIBLE)
         return documento
 
@@ -422,8 +427,8 @@ class NotebookService:
         return notebook, documento, ruta
 
     async def quitar_documento(self, db: Session, notebook_id: int, documento_id: int, usuario_id: str) -> T_Notebook:
-        """Quita un documento de un notebook del usuario: sus fragmentos en Qdrant, su archivo y su registro (la excepción
-        aprobada al borrado físico, RN-01). Devuelve el notebook.
+        """Quita un documento de un notebook del usuario: elimina sus fragmentos en Qdrant y su archivo, y deja su registro con baja
+        lógica (fecha y hora y quién la quitó) para la auditoría (RF-19.111, RN-01.101). Devuelve el notebook.
 
         Raises:
             RecursoNoDisponible: Si el notebook es ajeno o no existe, o el documento no es de ese notebook (RNF-07.6, 07.32).
@@ -434,7 +439,7 @@ class NotebookService:
         documento = self._documento_del_notebook(db, notebook, documento_id)
         clave, nombre_archivo = notebook.clave_interna, documento.CT_Nombre_archivo
         # Cada paso es idempotente (RF-19.2): lo que ya no existe cuenta como eliminado, y cualquier otro error detiene el
-        # borrado antes del registro, que sigue listado para que un nuevo intento complete lo que faltó.
+        # proceso antes de marcar la baja (RF-19.112): la fila sigue activa y listada para que un nuevo intento complete lo que faltó.
         try:
             # 1. Fragmentos de Qdrant (cero puntos = éxito)
             await get_vectorstore_backend().delete_document_chunks(documento_id)
@@ -447,8 +452,8 @@ class NotebookService:
                 except FileNotFoundError:
                     pass  # Ya no está: cuenta como eliminado (otro error, como un permiso, sí es un fallo)
 
-            # 3. Registro en base de datos (y la fila de la tabla de unión)
-            self.documento_repo.eliminar(db, documento)
+            # 3. Baja lógica de la fila: se conserva con su nombre, tipo, relación con el tema, fecha de baja y quién la quitó
+            self.documento_repo.dar_de_baja(db, documento, usuario_id)
         except Exception as causa:
             raise ErrorAlQuitar(clave, documento_id, causa) from causa
         return notebook
@@ -559,6 +564,10 @@ class NotebookService:
         return None
 
     async def ids_documentos_visibles(self, db: Session, usuario_id: Optional[str]) -> Set[int]:
+        """Los documentos Procesados que `usuario_id` puede ver (RF-17.3); ver `ids_visibles`."""
+        return self.ids_visibles(db, usuario_id)
+
+    def ids_visibles(self, db: Session, usuario_id: Optional[str]) -> Set[int]:
         """Los documentos Procesados que `usuario_id` puede ver (RF-17.3): los que ninguno de sus temas tiene forma de clave de
         notebook, más los de sus propios notebooks.
 

@@ -424,7 +424,20 @@ def _tres_capas(clave: str, nombre: str, id_documento: int) -> dict:
     }
 
 
-CAPAS_VACIAS = {"fragmentos": 0, "archivo": False, "fila": 0, "relacion": 0}
+# Spec 009b, cambio GG1 (RF-19.111): al quitar una fuente se eliminan los fragmentos y el archivo, pero la fila y su relación con el tema
+# se conservan con baja lógica (`CF_Fecha_baja` y `CN_Id_usuario_baja`).
+CAPAS_QUITADAS = {"fragmentos": 0, "archivo": False, "fila": 1, "relacion": 1}
+
+
+def _baja_del_documento(id_documento: int):
+    """(fecha y hora de la baja, cédula de quien la quitó) de la fila del documento; (None, None) si sigue activo."""
+    fila = _consultar("SELECT CF_Fecha_baja, CN_Id_usuario_baja FROM T_Documento WHERE CN_Id_documento = :d", {"d": id_documento})
+    assert len(fila) == 1, "la fila del documento debe seguir existiendo"
+    return tuple(fila[0])
+
+
+def _dueno(notebook: dict) -> str:
+    return _consultar("SELECT CN_Id_usuario FROM T_Notebook WHERE CN_Id_notebook = :n", {"n": notebook["id"]})[0][0]
 
 
 def _lista_del_notebook(cliente_api, cabeceras, notebook: dict) -> list:
@@ -441,10 +454,10 @@ def _item(documento, id_documento: int) -> dict:
 
 @pytest.mark.requisito("RF-19.1")
 def test_quitar_uno_de_dos(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, ollama_simulado):
-    """RF-19.1: al quitar uno de dos documentos del notebook se eliminan sus tres representaciones (fragmentos, archivo y
-    fila con su relación con el tema); el otro queda intacto (lista, fragmentos, archivo y vista previa), el chat del notebook
-    ya no recibe el contenido del quitado, y no se elimina el notebook, el tema ni ninguna fila de la bitácora.
-    Quitar un documento de un notebook es la excepción aprobada al borrado físico (RN-01), solo en el entorno aislado."""
+    """RF-19.1, RF-19.111: al quitar uno de dos documentos del notebook se eliminan sus fragmentos y su archivo y la fila queda con
+    baja lógica (con su relación con el tema, la fecha y quién la quitó); el otro queda intacto (lista, fragmentos, archivo y vista
+    previa), el chat del notebook ya no recibe el contenido del quitado, y no se elimina el notebook, el tema ni ninguna fila de la
+    bitácora. Cambio GG1 (11/11/2026): antes la fila también se borraba (excepción al borrado físico, RN-01)."""
     notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con dos documentos", registro_de_datos)
     quitado, id_quitado = _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento_en_prueba, notebook)
     queda, id_queda = _documento_procesado_en_el_notebook(cliente_api, sesion, procesamiento_en_prueba, notebook)
@@ -462,7 +475,10 @@ def test_quitar_uno_de_dos(cliente_api, sesion, registro_de_datos, procesamiento
 
     assert respuesta.status_code == 200, f"se esperaba 200 y se recibió {respuesta.status_code}"
     assert respuesta.json()["documento_id"] == id_quitado
-    assert _tres_capas(clave, quitado.nombre, id_quitado) == CAPAS_VACIAS, "quedó alguna de las tres representaciones"
+    assert _tres_capas(clave, quitado.nombre, id_quitado) == CAPAS_QUITADAS, "quedó contenido del documento quitado"
+    fecha_baja, quien = _baja_del_documento(id_quitado)
+    assert fecha_baja is not None and quien == _dueno(notebook), "la baja no guardó la fecha ni quién la quitó"
+    assert _baja_del_documento(id_queda) == (None, None), "el documento que queda no debe tener baja"
     # El otro, intacto en todo.
     assert _tres_capas(clave, queda.nombre, id_queda) == capas_queda
     assert _lista_del_notebook(cliente_api, sesion, notebook) == [_item(queda, id_queda)]
@@ -539,12 +555,14 @@ def test_fallo_al_quitar_y_reintento(cliente_api, sesion, registro_de_datos, pro
     # Sigue listado hasta que se borren las tres capas; el otro documento no cambia.
     assert _item(objetivo, id_objetivo) in _lista_del_notebook(cliente_api, sesion, notebook)
     assert _tres_capas(clave, objetivo.nombre, id_objetivo)["fila"] == 1
+    assert _baja_del_documento(id_objetivo) == (None, None), "la baja no debe marcarse si falló un borrado (RF-19.112)"
     assert _tres_capas(clave, otro.nombre, id_otro) == capas_otro
     # Un nuevo intento, sin el fallo, completa lo que faltó.
     interruptor["activa"] = False
     segunda = sin_relanzar.delete(ruta, headers=sesion)
     assert segunda.status_code == 200, f"el reintento debía terminar con éxito y dio {segunda.status_code}"
-    assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_VACIAS
+    assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_QUITADAS
+    assert _baja_del_documento(id_objetivo)[0] is not None, "el reintento debía marcar la baja"
     assert _lista_del_notebook(cliente_api, sesion, notebook) == [_item(otro, id_otro)]
     assert _tres_capas(clave, otro.nombre, id_otro) == capas_otro
     # El mensaje del primer intento: en español, sin el texto de la excepción ni su ruta.
@@ -559,7 +577,7 @@ def test_fallo_al_quitar_y_reintento(cliente_api, sesion, registro_de_datos, pro
 @pytest.mark.requisito("RF-19.2")
 def test_archivo_ya_borrado_es_exito(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba):
     """RF-19.2: un archivo que ya no existe (borrado a mano) cuenta como eliminado: quitar el documento termina con éxito y
-    deja en cero las tres capas; el otro documento del notebook queda intacto."""
+    deja sin fragmentos ni archivo y con la baja marcada; el otro documento del notebook queda intacto."""
     from app.services.documentos.file_management_service import file_management_service
 
     notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con archivo borrado", registro_de_datos)
@@ -573,7 +591,8 @@ def test_archivo_ya_borrado_es_exito(cliente_api, sesion, registro_de_datos, pro
     respuesta = cliente_api.delete(f"/notebooks/{notebook['id']}/documentos/{id_objetivo}", headers=sesion)
 
     assert respuesta.status_code == 200, f"se esperaba 200 y se recibió {respuesta.status_code}"
-    assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_VACIAS
+    assert _tres_capas(clave, objetivo.nombre, id_objetivo) == CAPAS_QUITADAS
+    assert _baja_del_documento(id_objetivo)[0] is not None
     assert _lista_del_notebook(cliente_api, sesion, notebook) == [_item(otro, id_otro)]
     assert _tres_capas(clave, otro.nombre, id_otro) == capas_otro
 
@@ -583,7 +602,7 @@ def test_archivo_ya_borrado_es_exito(cliente_api, sesion, registro_de_datos, pro
 @pytest.mark.requisito("RF-07.54")
 def test_fallo_en_notebook_queda_en_error_y_se_quita(cliente_api, sesion, registro_de_datos, procesamiento_en_prueba, htr_simulado):
     """RF-07.54: el documento de un notebook cuyo procesamiento falla queda listado en Error (con su archivo) y se puede quitar
-    del notebook: tras quitarlo no queda fila, relación, archivo ni fragmentos. Sale de RF-07.2 y de RF-19.1."""
+    del notebook: tras quitarlo no quedan archivo ni fragmentos y la fila queda con baja lógica. Sale de RF-07.2 y de RF-19.1."""
     htr_simulado.responder("")
     notebook = crear_notebook(cliente_api, sesion, f"{PREFIJO_DATOS} notebook con fallo", registro_de_datos)
     clave = notebook["clave_interna"]
@@ -602,5 +621,6 @@ def test_fallo_en_notebook_queda_en_error_y_se_quita(cliente_api, sesion, regist
     quitado = cliente_api.delete(f"/notebooks/{notebook['id']}/documentos/{id_documento}", headers=sesion)
 
     assert quitado.status_code == 200, f"se esperaba 200 y se recibió {quitado.status_code}"
-    assert _tres_capas(clave, nombre, id_documento) == CAPAS_VACIAS
+    assert _tres_capas(clave, nombre, id_documento) == CAPAS_QUITADAS
+    assert _baja_del_documento(id_documento)[0] is not None
     assert _lista_del_notebook(cliente_api, sesion, notebook) == []
