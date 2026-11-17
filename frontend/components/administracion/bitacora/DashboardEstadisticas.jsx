@@ -259,7 +259,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
     }
 
     return {
-      labels: ['Consultas Generales', 'Consultas por Expediente'],
+      labels: ['Consultas Generales', 'Consultas por Tema'],
       datasets: [crearDataset('Distribución RAG', [generales, expedientes], [COLORES.azul, COLORES.verde], 'doughnut')]
     };
   };
@@ -361,7 +361,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
                   <h3 className="text-3xl font-bold text-orange-900 mb-1">
                     {estadisticas.expedientesUnicos || 0}
                   </h3>
-                  <p className="text-sm font-medium text-orange-700">Expedientes</p>
+                  <p className="text-sm font-medium text-orange-700">Temas</p>
                   <p className="text-xs text-orange-600 mt-1">Casos registrados</p>
                 </div>
               </div>
@@ -549,9 +549,9 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
         <Card id="chart-expedientes" className="border-none shadow-lg">
           <CardHeader className="bg-white px-8 pt-6 pb-4 border-b">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Expedientes más Consultados</h3>
+              <h3 className="text-xl font-bold text-gray-900">Temas más Consultados</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Top 5 de expedientes con más actividad
+                Top 5 de temas con más actividad
               </p>
             </div>
           </CardHeader>
@@ -574,7 +574,7 @@ const DashboardEstadisticas = ({ estadisticas, onRefresh }) => {
             ) : (
               <div className="flex flex-col items-center justify-center h-96 text-gray-500">
                 <IoFolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm text-gray-500">No hay datos de expedientes disponibles</p>
+                <p className="text-sm text-gray-500">No hay datos de temas disponibles</p>
               </div>
             )}
           </CardBody>

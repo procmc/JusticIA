@@ -203,13 +203,13 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
           <>
             {modo_busqueda && renderizarCampo('Modo de Búsqueda', modo_busqueda, { badge: true })}
             {texto_consulta && renderizarCampo('Texto de Consulta', texto_consulta, { fullWidth: true })}
-            {numero_expediente && renderizarCampo('Número de Expediente', numero_expediente, { codigo: true })}
+            {numero_expediente && renderizarCampo('Tema', numero_expediente, { codigo: true })}
             {limite && renderizarCampo('Límite de Resultados', limite)}
             {umbral_similitud && renderizarCampo('Umbral de Similitud', umbral_similitud)}
             {total_resultados !== undefined && renderizarCampo('Total de Resultados', total_resultados, { highlight: true })}
             {tiempo_busqueda_segundos && renderizarCampo('Tiempo de Búsqueda (seg)', tiempo_busqueda_segundos, { highlight: true })}
             {precision_promedio && renderizarCampo('Precisión Promedio', precision_promedio, { highlight: true })}
-            {top_expedientes && renderizarCampo('Top Expedientes Encontrados', top_expedientes, { isArray: true, fullWidth: true })}
+            {top_expedientes && renderizarCampo('Temas encontrados (los más relevantes)', top_expedientes, { isArray: true, fullWidth: true })}
             {error && renderizarCampo('Error', error, { fullWidth: true })}
             {tipo_error && renderizarCampo('Tipo de Error', tipo_error, { badge: true })}
           </>
@@ -227,7 +227,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         
         return (
           <>
-            {expediente && renderizarCampo('Expediente', expediente, { codigo: true, highlight: true })}
+            {expediente && renderizarCampo('Tema', expediente, { codigo: true, highlight: true })}
             {archivo && renderizarCampo('Archivo', archivo, { fullWidth: true })}
             {fase && renderizarCampo('Fase', fase, { badge: true })}
             {task_id && renderizarCampo('Task ID', task_id, { codigo: true, fullWidth: true })}
@@ -375,7 +375,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         
         return (
           <>
-            {expediente && renderizarCampo('Expediente', expediente, { codigo: true })}
+            {expediente && renderizarCampo('Tema', expediente, { codigo: true })}
             {archivo && renderizarCampo('Archivo', archivo, { fullWidth: true })}
             {tipo && renderizarCampo('Tipo de Acceso', tipo, { badge: true })}
             {tamanio_bytes && renderizarCampo('Tamaño (bytes)', tamanio_bytes)}
@@ -393,7 +393,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         
         return (
           <>
-            {expediente && renderizarCampo('Expediente', expediente, { codigo: true })}
+            {expediente && renderizarCampo('Tema', expediente, { codigo: true })}
             {cantidad_archivos !== undefined && renderizarCampo('Cantidad de Archivos', cantidad_archivos, { highlight: true })}
             {timestamp && renderizarCampo('Timestamp', timestamp)}
           </>
@@ -411,7 +411,7 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
             {pregunta && renderizarCampo('Pregunta', pregunta, { fullWidth: true })}
             {motivo && renderizarCampo('Motivo', motivo.charAt(0).toUpperCase() + motivo.slice(1))}
             {session_id && renderizarCampo('Session ID', session_id, { codigo: true, fullWidth: true })}
-            {expediente && renderizarCampo('Expediente', expediente, { codigo: true })}
+            {expediente && renderizarCampo('Tema', expediente, { codigo: true })}
             {top_k && renderizarCampo('Top K Documentos', top_k)}
             {documentos_recuperados !== undefined && renderizarCampo('Documentos Recuperados', documentos_recuperados, { highlight: true })}
             {tiempo_respuesta_segundos && renderizarCampo('Tiempo de Respuesta (seg)', tiempo_respuesta_segundos, { highlight: true })}
@@ -428,8 +428,8 @@ const InformacionAdicionalRenderer = ({ informacionAdicional, tipoAccionId }) =>
         
         return (
           <>
-            {expedientes && renderizarCampo('Expedientes', expedientes, { isArray: true, fullWidth: true })}
-            {cantidad_expedientes !== undefined && renderizarCampo('Cantidad de Expedientes', cantidad_expedientes, { highlight: true })}
+            {expedientes && renderizarCampo('Temas', expedientes, { isArray: true, fullWidth: true })}
+            {cantidad_expedientes !== undefined && renderizarCampo('Cantidad de temas', cantidad_expedientes, { highlight: true })}
             {tipo_resumen && renderizarCampo('Tipo de Resumen', tipo_resumen, { badge: true })}
             {tiempo_generacion_segundos && renderizarCampo('Tiempo de Generación (seg)', tiempo_generacion_segundos, { highlight: true })}
             {timestamp && renderizarCampo('Timestamp', timestamp)}

@@ -122,8 +122,8 @@ export default function Home() {
       onClick: () => navigateTo('/administracion/bitacora?tab=estadisticas&scroll=consultas')
     },
     {
-      title: 'Reportes de Expedientes',
-      description: 'Top expedientes consultados y métricas documentales',
+      title: 'Reportes de Temas',
+      description: 'Top temas consultados y métricas documentales',
       icon: IoFolderOpen,
       gradient: 'from-teal-500 to-teal-600',
       onClick: () => navigateTo('/administracion/bitacora?tab=estadisticas&scroll=expedientes')

@@ -154,9 +154,9 @@ const FiltrosBitacora = ({ filtros, onBuscar, onLimpiarFiltros, disabled = false
                         {/* Filtro por Expediente */}
                         <div className="w-full xl:col-span-1 2xl:col-span-1">
                             <Input
-                                label="Expediente"
+                                label="Tema"
                                 labelPlacement='outside'
-                                placeholder="Número de expediente"
+                                placeholder="Nombre del tema"
                                 color='primary'
                                 value={filtrosLocales.expediente}
                                 onChange={(e) => handleInputChange('expediente', e.target.value)}

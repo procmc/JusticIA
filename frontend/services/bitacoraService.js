@@ -200,7 +200,7 @@ class BitacoraService {
   async obtenerHistorialExpediente(expedienteNumero, limite = 100) {
     try {
       if (!expedienteNumero) {
-        throw new Error('Número de expediente es requerido');
+        throw new Error('El tema es requerido');
       }
 
       const data = await httpService.get(
@@ -212,7 +212,7 @@ class BitacoraService {
     } catch (error) {
       console.error(`Error obteniendo historial del expediente ${expedienteNumero}:`, error);
       throw new Error(
-        error.message || 'Error al obtener historial del expediente'
+        error.message || 'Error al obtener el historial del tema'
       );
     }
   }

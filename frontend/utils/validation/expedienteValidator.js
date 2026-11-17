@@ -223,21 +223,21 @@ export const formatearExpediente = (expediente, options = {}) => {
  */
 export const obtenerMensajeError = (expediente) => {
   if (!expediente || typeof expediente !== 'string') {
-    return 'El número de expediente es requerido';
+    return 'El tema es requerido';
   }
   
   const trimmed = expediente.trim();
   
   if (trimmed.length === 0) {
-    return 'El número de expediente es requerido';
+    return 'El tema es requerido';
   }
   
   if (trimmed.length < EXPEDIENTE_LENGTH_MIN) {
-    return `El expediente debe tener al menos ${EXPEDIENTE_LENGTH_MIN} caracteres (formato: YY-NNNNNN-NNNN-XX)`;
+    return `El tema debe tener al menos ${EXPEDIENTE_LENGTH_MIN} caracteres`;
   }
   
   if (trimmed.length > EXPEDIENTE_LENGTH_MAX) {
-    return `El expediente no debe exceder ${EXPEDIENTE_LENGTH_MAX} caracteres`;
+    return `El tema no debe exceder ${EXPEDIENTE_LENGTH_MAX} caracteres`;
   }
   
   const normalizado = normalizarExpediente(trimmed);

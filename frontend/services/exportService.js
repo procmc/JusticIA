@@ -123,7 +123,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
   doc.setFontSize(9);
   doc.setTextColor(...colorSecundario);
   doc.setFont(undefined, 'normal');
-  doc.text('Expedientes', 50 + (statsBoxWidth + statsGap) * 3, statsY + 20, { align: 'center' });
+  doc.text('Temas', 50 + (statsBoxWidth + statsGap) * 3, statsY + 20, { align: 'center' });
   
   // Período del reporte
   doc.setFontSize(11);
@@ -155,7 +155,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
       yPos += 5;
     }
     if (filtros.expediente) {
-      doc.text(`• Expediente: ${filtros.expediente}`, 25, yPos);
+      doc.text(`• Tema: ${filtros.expediente}`, 25, yPos);
       yPos += 5;
     }
     if (filtros.fechaInicio) {
@@ -237,7 +237,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
   
   // Generar tabla
   autoTable(doc, {
-    head: [['Fecha y Hora', 'Usuario', 'Acción', 'Expediente', 'Detalles']],
+    head: [['Fecha y Hora', 'Usuario', 'Acción', 'Tema', 'Detalles']],
     body: tableData,
     startY: yPos,
     theme: 'striped',
@@ -349,7 +349,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
   yPos += 7;
   doc.text(`- Tipos de acción: ${tiposAccionUnicos}`, 20, yPos);
   yPos += 7;
-  doc.text(`- Expedientes involucrados: ${expedientesUnicos}`, 20, yPos);
+  doc.text(`- Temas involucrados: ${expedientesUnicos}`, 20, yPos);
   yPos += 7;
   doc.text(`- Período: ${fechaInicio} - ${fechaFin}`, 20, yPos);
   yPos += 10;
@@ -397,7 +397,7 @@ export const exportarBitacoraPDF = (registros, filtros = {}) => {
  */
 export const exportarBitacoraCSV = (registros) => {
   // Encabezados
-  const headers = ['Fecha y Hora', 'Usuario', 'Correo', 'Acción', 'Expediente', 'Detalles'];
+  const headers = ['Fecha y Hora', 'Usuario', 'Correo', 'Acción', 'Tema', 'Detalles'];
   
   // Convertir registros a filas CSV
   const rows = registros.map(reg => [

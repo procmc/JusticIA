@@ -25,7 +25,7 @@ const ResumenTab = ({
     const numeroExpediente = selectedCase?.expedientNumber || selectedCase?.expedient || selectedCase?.expedientId;
     
     if (!numeroExpediente) {
-      Toast.error('Error', 'No se encontró el número de expediente');
+      Toast.error('Error', 'No se encontró el tema');
       return;
     }
 

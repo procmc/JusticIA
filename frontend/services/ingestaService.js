@@ -98,7 +98,7 @@ class IngestaService {
   async subirArchivos(expediente, archivos) {
     // Validar parámetros
     if (!expediente || expediente.trim() === '') {
-      throw new Error('El número de expediente es requerido');
+      throw new Error('El tema es requerido');
     }
 
     this.validateFiles(archivos);

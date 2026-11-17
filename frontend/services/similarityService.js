@@ -165,12 +165,12 @@ class SimilarityService {
     try {
       // Validar entrada
       if (!numeroExpediente || typeof numeroExpediente !== 'string') {
-        throw new Error('Número de expediente es requerido');
+        throw new Error('El tema es requerido');
       }
 
       const expedienteTrimmed = numeroExpediente.trim();
       if (!expedienteTrimmed) {
-        throw new Error('Número de expediente no puede estar vacío');
+        throw new Error('El tema no puede estar vacío');
       }
 
       // El tema es de nombre libre (RF-06.2): solo se limita el largo; el servidor comprueba que exista.
@@ -359,7 +359,7 @@ class SimilarityService {
         
         case 404:
           if (error.message.includes('expediente')) {
-            return new Error('No se encontró el expediente especificado');
+            return new Error('No se encontró el tema especificado');
           }
           return new Error('Servicio de búsqueda no encontrado');
         

@@ -66,7 +66,7 @@ const TablaBitacora = ({ registros, onVerDetalle, cargando = false, paginacion =
     { key: "fechaHora", label: "FECHA Y HORA" },
     { key: "usuario", label: "USUARIO" },
     { key: "accion", label: "ACCIÓN" },
-    { key: "expediente", label: "EXPEDIENTE" },
+    { key: "expediente", label: "TEMA" },
     { key: "descripcion", label: "DESCRIPCIÓN" },
     { key: "acciones", label: "ACCIONES" },
   ];

@@ -34,7 +34,7 @@ export const ALL_ROLES = Object.values(ROLES);
  */
 export const ROLE_DESCRIPTIONS = {
   [ROLES.ADMIN]: "Gestiona usuarios del sistema y revisa el historial de actividades. Solo acceso administrativo.",
-  [ROLES.USER]: "Puede realizar consultas y búsquedas en la base de datos de expedientes, e ingresar nuevos documentos.",
+  [ROLES.USER]: "Puede realizar consultas y búsquedas en la base de datos de temas, e ingresar nuevos documentos.",
 };
 
 /**
