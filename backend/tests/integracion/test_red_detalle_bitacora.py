@@ -273,3 +273,41 @@ def test_usuario_gubernamental_da_403(cliente_api, sesion_usuario, usuario_guber
 
     assert respuesta.status_code == 403
     assert "detalle_carga" not in respuesta.text and "items" not in respuesta.json()
+
+
+# --- RF-22.130: filtrar por un tema que no existe ---------------------------------------------------------------------------
+
+@pytest.mark.requisito("RF-22.130")
+def test_filtrar_por_un_tema_inexistente_da_cero_registros_y_no_500(cliente_api, sesion_admin):
+    """RF-22.130: filtrar la bitácora solo por un tema que no existe responde 200 con 0 registros (antes: 500 por devolver
+    una lista vacía donde se esperaban `(registros, total)`)."""
+    from fastapi.testclient import TestClient
+
+    cliente = TestClient(cliente_api.app, raise_server_exceptions=False)
+    respuesta = cliente.get("/bitacora/registros", params={"expediente": "PRUEBA tema que no existe", "limite": 10, "offset": 0},
+                            headers=sesion_admin)
+
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["items"] == [] and cuerpo["total"] == 0
+
+
+@pytest.mark.requisito("RF-22.130")
+def test_el_filtro_por_tema_acepta_una_parte_del_nombre_sin_importar_mayusculas(
+        cliente_api, sesion_admin, usuario_gubernamental, registro_de_datos):
+    """RF-22.130: escribir solo una parte del tema («Desarrollo» para «Desarrollo con IA») trae sus registros; antes pedía el
+    nombre exacto."""
+    from app.services.bitacora.ingesta_audit_service import ingesta_audit_service as audit
+
+    from app.db.database import SessionLocal
+    from app.repositories.expediente_repository import ExpedienteRepository
+
+    tema = tema_heredado(registro_de_datos)
+    with SessionLocal() as db:   # la fila de la bitácora solo queda ligada al tema si el tema ya existe
+        ExpedienteRepository().buscar_o_crear(db, tema)
+    fila = _escribir(lambda db: audit.registrar_ingesta(db, usuario_gubernamental.cedula, tema, "PRUEBA_a.pdf", "PRUEBA-tarea-1", "inicio"))
+
+    for fragmento in (tema[:9], tema.lower(), tema):   # parte del nombre, otras mayúsculas y el nombre completo
+        respuesta = cliente_api.get("/bitacora/registros", params={"expediente": fragmento, "limite": 50}, headers=sesion_admin)
+        assert respuesta.status_code == 200, respuesta.text
+        assert fila in [i["id"] for i in respuesta.json()["items"]], f"el filtro «{fragmento}» no trajo el registro del tema {tema}"

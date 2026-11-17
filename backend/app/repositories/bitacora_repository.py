@@ -356,18 +356,6 @@ class BitacoraRepository:
             from app.db.models.expediente import T_Expediente
             from app.db.models.tipo_accion import T_Tipo_accion
             
-            # Si se busca por número de expediente, primero obtener el ID
-            expediente_id = None
-            if expediente_numero:
-                from app.repositories.expediente_repository import ExpedienteRepository
-                exp_repo = ExpedienteRepository()
-                expediente_obj = exp_repo.obtener_por_numero(db, expediente_numero)
-                if expediente_obj:
-                    expediente_id = expediente_obj.CN_Id_expediente
-                else:
-                    # Si no se encuentra el expediente, retornar vacío
-                    return []
-            
             # Query con eager loading de relaciones
             query = select(T_Bitacora).options(
                 joinedload(T_Bitacora.usuario).joinedload(T_Usuario.rol),
@@ -418,8 +406,12 @@ class BitacoraRepository:
                     or_(*condiciones_usuario)
                 )
                 conditions.append(T_Bitacora.CN_Id_usuario.in_(usuario_subquery))
-            if expediente_id:
-                conditions.append(T_Bitacora.CN_Id_expediente == expediente_id)
+            if expediente_numero and expediente_numero.strip():
+                # El tema se busca por una parte de su nombre, sin importar mayúsculas (RF-22.130): «Desarrollo»
+                # trae los registros de «Desarrollo con IA». Un tema que no existe da 0 registros.
+                patron = f"%{expediente_numero.strip()}%"
+                conditions.append(T_Bitacora.CN_Id_expediente.in_(
+                    select(T_Expediente.CN_Id_expediente).where(T_Expediente.CT_Num_expediente.ilike(patron))))
             
             if conditions:
                 query = query.where(and_(*conditions))
