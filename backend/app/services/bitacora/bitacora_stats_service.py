@@ -694,7 +694,7 @@ class BitacoraStatsService:
                 return {
                     "expediente_numero": expediente_numero,
                     "total_acciones": 0,
-                    "mensaje": "No se encontraron registros para este expediente"
+                    "mensaje": "No se encontraron registros para este tema"
                 }
             
             # Extraer fechas clave

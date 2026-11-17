@@ -225,7 +225,7 @@ def _extract_document_metadata(first_chunk: Document) -> dict:
     """
     nombre_archivo = first_chunk.metadata.get("nombre_archivo", first_chunk.metadata.get("archivo", "Sin nombre"))
     tipo_archivo = first_chunk.metadata.get("tipo_archivo", "")
-    expediente = first_chunk.metadata.get("numero_expediente", first_chunk.metadata.get("expediente_numero", "Sin expediente"))
+    expediente = first_chunk.metadata.get("numero_expediente", first_chunk.metadata.get("expediente_numero", "Sin tema"))
     total_chunks = first_chunk.metadata.get("meta", {}).get("total_chunks", 1)
     
     es_audio = _is_audio_file(tipo_archivo, nombre_archivo)
@@ -273,7 +273,7 @@ def _format_document_header(doc_counter: int, metadata: dict, chunk_range: str) 
         f"\n{'='*100}\n"
         f"**{metadata['tipo_doc_label']} {doc_counter}**\n"
         f"Archivo: {metadata['nombre_archivo']}\n"
-        f"Expediente: {metadata['expediente']}\n"
+        f"Tema: {metadata['expediente']}\n"
         f"Mostrando chunks: {chunk_range} de {metadata['total_chunks']} totales\n"
         f"{'='*100}\n"
     )

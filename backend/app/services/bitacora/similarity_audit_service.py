@@ -158,6 +158,8 @@ class SimilarityAuditService:
         try:
             from app.repositories.expediente_repository import ExpedienteRepository
             
+            # El modo guardado sigue siendo la clave técnica «expediente»; el texto del registro dice «tema» (RF-21.130).
+            modo_en_texto = "tema" if modo_busqueda == "expediente" else modo_busqueda
             # Determinar el texto de búsqueda para el registro
             texto_busqueda = texto_consulta if modo_busqueda == "descripcion" else numero_expediente
             
@@ -198,10 +200,10 @@ class SimilarityAuditService:
                         if isinstance(caso, dict) and caso.get("CT_Num_expediente")
                     ]
                 
-                texto_registro = f"Búsqueda de casos similares ({modo_busqueda}): '{texto_busqueda[:200] if texto_busqueda else 'N/A'}'"
+                texto_registro = f"Búsqueda de casos similares ({modo_en_texto}): '{texto_busqueda[:200] if texto_busqueda else 'N/A'}'"
             
             else:
-                texto_registro = f"Búsqueda de casos similares ({modo_busqueda}): '{texto_busqueda[:200] if texto_busqueda else 'N/A'}'"
+                texto_registro = f"Búsqueda de casos similares ({modo_en_texto}): '{texto_busqueda[:200] if texto_busqueda else 'N/A'}'"
             
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(
@@ -276,10 +278,10 @@ class SimilarityAuditService:
                     info["total_factores_similitud"] = len(resumen_ia.get("factores_similitud", []))
                     info["tiene_conclusion"] = bool(resumen_ia.get("conclusion"))
                 
-                texto_registro = f"Resumen IA generado para expediente: {numero_expediente or 'tema no registrado'}"
+                texto_registro = f"Resumen IA generado para tema: {numero_expediente or 'tema no registrado'}"
             
             else:
-                texto_registro = f"Resumen IA para expediente: {numero_expediente or 'tema no registrado'}"
+                texto_registro = f"Resumen IA para tema: {numero_expediente or 'tema no registrado'}"
             
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(

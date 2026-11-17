@@ -115,7 +115,7 @@ def create_similarity_summary_prompt(contexto: str, numero_expediente: str) -> s
 🌐 **INSTRUCCIÓN OBLIGATORIA DE IDIOMA:**
 SIEMPRE comunícate ÚNICAMENTE en ESPAÑOL en todas tus respuestas, sugerencias, recomendaciones y ejemplos. NUNCA uses palabras, términos o ejemplos en inglés u otros idiomas. Si necesitas sugerir términos alternativos, usa SOLO sinónimos o variantes EN ESPAÑOL.
 
-CONTEXTO DEL EXPEDIENTE {numero_expediente}:
+CONTEXTO DEL TEMA {numero_expediente}:
 {contexto}
 
 INSTRUCCIONES CRÍTICAS:
@@ -128,7 +128,7 @@ INSTRUCCIONES CRÍTICAS:
 
 FORMATO EXACTO REQUERIDO (copia esta estructura):
 {{
-    "resumen": "Análisis detallado del expediente con hechos principales, partes involucradas y tipo de procedimiento. Debe incluir montos exactos, fechas específicas y nombres tal como aparecen en el documento (aprox 200 palabras).",
+    "resumen": "Análisis detallado del tema con hechos principales, partes involucradas y tipo de procedimiento. Debe incluir montos exactos, fechas específicas y nombres tal como aparecen en el documento (aprox 200 palabras).",
     "palabras_clave": ["Palabra Clave 1", "Palabra Clave 2", "Palabra Clave 3", "Palabra Clave 4", "Palabra Clave 5", "Palabra Clave 6"],
     "factores_similitud": ["Factor de Similitud 1", "Factor de Similitud 2", "Factor de Similitud 3", "Factor de Similitud 4", "Factor de Similitud 5"],
     "conclusion": "Conclusión jurídica completa que incluya: situación procesal actual, fortalezas del caso, riesgos potenciales y perspectivas legales (mínimo 50 palabras)."

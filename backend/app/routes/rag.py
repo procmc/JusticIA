@@ -310,7 +310,7 @@ async def update_expediente_context(
         if success:
             return {
                 "success": True,
-                "message": f"Contexto de expediente {request.expediente_number} actualizado correctamente",
+                "message": f"Contexto del tema {request.expediente_number} actualizado correctamente",
                 "session_id": request.session_id,
                 "expediente_number": request.expediente_number,
                 "action": request.action
@@ -318,7 +318,7 @@ async def update_expediente_context(
         else:
             raise HTTPException(
                 status_code=500,
-                detail="Error actualizando el contexto del expediente"
+                detail="Error actualizando el contexto del tema"
             )
     
     except HTTPException:

@@ -120,7 +120,7 @@ async def listar_archivos_expediente(
     if not validar_expediente(expediente_numero):
         raise HTTPException(
             status_code=400,
-            detail="Formato de expediente inválido"
+            detail="Formato de tema inválido"
         )
     
     try:
@@ -177,7 +177,7 @@ async def descargar_archivo_expediente(
     if not validar_expediente(expediente_numero):
         raise HTTPException(
             status_code=400,
-            detail="Formato de expediente inválido"
+            detail="Formato de tema inválido"
         )
     
     try:

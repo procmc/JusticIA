@@ -11,7 +11,7 @@ class IngestaArchivosRequest(BaseModel):
         from app.utils.expediente_validator import validar_expediente
         
         if not validar_expediente(v):
-            raise ValueError(f'Formato de expediente inválido: {v}')
+            raise ValueError(f'Formato de tema inválido: {v}')
         return v.strip().upper()
 
 

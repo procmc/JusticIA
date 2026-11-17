@@ -142,7 +142,9 @@ class RAGAuditService:
                 # Para consultas de expediente específico o de un notebook propio (su clave es su tema, RF-21.31):
                 # 1. Asociar con el expediente real
                 # 2. Incluir número de expediente o clave del notebook en el texto
-                texto = f"Consulta RAG {tipo_consulta} {expediente_numero}: {pregunta_corta}"
+                # La clase guardada (`tipo_consulta`) sigue siendo la clave técnica «expediente»; el texto dice «tema» (RF-21.130).
+                clase_en_texto = "tema" if tipo_consulta == "expediente" else tipo_consulta
+                texto = f"Consulta RAG {clase_en_texto} {expediente_numero}: {pregunta_corta}"
                 
                 # Buscar el expediente en la base de datos
                 expediente = self.expediente_repo.obtener_por_numero(db, expediente_numero)

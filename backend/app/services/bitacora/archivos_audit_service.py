@@ -268,7 +268,7 @@ class ArchivosAuditService:
             # Construir texto del registro
             if exito:
                 if expediente_numero:
-                    texto_registro = f"Descarga de archivo: {nombre_archivo} (expediente: {expediente_numero})"
+                    texto_registro = f"Descarga de archivo: {nombre_archivo} (tema: {expediente_numero})"
                 else:
                     texto_registro = f"Descarga de archivo: {nombre_archivo}"
             else:
@@ -373,12 +373,12 @@ class ArchivosAuditService:
             
             # Construir texto del registro
             if exito:
-                texto_registro = f"Listado de archivos del expediente: {expediente_numero} ({total_archivos} archivos)"
+                texto_registro = f"Listado de archivos del tema: {expediente_numero} ({total_archivos} archivos)"
             else:
                 # Agregar información de error
                 info["error"] = error
                 info["tipo_error"] = "acceso" if "no encontrado" in error.lower() else "interno"
-                texto_registro = f"Error listando archivos del expediente: {expediente_numero} - {error[:100]}"
+                texto_registro = f"Error listando archivos del tema: {expediente_numero} - {error[:100]}"
             
             # Registrar en bitácora usando el servicio general
             return await self.bitacora_service.registrar(

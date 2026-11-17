@@ -370,13 +370,13 @@ class ResponseParser:
     def _crear_resumen_fallback(self, respuesta_raw: str) -> ResumenIA:
         """Crea un resumen de fallback cuando no se puede parsear JSON (en español)."""
         return ResumenIA(
-            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del expediente judicial",
+            resumen=respuesta_raw[:600] if respuesta_raw else "No se pudo generar resumen automático del tema",
             palabras_clave=[
                 "Análisis Jurídico", "Procedimiento Legal", "Documentación Judicial"
             ],
             factores_similitud=[
                 "Naturaleza del Procedimiento Legal", 
-                "Materia Jurídica del Expediente"
+                "Materia Jurídica del Tema"
             ],
             conclusion="Se requiere análisis jurídico manual para conclusiones específicas"
         )

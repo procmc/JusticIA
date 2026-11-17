@@ -321,10 +321,10 @@ def test_por_tema_y_nombre_de_notebook_ajeno_da_404(cliente_api, iniciar_sesion,
 def test_clave_corta_de_notebook_por_tema_y_nombre_da_400_a_todos(cliente_api, iniciar_sesion, ajeno_usuario,
                                                                   usuario_gubernamental, notebook_con_documento):
     """Caracterización (RF-18.20): sin hacer pasar la validación de formato, una clave `NB-<id>` real (corta) da el mismo
-    400 «Formato de expediente inválido» al dueño y al ajeno: esta ruta nunca llega a la pertenencia con ids pequeños."""
+    400 «Formato de tema inválido» al dueño y al ajeno: esta ruta nunca llega a la pertenencia con ids pequeños."""
     for usuario in (usuario_gubernamental, ajeno_usuario):
         respuesta = _por_tema(cliente_api, iniciar_sesion(usuario), f"NB-{notebook_con_documento}", "PRUEBA_imagen.png")
-        assert (respuesta.status_code, respuesta.json()) == (400, {"detail": "Formato de expediente inválido"})
+        assert (respuesta.status_code, respuesta.json()) == (400, {"detail": "Formato de tema inválido"})
         assert CONTENIDO_DEL_DOCUMENTO not in respuesta.content
 
 

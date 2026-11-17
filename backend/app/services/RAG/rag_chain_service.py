@@ -543,18 +543,18 @@ class RAGChainService:
             if action == "change":
                 # Mensaje indicando cambio de expediente
                 user_message = HumanMessage(
-                    content=f"Cambiar consulta a expediente: {expediente_number}"
+                    content=f"Cambiar consulta a tema: {expediente_number}"
                 )
                 assistant_message = AIMessage(
-                    content=f"**Expediente cambiado:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este nuevo expediente. ¿Qué te gustaría saber?"
+                    content=f"**Tema cambiado:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este nuevo tema. ¿Qué te gustaría saber?"
                 )
             else:
                 # Mensaje indicando establecimiento inicial del expediente
                 user_message = HumanMessage(
-                    content=f"Establecer consulta para expediente: {expediente_number}"
+                    content=f"Establecer consulta para tema: {expediente_number}"
                 )
                 assistant_message = AIMessage(
-                    content=f"**Expediente establecido:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este expediente. ¿Qué te gustaría saber?"
+                    content=f"**Tema establecido:** {expediente_number}\n\nAhora puedes hacer cualquier consulta sobre este tema. ¿Qué te gustaría saber?"
                 )
 
             # Agregar mensajes al historial
