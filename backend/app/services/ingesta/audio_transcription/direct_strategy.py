@@ -143,9 +143,10 @@ class DirectTranscriptionStrategy:
             if not result.strip():
                 raise ValueError("Transcripción directa resultó en texto vacío")
             
-            # Liberar memoria antes de continuar con embeddings
-            logger.info("Liberando modelo Whisper de memoria")
-            del self.whisper_model
+            # Liberar memoria antes de continuar con embeddings. El modelo NO se quita de la estrategia (RF-07.70): el servicio
+            # conserva esta misma estrategia entre audios y, sin modelo, el siguiente audio fallaba. Quitar solo esta referencia
+            # tampoco liberaba memoria, porque el servicio guarda la suya.
+            logger.info("Liberando memoria tras la transcripción")
             gc.collect()
             
             if progress_tracker:

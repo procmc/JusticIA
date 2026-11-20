@@ -172,10 +172,10 @@ class ChunkingTranscriptionStrategy:
             full_text = " ".join(transcriptions).strip()
             logger.info(f"Transcripción por chunks completada: {len(full_text)} caracteres totales")
             
-            # Liberar memoria antes de continuar con embeddings
-            # El modelo Whisper (~3GB) debe liberarse antes de cargar embeddings (~3GB)
-            logger.info("Liberando modelo Whisper de memoria")
-            del self.whisper_model
+            # Liberar memoria antes de continuar con embeddings. El modelo NO se quita de la estrategia (RF-07.70): el servicio
+            # conserva esta misma estrategia entre audios y, sin modelo, el siguiente audio fallaba. Quitar solo esta referencia
+            # tampoco liberaba memoria, porque el servicio guarda la suya.
+            logger.info("Liberando memoria tras la transcripción")
             gc.collect()
             
             if not full_text:
