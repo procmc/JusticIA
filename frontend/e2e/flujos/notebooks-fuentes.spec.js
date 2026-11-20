@@ -322,6 +322,43 @@ test.describe('Fuentes del notebook', () => {
     await campoDelNombre(page).press('Enter');
     await expect(fichaDeDocumento(page, `${nuevo}.txt`)).toHaveCount(1);
   });
+
+  // Spec 012: «Reintentar» en una fuente en Error (RF-07.60, RF-07.61, RF-07.62).
+  test('RF-07.60 · RF-07.61 · «Reintentar» solo en una fuente con error, y la deja procesada', async ({ page, crearUsuario, control }) => {
+    soloEscritorio();
+    const usuario = await crearUsuario('usuario');
+    await iniciarSesion(page, usuario.correo, usuario.contrasena);
+    const token = await iniciarSesionPorApi(control, usuario);
+    const notebook = await crearNotebook(control, token);
+    const bueno = documentoDePrueba();
+    const malo = documentoDePrueba();
+    await subirYProcesar(control, token, notebook.clave_interna, bueno);
+    await control.ingesta({ etapa: 'vectorizacion', fallar: [malo.nombre] });
+    await esperarTarea(control, token, (await cargar(control, token, notebook.clave_interna, [malo]))[0], 'fallido');
+    await abrirNotebookConDocumentos(page, notebook, [bueno.nombre, malo.nombre]);
+    const reintentar = page.getByRole('menuitem', { name: 'Reintentar', exact: true });
+    const estadoDe = async (nombre) => (await listarDocumentos(control, token, notebook)).find((d) => d.nombre_archivo === nombre)?.estado;
+    expect(await estadoDe(malo.nombre)).toBe('Error');
+
+    // Una fuente Procesado no ofrece «Reintentar» (RF-07.60).
+    await pulsar(page.getByRole('button', { name: `Opciones de ${bueno.nombre}`, exact: true }));
+    await expect(page.getByRole('menuitem', { name: 'Cambiar el nombre de la fuente' })).toBeVisible();
+    await expect(reintentar).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // En Error sí la ofrece; sin la falla, al reintentar la fuente termina Procesado en la misma ficha (RF-07.61, RF-07.62).
+    await control.ingesta({});
+    await pulsar(page.getByRole('button', { name: `Opciones de ${malo.nombre}`, exact: true }));
+    await pulsar(reintentar);
+    await expect.poll(() => estadoDe(malo.nombre), { timeout: 60_000 }).toBe('Procesado');
+    await expect(fichaDeDocumento(page, malo.nombre)).toHaveCount(1);
+    await expect(page.locator('[data-testid="subida-en-curso"]')).toHaveCount(0, { timeout: 30_000 });
+
+    // Ya Procesado, deja de ofrecerla.
+    await pulsar(page.getByRole('button', { name: `Opciones de ${malo.nombre}`, exact: true }));
+    await expect(page.getByRole('menuitem', { name: 'Cambiar el nombre de la fuente' })).toBeVisible();
+    await expect(reintentar).toHaveCount(0);
+  });
 });
 
 // Nombre completo de la fuente (spec 009b, cambio HH1, T15): RF-19.116, RF-19.117, RF-19.118, RNF-04.101.

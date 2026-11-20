@@ -254,6 +254,39 @@ class NotebooksAuditService:
             logger.warning(f"Error registrando que se quitó un documento en bitácora: {type(e).__name__}")
             return None
 
+    async def registrar_reintento_documento(
+        self,
+        db: Session,
+        usuario_id: Optional[str],
+        clave_notebook: str,
+        documento_id: int,
+        exito: bool,
+        tipo_error: Optional[str] = None
+    ) -> Optional[T_Bitacora]:
+        """
+        Registra que el usuario pidió reintentar una fuente en Error de su notebook, o que no se pudo encolar (RF-21.110), como
+        carga de documentos, con la clave y el número del documento. Nunca el nombre del archivo ni del notebook, ni el texto de
+        una excepción (RNF-07.24). El resultado del procesamiento lo registra la propia tarea (inicio, completado o error).
+
+        Returns:
+            T_Bitacora: Registro creado o None si hubo error (la acción continúa, RF-21)
+        """
+        try:
+            clave = _sin_control(clave_notebook)
+            numero = int(documento_id)
+            info = {"documento_id": numero, "accion": "reintentar_documento"}
+            if exito:
+                info["resultado"] = "exitoso"
+                texto = f"Reintento de una fuente del notebook {clave} (documento {numero})"
+            else:
+                info["resultado"] = "error"
+                info["tipo_error"] = tipo_error or "interno"
+                texto = f"Error al reintentar una fuente del notebook {clave} (documento {numero})"
+            return await self._registrar_accion(db, usuario_id, TiposAccion.CARGA_DOCUMENTOS, texto, clave, info)
+        except Exception as e:
+            logger.warning(f"Error registrando el reintento de una fuente en bitácora: {type(e).__name__}")
+            return None
+
     async def _registrar_estudio(
         self, db: Session, usuario_id: Optional[str], tipo_accion_id: int, accion: str, hecho: str, clave_notebook: str,
         resultado_id: Optional[int], tipo_resultado: Optional[str], exito: bool, motivo: Optional[str] = None,

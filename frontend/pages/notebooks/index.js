@@ -77,6 +77,7 @@ const NotebooksPage = () => {
   const [desmarcadas, setDesmarcadas] = useState(() => new Set());
   const [eliminandoIds, setEliminandoIds] = useState(() => new Set()); // documentos con su «quitar» en curso (cada uno, el suyo)
   const quitandoRef = useRef(new Set()); // lo mismo, sin esperar al render: defensa para no enviar dos DELETE del mismo documento
+  const reintentandoRef = useRef(new Set()); // fuentes con un reintento en camino: un doble clic envía una sola solicitud (RF-07.67)
   const [documentoPorQuitar, setDocumentoPorQuitar] = useState(null); // {id, nombre} mientras se pide confirmar (RF-19.40)
   const confirmacionRef = useRef(null); // el mismo documento; se vacía en el primer «Quitar» para absorber el doble clic (RF-19.70)
   const pollingRef = useRef(new Set());
@@ -286,6 +287,35 @@ const NotebooksPage = () => {
     }
     Toast.error('Error al cambiar el nombre', 'No se pudo cambiar el nombre de la fuente. Intente de nuevo.');
     return {};
+  };
+
+  // RF-07.61: «Reintentar» en una fuente en Error. 200: la fuente vuelve a «en proceso» y se sigue su avance como el de una carga;
+  // 404 la retira (RF-07.66); 409 (ya no está en Error o falta su archivo original) avisa con el mensaje del servidor y vuelve a leer
+  // la lista; lo demás, un aviso (RF-07.68).
+  const handleReintentarFuente = async (doc) => {
+    if (!notebookActivo || reintentandoRef.current.has(doc.id)) return;
+    reintentandoRef.current.add(doc.id);
+    const notebookId = notebookActivo.id;
+    const result = await notebookService.reintentarDocumento(notebookId, doc.id);
+    reintentandoRef.current.delete(doc.id);
+    if (result.success) {
+      setDocumentosNotebook(prev => prev.map(d => (d.id === doc.id ? { ...d, estado: result.documento.estado } : d)));
+      const tarea = { nombre: doc.nombre_archivo, taskId: result.documento.id_tarea, status: 'procesando', progress: 0 };
+      setArchivosSubiendo(prev => [...prev, tarea]);
+      pollTaskProgress(tarea.taskId, tarea.nombre, notebookId);
+      return;
+    }
+    if (result.status === 404) {
+      setDocumentosNotebook(prev => prev.filter(d => d.id !== doc.id));
+      Toast.warning('La fuente ya no está disponible.');
+      return;
+    }
+    if (result.status === 409) {
+      Toast.warning(result.message);
+      cargarDocumentos(notebookId);
+      return;
+    }
+    Toast.error('Error al reintentar', result.message);
   };
 
   const handleEliminarDocumento = async (documentoId) => {
@@ -747,7 +777,15 @@ const NotebooksPage = () => {
                   variant="flat"
                   isClosable
                   onClose={() => setAvisoCarga(null)}
-                  classNames={{ title: 'text-default-800 font-medium break-words', description: 'text-default-700' }}
+                  // `grow-0 shrink-0`: la alerta de HeroUI trae `flex-grow` y, en esta columna, se estiraba hasta llenar el panel.
+                  // Sin icono y con menos relleno: el panel es angosto y el texto necesita el ancho; así mide solo lo que ocupa.
+                  hideIcon
+                  classNames={{
+                    base: 'grow-0 shrink-0 min-w-0 py-2 px-3',
+                    mainWrapper: 'min-w-0 min-h-0 ms-0',
+                    title: 'text-default-800 font-medium break-words',
+                    description: 'text-default-700',
+                  }}
                   title={`${avisoCarga.tema}: ${avisoCarga.mensaje}`}
                   description={avisoCarga.motivos.length > 0 && (
                     <ul className="list-none space-y-0.5 break-words">
@@ -771,6 +809,7 @@ const NotebooksPage = () => {
                       onAbrir={() => handleVerArchivo(doc)}
                       onQuitar={() => pedirConfirmacionDeQuitar(doc)}
                       onRenombrar={(nombre) => handleRenombrarFuente(doc, nombre)}
+                      onReintentar={() => handleReintentarFuente(doc)}
                     />
                   ))}
                 </ul>

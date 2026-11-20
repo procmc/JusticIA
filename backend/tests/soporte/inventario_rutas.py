@@ -212,6 +212,7 @@ CLASIFICACION: Dict[Clave, Clasificacion] = _tabla(
         ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/vista-texto", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("GET", "/notebooks/{notebook_id}/documentos/{documento_id}/vista-imagen", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("PUT", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N, "json": {"nombre": "PRUEBA fuente"}}, None),
+        ("POST", "/notebooks/{notebook_id}/documentos/{documento_id}/reintentar", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
         ("DELETE", "/notebooks/{notebook_id}/documentos/{documento_id}", USUARIO_GUBERNAMENTAL, True, {"parametros": _N}, None),
     ]),
     # El Estudio del notebook (spec 010): generar, listar, abrir, guardar notas y quitar resultados.

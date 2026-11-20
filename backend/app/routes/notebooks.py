@@ -9,6 +9,7 @@ Endpoints:
     - GET /notebooks/{id}/documentos: Listar los documentos de un notebook propio
     - GET /notebooks/{id}/documentos/{id}/archivo: Previsualizar el archivo de un documento
     - PUT /notebooks/{id}/documentos/{id}: Cambiar el nombre que se muestra de una fuente (spec 009b)
+    - POST /notebooks/{id}/documentos/{id}/reintentar: Volver a procesar una fuente en Error (spec 012)
     - DELETE /notebooks/{id}/documentos/{id}: Quitar un documento del notebook
 
 Las rutas solo reciben, llaman al servicio, registran en la bitácora y traducen los errores (RF-17.33): el acceso a datos,
@@ -48,8 +49,8 @@ from app.db.database import get_db
 from app.auth.jwt_auth import require_usuario_judicial
 from app.services.bitacora.notebooks_audit_service import MOTIVO_NOTEBOOK_NO_DISPONIBLE, notebooks_audit_service
 from app.services.notebook_service import (
-    ArchivoNoEncontrado, DocumentoSinProcesar, ErrorAlQuitar, ErrorAlRenombrar, NombreNoValido, NotebookService,
-    RecursoNoDisponible, extension_de, id_de_notebook, nombre_mostrado
+    ArchivoNoEncontrado, DocumentoSinProcesar, ErrorAlQuitar, ErrorAlReintentar, ErrorAlRenombrar, FuenteNoReintentable,
+    NombreNoValido, NotebookService, RecursoNoDisponible, extension_de, id_de_notebook, nombre_mostrado
 )
 from app.services.vista_previa_service import (
     VistaNoDisponible, tiene_vista_de_imagen, tiene_vista_de_texto, vista_previa_service
@@ -398,6 +399,50 @@ async def renombrar_documento_notebook(
         nombre_archivo=nombre_mostrado(documento),
         extension=extension_de(documento.CT_Nombre_archivo),
         estado=documento.estado_procesamiento.CT_Nombre_estado if documento.estado_procesamiento else "Desconocido",
+    )
+
+
+class FuenteReintentadaResponse(DocumentoNotebookResponse):
+    id_tarea: str  # la tarea de procesamiento, para seguir su avance como el de una carga
+
+
+@router.post("/{notebook_id}/documentos/{documento_id}/reintentar", response_model=FuenteReintentadaResponse)
+async def reintentar_documento_notebook(
+    notebook_id: str,
+    documento_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_usuario_judicial),
+):
+    """Vuelve a procesar una fuente propia que terminó en Error, con su archivo original ya guardado (spec 012, RF-07.61). Los
+    ids llegan como texto y solo vale el canónico: otro da 404, no 422. Solo se reintenta una fuente en Error (409 si no) y sin
+    límite de veces (RF-07.60, RF-07.63)."""
+    usuario = current_user["user_id"]
+    try:
+        notebook, documento, id_tarea = await notebook_service.reintentar_documento(db, notebook_id, documento_id, usuario)
+    except RecursoNoDisponible as no_disponible:
+        raise await _no_encontrado(db, current_user, no_disponible, TiposAccion.CARGA_DOCUMENTOS)
+    except FuenteNoReintentable as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ArchivoNoEncontrado:
+        raise HTTPException(
+            status_code=409, detail="No se encontró el archivo original. Quite la fuente y vuelva a subirla.")
+    except ErrorAlReintentar as e:
+        # Sin el texto de la excepción ni en la respuesta ni en el registro: puede traer rutas internas (RF-07.68, RNF-07.24).
+        await notebooks_audit_service.registrar_reintento_documento(
+            db, usuario, e.clave, e.documento_id, exito=False, tipo_error="interno")
+        logger.error(
+            "Error al reintentar una fuente de un notebook (%s)\n%s", type(e.causa).__name__,
+            "".join(traceback.format_tb(e.causa.__traceback__)))
+        raise HTTPException(status_code=500, detail="No se pudo reintentar la fuente. Intente de nuevo.")
+
+    await notebooks_audit_service.registrar_reintento_documento(
+        db, usuario, notebook.clave_interna, documento.CN_Id_documento, exito=True)
+    return FuenteReintentadaResponse(
+        id=documento.CN_Id_documento,
+        nombre_archivo=nombre_mostrado(documento),
+        extension=extension_de(documento.CT_Nombre_archivo),
+        estado=documento.estado_procesamiento.CT_Nombre_estado if documento.estado_procesamiento else "Desconocido",
+        id_tarea=id_tarea,
     )
 
 

@@ -162,6 +162,10 @@ def procesar_archivo_celery(self, CT_Num_expediente, archivo_data, usuario_id):
         id_documento_previo = progress_manager.documento_de_tarea(task_id)
     except Exception as redis_error:
         logger.warning(f"No se pudo consultar el documento previo de la tarea {task_id}: {redis_error}")
+    if not id_documento_previo:
+        # RF-07.64: el reintento manual de una fuente en Error de un notebook trae el número de su fila, que ya quedó en Pendiente
+        # (la arma el servidor, no el usuario): se reutiliza en vez de crear otra.
+        id_documento_previo = archivo_data.get("documento_reintento_id")
     if id_documento_previo:
         db_previo = SessionLocal()
         try:

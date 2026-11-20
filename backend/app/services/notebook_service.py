@@ -32,6 +32,7 @@ Ver también:
 """
 
 import logging
+import mimetypes
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -193,6 +194,27 @@ class ArchivoNoEncontrado(Exception):
         super().__init__("Archivo no encontrado")
         self.clave = clave
         self.documento_id = documento_id
+
+
+class FuenteNoReintentable(Exception):
+    """La fuente no está en Error, así que no se reintenta (RF-07.60, RF-07.67). Lleva la clave del notebook y el número del
+    documento; nunca el nombre del archivo."""
+
+    def __init__(self, clave: str, documento_id: int):
+        super().__init__("Solo se puede reintentar una fuente que terminó con error.")
+        self.clave = clave
+        self.documento_id = documento_id
+
+
+class ErrorAlReintentar(Exception):
+    """No se pudo preparar o encolar el reintento de una fuente (RF-07.68). Lleva la clave del notebook y el número del
+    documento (para la bitácora) y la excepción original en `causa`; su mensaje no repite el de esa excepción."""
+
+    def __init__(self, clave: str, documento_id: int, causa: Exception):
+        super().__init__("No se pudo reintentar la fuente")
+        self.clave = clave
+        self.documento_id = documento_id
+        self.causa = causa
 
 
 class ErrorAlQuitar(Exception):
@@ -457,6 +479,73 @@ class NotebookService:
         except Exception as causa:
             raise ErrorAlQuitar(clave, documento_id, causa) from causa
         return notebook
+
+    async def reintentar_documento(
+        self, db: Session, texto_notebook: str, texto_documento: str, usuario_id: str
+    ) -> Tuple[T_Notebook, T_Documento, str]:
+        """Vuelve a procesar una fuente propia que terminó en Error, con el archivo original que ya está guardado (RF-07.61).
+
+        Borra los fragmentos que dejó el intento anterior (RF-07.64), devuelve la fuente a Pendiente y encola la tarea de
+        procesamiento con el número de esa fuente, para que la tarea reutilice su fila en vez de crear otra (RF-07.51). Devuelve
+        el notebook, el documento y el identificador de la tarea.
+
+        Raises:
+            RecursoNoDisponible: Notebook o fuente ajenos, inexistentes o con id no canónico (RF-07.66).
+            FuenteNoReintentable: La fuente no está en Error (RF-07.60, RF-07.67).
+            ArchivoNoEncontrado: El archivo original ya no está en disco (RF-07.65).
+            ErrorAlReintentar: Falló el borrado de fragmentos o el encolado; la fuente conserva el estado Error (RF-07.68).
+        """
+        from app.services.expediente_service import ExpedienteService
+        from app.services.ingesta.async_processing.celery_tasks import procesar_archivo_celery
+
+        id_notebook = id_de_notebook(texto_notebook)
+        if id_notebook is None:
+            raise RecursoNoDisponible(MOTIVO_NOTEBOOK_NO_DISPONIBLE)
+        notebook = await self._notebook_o_no_disponible(db, id_notebook, usuario_id)
+        id_documento = id_de_notebook(texto_documento)
+        if id_documento is None:
+            raise RecursoNoDisponible(MOTIVO_DOCUMENTO_NO_DISPONIBLE)
+        documento = self._documento_del_notebook(db, notebook, id_documento)
+        clave, nombre_archivo = notebook.clave_interna, documento.CT_Nombre_archivo
+
+        estado = documento.estado_procesamiento.CT_Nombre_estado if documento.estado_procesamiento else None
+        if estado != "Error":
+            raise FuenteNoReintentable(clave, id_documento)
+        ruta = file_management_service.obtener_ruta_archivo(clave, nombre_archivo)
+        if not ruta:
+            raise ArchivoNoEncontrado(clave, id_documento)
+        try:
+            contenido = ruta.read_bytes()
+        except OSError:
+            raise ArchivoNoEncontrado(clave, id_documento)
+
+        # Mismo formato que arma la carga de archivos; `documento_reintento_id` hace que la tarea reutilice la fila (RF-07.64).
+        archivo_info = {
+            "filename": nombre_archivo,
+            "original_filename": nombre_archivo,
+            "filepath": str(ruta),
+            "relative_path": f"uploads/{clave}/{nombre_archivo}",
+            "content_type": mimetypes.guess_type(nombre_archivo)[0] or "application/octet-stream",
+            "size_bytes": len(contenido),
+            "content": contenido,
+            "documento_reintento_id": id_documento,
+        }
+        servicio_expedientes = ExpedienteService()
+        pasada_a_pendiente = False
+        try:
+            # El intento anterior pudo dejar fragmentos a medias: se borran para que el reintento no los duplique ni los dé por buenos.
+            await get_vectorstore_backend().delete_document_chunks(id_documento)
+            await servicio_expedientes.actualizar_estado_documento(db, documento, "Pendiente")
+            pasada_a_pendiente = True
+            tarea = procesar_archivo_celery.delay(clave, archivo_info, usuario_id)
+        except Exception as causa:
+            if pasada_a_pendiente:
+                try:
+                    await servicio_expedientes.actualizar_estado_documento(db, documento, "Error")
+                except Exception:
+                    logger.exception("No se pudo devolver a Error la fuente %s tras fallar el encolado", id_documento)
+            raise ErrorAlReintentar(clave, id_documento, causa) from causa
+        return notebook, documento, tarea.id
 
     async def listar_notebooks_usuario(self, db: Session, usuario_id: str) -> List[T_Notebook]:
         """Lista los notebooks de un usuario, más reciente primero."""

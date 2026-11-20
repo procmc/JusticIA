@@ -126,6 +126,24 @@ test.describe('NotebookServIA: crear y cargar', () => {
     await expect(listaDeNotebooks(page)).toHaveText([mio]);
   });
 
+  test('RF-05.23 · el aviso de la carga mide lo que ocupa su texto y no se estira por el panel', async ({ page, crearUsuario, control }) => {
+    // La alerta de HeroUI trae `flex-grow` y, en la columna de Fuentes, llenaba todo el espacio libre con un recuadro casi vacío.
+    test.skip(test.info().project.name === 'pequena', 'Solo en escritorio (presupuesto de la suite)');
+    const usuario = await iniciarComoUsuario(page, crearUsuario);
+    const token = await iniciarSesionPorApi(control, usuario);
+    const notebook = await crearNotebook(control, token, `PRUEBA notebook aviso ${aleatorio()}`);
+    await abrirNotebooks(page);
+    await abrirNotebookDeLaLista(page, notebook.nombre);
+    await elegirArchivosEnNotebook(page, [documentoDePrueba()]);
+    await confirmarSubidaEnNotebook(page, notebook.nombre);
+
+    const aviso = avisosDeLaPantalla(page).filter({ hasText: `${notebook.nombre}:` });
+    await expect(aviso).toContainText('1 archivo enviado a procesamiento');
+    const caja = await aviso.boundingBox();
+    expect(caja).not.toBeNull();
+    expect(caja.height).toBeLessThan(130); // una a tres líneas de texto, no el alto del panel
+  });
+
   test('RF-05.40 · notebook: carga mixta', async ({ page, crearUsuario, control }) => {
     const usuario = await iniciarComoUsuario(page, crearUsuario);
     const token = await iniciarSesionPorApi(control, usuario);

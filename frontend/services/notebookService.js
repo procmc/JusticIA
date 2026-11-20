@@ -131,6 +131,19 @@ class NotebookService {
   }
 
   /**
+   * Reintentar una fuente en Error: el servidor la vuelve a procesar con su archivo original (spec 012, RF-07.61).
+   * Devuelve la fuente en `documento` (con `id_tarea` para seguir el avance) o `status` y `message` del rechazo.
+   */
+  async reintentarDocumento(notebookId, documentoId) {
+    try {
+      const data = await httpService.post(`/notebooks/${notebookId}/documentos/${documentoId}/reintentar`, null);
+      return { success: true, documento: data };
+    } catch (error) {
+      return { error: true, status: error.status, message: error.message || 'No se pudo reintentar la fuente. Intente de nuevo.' };
+    }
+  }
+
+  /**
    * Quitar un documento de un notebook (Qdrant, archivo físico y BD)
    */
   async eliminarDocumento(notebookId, documentoId) {

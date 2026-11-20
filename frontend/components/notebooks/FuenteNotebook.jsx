@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button, Checkbox, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Input, Tooltip } from '@heroui/react';
-import { FiEdit2, FiFile, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2, FiFile, FiMoreVertical, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 
 /**
  * Fila de una fuente del notebook (spec 009b): nombre que abre la vista previa y menú ⋮ de opciones.
@@ -13,10 +13,12 @@ import { FiEdit2, FiFile, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
  * bajo el campo. `onRenombrar(base)` devuelve `{ success }` o `{ message }` (como en `ItemNotebook`). Con la fuente en proceso
  * (ni Procesado ni Error) la opción se muestra desactivada (RF-19.107).
  *
+ * «Reintentar» (spec 012, RF-07.60) aparece solo con la fuente en Error: `onReintentar()` pide al servidor que la procese de nuevo.
+ *
  * El nombre se recorta con «…» en una línea; al pasar el mouse o enfocarlo sale un aviso con el nombre completo y, si la fuente
  * está Procesado, «Haga clic para ver el archivo original» (RF-19.116). El aviso muestra el nombre como texto (RF-19.118).
  */
-const FuenteNotebook = ({ fuente, marcada, abriendo, quitando, onAlternar, onAbrir, onQuitar, onRenombrar }) => {
+const FuenteNotebook = ({ fuente, marcada, abriendo, quitando, onAlternar, onAbrir, onQuitar, onRenombrar, onReintentar }) => {
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
@@ -133,24 +135,32 @@ const FuenteNotebook = ({ fuente, marcada, abriendo, quitando, onAlternar, onAbr
           </Button>
         </DropdownTrigger>
         <DropdownMenu aria-label={`Acciones de ${fuente.nombre_archivo}`}>
-          <DropdownItem
-            key="renombrar"
-            startContent={<FiEdit2 />}
-            isDisabled={enProceso}
-            description={enProceso ? 'Espere a que termine de procesarse.' : undefined}
-            onPress={empezar}
-          >
-            Cambiar el nombre de la fuente
-          </DropdownItem>
-          <DropdownItem
-            key="quitar"
-            color="danger"
-            className="text-danger"
-            startContent={<FiTrash2 />}
-            onPress={onQuitar}
-          >
-            Quitar fuente
-          </DropdownItem>
+          {[
+            // «Reintentar» solo con la fuente en Error (RF-07.60); procesa de nuevo el archivo original.
+            fuente.estado === 'Error' && (
+              <DropdownItem key="reintentar" startContent={<FiRefreshCw />} onPress={onReintentar}>
+                Reintentar
+              </DropdownItem>
+            ),
+            <DropdownItem
+              key="renombrar"
+              startContent={<FiEdit2 />}
+              isDisabled={enProceso}
+              description={enProceso ? 'Espere a que termine de procesarse.' : undefined}
+              onPress={empezar}
+            >
+              Cambiar el nombre de la fuente
+            </DropdownItem>,
+            <DropdownItem
+              key="quitar"
+              color="danger"
+              className="text-danger"
+              startContent={<FiTrash2 />}
+              onPress={onQuitar}
+            >
+              Quitar fuente
+            </DropdownItem>,
+          ].filter(Boolean)}
         </DropdownMenu>
       </Dropdown>
     </li>
