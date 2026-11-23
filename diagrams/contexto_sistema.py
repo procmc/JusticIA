@@ -1,6 +1,9 @@
 """
 Contexto del Sistema ServIA
-Vista de alto nivel mostrando actores y sistemas externos.
+Vista de alto nivel: las personas que usan el sistema y los servicios con los
+que se comunica. SQL Server, Qdrant y Ollama corren en local (Docker) junto a
+ServIA; ningun dato ni consulta sale a servicios de IA en la nube. El servidor
+de correo es el unico servicio fuera del equipo.
 
 Ejecutar: python contexto_sistema.py
 Output: output/contexto_sistema.png
@@ -8,9 +11,6 @@ Output: output/contexto_sistema.png
 
 from diagrams import Diagram, Cluster, Edge
 from diagrams.onprem.client import User
-from diagrams.onprem.database import Mssql
-from diagrams.generic.database import SQL
-from diagrams.onprem.compute import Server
 from diagrams.custom import Custom
 from diagrams.programming.language import Python
 
@@ -40,36 +40,33 @@ with Diagram(
         "margin": "30",
         "pad": "0.6"
     }):
-        usuario_judicial = User("Usuario Judicial")
+        usuario = User("Usuario Gubernamental")
         admin = User("Administrador")
-    
+
     # Sistema principal
     sistema = Python("ServIA\n\nAsistente de IA\nGubernamental")
 
-    # Sistemas externos - Paleta morado claro
-    with Cluster("Servicios de Infraestructura (locales, Docker)", graph_attr={
+    # Servicios de apoyo - Paleta morado claro
+    with Cluster("Servicios de Apoyo", graph_attr={
         "bgcolor": "#f3e5f5",
         "penwidth": "2",
         "style": "rounded",
         "margin": "30",
         "pad": "0.6"
     }):
-        sql_server = Mssql("SQL Server\n(Local)\n\nDatos transaccionales")
-        # Sin ícono propio de Qdrant disponible: se usa un ícono generico
-        # de base de datos en vez del logo de un motor distinto (antes
-        # mostraba por error el logo de Milvus, retirado del proyecto).
-        qdrant = SQL("Qdrant\n(Local)\n\nBusqueda vectorial")
-        ollama = Custom("Ollama\nllama3.1:8b\n\nGeneracion IA (RAG)", "/diagrams/icons/ollama.png")
-        htr = Server("Servidor HTR\ntrocr-large-handwritten\n\nReconocimiento de\nmanuscrito")
+        sql_server = Custom("SQL Server\n(Local)\n\nDatos transaccionales", "/diagrams/icons/SQL Server.png")
+        qdrant = Custom("Qdrant\n(Local)\n\nBúsqueda vectorial", "/diagrams/icons/Qdrant.png")
+        ollama = Custom("Ollama\n(Local)\n\nGeneración IA", "/diagrams/icons/ollama.png")
+        correo = Custom("Servidor de correo\n(Gmail, SMTP)\n\nContraseñas y códigos", "/diagrams/icons/Gmail.png")
 
-    # Relaciones - Usuarios (azul sistema)
-    usuario_judicial >> Edge(label="  Consulta documentos  \n  Busca casos similares  \n  Genera resumenes  ", color="#2563eb", fontsize="11") >> sistema
+    # Relaciones - Usuarios
+    usuario >> Edge(label="  Consulta documentos  \n  Busca casos similares  \n  Usa notebooks  ", color="#2563eb", fontsize="11") >> sistema
     admin >> Edge(label="  Administra sistema  ", color="#7c3aed", fontsize="11") >> sistema
 
-    # Relaciones - Servicios externos (paleta sistema)
+    # Relaciones - Servicios de apoyo
     sistema >> Edge(label="  Almacena documentos  \n  y metadatos  ", color="#0891b2", fontsize="11") >> sql_server
-    sistema >> Edge(label="  Busqueda semantica  \n  de documentos  ", color="#9333ea", fontsize="11") >> qdrant
-    sistema >> Edge(label="  Generacion de  \n  respuestas  ", color="#8b5cf6", fontsize="11") >> ollama
-    sistema >> Edge(label="  Texto desde\n  manuscrito  ", color="#059669", fontsize="11") >> htr
+    sistema >> Edge(label="  Búsqueda semántica  \n  de temas  ", color="#9333ea", fontsize="11") >> qdrant
+    sistema >> Edge(label="  Generación de  \n  respuestas  ", color="#8b5cf6", fontsize="11") >> ollama
+    sistema >> Edge(label="  Envía contraseñas  \n  y códigos  ", color="#059669", fontsize="11") >> correo
 
 print("Diagrama generado: output/contexto_sistema.png")
