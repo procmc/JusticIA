@@ -1,6 +1,8 @@
 """
 Arquitectura de Despliegue - ServIA
-Vista de infraestructura, contenedores Docker y servicios cloud.
+Como se ejecuta el sistema: la aplicacion web (Node.js) y los ocho servicios de
+Docker Compose del equipo local. Ollama y el servidor de reconocimiento de
+imagen comparten la GPU. Nada sale a servicios en la nube.
 
 Ejecutar: python arquitectura_despliegue.py
 Output: output/arquitectura_despliegue.png
@@ -8,108 +10,69 @@ Output: output/arquitectura_despliegue.png
 
 from diagrams import Diagram, Cluster, Edge
 from diagrams.onprem.client import Client
-from diagrams.onprem.container import Docker
-from diagrams.programming.framework import React, Fastapi
-from diagrams.programming.language import Python
-from diagrams.onprem.database import Mssql
-from diagrams.generic.database import SQL
+from diagrams.onprem.queue import Celery
 from diagrams.onprem.inmemory import Redis
-from diagrams.onprem.compute import Server
+from diagrams.programming.framework import Fastapi
 from diagrams.custom import Custom
 
 print("Generando diagrama: Arquitectura de Despliegue...")
 
+ICONOS = "/diagrams/icons/"
+
+
+def cluster(color, margen="30"):
+    return {"bgcolor": color, "penwidth": "2", "style": "rounded", "margin": margen, "pad": "0.6"}
+
+
 with Diagram(
-    "ServIA - Arquitectura de Despliegue\nInfraestructura Docker y Servicios Cloud",
+    "ServIA - Arquitectura de Despliegue\nEquipo local con Docker Compose",
     show=False,
-    direction="LR",
+    direction="TB",
     filename="output/arquitectura_despliegue",
     outformat="png",
     graph_attr={
-        "fontsize": "11",
+        "fontsize": "13",
         "bgcolor": "white",
-        "ranksep": "3.0",
-        "nodesep": "2.0",
-        "pad": "2.0",
-        "splines": "polyline"
+        "pad": "0.4",
+        "splines": "spline",
+        "nodesep": "0.6",
+        "ranksep": "1.1"
     }
 ):
-    usuarios = Client("Usuarios\nBrowser")
-    
-    # ========== CAPA 1: FRONTEND (FUERA DE DOCKER) ==========
-    with Cluster("Frontend (Servidor Web / Vercel)", graph_attr={"bgcolor": "#BBDEFB", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        frontend = Custom("next-frontend\n\nNext.js 15\nReact 18\nTailwindCSS\nFetch API\nNode.js 20", "/diagrams/icons/nextjs.png")
-    
-    # ========== CAPA 2: DOCKER HOST LOCAL ==========
-    with Cluster("Docker Host Local (VM/Server)", graph_attr={"bgcolor": "#E3F2FD", "penwidth": "3", "style": "rounded", "margin": "40", "pad": "0.8"}):
-        
-        # Backend API
-        with Cluster("API Layer", graph_attr={"bgcolor": "#CE93D8", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            backend = Fastapi("fastapi-backend\n\nPython 3.11\nFastAPI + Uvicorn\nLangChain\nSQLAlchemy\nmultilingual-e5-large (embeddings)")
+    usuarios = Client("Usuarios\nNavegador web")
 
-        # Workers
-        with Cluster("Processing Layer", graph_attr={"bgcolor": "#F8BBD0", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            celery = Python("celery-worker\n\nPython 3.11\nCelery 5.3\nFaster-Whisper\nSentence-Transformers")
+    with Cluster("Aplicación Web (Node.js)", graph_attr=cluster("#e3f2fd")):
+        web = Custom("next-frontend\n\nNext.js 15\nPuerto 3000", ICONOS + "nextjs.png")
 
-        # Cache
-        with Cluster("Cache Layer", graph_attr={"bgcolor": "#FFCCBC", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            redis = Redis("redis\n\nRedis 7 Alpine")
+    with Cluster("Docker Compose (equipo local)", graph_attr=cluster("#f5f5f5", "40")):
+        with Cluster("Aplicación", graph_attr=cluster("#e8f5e9")):
+            backend = Fastapi("backend\n\nFastAPI\nPuerto 8000")
+            worker = Celery("celery-worker\n\nProcesa archivos")
 
-        # Document Processing
-        with Cluster("Document Processing", graph_attr={"bgcolor": "#C5E1A5", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            tika = Custom("apache-tika\n\nJava 17\nTika 2.8.0\nTesseract OCR", "/diagrams/icons/tika.svg.png")
+        with Cluster("Procesamiento de Documentos", graph_attr=cluster("#f3e5f5")):
+            tika = Custom("tika\n\nApache Tika\nPuerto 9998", ICONOS + "tika.svg.png")
+            htr = Custom("servidor-htr (GPU)\n\ndocTR + TrOCR\nPuerto 9100", ICONOS + "docTR.png")
 
-        # SQL Server (local, no Azure desde la migracion de Fase 2)
-        with Cluster("Base de Datos", graph_attr={"bgcolor": "#B3E5FC", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            sql_server = Mssql("sqlserver\n\nSQL Server\n(contenedor local)")
+        with Cluster("IA Local", graph_attr=cluster("#fff3e0")):
+            ollama = Custom("ollama (GPU)\n\nllama3.1:8b\nPuerto 11434", ICONOS + "ollama.png")
 
-        # Ollama (local, no cloud - confirmado por doc 22/26)
-        with Cluster("LLM", graph_attr={"bgcolor": "#E1BEE7", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            ollama = Custom("ollama\n\nllama3.1:8b\n(contenedor local)", "/diagrams/icons/ollama.png")
+        with Cluster("Datos", graph_attr=cluster("#eceff1")):
+            sql = Custom("sqlserver\n\nSQL Server 2022\nPuerto 1433", ICONOS + "SQL Server.png")
+            qdrant = Custom("qdrant\n\nBúsqueda vectorial\nPuertos 6333 y 6334", ICONOS + "Qdrant.png")
+            redis = Redis("redis\n\nRedis 7\nPuerto 6379")
+            uploads = Custom("uploads\n\nArchivos originales", ICONOS + "Archivos_originales.png")
 
-        # Servidor HTR (con GPU, Ciclo 1)
-        with Cluster("Reconocimiento de Manuscrito", graph_attr={"bgcolor": "#F5D0FE", "style": "rounded", "margin": "30", "pad": "0.8"}):
-            htr = Server("servidor-htr\n\ntrocr-large-handwritten\n+ docTR (GPU)")
+    usuarios >> Edge(label="  HTTPS  ", color="#2563eb", fontsize="11") >> web
+    web >> Edge(label="  API REST  ", color="#2563eb", fontsize="11") >> backend
+    backend >> Edge(label="  Cola de tareas  ", color="#dc2626", fontsize="11") >> redis
+    redis >> Edge(label="  Entrega tareas  ", color="#dc2626", fontsize="11") >> worker
 
-    with Cluster("Qdrant (Local/Docker)", graph_attr={"bgcolor": "#B2DFDB", "penwidth": "3", "style": "rounded", "margin": "50", "pad": "1.0"}):
-        qdrant = SQL("Qdrant\n\nVector Database")
-    
-    # ===== FLUJO DE CONEXIONES =====
-    
-    # Usuario → Frontend
-    usuarios >> Edge(label="HTTPS :3000", color="#1976D2", style="bold") >> frontend
-    
-    # Frontend → Backend
-    frontend >> Edge(label="HTTP :8000\nREST API", color="#1976D2", style="bold") >> backend
-    
-    # Backend → Redis (cache/session)
-    backend >> Edge(label="Redis :6379\nCache + Sessions", color="#F57C00", style="dashed") >> redis
-    
-    # Backend → SQL Server (local)
-    backend >> Edge(label="TDS :1433\nMetadata", color="#0078D4") >> sql_server
+    worker >> Edge(label="  HTTP  ", color="#9333ea", fontsize="11") >> tika
+    worker >> Edge(label="  HTTP  ", color="#9333ea", fontsize="11") >> htr
+    backend >> Edge(label="  Genera respuestas  ", color="#8b5cf6", fontsize="11") >> ollama
 
-    # Backend → Qdrant
-    backend >> Edge(label="REST :6333\nVector Search", color="#00C7B7") >> qdrant
-
-    # Backend → Ollama (local)
-    backend >> Edge(label="HTTP\nLLM Inference", color="#7C3AED") >> ollama
-
-    # Backend → Celery (via Redis)
-    backend >> Edge(label="Celery Tasks", color="#E91E63", style="bold") >> celery
-
-    # Celery → Redis (queue)
-    celery >> Edge(label="Redis :6379\nTask Queue", color="#F57C00", style="dashed") >> redis
-
-    # Celery → Tika
-    celery >> Edge(label="HTTP :9998\nDocument OCR", color="#388E3C") >> tika
-
-    # Celery → Servidor HTR (imagenes)
-    celery >> Edge(label="HTTP :9100\nHTR (manuscrito)", color="#A21CAF") >> htr
-
-    # Celery → SQL Server (store metadata)
-    celery >> Edge(label="TDS :1433\nStore Metadata", color="#0078D4") >> sql_server
-
-    # Celery → Qdrant (store vectors)
-    celery >> Edge(label="REST :6333\nStore Embeddings", color="#00C7B7") >> qdrant
+    backend >> Edge(label="  ODBC  ", color="#0891b2", fontsize="11") >> sql
+    worker >> Edge(label="  HTTP  ", color="#ea580c", fontsize="11") >> qdrant
+    backend >> Edge(label="  Archivos  ", color="#ea580c", fontsize="11") >> uploads
 
 print("Diagrama generado: output/arquitectura_despliegue.png")
