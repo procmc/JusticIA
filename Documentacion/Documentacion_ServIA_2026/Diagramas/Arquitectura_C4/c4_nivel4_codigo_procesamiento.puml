@@ -1,0 +1,130 @@
+@startuml c4_nivel4_codigo_procesamiento
+' Nivel 4 (Código) del C4: procesamiento de documentos en el Worker.
+' Clases y módulos reales de backend/app; se muestran solo los métodos que
+' participan en el recorrido de un archivo. «módulo» = archivo de funciones.
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam dpi 130
+skinparam defaultFontName Calibri
+skinparam class {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  ArrowColor #1F4E79
+  HeaderBackgroundColor #D5E3F0
+}
+skinparam stereotypeCBackgroundColor #FFF3BF
+skinparam nodesep 40
+skinparam ranksep 55
+
+title Nivel 4 · Código — Procesamiento de documentos (Worker)
+
+class celery_tasks <<módulo>> {
+  + procesar_archivo_celery(tema, archivo_data, usuario_id)
+}
+
+class ProgressManager {
+  + create_tracker(task_id): ProgressTracker
+  + get_status(task_id): dict
+  + mark_task_cancelled(task_id)
+  + recordar_documento(task_id, documento_id)
+}
+
+class ProgressTracker {
+  - task_id: texto
+  + update_progress(step, message)
+  + mark_completed(message)
+  + marcar_fallo(crudo)
+  + mark_cancelled(message)
+  + get_status_dict(): dict
+}
+
+enum EstadoTarea {
+  PENDIENTE
+  PROCESANDO
+  COMPLETADO
+  FALLIDO
+  CANCELADO
+}
+
+class document_processor <<módulo>> {
+  + process_single_file_with_content(file, content, filepath, tema, db, progress_tracker, cancel_check, documento_previo)
+  + extract_text_from_file(content, filename, content_type): texto
+  + extract_text_from_audio_whisper(content, filename): texto
+}
+
+class ExpedienteService {
+  + resolver_o_crear_tema(db, tema): texto
+  + crear_documento(...)
+  + actualizar_estado_documento(db, documento, estado)
+}
+
+class TikaService {
+  - tika_url: texto
+  + is_available(): bool
+  + extract_text(content, filename): texto
+}
+
+class HTRService {
+  - htr_url: texto
+  + is_available(): bool
+  + extract_text(content, filename): texto
+}
+
+class AudioTranscriptionOrchestrator {
+  - config: AudioProcessingConfig
+  + transcribe_audio_direct(audio_content, filename): texto
+  - _select_strategy(file_size_mb)
+  - _get_fallback_strategy(file_size_mb, error_context)
+}
+
+class DirectTranscriptionStrategy {
+  + transcribe(temp_file_path, filename): texto
+  + can_handle(file_size_mb): bool
+}
+
+class ChunkingTranscriptionStrategy {
+  + transcribe(temp_file_path, filename): texto
+  + can_handle(file_size_mb): bool
+  + get_expected_chunks(duration_seconds): entero
+}
+
+class AudioUtils {
+  + split_audio_into_chunks(audio_path, chunk_duration_minutes)
+  + cleanup_chunks(chunk_paths)
+}
+
+class text_cleaner <<módulo>> {
+  + clean_extracted_text(text, filename): texto
+  + validate_cleaned_text(text): (bool, texto)
+}
+
+class storage <<módulo>> {
+  + store_in_vectorstore(texto, metadatos, tema, id_tema, id_documento)
+}
+
+abstract class VectorStoreBackend {
+  + add_documents(documents)
+  + get_complete_document_by_chunks(document_id)
+  + delete_document_chunks(document_id)
+}
+
+class QdrantBackend
+
+celery_tasks --> ProgressManager : crea el seguimiento
+ProgressManager "1" o-- "*" ProgressTracker
+ProgressTracker ..> EstadoTarea
+celery_tasks --> document_processor : procesa el archivo
+document_processor ---> ExpedienteService : registra el documento\ny su estado
+document_processor --> TikaService : documentos
+document_processor --> HTRService : imágenes
+document_processor --> AudioTranscriptionOrchestrator : audio
+AudioTranscriptionOrchestrator *-- DirectTranscriptionStrategy
+AudioTranscriptionOrchestrator *-- ChunkingTranscriptionStrategy
+ChunkingTranscriptionStrategy --> AudioUtils
+document_processor ---> text_cleaner : limpia el texto
+document_processor ---> storage : fragmenta e indexa
+storage --> VectorStoreBackend
+document_processor ...> VectorStoreBackend : ¿ya vectorizado?
+QdrantBackend --|> VectorStoreBackend
+@enduml

@@ -1,0 +1,133 @@
+@startuml c4_nivel4_codigo_rag
+' Nivel 4 (Código) del C4: orquestador de consultas RAG en la API Backend.
+' Clases y módulos reales de backend/app; se muestran solo los métodos que
+' participan en un turno de chat. «módulo» = archivo de funciones.
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam dpi 150
+skinparam defaultFontName Calibri
+skinparam class {
+  BackgroundColor #EAF1F8
+  BorderColor #1F4E79
+  ArrowColor #1F4E79
+  HeaderBackgroundColor #D5E3F0
+}
+skinparam stereotypeCBackgroundColor #FFF3BF
+skinparam nodesep 40
+skinparam ranksep 55
+
+title Nivel 4 · Código — Orquestador de consultas RAG (API Backend)
+
+class RAGChainService {
+  + consulta_con_historial_streaming(pregunta, session_id, usuario_id, alcance)
+  - _despachar_consulta(...)
+  - _consulta_general_con_historial(...)
+  - _consulta_expediente_con_historial(...)
+  - _consulta_notebook_con_historial(...)
+  - _documentos_visibles(usuario_id): conjunto
+}
+
+class general_chains <<módulo>> {
+  + create_conversational_rag_chain(...): CadenaArmada
+  + stream_chain_response(chain, input, config, http_request, ...)
+}
+
+class CadenaArmada {
+  - chat: texto
+  - instrucciones: texto
+  - retriever
+  + cabe_la_pregunta(pregunta): bool
+  + astream(input_dict, config)
+  + guardar_turno(pregunta, respuesta)
+  - _reformular(llm, pregunta, previos): texto
+}
+
+class "DynamicServIARetriever" as Retriever {
+  - top_k: entero
+  - similarity_threshold: decimal
+  - expediente_filter: texto
+  - documentos_visibles: conjunto
+  # _aget_relevant_documents(query): Document[]
+  - _get_relevant_in_expediente(query, tema)
+  - _get_general_documents(query)
+}
+note bottom of Retriever : Recuperador híbrido: filtro exacto\npor tema + búsqueda semántica
+
+class SearchStrategyManager {
+  + search_with_fallback(query, ...)
+}
+
+abstract class VectorStoreBackend {
+  + search_by_text(query, ...)
+  + get_expedient_documents(tema)
+}
+
+class QdrantBackend
+
+class presupuesto_contexto <<módulo>> {
+  + cabe_la_pregunta(chat, instrucciones, pregunta): bool
+  + cantidad_a_recuperar(solicitud): entero
+  + armar_respuesta(chat, instrucciones, pregunta, historial, fragmentos): EntradaArmada
+}
+
+class document_formatter <<módulo>> {
+  + a_fragmento(doc): Fragmento
+}
+
+class Fragmento {
+  + texto: texto
+  + archivo: texto
+  + tema: texto
+  + ruta: texto
+  + pagina_inicio: entero
+  + pagina_fin: entero
+}
+
+class llm_service <<módulo>> {
+  + get_llm(): ChatOllama
+}
+
+class ConversationStore {
+  + get_session_history(session_id)
+  + es_propia(session_id, usuario): bool
+  + crear_conversacion(session_id, dueno)
+  + crear_efimera(): texto
+  + update_metadata(session_id)
+  + auto_generate_title(session_id)
+}
+
+class LimitedChatMessageHistory {
+  + messages: BaseMessage[]
+  + add_message(message)
+}
+
+class RedisConversationHistory {
+  + save_conversation(...)
+  + load_conversation(session_id): dict
+  + delete_conversation(session_id, user_id): bool
+}
+
+class CorrectorDeRutas {
+  + procesar(texto): texto
+  + vaciar(): texto
+}
+
+RAGChainService --> Retriever : crea según el alcance\n(general, tema o notebook)
+RAGChainService --> general_chains : arma la cadena\ny transmite la respuesta
+RAGChainService --> ConversationStore : conversación del usuario
+general_chains ..> CadenaArmada : crea
+general_chains --> CorrectorDeRutas : corrige rutas\nde las fuentes
+CadenaArmada --> Retriever : recupera el contexto
+CadenaArmada --> document_formatter : convierte los documentos
+document_formatter ..> Fragmento : crea
+CadenaArmada --> presupuesto_contexto : arma la entrada\nsin pasar el límite
+presupuesto_contexto ..> Fragmento
+CadenaArmada --> llm_service : genera la respuesta
+Retriever --> SearchStrategyManager : búsqueda general
+Retriever --> VectorStoreBackend : búsqueda por tema
+SearchStrategyManager --> VectorStoreBackend
+QdrantBackend --|> VectorStoreBackend
+ConversationStore "1" o-- "*" LimitedChatMessageHistory
+ConversationStore --> RedisConversationHistory : persiste
+@enduml
